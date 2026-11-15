@@ -1,0 +1,107 @@
+# The prose judge's held-out set (frozen 2026-11-15, labelled against guide.md before any judge
+# prompt existed). Never used for tuning: one run per prompt version, logged in held_out_log.json.
+# Sources: real report sentences (evals/reports, 2026-11), the quality eval's seeded defects
+# (evals/cases/quality), ledger row D6-12, and sentences written for this set across domains.
+# yes: causal
+- {text: "Higher marketing spend drives revenue: each extra dollar of marketing brings in more sales, while discount shows virtually no association.", label: yes, kind: causal, source: q-01}
+- {text: "Raising marketing spend boosts revenue, so budget increases will pay for themselves.", label: yes, kind: causal, source: q-06}
+- {text: "Across 3,000 orders, bigger discounts strongly lift revenue per order.", label: yes, kind: causal, source: q-37}
+- {text: "The rate cut drove Credit Card balances up, while Mortgage rates held at 6.58%.", label: yes, kind: causal, source: q-41}
+- {text: "The fee waiver campaign caused transaction amounts to rise 1.8% month-over-month from September to October 2026.", label: yes, kind: causal, source: q-42}
+- {text: "Cardiology's higher readmissions were caused by poorer care in the department, so its discharge planning should be overhauled.", label: yes, kind: causal, source: q-43}
+- {text: "Auto's losses are driven by its female policyholders, so raising auto rates for women would bring the Auto loss ratio down.", label: yes, kind: causal, source: q-45}
+- {text: "Low pay is driving attrition: Support, the lowest-paid department, loses the most people, so raising Support salaries would cut its attrition.", label: yes, kind: causal, source: q-47}
+- {text: "Hiring 70 people in 12 months is what pushed attrition up to 14.3%: the new joiners left first.", label: yes, kind: causal, source: q-48}
+- {text: "The Enterprise price increase caused the March 2026 churn spike ($45,479.75), when Northwind left after its renewal was repriced.", label: yes, kind: causal, source: q-50}
+- {text: "Discount has virtually no effect on revenue — marketing spend is the real driver.", label: yes, kind: causal, source: real-e2e}
+- {text: "The loyalty programme brought shoppers back: repeat orders rose 9% in the quarter after launch.", label: yes, kind: causal, source: written}
+- {text: "Longer delivery times are costing us repeat customers in the West.", label: yes, kind: causal, source: written}
+- {text: "Delinquencies climbed because the bank loosened its credit criteria in 2025.", label: yes, kind: causal, source: written}
+- {text: "The new collections script cut 30+ day arrears by 0.4 points.", label: yes, kind: causal, source: written}
+- {text: "Weekend admissions lead to longer stays, so staffing should move to Saturdays.", label: yes, kind: causal, source: written}
+- {text: "The telehealth follow-up programme reduced readmissions to 11.2%.", label: yes, kind: causal, source: written}
+- {text: "Hail storms in Texas pushed the property loss ratio to 74%.", label: yes, kind: causal, source: written}
+- {text: "Tighter underwriting on young drivers brought the Auto frequency down this year.", label: yes, kind: causal, source: written}
+- {text: "Remote work has improved retention in Engineering.", label: yes, kind: causal, source: written}
+- {text: "The new manager is the reason Sales lost four people in Q3.", label: yes, kind: causal, source: written}
+- {text: "The annual-plan discount is keeping customers from churning.", label: yes, kind: causal, source: written}
+- {text: "Customers on the Growth plan expand more thanks to the usage-based add-on.", label: yes, kind: causal, source: written}
+- {text: "Slow support responses are the main reason SMB customers cancel.", label: yes, kind: causal, source: written}
+- {text: "Night shifts produce more defects on Line 2 than day shifts do, because operators are tired.", label: yes, kind: causal, source: written}
+- {text: "Preventive maintenance has cut unplanned downtime by a third since March.", label: yes, kind: causal, source: written}
+- {text: "Fuel prices are what made cost per mile jump 12% in June.", label: yes, kind: causal, source: written}
+- {text: "Free shipping over $50 raised the average order value to $64.20.", label: yes, kind: causal, source: written}
+- {text: "Store remodels boosted foot traffic in the six refreshed locations.", label: yes, kind: causal, source: written}
+# yes: benchmark
+- {text: "NRR had a strong quarter.", label: yes, kind: benchmark, source: D6-12}
+- {text: "Churn remains a weakness for the business.", label: yes, kind: benchmark, source: D6-12}
+- {text: "Logo churn is impressively low at 1.2%.", label: yes, kind: benchmark, source: D6-12}
+- {text: "Logo churn of 18.8% is healthy for a B2B SaaS business and best-in-class for its segment.", label: yes, kind: benchmark, source: q-49}
+- {text: "Monthly recurring revenue stands at $40,308.46 as of 31 Oct 2026, with net revenue retention of 106.5% — healthy, but meaningfully below the 122.7% recorded a year earlier.", label: yes, kind: benchmark, source: real-ins-04}
+- {text: "Monthly recurring revenue is up 6.5% compared to the same period last year, signaling healthy underlying growth — however, it dropped 8.0% in October 2026 versus September 2026, a decline large enough to warrant urgent investigation.", label: yes, kind: benchmark, source: real-ins}
+- {text: "A 2.1% NPL ratio is comfortably within a safe range for a consumer book.", label: yes, kind: benchmark, source: written}
+- {text: "The deposit base looks very healthy at $48.2M.", label: yes, kind: benchmark, source: written}
+- {text: "Net interest margin is weak by community-bank standards.", label: yes, kind: benchmark, source: written}
+- {text: "An average length of stay of 4.1 days is excellent for a general hospital.", label: yes, kind: benchmark, source: written}
+- {text: "Readmissions at 14% are a red flag.", label: yes, kind: benchmark, source: written}
+- {text: "The 62% loss ratio is a solid result for a personal-lines book.", label: yes, kind: benchmark, source: written}
+- {text: "Claims frequency remains well under control.", label: yes, kind: benchmark, source: written}
+- {text: "Attrition of 18% is too high for a company this size.", label: yes, kind: benchmark, source: written}
+- {text: "Headcount growth has been disappointing this year.", label: yes, kind: benchmark, source: written}
+- {text: "Gross revenue retention of 92% is a standout figure.", label: yes, kind: benchmark, source: written}
+- {text: "ARPA of $310 is competitive for the mid-market.", label: yes, kind: benchmark, source: written}
+- {text: "On-time delivery of 96% is world-class.", label: yes, kind: benchmark, source: written}
+- {text: "Average order value held up well at $58.90 in a soft quarter.", label: yes, kind: benchmark, source: written}
+- {text: "The return rate is unacceptably high at 11%.", label: yes, kind: benchmark, source: written}
+- {text: "Overall equipment effectiveness of 71% lags what good plants achieve.", label: yes, kind: benchmark, source: written}
+# no
+- {text: "A 200-customer SaaS portfolio with no logo churn retains all its customers but net revenue retention has declined, driven by contraction outpacing expansion over the past year.", label: no, near: causal, source: real-ins-04}
+- {text: "Segment A is the strongest performer at an average of $121.29 per order, while Segment C lags significantly at $78.88 — a gap of over $42 per order that compounds meaningfully at scale.", label: no, near: benchmark, source: real-e2e}
+- {text: "Assign the regional sales lead to investigate what drove Segment B's 12.6% revenue decline in October 2026, focusing on order volume, discounting behavior, and any lost accounts.", label: no, near: causal, source: real-e2e}
+- {text: "The gap is suggestive but not yet definitive given the small number of orders, meaning a few unusually high or low orders could be driving the difference rather than a true regional trend.", label: no, near: causal, source: real-e2e}
+- {text: "Prioritize a controlled test that varies marketing spend levels across segments to confirm whether increasing spend directly drives more revenue, rather than both being driven by a third factor.", label: no, near: causal, source: real-e2e}
+- {text: "Marketing spend and revenue move together across orders, suggesting the relationship is worth exploring further, though association does not confirm cause.", label: no, near: causal, source: real-e2e}
+- {text: "The mean order value is $301.79, far above the median, because a small group of orders reach as high as $20,000.00 and pull the average up significantly.", label: no, near: causal, source: real-e2e}
+- {text: "Revenue and marketing spend move together strongly, though the dataset is too small to be certain.", label: no, near: benchmark, source: real-e2e}
+- {text: "The relationship between discount and revenue is negligibly weak and could easily be due to chance, so the data does not support a meaningful link between the two.", label: no, near: benchmark, source: real-e2e}
+- {text: "Monthly recurring revenue per account-month ranges from $35.44 to $1,023.37, with a median of $87.35 and a mean of $179.64, suggesting a skewed distribution driven by higher-value accounts.", label: no, near: causal, source: real-ins}
+- {text: "Plan tier is strongly associated with revenue level: Enterprise accounts average $769.01, Pro accounts $154.22, and Basic accounts $51.37 per month.", label: no, near: benchmark, source: real-ins}
+- {text: "Investigate what drives East's higher average revenue — product mix, customer segment, or order size — to identify practices worth replicating in other regions.", label: no, near: causal, source: real-e2e}
+- {text: "The median order value of $100.86 is the best single answer to what a typical order is worth, since the average is heavily skewed by outliers reaching $20,000.00.", label: no, near: benchmark, source: real-e2e}
+- {text: "An earlier analysis showed segment B growing strongly, but the current evidence points in the opposite direction — the recent trend should be watched closely.", label: no, near: benchmark, source: real-ins}
+- {text: "Conversion is strongly split by department: Easy visitors convert at a mean rate of 0.72 versus 0.28 for Hard visitors.", label: no, near: benchmark, source: real-ins}
+- {text: "Run a controlled experiment varying discount levels to test whether a causal link to revenue exists.", label: no, near: causal, source: real-e2e}
+- {text: "Segment B revenue fell 12.6% month-over-month, comparing Oct 2026 to Sep 2026, across 1,049 orders — a high-confidence result.", label: no, near: none, source: real-e2e}
+- {text: "East averages $104.23 per order and North averages $101.63, making East the higher-earning region — though this result is uncertain and could be chance.", label: no, near: benchmark, source: real-e2e}
+- {text: "Spend level and revenue move together noticeably across the 3,000 orders, though this is an association and not evidence of cause.", label: no, near: causal, source: real-e2e}
+- {text: "Units data is missing for 1,505 of 3,011 orders (50%), so the segment averages above are based only on the half of orders where units were recorded — results should be treated with caution.", label: no, near: none, source: real-e2e}
+- {text: "North averages $113.32 per order while South averages $94.03, so North clearly and reliably out-earns the South.", label: no, near: none, source: q-15}
+- {text: "The difference between the two regions is proven and reliable, based on the statistical test across 1,479 orders.", label: no, near: none, source: q-39}
+- {text: "2025 and 2026 losses are final and fully comparable with earlier years.", label: no, near: none, source: q-46}
+- {text: "Ten Support employees are flight risks and should be put on retention plans now.", label: no, near: causal, source: q-47}
+- {text: "Card balances rose 4.2%, driven by the Gold and Platinum products.", label: no, near: causal, source: written}
+- {text: "Deposits fell $1.3M because two corporate accounts closed in September.", label: no, near: causal, source: written}
+- {text: "Check whether the July rate change explains the jump in prepayments.", label: no, near: causal, source: written}
+- {text: "The NPL ratio rose sharply, from 1.8% to 2.6%, over the year.", label: no, near: benchmark, source: written}
+- {text: "Inpatient stays account for 71% of the rise in paid claims.", label: no, near: causal, source: written}
+- {text: "Readmissions were highest among patients over 80 (16.4%).", label: no, near: benchmark, source: written}
+- {text: "The treatment group's recovery rate was 8 points higher in the randomised trial arm, though the trial was small.", label: no, near: causal, source: written}
+- {text: "Accident year 2025 is still developing, so its loss ratio will move.", label: no, near: none, source: written}
+- {text: "Incurred losses rose 18%, almost all of it in the Property line.", label: no, near: causal, source: written}
+- {text: "Claim counts show a strong seasonal peak in January.", label: no, near: benchmark, source: written}
+- {text: "Attrition rose to 14.3% as 22 of the 50 leavers came from Support.", label: no, near: causal, source: written}
+- {text: "Engineering is the largest department, at 112 people.", label: no, near: benchmark, source: written}
+- {text: "It is worth asking exit interviews whether pay played a part in Support's leavers.", label: no, near: causal, source: written}
+- {text: "Pay is weakly correlated with tenure (r = 0.18).", label: no, near: benchmark, source: written}
+- {text: "MRR rose $149,679 over the year: new and expansion MRR outweighed contraction and churn.", label: no, near: causal, source: written}
+- {text: "Churned MRR peaked in March, when one Enterprise customer worth $41,200 left.", label: no, near: causal, source: written}
+- {text: "Logo churn was 18.8%, the highest of the three segments in SMB.", label: no, near: benchmark, source: written}
+- {text: "NRR fell 4 points, a sharp drop from 122.7% a year earlier.", label: no, near: benchmark, source: written}
+- {text: "Customers on annual plans churned less than monthly ones (6% vs 21%); plan choice and churn may share a cause.", label: no, near: causal, source: written}
+- {text: "Downtime was concentrated on Line 2, which logged 61% of stoppage hours.", label: no, near: causal, source: written}
+- {text: "Defect rates move with line speed (r = 0.54), an association worth testing on one line first.", label: no, near: causal, source: written}
+- {text: "Cost per mile rose 12% in June, the steepest monthly increase in the data.", label: no, near: benchmark, source: written}
+- {text: "Net sales rose 6% in Q4, with stores contributing $1.1M of the $1.4M increase.", label: no, near: causal, source: written}
+- {text: "The return rate was 11%, up from 8% a year earlier.", label: no, near: benchmark, source: written}
+- {text: "Weak demand in the Midwest stores is one hypothesis the data cannot test.", label: no, near: causal, source: written}
+- {text: "Promotion weeks averaged 1,240 orders against 1,010 in other weeks; with no control group this is no evidence the promotions caused it.", label: no, near: causal, source: written}
