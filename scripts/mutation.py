@@ -57,9 +57,11 @@ SPINNER = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
 ENV = {"ANALYSTAI_TODAY": "2026-11-01", "HYPOTHESIS_PROFILE": "mutation"}
 SOURCE_GUARDS = {"tests/test_one_definition.py"}   # grep the sources: mutmut rewrites them
 # the pre-push gate's files: spell, ledger, pack-column and scorer functions (kpi's _spell and
-# rows' with_spell_events are spell functions: the 5.7b-1 baseline scored them)
+# rows' with_spell_events are spell functions: the 5.7b-1 baseline scored them); 5.7b-3: the
+# typed claims and the bridge (story's `bridge`, read by the story and the chart)
 GATED = ("domain_pack/spell.py", "domain_pack/ledger.py", "domain_pack/columns.py",
-         "domain_pack/kpi.py", "domain_pack/rows.py", "evals/scoring.py")
+         "domain_pack/kpi.py", "domain_pack/rows.py", "evals/scoring.py", "agents/claims.py",
+         "domain_pack/story.py")
 GATE = "docs/mutation/gate.json"
 
 
