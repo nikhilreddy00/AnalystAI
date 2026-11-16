@@ -174,6 +174,16 @@ def test_a_small_protected_group_with_a_zero_base_is_hidden_not_said():
                        "quantity": [1] * 12 + [0, 0], "status": ["posted"] * 12 + ["held"] * 2})
     got = measure(df, {c: c for c in df.columns}, pack, "per_unit", by="status")
     assert "held" in got.hidden and got.zero == ()
+    # the complement of a hidden value is another value, never a zero base: with one small
+    # valued group (V, 3 people) beside 2 large ones and a small zero-base group, the next
+    # smallest VALUED group is hidden with it
+    pay = Pack.model_validate(__import__("yaml").safe_load(   # amount as a protected measure (pay)
+        PER_UNIT + "protected_roles: [amount]\nperson_key: account_id\n"))
+    groups = ["V"] * 3 + ["L"] * 12 + ["M"] * 15 + ["Z"] * 2
+    df = pd.DataFrame({"account_id": [f"P{i}" for i in range(32)], "amount": [10.0] * 32,
+                       "quantity": [1] * 30 + [0, 0], "status": groups})
+    got = measure(df, {c: c for c in df.columns}, pay, "per_unit", by="status")
+    assert set(got.hidden) == {"V", "L", "Z"} and list(got.values.index) == ["M"]
 
 
 SETTLE = BANK.replace("  quantity:", """  settled_at: {kind: date, headers: [settled_at]}
