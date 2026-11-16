@@ -169,6 +169,10 @@ def test_dates_outside_the_range_and_one_month_scope():
     assert g.ungrounded_dates("The data covers Nov 2025 to Oct 2026.", first, last) == []
     # precision (stored E2E outputs): a start date is not a one-month scope claim
     assert g.ungrounded_dates("3,000 orders recorded daily from Nov 1, 2025.", first, last) == []
+    # the product's own day-first date (5.7b-3 E2E, e2e-82: its story sentence read as a scope)
+    assert g.ungrounded_dates("Logo churn (12-month cohort to 31 Oct 2026): 20.1%; no full "
+                              "year-earlier window in the data.", first, last) == []
+    assert g.ungrounded_dates("Sales on 3 December 2026 rose.", first, last) == ["3 December 2026"]
     assert g.ungrounded_dates("The data covers orders from November 2025 onward.", first, last) == []
     # precision (insight baseline): a decimal is not a year; an end date or two months is not a scope
     assert g.ungrounded_dates("mean=301.79, std=1980.52 and 42.2058", first, last) == []

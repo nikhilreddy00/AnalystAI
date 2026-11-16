@@ -430,7 +430,8 @@ def ungrounded_numbers(text: str, evidence: Any, rel_tol: float = 0.005) -> list
 _MONTH = (r"Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|June?|July?|Aug(?:ust)?|"
           r"Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?")
 _DATE_RE = re.compile(
-    rf"\b(?:(?P<mon>{_MONTH})\.?(?P<day>\s+\d{{1,2}}(?:st|nd|rd|th)?,?)?\s+(?P<year>(?:19|20)\d\d)"
+    rf"\b(?:(?P<lday>\d{{1,2}}\s+)?(?P<mon>{_MONTH})\.?(?P<day>\s+\d{{1,2}}(?:st|nd|rd|th)?,?)?"
+    r"\s+(?P<year>(?:19|20)\d\d)"
     r"|(?P<iso>(?:19|20)\d\d-[01]\d)(?:-[0-3]\d)?"
     r"|Q(?P<q>[1-4])\s+(?P<qyear>(?:19|20)\d\d)"
     r"|(?<![\d.,$])(?P<bare>(?:19|20)\d\d)(?![\d.,%]\d|%))\b(?!-[01]\d)", re.I)
@@ -504,7 +505,7 @@ def ungrounded_dates(text: str, first: tuple[int, int] | None,
         for sentence in _SENTENCE_RE.split(text):
             named = [m for m in _DATE_RE.finditer(sentence) if not m["bare"]]
             # A day ("from Nov 1, 2025") is a start or an event date, not the data's scope.
-            if (len(named) == 1 and not named[0]["day"] and _months(named[0])
+            if (len(named) == 1 and not (named[0]["day"] or named[0]["lday"]) and _months(named[0])
                     and len(_MONTH_WORD_RE.findall(sentence)) == 1   # "September and October 2026"
                     and _months(named[0])[0] == _months(named[0])[1]
                     and _SCOPE_RE.search(sentence) and not _POSITION_RE.search(sentence)):
