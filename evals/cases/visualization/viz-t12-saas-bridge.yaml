@@ -1,0 +1,20 @@
+id: viz-t12-saas-bridge
+category: targeted
+label_note: 'SaaS overview: the MRR bridge is a bar per move over the window (new, expansion,
+  reactivation up; contraction, churn down), each bar its tile, summed over the window; never a
+  line, never MRR summed over months.'
+dataset:
+  name: saas_mrr_snapshots
+  seed: 1
+question: Give me an overview of our MRR
+plan:
+  intent: overview
+  analysis_types: []
+  target_metrics: []
+  segments: []
+expect:
+- types:
+  - BarChart
+  x: step
+  y: MRR
+  agg: sum

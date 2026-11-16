@@ -1,0 +1,53 @@
+# The prose judge's tuning set (frozen 2026-11-15): the sentences the deleted causal and benchmark
+# regexes were tuned on (tests/test_saas.py VERDICTS / NEUTRAL, tests/test_retail_pack.py, the
+# investigation tests), relabelled against guide.md. The prompt may be tuned on these only.
+- {text: "The discount drove a 12% rise in sales.", label: yes, kind: causal, source: retail-regex}
+- {text: "Markdowns boosted unit sales.", label: yes, kind: causal, source: retail-regex}
+- {text: "Net sales rose 20% due to the spring promotion.", label: yes, kind: causal, source: retail-regex}
+- {text: "The November promotion was responsible for the spike in units.", label: yes, kind: causal, source: retail-regex}
+- {text: "The coupon campaign contributed to the 15% rise in orders.", label: yes, kind: causal, source: retail-regex}
+- {text: "Readmissions fell, driven by the discharge program.", label: yes, kind: causal, source: retail-regex}
+- {text: "Churn fell because onboarding was strong.", label: yes, kind: causal, source: saas-neutral}
+- {text: "Retention improved since adoption was healthy.", label: yes, kind: causal, source: saas-neutral}
+- {text: "Support tickets drive churn, and we will investigate further.", label: yes, kind: causal, source: quality-regex}
+- {text: "Our findings help us understand that price drives churn.", label: yes, kind: causal, source: quality-regex}
+- {text: "Promotions increased year-end sales by 12%.", label: yes, kind: causal, source: retail-regex}
+- {text: "Churn spiked because of a poor product release.", label: yes, kind: causal, source: saas-neutral}
+- {text: "Strong NRR of 106.5% shows customers expand.", label: yes, kind: benchmark, source: saas-verdicts}
+- {text: "Poor retention among monthly plans.", label: yes, kind: benchmark, source: saas-verdicts}
+- {text: "NRR remained strong year over year.", label: yes, kind: benchmark, source: saas-verdicts}
+- {text: "Churn is low for a SaaS business.", label: yes, kind: benchmark, source: saas-verdicts}
+- {text: "Retention is a strong point for the business.", label: yes, kind: benchmark, source: saas-verdicts}
+- {text: "Churn of 3% is poor by SaaS standards.", label: yes, kind: benchmark, source: saas-verdicts}
+- {text: "A best-in-class 120% NRR.", label: yes, kind: benchmark, source: saas-verdicts}
+- {text: "NRR is top-quartile.", label: yes, kind: benchmark, source: saas-verdicts}
+- {text: "Logo churn is below the industry benchmark at 1.8% a month.", label: yes, kind: benchmark, source: saas-verdicts}
+- {text: "Retention, as expected, remains healthy.", label: yes, kind: benchmark, source: saas-verdicts}
+- {text: "Churn, because of annual contracts, is weak.", label: yes, kind: benchmark, source: saas-verdicts}
+- {text: "GRR of 91.2%, up from 89%, is solid.", label: yes, kind: benchmark, source: saas-verdicts}
+- {text: "Retention compares well with SaaS peers.", label: yes, kind: benchmark, source: saas-verdicts}
+- {text: "Net sales grew 8% year over year, driven by the North region.", label: no, near: causal, source: retail-regex}
+- {text: "Sales rose 12%; the promotion may have contributed.", label: no, near: causal, source: retail-regex}
+- {text: "The campaign did not cause the increase.", label: no, near: causal, source: retail-regex}
+- {text: "Sales lifted after the promo, though without a control group the effect is unclear.", label: no, near: causal, source: retail-regex}
+- {text: "Discounts increased 15% year over year, to $4,210.", label: no, near: causal, source: retail-regex}
+- {text: "Sales in the promotion weeks grew 40% over the other weeks.", label: no, near: causal, source: retail-regex}
+- {text: "Discounted orders were responsible for 30% of net sales in Q4.", label: no, near: causal, source: retail-regex}
+- {text: "Investigate accounts with a support ticket to understand what drives high months.", label: no, near: causal, source: quality-regex}
+- {text: "Explore which salary levels drive churn.", label: no, near: causal, source: quality-regex}
+- {text: "Fuel cost per km is higher on long routes (r = 0.62).", label: no, near: causal, source: retail-regex}
+- {text: "NRR reached 106.5%, driven by strong upsell.", label: no, near: causal, source: saas-neutral}
+- {text: "Churn was 1.9%, while expansion from top-quartile accounts drove NRR to 107%.", label: no, near: causal, source: saas-neutral}
+- {text: "Churn was concentrated in poor-fit accounts.", label: no, near: benchmark, source: saas-neutral}
+- {text: "Retention data is poor for 2024 (few rows).", label: no, near: benchmark, source: saas-neutral}
+- {text: "NRR fell to 91.1% after a strong start to 2025.", label: no, near: benchmark, source: saas-neutral}
+- {text: "Churn among healthy accounts was 2%.", label: no, near: benchmark, source: saas-neutral}
+- {text: "Retention shows a strong seasonal pattern.", label: no, near: benchmark, source: saas-neutral}
+- {text: "NRR saw a strong rebound in Q3.", label: no, near: benchmark, source: saas-neutral}
+- {text: "Churn was 4% in weak markets.", label: no, near: benchmark, source: saas-neutral}
+- {text: "Retention by plan: Pro 95%, Basic 80%.", label: no, near: none, source: saas-neutral}
+- {text: "NRR was 106.5%; healthy is not a grade this report gives.", label: no, near: benchmark, source: saas-neutral}
+- {text: "Churn rose 3 points; a strong correlation with price.", label: no, near: benchmark, source: saas-neutral}
+- {text: "Retention in EMEA (where demand was solid) reached 96.4%.", label: no, near: benchmark, source: saas-neutral}
+- {text: "Churn was highest among poor payers.", label: no, near: benchmark, source: saas-neutral}
+- {text: "Logo churn rose amid strong headwinds in SMB.", label: no, near: benchmark, source: saas-neutral}

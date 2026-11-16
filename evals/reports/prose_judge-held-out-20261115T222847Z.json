@@ -1,0 +1,64 @@
+{
+ "set": "held-out",
+ "prompt_version": "v2",
+ "prompt_sha": "18881653d5f3a1ca8ada539b6e5101a45c75906c7ad2fb3b749258f3b1c5715f",
+ "set_sha": "1c772f34adbfacf159f6ce765d5cabdad77de2947a9737a37b429c7ca8e6c9ea",
+ "model": "claude-haiku-4-5",
+ "sentences": 100,
+ "tpr": {
+  "rate": 0.98,
+  "k": 49,
+  "n": 50,
+  "ci95": [
+   0.895,
+   0.9965
+  ]
+ },
+ "tnr": {
+  "rate": 0.9,
+  "k": 45,
+  "n": 50,
+  "ci95": [
+   0.7864,
+   0.9565
+  ]
+ },
+ "tpr_causal": {
+  "rate": 0.9655,
+  "k": 28,
+  "n": 29,
+  "ci95": [
+   0.8282,
+   0.9939
+  ]
+ },
+ "tnr_near_causal": {
+  "rate": 0.8519,
+  "k": 23,
+  "n": 27,
+  "ci95": [
+   0.6752,
+   0.9408
+  ]
+ },
+ "tpr_benchmark": {
+  "rate": 1.0,
+  "k": 21,
+  "n": 21,
+  "ci95": [
+   0.8454,
+   1.0
+  ]
+ },
+ "tnr_near_benchmark": {
+  "rate": 1.0,
+  "k": 17,
+  "n": 17,
+  "ci95": [
+   0.8157,
+   1.0
+  ]
+ },
+ "cost_usd": 0.0096,
+ "stamp": "20261115T222847Z"
+}

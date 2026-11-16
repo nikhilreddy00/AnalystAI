@@ -1,0 +1,1879 @@
+{
+ "meta": {
+  "suite": "insight",
+  "report": "insight-20261116T042607Z",
+  "k": 3,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "84f157f",
+  "started_at": "20261116T042607Z",
+  "only": "ins-13",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 1,
+  "runs": 3,
+  "pass_rate": 0.6667,
+  "case_majority_pass_rate": 1.0,
+  "flip_rate": 1.0,
+  "hard_rule_violations": 0,
+  "hard_rules_na": 0,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 3,
+  "runs_with_prose_rewritten": 0,
+  "runs_with_pii_guard_hit": 0,
+  "cost_per_question_usd": 0.0409,
+  "latency_p50_s": 43.1,
+  "latency_p95_s": 47.11,
+  "hard_insight_grounded": 1.0,
+  "hard_insight_dates_in_range": 1.0,
+  "hard_executive_no_jargon": 1.0,
+  "hard_claims_cite_evidence": 1.0,
+  "hard_no_injection_echo": 1.0,
+  "recall": null,
+  "must_not": null,
+  "contradictions_named": 0.6667,
+  "hedged": null,
+  "no_causal_overreach": 1.0,
+  "holdout_pass_rate": null,
+  "pass_rate_by_category": {
+   "contradictory": 0.6667
+  }
+ },
+ "runs": {
+  "ins-13-mom-vs-yoy": [
+   {
+    "checks": [
+     {
+      "kind": "contradiction",
+      "ok": true,
+      "detail": "both signals named"
+     },
+     {
+      "kind": "causal",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "insight_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "insight_dates_in_range",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "executive_no_jargon",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "claims_cite_evidence",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "contradictory",
+    "holdout": false,
+    "output": {
+     "report": {
+      "executive_summary": "Recurring revenue is up year-over-year but has pulled back from its September 2026 peak, with net revenue retention declining meaningfully over the past year. Monthly recurring revenue grew +6.5% year-over-year to $40,308.46 at 31 Oct 2026, driven entirely by expansion from existing customers, with no new or reactivated revenue in the 12-month window. The month-over-month picture and a falling net revenue retention rate warrant attention: monthly recurring revenue dropped -8.0% from its Sep 2026 peak, and net revenue retention fell from 122.7% to 106.5% year-over-year.",
+      "technical_findings": [
+       "mrr MoM: -8.0% (n = 6,000; high confidence: 6000 rows)",
+       "mrr YoY: +6.5% (n = 6,000; high confidence: 6000 rows)",
+       "mrr: median 87.35, mean 179.64, range 35.44 to 1,023.37 (n = 6,000; high confidence: 6000 rows)"
+      ],
+      "recommended_actions": [
+       {
+        "priority": 1,
+        "action": "Investigate the accounts driving $13,587.47 in contraction MRR to understand whether downgrades are concentrated in specific segments or plan tiers.",
+        "reasoning": "Contraction is the sole drag on net revenue retention and the main risk to continued growth.",
+        "metric_impact": "Contraction is the sole drag on net revenue retention and the main risk to continued growth."
+       },
+       {
+        "priority": 2,
+        "action": "Identify why new MRR was $0.00 over the 12 months to 31 Oct 2026 and assess whether new customer acquisition is being tracked or has stalled.",
+        "reasoning": "Growth relying entirely on expansion from a fixed base of 200 customers is structurally fragile.",
+        "metric_impact": "Growth relying entirely on expansion from a fixed base of 200 customers is structurally fragile."
+       },
+       {
+        "priority": 3,
+        "action": "Monitor monthly recurring revenue closely in the months following Oct 2026 to determine whether the -8.0% month-over-month drop from the Sep 2026 peak is a one-time event or the start of a downward trend.",
+        "reasoning": "A sustained decline would reverse the year-over-year gain and signal deteriorating retention.",
+        "metric_impact": "A sustained decline would reverse the year-over-year gain and signal deteriorating retention."
+       }
+      ],
+      "anomaly_alerts": [
+       {
+        "title": "Support tickets: 2 extreme values",
+        "severity": "medium",
+        "description": "2 support tickets values (0.0% of rows) are far outside the usual range. They were kept.",
+        "affected_metric": "support_tickets",
+        "suggested_investigation": "Verify the largest support tickets values against the source records."
+       },
+       {
+        "title": "How these numbers are counted",
+        "severity": "low",
+        "description": "Read as SaaS subscription data (MRR, ARR, paying customers, new MRR, churned MRR, logo churn, net revenue retention, gross revenue retention). MRR is the monthly run-rate of the customers paying at the latest date (an annual plan \u00f7 12, net of discounts; trials, paused and unpaid subscriptions out, past due in), not revenue; movements and retention compare each customer's MRR at month-ends over the 12 months to that date, and annual churn is measured on the customers paying 12 months earlier, never a monthly rate \u00d7 12. A customer who starts and leaves inside one month appears in no month-end figure. The churned column is a flag, not a dated event: the share of rows flagged is not a churn rate.",
+        "affected_metric": "",
+        "suggested_investigation": ""
+       }
+      ],
+      "proactive_questions": [
+       "Which specific accounts or plan tiers account for the $13,587.47 in contraction MRR, and is the contraction concentrated or spread across the customer base?",
+       "Is the absence of new MRR over 12 months a true reflection of no new customer acquisition, or are new customers being recorded in a way that does not appear in this dataset?",
+       "What happened in September 2026 to push monthly recurring revenue to its $43,813.56 peak, and what drove the reversal in October 2026?"
+      ],
+      "methodology_notes": "Cleaning (cleaning rules-v1): Parsed numbers or dates in 1 column(s). Outliers flagged (kept) in: mrr, support_tickets. Final dataset: 6000 rows (started with 6000). Analysis (analysis v9) computed: eda, trend. Descriptive statistics use the non-missing values of each column. Month-over-month compares calendar-month totals (means for rates and 0-1 flags).",
+      "executive_view": {
+       "headline": "Recurring revenue is up year-over-year but has pulled back from its September 2026 peak, with net revenue retention declining meaningfully over the past year.",
+       "headline_evidence_ids": [
+        "clean:story",
+        "trend:mrr:YoY",
+        "trend:mrr:MoM"
+       ],
+       "paragraphs": [
+        {
+         "text": "Monthly recurring revenue grew +6.5% year-over-year to $40,308.46 at 31 Oct 2026, driven entirely by expansion from existing customers, with no new or reactivated revenue in the 12-month window.",
+         "evidence_ids": [
+          "trend:mrr:YoY",
+          "clean:story"
+         ],
+         "typed": null
+        },
+        {
+         "text": "The month-over-month picture and a falling net revenue retention rate warrant attention: monthly recurring revenue dropped -8.0% from its Sep 2026 peak, and net revenue retention fell from 122.7% to 106.5% year-over-year.",
+         "evidence_ids": [
+          "trend:mrr:MoM",
+          "clean:story"
+         ],
+         "typed": null
+        }
+       ],
+       "findings": [
+        {
+         "text": "Monthly recurring revenue stands at $40,308.46 at 31 Oct 2026, up +6.5% year-over-year, but down -8.0% from the Sep 2026 peak of $43,813.56.",
+         "evidence_ids": [
+          "clean:story",
+          "trend:mrr:YoY",
+          "trend:mrr:MoM"
+         ],
+         "typed": null
+        },
+        {
+         "text": "All growth over the 12 months to 31 Oct 2026 came from expansion MRR of $16,056.28 among existing customers; new MRR and reactivation MRR were both $0.00, and churned MRR was also $0.00.",
+         "evidence_ids": [
+          "clean:story"
+         ],
+         "typed": null
+        },
+        {
+         "text": "Net revenue retention fell from 122.7% (12-month cohort to 31 Oct 2025) to 106.5% (12-month cohort to 31 Oct 2026), a decline of 16.2 points, while gross revenue retention moved from 100.0% to 99.3% over the same comparison.",
+         "evidence_ids": [
+          "clean:story"
+         ],
+         "typed": null
+        },
+        {
+         "text": "Contraction MRR of $13,587.47 over the 12-month window is the primary drag on revenue retention, as no customers churned outright across the 200 accounts in force at 31 Oct 2026.",
+         "evidence_ids": [
+          "clean:story"
+         ],
+         "typed": null
+        }
+       ],
+       "action_items": [
+        {
+         "action": "Investigate the accounts driving $13,587.47 in contraction MRR to understand whether downgrades are concentrated in specific segments or plan tiers.",
+         "expected_impact": "Contraction is the sole drag on net revenue retention and the main risk to continued growth.",
+         "evidence_ids": [
+          "clean:story"
+         ]
+        },
+        {
+         "action": "Identify why new MRR was $0.00 over the 12 months to 31 Oct 2026 and assess whether new customer acquisition is being tracked or has stalled.",
+         "expected_impact": "Growth relying entirely on expansion from a fixed base of 200 customers is structurally fragile.",
+         "evidence_ids": [
+          "clean:story"
+         ]
+        },
+        {
+         "action": "Monitor monthly recurring revenue closely in the months following Oct 2026 to determine whether the -8.0% month-over-month drop from the Sep 2026 peak is a one-time event or the start of a downward trend.",
+         "expected_impact": "A sustained decline would reverse the year-over-year gain and signal deteriorating retention.",
+         "evidence_ids": [
+          "trend:mrr:MoM",
+          "clean:story"
+         ]
+        }
+       ]
+      },
+      "analyst_view": {
+       "methodology": "Cleaning (cleaning rules-v1): Parsed numbers or dates in 1 column(s). Outliers flagged (kept) in: mrr, support_tickets. Final dataset: 6000 rows (started with 6000). Analysis (analysis v9) computed: eda, trend. Descriptive statistics use the non-missing values of each column. Month-over-month compares calendar-month totals (means for rates and 0-1 flags).",
+       "statistical_notes": [
+        "mrr MoM: -8.0% (n = 6,000; high confidence: 6000 rows)",
+        "mrr YoY: +6.5% (n = 6,000; high confidence: 6000 rows)",
+        "mrr: median 87.35, mean 179.64, range 35.44 to 1,023.37 (n = 6,000; high confidence: 6000 rows)"
+       ],
+       "caveats": [
+        "The year-over-year and month-over-month signals point in opposite directions (+6.5% YoY vs. -8.0% MoM); the current trend depends heavily on whether October's drop is temporary.",
+        "No new MRR was recorded in the 12-month window, which may reflect a data gap (new customers not captured) rather than a true absence of new business; this should be verified against CRM or billing records.",
+        "Monthly recurring revenue values range from $35.44 to $1,023.37 with outliers flagged; a small number of high-value accounts may be disproportionately influencing the expansion and contraction figures.",
+        "Read as SaaS subscription data (MRR, ARR, paying customers, new MRR, churned MRR, logo churn, net revenue retention, gross revenue retention). MRR is the monthly run-rate of the customers paying at the latest date (an annual plan \u00f7 12, net of discounts; trials, paused and unpaid subscriptions out, past due in), not revenue; movements and retention compare each customer's MRR at month-ends over the 12 months to that date, and annual churn is measured on the customers paying 12 months earlier, never a monthly rate \u00d7 12. A customer who starts and leaves inside one month appears in no month-end figure.",
+        "The churned column is a flag, not a dated event: the share of rows flagged is not a churn rate.",
+        "billing_date: Parsed as dates."
+       ],
+       "code_references": [
+        "opening_mrr + new_mrr + expansion_mrr + reactivation_mrr + contraction_mrr + churned_mrr + transfer_in_mrr + transfer_out_mrr + mrr",
+        "_period = pd.to_datetime(df['billing_date'], format='mixed').dt.to_period('M'); df.sort_values('billing_date').groupby([_period, *['account_id']])['mrr'].last().groupby(level=0).sum()   # each entity's last, summed"
+       ]
+      },
+      "additional_issues_note": "",
+      "generated_at": "2026-11-16T04:26:55.348295Z",
+      "memory_used": []
+     },
+     "bundle": {
+      "question": "Is recurring revenue growing?",
+      "columns": [
+       "account_id",
+       "billing_date",
+       "plan",
+       "mrr",
+       "seats",
+       "churned",
+       "support_tickets"
+      ],
+      "evidence_ids": [
+       "clean:audit",
+       "clean:story",
+       "trend:mrr:MoM",
+       "trend:mrr:YoY",
+       "eda:mrr"
+      ],
+      "evidence": [
+       {
+        "id": "clean:audit",
+        "kind": "cleaning",
+        "claim": "Cleaning: 6000 \u2192 6000 rows, 1 logged changes",
+        "result_excerpt": "{\"rows_before\": 6000, \"rows_after\": 6000, \"decisions\": [[\"billing_date\", \"type_coerce\", 6000, 0]]}",
+        "row_count": 6000,
+        "confidence": "high",
+        "confidence_reason": "rule-based; every change below is logged",
+        "assumptions": [
+         "billing_date: Parsed as dates."
+        ]
+       },
+       {
+        "id": "clean:story",
+        "kind": "cleaning",
+        "claim": "The file's story in the product's own numbers: Logo churn (12-month cohort to 31 Oct 2026): 0.0%; a year earlier (12-month cohort to 31 Oct 2025): 0.0%, +0.0 points. Net revenue retention (12-month cohort to 31 Oct 2026): 106.5%; a year earlier (12-month cohort to 31 Oct 2025): 122.7%, -16.2 points. Gross revenue retention (12-month cohort to 31 Oct 2026): 99.3%; a year earlier (12-month cohort to 31 Oct 2025): 100.0%, -0.7 points. MRR peaked at $43,813.56 (Sep 2026) and is $40,308.46 at 31 Oct 2026 (-8.0%). MRR bridge, 12 months to 31 Oct 2026: $37,839.65 on 31 Oct 2025 + new MRR $0.00 + expansion MRR $16,056.28 + reactivation MRR $0.00 \u2212 contraction MRR $13,587.47 \u2212 churned MRR $0.00 = $40,308.46. 0 customers left at a month-end in the window (churned customers); logo churn counts only the customers in force on 31 Oct 2025 who are not in force now, so the two differ: customers who joined in the window or came back are in the count only. 6,000 rows are 200 customers (200 with more than one row); 200 in force at 31 Oct 2026.",
+        "result_excerpt": "[\"Logo churn (12-month cohort to 31 Oct 2026): 0.0%; a year earlier (12-month cohort to 31 Oct 2025): 0.0%, +0.0 points.\", \"Net revenue retention (12-month cohort to 31 Oct 2026): 106.5%; a year earlier (12-month cohort to 31 Oct 2025): 122.7%, -16.2 points.\", \"Gross revenue retention (12-month cohort to 31 Oct 2026): 99.3%; a year earlier (12-month cohort to 31 Oct 2025): 100.0%, -0.7 points.\", \"",
+        "row_count": 6000,
+        "confidence": "high",
+        "confidence_reason": "computed by the product's spell rules, never by a model",
+        "assumptions": []
+       },
+       {
+        "id": "trend:mrr:MoM",
+        "kind": "trend",
+        "claim": "mrr MoM: -8.0%",
+        "result_excerpt": "{\"column\": \"mrr\", \"period\": \"MoM\", \"direction\": \"down\", \"pct_change\": -8.0, \"segment\": null}",
+        "row_count": 6000,
+        "confidence": "high",
+        "confidence_reason": "6000 rows",
+        "assumptions": []
+       },
+       {
+        "id": "trend:mrr:YoY",
+        "kind": "trend",
+        "claim": "mrr YoY: +6.5%",
+        "result_excerpt": "{\"column\": \"mrr\", \"period\": \"YoY\", \"direction\": \"up\", \"pct_change\": 6.52, \"segment\": null}",
+        "row_count": 6000,
+        "confidence": "high",
+        "confidence_reason": "6000 rows",
+        "assumptions": []
+       },
+       {
+        "id": "eda:mrr",
+        "kind": "eda",
+        "claim": "mrr: median 87.35, mean 179.64, range 35.44 to 1,023.37",
+        "result_excerpt": "{\"mean\": 179.643, \"std\": 231.3454, \"min\": 35.44, \"max\": 1023.37, \"median\": 87.35, \"count\": 6000.0}",
+        "row_count": 6000,
+        "confidence": "high",
+        "confidence_reason": "6000 rows",
+        "assumptions": []
+       }
+      ],
+      "date_first": [
+       2024,
+       5
+      ],
+      "date_last": [
+       2026,
+       10
+      ],
+      "n_months": 30,
+      "audit_summary": "Parsed numbers or dates in 1 column(s). Outliers flagged (kept) in: mrr, support_tickets. Final dataset: 6000 rows (started with 6000).",
+      "chart_titles": [
+       "MRR over time",
+       "Net revenue retention over time",
+       "MRR bridge, 12 months to 31 Oct 2026: $37,839.65 \u2192 $40,308.46",
+       "MRR by plan (as of 31 Oct 2026)",
+       "Net revenue retention by plan (12-month cohort to 31 Oct 2026)",
+       "Logo churn by plan (12-month cohort to 31 Oct 2026)",
+       "New MRR by plan (12 months to 31 Oct 2026)",
+       "Churned MRR by plan (12 months to 31 Oct 2026)",
+       "monthly recurring revenue fell 8.0% in Oct 2026 vs Sep 2026",
+       "monthly recurring revenue fell 8.0% in Oct 2026 vs Sep 2026"
+      ],
+      "past_insights": [],
+      "corr_pairs": [],
+      "values": [
+       {
+        "eda_summary": {
+         "mrr": {
+          "mean": 179.643,
+          "std": 231.3454,
+          "min": 35.44,
+          "max": 1023.37,
+          "median": 87.35,
+          "count": 6000.0
+         }
+        },
+        "correlations": {},
+        "trends": [
+         {
+          "column": "mrr",
+          "period": "MoM",
+          "direction": "down",
+          "pct_change": -8.0,
+          "segment": null
+         },
+         {
+          "column": "mrr",
+          "period": "YoY",
+          "direction": "up",
+          "pct_change": 6.52,
+          "segment": null
+         }
+        ],
+        "segments": [],
+        "anomalies": [],
+        "statistical_tests": [],
+        "forecast_points": [],
+        "dtypes_summary": {},
+        "missing_pct": {
+         "account_id": 0.0,
+         "billing_date": 0.0,
+         "plan": 0.0,
+         "mrr": 0.0,
+         "seats": 0.0,
+         "churned": 0.0,
+         "support_tickets": 0.0
+        },
+        "kpis": [
+         {
+          "label": "MRR",
+          "value": "$40,308.46",
+          "context": "as of 31 Oct 2026",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "mrr",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "currency",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Sum of mrr over the distinct account_id in force at the date (each account_id's latest billing_date snapshot on or before the date, ended_at blank or after it) where mrr > 0; over records."
+         },
+         {
+          "label": "ARR",
+          "value": "$483,701.52",
+          "context": "as of 31 Oct 2026",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "arr",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "currency",
+           "currency": null,
+           "unit": null
+          },
+          "how": "12 \u00d7 MRR."
+         },
+         {
+          "label": "Paying customers",
+          "value": "200 customers",
+          "context": "as of 31 Oct 2026",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "paying_customers",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "count",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Distinct account_id in force at the date (each account_id's latest billing_date snapshot on or before the date, ended_at blank or after it) where mrr > 0; over records."
+         },
+         {
+          "label": "New MRR",
+          "value": "$0.00",
+          "context": "12 months to 31 Oct 2026",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "new_mrr",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "currency",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Sum of mrr over the new moves: each account_id whose value went from 0 (never in force before) to above 0 between consecutive month-ends in the period where mrr > 0; over records."
+         },
+         {
+          "label": "Churned MRR",
+          "value": "$0.00",
+          "context": "12 months to 31 Oct 2026",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "churned_mrr",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "currency",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Sum of mrr over the churn moves: each account_id whose value went to 0 between consecutive month-ends in the period where mrr > 0; over records."
+         }
+        ],
+        "pre_cleaning_missing_pct": {},
+        "unique_counts": {},
+        "skewness": {},
+        "target_correlations": {},
+        "target_col": null,
+        "column_roles_summary": {},
+        "column_units": {}
+       },
+       [
+        {
+         "claim": "Cleaning: 6000 \u2192 6000 rows, 1 logged changes",
+         "result_excerpt": "{\"rows_before\": 6000, \"rows_after\": 6000, \"decisions\": [[\"billing_date\", \"type_coerce\", 6000, 0]]}",
+         "row_count": 6000,
+         "assumptions": [
+          "billing_date: Parsed as dates."
+         ],
+         "confidence_reason": "rule-based; every change below is logged"
+        },
+        {
+         "claim": "The file's story in the product's own numbers: Logo churn (12-month cohort to 31 Oct 2026): 0.0%; a year earlier (12-month cohort to 31 Oct 2025): 0.0%, +0.0 points. Net revenue retention (12-month cohort to 31 Oct 2026): 106.5%; a year earlier (12-month cohort to 31 Oct 2025): 122.7%, -16.2 points. Gross revenue retention (12-month cohort to 31 Oct 2026): 99.3%; a year earlier (12-month cohort to 31 Oct 2025): 100.0%, -0.7 points. MRR peaked at $43,813.56 (Sep 2026) and is $40,308.46 at 31 Oct 2026 (-8.0%). MRR bridge, 12 months to 31 Oct 2026: $37,839.65 on 31 Oct 2025 + new MRR $0.00 + expansion MRR $16,056.28 + reactivation MRR $0.00 \u2212 contraction MRR $13,587.47 \u2212 churned MRR $0.00 = $40,308.46. 0 customers left at a month-end in the window (churned customers); logo churn counts only the customers in force on 31 Oct 2025 who are not in force now, so the two differ: customers who joined in the window or came back are in the count only. 6,000 rows are 200 customers (200 with more than one row); 200 in force at 31 Oct 2026.",
+         "result_excerpt": "[\"Logo churn (12-month cohort to 31 Oct 2026): 0.0%; a year earlier (12-month cohort to 31 Oct 2025): 0.0%, +0.0 points.\", \"Net revenue retention (12-month cohort to 31 Oct 2026): 106.5%; a year earlier (12-month cohort to 31 Oct 2025): 122.7%, -16.2 points.\", \"Gross revenue retention (12-month cohort to 31 Oct 2026): 99.3%; a year earlier (12-month cohort to 31 Oct 2025): 100.0%, -0.7 points.\", \"MRR peaked at $43,813.56 (Sep 2026) and is $40,308.46 at 31 Oct 2026 (-8.0%).\", \"MRR bridge, 12 months to 31 Oct 2026: $37,839.65 on 31 Oct 2025 + new MRR $0.00 + expansion MRR $16,056.28 + reactivation MRR $0.00 \\u2212 contraction MRR $13,587.47 \\u2212 churned MRR $0.00 = $40,308.46.\", \"0 customers left at a month-end in the window (churned customers); logo churn counts only the customers in force on 31 Oct 2025 who are not in force now, so the two differ: customers who joined in the window or came back are in the count only.\", \"6,000 rows are 200 customers (200 with more than one row); 200 in force at 31 Oct 2026.\"]",
+         "row_count": 6000,
+         "assumptions": [],
+         "confidence_reason": "computed by the product's spell rules, never by a model"
+        },
+        {
+         "claim": "mrr MoM: -8.0%",
+         "result_excerpt": "{\"column\": \"mrr\", \"period\": \"MoM\", \"direction\": \"down\", \"pct_change\": -8.0, \"segment\": null}",
+         "row_count": 6000,
+         "assumptions": [],
+         "confidence_reason": "6000 rows"
+        },
+        {
+         "claim": "mrr YoY: +6.5%",
+         "result_excerpt": "{\"column\": \"mrr\", \"period\": \"YoY\", \"direction\": \"up\", \"pct_change\": 6.52, \"segment\": null}",
+         "row_count": 6000,
+         "assumptions": [],
+         "confidence_reason": "6000 rows"
+        },
+        {
+         "claim": "mrr: median 87.35, mean 179.64, range 35.44 to 1,023.37",
+         "result_excerpt": "{\"mean\": 179.643, \"std\": 231.3454, \"min\": 35.44, \"max\": 1023.37, \"median\": 87.35, \"count\": 6000.0}",
+         "row_count": 6000,
+         "assumptions": [],
+         "confidence_reason": "6000 rows"
+        }
+       ],
+       {
+        "decisions": [
+         {
+          "column": "billing_date",
+          "operation": "type_coerce",
+          "strategy": "to_datetime",
+          "reason": "Parsed as dates.",
+          "rows_affected": 6000,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         }
+        ],
+        "rows_before": 6000,
+        "rows_after": 6000,
+        "columns_coerced": [
+         "billing_date"
+        ],
+        "duplicates_removed": 0,
+        "outliers_flagged": [
+         "28 mild outliers in mrr (threshold: values outside [0.629, 5,379]) \u2014 see analyst tab",
+         "2 extreme outliers in support_tickets (0.0% of data, threshold: values > 10.00)"
+        ],
+        "high_null_columns": [],
+        "summary": "Parsed numbers or dates in 1 column(s). Outliers flagged (kept) in: mrr, support_tickets. Final dataset: 6000 rows (started with 6000).",
+        "anomaly_report": {
+         "flags": [
+          {
+           "column": "mrr",
+           "extreme_count": 0,
+           "mild_count": 28,
+           "extreme_pct": 0.0,
+           "lower_bound": 0.629117327476281,
+           "upper_bound": 5379.372024803937,
+           "mild_lower_bound": 8.2468492887284,
+           "mild_upper_bound": 946.918260608107,
+           "used_log_transform": true,
+           "heavy_tailed": false,
+           "message": "28 mild outliers in mrr (threshold: values outside [0.629, 5,379]) \u2014 see analyst tab"
+          },
+          {
+           "column": "support_tickets",
+           "extreme_count": 2,
+           "mild_count": 78,
+           "extreme_pct": 0.03333333333333333,
+           "lower_bound": -4.0,
+           "upper_bound": 10.0,
+           "mild_lower_bound": -1.0,
+           "mild_upper_bound": 7.0,
+           "used_log_transform": false,
+           "heavy_tailed": false,
+           "message": "2 extreme outliers in support_tickets (0.0% of data, threshold: values > 10.00)"
+          }
+         ],
+         "methodology_note": "",
+         "eligible_columns": [
+          "mrr",
+          "seats",
+          "support_tickets"
+         ],
+         "skipped_columns": {
+          "account_id": "id column",
+          "billing_date": "datetime column",
+          "plan": "non-numeric",
+          "churned": "binary column (only 2 values)"
+         }
+        },
+        "skipped_columns": [],
+        "date_ranges": {
+         "billing_date": [
+          "2024-05-01",
+          "2026-10-31",
+          30
+         ]
+        },
+        "grain": "aggregate",
+        "partial_months": {},
+        "main_currency": null,
+        "spell_story": [
+         "Logo churn (12-month cohort to 31 Oct 2026): 0.0%; a year earlier (12-month cohort to 31 Oct 2025): 0.0%, +0.0 points.",
+         "Net revenue retention (12-month cohort to 31 Oct 2026): 106.5%; a year earlier (12-month cohort to 31 Oct 2025): 122.7%, -16.2 points.",
+         "Gross revenue retention (12-month cohort to 31 Oct 2026): 99.3%; a year earlier (12-month cohort to 31 Oct 2025): 100.0%, -0.7 points.",
+         "MRR peaked at $43,813.56 (Sep 2026) and is $40,308.46 at 31 Oct 2026 (-8.0%).",
+         "MRR bridge, 12 months to 31 Oct 2026: $37,839.65 on 31 Oct 2025 + new MRR $0.00 + expansion MRR $16,056.28 + reactivation MRR $0.00 \u2212 contraction MRR $13,587.47 \u2212 churned MRR $0.00 = $40,308.46.",
+         "0 customers left at a month-end in the window (churned customers); logo churn counts only the customers in force on 31 Oct 2025 who are not in force now, so the two differ: customers who joined in the window or came back are in the count only.",
+         "6,000 rows are 200 customers (200 with more than one row); 200 in force at 31 Oct 2026."
+        ],
+        "window_span": {
+         "window": "12 months",
+         "moves": "12 months",
+         "cohort": "12 months",
+         "window_adj": " 12-month"
+        }
+       },
+       [
+        "MRR over time",
+        "Net revenue retention over time",
+        "MRR bridge, 12 months to 31 Oct 2026: $37,839.65 \u2192 $40,308.46",
+        "MRR by plan (as of 31 Oct 2026)",
+        "Net revenue retention by plan (12-month cohort to 31 Oct 2026)",
+        "Logo churn by plan (12-month cohort to 31 Oct 2026)",
+        "New MRR by plan (12 months to 31 Oct 2026)",
+        "Churned MRR by plan (12 months to 31 Oct 2026)",
+        "monthly recurring revenue fell 8.0% in Oct 2026 vs Sep 2026",
+        "monthly recurring revenue fell 8.0% in Oct 2026 vs Sep 2026"
+       ],
+       [
+        6000,
+        7,
+        30
+       ],
+       [
+        2024,
+        2025,
+        2026
+       ],
+       [
+        "Read as SaaS subscription data (MRR, ARR, paying customers, new MRR, churned MRR, logo churn, net revenue retention, gross revenue retention). MRR is the monthly run-rate of the customers paying at the latest date (an annual plan \u00f7 12, net of discounts; trials, paused and unpaid subscriptions out, past due in), not revenue; movements and retention compare each customer's MRR at month-ends over the 12 months to that date, and annual churn is measured on the customers paying 12 months earlier, never a monthly rate \u00d7 12. A customer who starts and leaves inside one month appears in no month-end figure.",
+        "The churned column is a flag, not a dated event: the share of rows flagged is not a churn rate."
+       ]
+      ]
+     }
+    },
+    "latency_s": 47.56,
+    "cost_usd": 0.04115,
+    "llm_calls": 2,
+    "truncated_calls": 0,
+    "rejections": [
+     "typed_refused"
+    ],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"headline\": {\n    \"text\": \"Recurring revenue is up year-over-year but has pulled back from its September 2026 peak, with net revenue retention declining meaningfully over the past year.\",\n    \"evidence\": [\"clean:story\", \"trend:mrr:YoY\", \"trend:mrr:MoM\"]\n  },\n  \"summary\": [\n    {\n      \"text\": \"Monthly recurring revenue grew +6.5% year-over-year to $40,308.46 at 31 Oct 2026, driven entirely by expansion from existing customers, with no new or reactivated revenue in the 12-month window.\",\n      \"evidence\": [\"trend:mrr:YoY\", \"clean:story\"]\n    },\n    {\n      \"text\": \"The month-over-month picture and a falling net revenue retention rate warrant attention: monthly recurring revenue dropped -8.0% from its Sep 2026 peak, and net revenue retention fell from 122.7% to 106.5% year-over-year.\",\n      \"evidence\": [\"trend:mrr:MoM\", \"clean:story\"]\n    }\n  ],\n  \"findings\": [\n    {\n      \"text\": \"Monthly recurring revenue stands at $40,308.46 at 31 Oct 2026, up +6.5% year-over-year, but down -8.0% from the Sep 2026 peak of $43,813.56.\",\n      \"evidence\": [\"clean:story\", \"trend:mrr:YoY\", \"trend:mrr:MoM\"]\n    },\n    {\n      \"text\": \"All growth over the 12 months to 31 Oct 2026 came from expansion MRR of $16,056.28 among existing customers; new MRR and reactivation MRR were both $0.00, and churned MRR was also $0.00.\",\n      \"evidence\": [\"clean:story\"]\n    },\n    {\n      \"text\": \"Net revenue retention fell from 122.7% (12-month cohort to 31 Oct 2025) to 106.5% (12-month cohort to 31 Oct 2026), a decline of 16.2 points, while gross revenue retention moved from 100.0% to 99.3% over the same comparison.\",\n      \"evidence\": [\"clean:story\"]\n    },\n    {\n      \"text\": \"Contraction MRR of $13,587.47 over the 12-month window is the primary drag on revenue retention, as no customers churned outright across the 200 accounts in force at 31 Oct 2026.\",\n      \"evidence\": [\"clean:story\"]\n    }\n  ],\n  \"claims\": [\n    {\n      \"kind\": \"comparison\",\n      \"metric\": \"net revenue retention\",\n      \"a\": \"12-month cohort to 31 Oct 2026\",\n      \"b\": \"12-month cohort to 31 Oct 2025\",\n      \"evidence_id\": \"clean:story\"\n    }\n  ],\n  \"actions\": [\n    {\n      \"action\": \"Investigate the accounts driving $13,587.47 in contraction MRR to understand whether downgrades are concentrated in specific segments or plan tiers.\",\n      \"impact\": \"Contraction is the sole drag on net revenue retention and the main risk to continued growth.\",\n      \"evidence\": [\"clean:story\"]\n    },\n    {\n      \"action\": \"Identify why new MRR was $0.00 over the 12 months to 31 Oct 2026 and assess whether new customer acquisition is being tracked or has stalled.\",\n      \"impact\": \"Growth relying entirely on expansion from a fixed base of 200 customers is structurally fragile.\",\n      \"evidence\": [\"clean:story\"]\n    },\n    {\n      \"action\": \"Monitor monthly recurring revenue closely in the months following Oct 2026 to determine whether the -8.0% month-over-month drop from the Sep 2026 peak is a one-time event or the start of a downward trend.\",\n      \"impact\": \"A sustained decline would reverse the year-over-year gain and signal deteriorating retention.\",\n      \"evidence\": [\"trend:mrr:MoM\", \"clean:story\"]\n    }\n  ],\n  \"caveats\": [\n    \"The year-over-year and month-over-month signals point in opposite directions (+6.5% YoY vs. -8.0% MoM); the current trend depends heavily on whether October's drop is temporary.\",\n    \"No new MRR was recorded in the 12-month window, which may reflect a data gap (new customers not captured) rather than a true absence of new business; this should be verified against CRM or billing records.\",\n    \"Monthly recurring revenue values range from $35.44 to $1,023.37 with outliers flagged; a small number of high-value accounts may be disproportionately influencing the expansion and contraction figures.\"\n  ],\n  \"questions\": [\n    \"Which specific accounts or plan tiers account for the $13,587.47 in contraction MRR, and is the contraction concentrated or spread across the customer base?\",\n    \"Is the absence of new MRR over 12 months a true reflection of no new customer acquisition, or are new customers being recorded in a way that does not appear in this dataset?\",\n    \"What happened in September 2026 to push monthly recurring revenue to its $43,813.56 peak, and what drove the reversal in October 2026?\"\n  ]\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "I'll work through each sentence carefully.\n\n0. \"declining meaningfully\" - this grades the trend's size/direction, not a measure's level. Neither.\n1. \"driven entirely by expansion from existing customers\" - expansion MRR is a component of total MRR. Neither.\n2. \"warrant attention\" - notable/worth monitoring. Neither.\n3. Direction/trend with numbers. Neither.\n4. Arithmetic breakdown of MRR components. Neither.\n5. Direction/trend with numbers. Neither.\n6. \"primary drag\" - contraction MRR is a component of net revenue retention. Neither.\n7. Recommendation/investigation. Neither.\n8. \"sole drag\" - contraction is a component of NRR. \"main risk\" - forward-looking assessment. Neither.\n9. Recommendation. Neither.\n10. \"structurally fragile\" - this grades the growth structure/situation. Could be verdict... but \"structurally fragile\" grades the business structure/risk, not a measure's level or period's performance against a norm. Neither.\n11. Recommendation/monitoring. Neither.\n12. Conditional/hedge. Neither.\n13. Question. Neither.\n14. Question/hedge. Neither.\n15. Question. Neither.\n16. Trend description, conditional. Neither.\n17. Hedge (\"may reflect\"). Neither.\n18. \"a small number of high-value accounts may be disproportionately influencing\" - hedge, and also arithmetic (parts of the measure). Neither.\n\n```json\n{\"0\": \"neither\", \"1\": \"neither\", \"2\": \"neither\", \"3\": \"neither\", \"4\": \"neither\", \"5\": \"neither\", \"6\": \"neither\", \"7\": \"neither\", \"8\": \"neither\", \"9\": \"neither\", \"10\": \"neither\", \"11\": \"neither\", \"12\": \"neither\", \"13\": \"neither\", \"14\": \"neither\", \"15\": \"neither\", \"16\": \"neither\", \"17\": \"neither\", \"18\": \"neither\"}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "contradiction",
+      "ok": true,
+      "detail": "both signals named"
+     },
+     {
+      "kind": "causal",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "insight_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "insight_dates_in_range",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "executive_no_jargon",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "claims_cite_evidence",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "contradictory",
+    "holdout": false,
+    "output": {
+     "report": {
+      "executive_summary": "Recurring revenue is up year-over-year but has pulled back from its September 2026 peak, with net revenue retention declining meaningfully over the past year. Monthly recurring revenue grew +6.5% year-over-year to $40,308.46 at 31 Oct 2026, driven entirely by expansion from existing customers, with no new or reactivated revenue in the 12-month window. The month-over-month picture and a falling net revenue retention rate warrant attention: monthly recurring revenue dropped -8.0% from its Sep 2026 peak, and net revenue retention fell from 122.7% to 106.5% year-over-year.",
+      "technical_findings": [
+       "mrr MoM: -8.0% (n = 6,000; high confidence: 6000 rows)",
+       "mrr YoY: +6.5% (n = 6,000; high confidence: 6000 rows)",
+       "mrr: median 87.35, mean 179.64, range 35.44 to 1,023.37 (n = 6,000; high confidence: 6000 rows)"
+      ],
+      "recommended_actions": [
+       {
+        "priority": 1,
+        "action": "Investigate the accounts driving $13,587.47 in contraction MRR to understand whether downgrades are concentrated in specific segments or plan tiers.",
+        "reasoning": "Contraction is the sole drag on net revenue retention and the main risk to continued growth.",
+        "metric_impact": "Contraction is the sole drag on net revenue retention and the main risk to continued growth."
+       },
+       {
+        "priority": 2,
+        "action": "Identify why new MRR was $0.00 over the 12 months to 31 Oct 2026 and assess whether new customer acquisition is being tracked or has stalled.",
+        "reasoning": "Growth relying entirely on expansion from a fixed base of 200 customers is structurally fragile.",
+        "metric_impact": "Growth relying entirely on expansion from a fixed base of 200 customers is structurally fragile."
+       },
+       {
+        "priority": 3,
+        "action": "Monitor monthly recurring revenue closely in the months following Oct 2026 to determine whether the -8.0% month-over-month drop from the Sep 2026 peak is a one-time event or the start of a downward trend.",
+        "reasoning": "A sustained decline would reverse the year-over-year gain and signal deteriorating retention.",
+        "metric_impact": "A sustained decline would reverse the year-over-year gain and signal deteriorating retention."
+       }
+      ],
+      "anomaly_alerts": [
+       {
+        "title": "Support tickets: 2 extreme values",
+        "severity": "medium",
+        "description": "2 support tickets values (0.0% of rows) are far outside the usual range. They were kept.",
+        "affected_metric": "support_tickets",
+        "suggested_investigation": "Verify the largest support tickets values against the source records."
+       },
+       {
+        "title": "How these numbers are counted",
+        "severity": "low",
+        "description": "Read as SaaS subscription data (MRR, ARR, paying customers, new MRR, churned MRR, logo churn, net revenue retention, gross revenue retention). MRR is the monthly run-rate of the customers paying at the latest date (an annual plan \u00f7 12, net of discounts; trials, paused and unpaid subscriptions out, past due in), not revenue; movements and retention compare each customer's MRR at month-ends over the 12 months to that date, and annual churn is measured on the customers paying 12 months earlier, never a monthly rate \u00d7 12. A customer who starts and leaves inside one month appears in no month-end figure. The churned column is a flag, not a dated event: the share of rows flagged is not a churn rate.",
+        "affected_metric": "",
+        "suggested_investigation": ""
+       }
+      ],
+      "proactive_questions": [
+       "Which specific accounts or plan tiers account for the $13,587.47 in contraction MRR, and is the contraction concentrated or spread across the customer base?",
+       "Is the absence of new MRR over 12 months a true reflection of no new customer acquisition, or are new customers being recorded in a way that does not appear in this dataset?",
+       "What happened in September 2026 to push monthly recurring revenue to its $43,813.56 peak, and what drove the reversal in October 2026?"
+      ],
+      "methodology_notes": "Cleaning (cleaning rules-v1): Parsed numbers or dates in 1 column(s). Outliers flagged (kept) in: mrr, support_tickets. Final dataset: 6000 rows (started with 6000). Analysis (analysis v9) computed: eda, trend. Descriptive statistics use the non-missing values of each column. Month-over-month compares calendar-month totals (means for rates and 0-1 flags).",
+      "executive_view": {
+       "headline": "Recurring revenue is up year-over-year but has pulled back from its September 2026 peak, with net revenue retention declining meaningfully over the past year.",
+       "headline_evidence_ids": [
+        "clean:story",
+        "trend:mrr:YoY",
+        "trend:mrr:MoM"
+       ],
+       "paragraphs": [
+        {
+         "text": "Monthly recurring revenue grew +6.5% year-over-year to $40,308.46 at 31 Oct 2026, driven entirely by expansion from existing customers, with no new or reactivated revenue in the 12-month window.",
+         "evidence_ids": [
+          "trend:mrr:YoY",
+          "clean:story"
+         ],
+         "typed": null
+        },
+        {
+         "text": "The month-over-month picture and a falling net revenue retention rate warrant attention: monthly recurring revenue dropped -8.0% from its Sep 2026 peak, and net revenue retention fell from 122.7% to 106.5% year-over-year.",
+         "evidence_ids": [
+          "trend:mrr:MoM",
+          "clean:story"
+         ],
+         "typed": null
+        }
+       ],
+       "findings": [
+        {
+         "text": "Monthly recurring revenue stands at $40,308.46 at 31 Oct 2026, up +6.5% year-over-year, but down -8.0% from the Sep 2026 peak of $43,813.56.",
+         "evidence_ids": [
+          "clean:story",
+          "trend:mrr:YoY",
+          "trend:mrr:MoM"
+         ],
+         "typed": null
+        },
+        {
+         "text": "All growth over the 12 months to 31 Oct 2026 came from expansion MRR of $16,056.28 among existing customers; new MRR and reactivation MRR were both $0.00, and churned MRR was also $0.00.",
+         "evidence_ids": [
+          "clean:story"
+         ],
+         "typed": null
+        },
+        {
+         "text": "Net revenue retention fell from 122.7% (12-month cohort to 31 Oct 2025) to 106.5% (12-month cohort to 31 Oct 2026), a decline of 16.2 points, while gross revenue retention moved from 100.0% to 99.3% over the same comparison.",
+         "evidence_ids": [
+          "clean:story"
+         ],
+         "typed": null
+        },
+        {
+         "text": "Contraction MRR of $13,587.47 over the 12-month window is the primary drag on revenue retention, as no customers churned outright across the 200 accounts in force at 31 Oct 2026.",
+         "evidence_ids": [
+          "clean:story"
+         ],
+         "typed": null
+        }
+       ],
+       "action_items": [
+        {
+         "action": "Investigate the accounts driving $13,587.47 in contraction MRR to understand whether downgrades are concentrated in specific segments or plan tiers.",
+         "expected_impact": "Contraction is the sole drag on net revenue retention and the main risk to continued growth.",
+         "evidence_ids": [
+          "clean:story"
+         ]
+        },
+        {
+         "action": "Identify why new MRR was $0.00 over the 12 months to 31 Oct 2026 and assess whether new customer acquisition is being tracked or has stalled.",
+         "expected_impact": "Growth relying entirely on expansion from a fixed base of 200 customers is structurally fragile.",
+         "evidence_ids": [
+          "clean:story"
+         ]
+        },
+        {
+         "action": "Monitor monthly recurring revenue closely in the months following Oct 2026 to determine whether the -8.0% month-over-month drop from the Sep 2026 peak is a one-time event or the start of a downward trend.",
+         "expected_impact": "A sustained decline would reverse the year-over-year gain and signal deteriorating retention.",
+         "evidence_ids": [
+          "trend:mrr:MoM",
+          "clean:story"
+         ]
+        }
+       ]
+      },
+      "analyst_view": {
+       "methodology": "Cleaning (cleaning rules-v1): Parsed numbers or dates in 1 column(s). Outliers flagged (kept) in: mrr, support_tickets. Final dataset: 6000 rows (started with 6000). Analysis (analysis v9) computed: eda, trend. Descriptive statistics use the non-missing values of each column. Month-over-month compares calendar-month totals (means for rates and 0-1 flags).",
+       "statistical_notes": [
+        "mrr MoM: -8.0% (n = 6,000; high confidence: 6000 rows)",
+        "mrr YoY: +6.5% (n = 6,000; high confidence: 6000 rows)",
+        "mrr: median 87.35, mean 179.64, range 35.44 to 1,023.37 (n = 6,000; high confidence: 6000 rows)"
+       ],
+       "caveats": [
+        "The year-over-year and month-over-month signals point in opposite directions (+6.5% YoY vs. -8.0% MoM); the current trend depends heavily on whether October's drop is temporary.",
+        "No new MRR was recorded in the 12-month window, which may reflect a data gap (new customers not captured) rather than a true absence of new business; this should be verified against CRM or billing records.",
+        "Monthly recurring revenue values range from $35.44 to $1,023.37 with outliers flagged; a small number of high-value accounts may be disproportionately influencing the expansion and contraction figures.",
+        "Read as SaaS subscription data (MRR, ARR, paying customers, new MRR, churned MRR, logo churn, net revenue retention, gross revenue retention). MRR is the monthly run-rate of the customers paying at the latest date (an annual plan \u00f7 12, net of discounts; trials, paused and unpaid subscriptions out, past due in), not revenue; movements and retention compare each customer's MRR at month-ends over the 12 months to that date, and annual churn is measured on the customers paying 12 months earlier, never a monthly rate \u00d7 12. A customer who starts and leaves inside one month appears in no month-end figure.",
+        "The churned column is a flag, not a dated event: the share of rows flagged is not a churn rate.",
+        "billing_date: Parsed as dates."
+       ],
+       "code_references": [
+        "opening_mrr + new_mrr + expansion_mrr + reactivation_mrr + contraction_mrr + churned_mrr + transfer_in_mrr + transfer_out_mrr + mrr",
+        "_period = pd.to_datetime(df['billing_date'], format='mixed').dt.to_period('M'); df.sort_values('billing_date').groupby([_period, *['account_id']])['mrr'].last().groupby(level=0).sum()   # each entity's last, summed"
+       ]
+      },
+      "additional_issues_note": "",
+      "generated_at": "2026-11-16T04:26:56.234409Z",
+      "memory_used": []
+     },
+     "bundle": {
+      "question": "Is recurring revenue growing?",
+      "columns": [
+       "account_id",
+       "billing_date",
+       "plan",
+       "mrr",
+       "seats",
+       "churned",
+       "support_tickets"
+      ],
+      "evidence_ids": [
+       "clean:audit",
+       "clean:story",
+       "trend:mrr:MoM",
+       "trend:mrr:YoY",
+       "eda:mrr"
+      ],
+      "evidence": [
+       {
+        "id": "clean:audit",
+        "kind": "cleaning",
+        "claim": "Cleaning: 6000 \u2192 6000 rows, 1 logged changes",
+        "result_excerpt": "{\"rows_before\": 6000, \"rows_after\": 6000, \"decisions\": [[\"billing_date\", \"type_coerce\", 6000, 0]]}",
+        "row_count": 6000,
+        "confidence": "high",
+        "confidence_reason": "rule-based; every change below is logged",
+        "assumptions": [
+         "billing_date: Parsed as dates."
+        ]
+       },
+       {
+        "id": "clean:story",
+        "kind": "cleaning",
+        "claim": "The file's story in the product's own numbers: Logo churn (12-month cohort to 31 Oct 2026): 0.0%; a year earlier (12-month cohort to 31 Oct 2025): 0.0%, +0.0 points. Net revenue retention (12-month cohort to 31 Oct 2026): 106.5%; a year earlier (12-month cohort to 31 Oct 2025): 122.7%, -16.2 points. Gross revenue retention (12-month cohort to 31 Oct 2026): 99.3%; a year earlier (12-month cohort to 31 Oct 2025): 100.0%, -0.7 points. MRR peaked at $43,813.56 (Sep 2026) and is $40,308.46 at 31 Oct 2026 (-8.0%). MRR bridge, 12 months to 31 Oct 2026: $37,839.65 on 31 Oct 2025 + new MRR $0.00 + expansion MRR $16,056.28 + reactivation MRR $0.00 \u2212 contraction MRR $13,587.47 \u2212 churned MRR $0.00 = $40,308.46. 0 customers left at a month-end in the window (churned customers); logo churn counts only the customers in force on 31 Oct 2025 who are not in force now, so the two differ: customers who joined in the window or came back are in the count only. 6,000 rows are 200 customers (200 with more than one row); 200 in force at 31 Oct 2026.",
+        "result_excerpt": "[\"Logo churn (12-month cohort to 31 Oct 2026): 0.0%; a year earlier (12-month cohort to 31 Oct 2025): 0.0%, +0.0 points.\", \"Net revenue retention (12-month cohort to 31 Oct 2026): 106.5%; a year earlier (12-month cohort to 31 Oct 2025): 122.7%, -16.2 points.\", \"Gross revenue retention (12-month cohort to 31 Oct 2026): 99.3%; a year earlier (12-month cohort to 31 Oct 2025): 100.0%, -0.7 points.\", \"",
+        "row_count": 6000,
+        "confidence": "high",
+        "confidence_reason": "computed by the product's spell rules, never by a model",
+        "assumptions": []
+       },
+       {
+        "id": "trend:mrr:MoM",
+        "kind": "trend",
+        "claim": "mrr MoM: -8.0%",
+        "result_excerpt": "{\"column\": \"mrr\", \"period\": \"MoM\", \"direction\": \"down\", \"pct_change\": -8.0, \"segment\": null}",
+        "row_count": 6000,
+        "confidence": "high",
+        "confidence_reason": "6000 rows",
+        "assumptions": []
+       },
+       {
+        "id": "trend:mrr:YoY",
+        "kind": "trend",
+        "claim": "mrr YoY: +6.5%",
+        "result_excerpt": "{\"column\": \"mrr\", \"period\": \"YoY\", \"direction\": \"up\", \"pct_change\": 6.52, \"segment\": null}",
+        "row_count": 6000,
+        "confidence": "high",
+        "confidence_reason": "6000 rows",
+        "assumptions": []
+       },
+       {
+        "id": "eda:mrr",
+        "kind": "eda",
+        "claim": "mrr: median 87.35, mean 179.64, range 35.44 to 1,023.37",
+        "result_excerpt": "{\"mean\": 179.643, \"std\": 231.3454, \"min\": 35.44, \"max\": 1023.37, \"median\": 87.35, \"count\": 6000.0}",
+        "row_count": 6000,
+        "confidence": "high",
+        "confidence_reason": "6000 rows",
+        "assumptions": []
+       }
+      ],
+      "date_first": [
+       2024,
+       5
+      ],
+      "date_last": [
+       2026,
+       10
+      ],
+      "n_months": 30,
+      "audit_summary": "Parsed numbers or dates in 1 column(s). Outliers flagged (kept) in: mrr, support_tickets. Final dataset: 6000 rows (started with 6000).",
+      "chart_titles": [
+       "MRR over time",
+       "Net revenue retention over time",
+       "MRR bridge, 12 months to 31 Oct 2026: $37,839.65 \u2192 $40,308.46",
+       "MRR by plan (as of 31 Oct 2026)",
+       "Net revenue retention by plan (12-month cohort to 31 Oct 2026)",
+       "Logo churn by plan (12-month cohort to 31 Oct 2026)",
+       "New MRR by plan (12 months to 31 Oct 2026)",
+       "Churned MRR by plan (12 months to 31 Oct 2026)",
+       "monthly recurring revenue fell 8.0% in Oct 2026 vs Sep 2026",
+       "monthly recurring revenue fell 8.0% in Oct 2026 vs Sep 2026"
+      ],
+      "past_insights": [],
+      "corr_pairs": [],
+      "values": [
+       {
+        "eda_summary": {
+         "mrr": {
+          "mean": 179.643,
+          "std": 231.3454,
+          "min": 35.44,
+          "max": 1023.37,
+          "median": 87.35,
+          "count": 6000.0
+         }
+        },
+        "correlations": {},
+        "trends": [
+         {
+          "column": "mrr",
+          "period": "MoM",
+          "direction": "down",
+          "pct_change": -8.0,
+          "segment": null
+         },
+         {
+          "column": "mrr",
+          "period": "YoY",
+          "direction": "up",
+          "pct_change": 6.52,
+          "segment": null
+         }
+        ],
+        "segments": [],
+        "anomalies": [],
+        "statistical_tests": [],
+        "forecast_points": [],
+        "dtypes_summary": {},
+        "missing_pct": {
+         "account_id": 0.0,
+         "billing_date": 0.0,
+         "plan": 0.0,
+         "mrr": 0.0,
+         "seats": 0.0,
+         "churned": 0.0,
+         "support_tickets": 0.0
+        },
+        "kpis": [
+         {
+          "label": "MRR",
+          "value": "$40,308.46",
+          "context": "as of 31 Oct 2026",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "mrr",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "currency",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Sum of mrr over the distinct account_id in force at the date (each account_id's latest billing_date snapshot on or before the date, ended_at blank or after it) where mrr > 0; over records."
+         },
+         {
+          "label": "ARR",
+          "value": "$483,701.52",
+          "context": "as of 31 Oct 2026",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "arr",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "currency",
+           "currency": null,
+           "unit": null
+          },
+          "how": "12 \u00d7 MRR."
+         },
+         {
+          "label": "Paying customers",
+          "value": "200 customers",
+          "context": "as of 31 Oct 2026",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "paying_customers",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "count",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Distinct account_id in force at the date (each account_id's latest billing_date snapshot on or before the date, ended_at blank or after it) where mrr > 0; over records."
+         },
+         {
+          "label": "New MRR",
+          "value": "$0.00",
+          "context": "12 months to 31 Oct 2026",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "new_mrr",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "currency",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Sum of mrr over the new moves: each account_id whose value went from 0 (never in force before) to above 0 between consecutive month-ends in the period where mrr > 0; over records."
+         },
+         {
+          "label": "Churned MRR",
+          "value": "$0.00",
+          "context": "12 months to 31 Oct 2026",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "churned_mrr",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "currency",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Sum of mrr over the churn moves: each account_id whose value went to 0 between consecutive month-ends in the period where mrr > 0; over records."
+         }
+        ],
+        "pre_cleaning_missing_pct": {},
+        "unique_counts": {},
+        "skewness": {},
+        "target_correlations": {},
+        "target_col": null,
+        "column_roles_summary": {},
+        "column_units": {}
+       },
+       [
+        {
+         "claim": "Cleaning: 6000 \u2192 6000 rows, 1 logged changes",
+         "result_excerpt": "{\"rows_before\": 6000, \"rows_after\": 6000, \"decisions\": [[\"billing_date\", \"type_coerce\", 6000, 0]]}",
+         "row_count": 6000,
+         "assumptions": [
+          "billing_date: Parsed as dates."
+         ],
+         "confidence_reason": "rule-based; every change below is logged"
+        },
+        {
+         "claim": "The file's story in the product's own numbers: Logo churn (12-month cohort to 31 Oct 2026): 0.0%; a year earlier (12-month cohort to 31 Oct 2025): 0.0%, +0.0 points. Net revenue retention (12-month cohort to 31 Oct 2026): 106.5%; a year earlier (12-month cohort to 31 Oct 2025): 122.7%, -16.2 points. Gross revenue retention (12-month cohort to 31 Oct 2026): 99.3%; a year earlier (12-month cohort to 31 Oct 2025): 100.0%, -0.7 points. MRR peaked at $43,813.56 (Sep 2026) and is $40,308.46 at 31 Oct 2026 (-8.0%). MRR bridge, 12 months to 31 Oct 2026: $37,839.65 on 31 Oct 2025 + new MRR $0.00 + expansion MRR $16,056.28 + reactivation MRR $0.00 \u2212 contraction MRR $13,587.47 \u2212 churned MRR $0.00 = $40,308.46. 0 customers left at a month-end in the window (churned customers); logo churn counts only the customers in force on 31 Oct 2025 who are not in force now, so the two differ: customers who joined in the window or came back are in the count only. 6,000 rows are 200 customers (200 with more than one row); 200 in force at 31 Oct 2026.",
+         "result_excerpt": "[\"Logo churn (12-month cohort to 31 Oct 2026): 0.0%; a year earlier (12-month cohort to 31 Oct 2025): 0.0%, +0.0 points.\", \"Net revenue retention (12-month cohort to 31 Oct 2026): 106.5%; a year earlier (12-month cohort to 31 Oct 2025): 122.7%, -16.2 points.\", \"Gross revenue retention (12-month cohort to 31 Oct 2026): 99.3%; a year earlier (12-month cohort to 31 Oct 2025): 100.0%, -0.7 points.\", \"MRR peaked at $43,813.56 (Sep 2026) and is $40,308.46 at 31 Oct 2026 (-8.0%).\", \"MRR bridge, 12 months to 31 Oct 2026: $37,839.65 on 31 Oct 2025 + new MRR $0.00 + expansion MRR $16,056.28 + reactivation MRR $0.00 \\u2212 contraction MRR $13,587.47 \\u2212 churned MRR $0.00 = $40,308.46.\", \"0 customers left at a month-end in the window (churned customers); logo churn counts only the customers in force on 31 Oct 2025 who are not in force now, so the two differ: customers who joined in the window or came back are in the count only.\", \"6,000 rows are 200 customers (200 with more than one row); 200 in force at 31 Oct 2026.\"]",
+         "row_count": 6000,
+         "assumptions": [],
+         "confidence_reason": "computed by the product's spell rules, never by a model"
+        },
+        {
+         "claim": "mrr MoM: -8.0%",
+         "result_excerpt": "{\"column\": \"mrr\", \"period\": \"MoM\", \"direction\": \"down\", \"pct_change\": -8.0, \"segment\": null}",
+         "row_count": 6000,
+         "assumptions": [],
+         "confidence_reason": "6000 rows"
+        },
+        {
+         "claim": "mrr YoY: +6.5%",
+         "result_excerpt": "{\"column\": \"mrr\", \"period\": \"YoY\", \"direction\": \"up\", \"pct_change\": 6.52, \"segment\": null}",
+         "row_count": 6000,
+         "assumptions": [],
+         "confidence_reason": "6000 rows"
+        },
+        {
+         "claim": "mrr: median 87.35, mean 179.64, range 35.44 to 1,023.37",
+         "result_excerpt": "{\"mean\": 179.643, \"std\": 231.3454, \"min\": 35.44, \"max\": 1023.37, \"median\": 87.35, \"count\": 6000.0}",
+         "row_count": 6000,
+         "assumptions": [],
+         "confidence_reason": "6000 rows"
+        }
+       ],
+       {
+        "decisions": [
+         {
+          "column": "billing_date",
+          "operation": "type_coerce",
+          "strategy": "to_datetime",
+          "reason": "Parsed as dates.",
+          "rows_affected": 6000,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         }
+        ],
+        "rows_before": 6000,
+        "rows_after": 6000,
+        "columns_coerced": [
+         "billing_date"
+        ],
+        "duplicates_removed": 0,
+        "outliers_flagged": [
+         "28 mild outliers in mrr (threshold: values outside [0.629, 5,379]) \u2014 see analyst tab",
+         "2 extreme outliers in support_tickets (0.0% of data, threshold: values > 10.00)"
+        ],
+        "high_null_columns": [],
+        "summary": "Parsed numbers or dates in 1 column(s). Outliers flagged (kept) in: mrr, support_tickets. Final dataset: 6000 rows (started with 6000).",
+        "anomaly_report": {
+         "flags": [
+          {
+           "column": "mrr",
+           "extreme_count": 0,
+           "mild_count": 28,
+           "extreme_pct": 0.0,
+           "lower_bound": 0.629117327476281,
+           "upper_bound": 5379.372024803937,
+           "mild_lower_bound": 8.2468492887284,
+           "mild_upper_bound": 946.918260608107,
+           "used_log_transform": true,
+           "heavy_tailed": false,
+           "message": "28 mild outliers in mrr (threshold: values outside [0.629, 5,379]) \u2014 see analyst tab"
+          },
+          {
+           "column": "support_tickets",
+           "extreme_count": 2,
+           "mild_count": 78,
+           "extreme_pct": 0.03333333333333333,
+           "lower_bound": -4.0,
+           "upper_bound": 10.0,
+           "mild_lower_bound": -1.0,
+           "mild_upper_bound": 7.0,
+           "used_log_transform": false,
+           "heavy_tailed": false,
+           "message": "2 extreme outliers in support_tickets (0.0% of data, threshold: values > 10.00)"
+          }
+         ],
+         "methodology_note": "",
+         "eligible_columns": [
+          "mrr",
+          "seats",
+          "support_tickets"
+         ],
+         "skipped_columns": {
+          "account_id": "id column",
+          "billing_date": "datetime column",
+          "plan": "non-numeric",
+          "churned": "binary column (only 2 values)"
+         }
+        },
+        "skipped_columns": [],
+        "date_ranges": {
+         "billing_date": [
+          "2024-05-01",
+          "2026-10-31",
+          30
+         ]
+        },
+        "grain": "aggregate",
+        "partial_months": {},
+        "main_currency": null,
+        "spell_story": [
+         "Logo churn (12-month cohort to 31 Oct 2026): 0.0%; a year earlier (12-month cohort to 31 Oct 2025): 0.0%, +0.0 points.",
+         "Net revenue retention (12-month cohort to 31 Oct 2026): 106.5%; a year earlier (12-month cohort to 31 Oct 2025): 122.7%, -16.2 points.",
+         "Gross revenue retention (12-month cohort to 31 Oct 2026): 99.3%; a year earlier (12-month cohort to 31 Oct 2025): 100.0%, -0.7 points.",
+         "MRR peaked at $43,813.56 (Sep 2026) and is $40,308.46 at 31 Oct 2026 (-8.0%).",
+         "MRR bridge, 12 months to 31 Oct 2026: $37,839.65 on 31 Oct 2025 + new MRR $0.00 + expansion MRR $16,056.28 + reactivation MRR $0.00 \u2212 contraction MRR $13,587.47 \u2212 churned MRR $0.00 = $40,308.46.",
+         "0 customers left at a month-end in the window (churned customers); logo churn counts only the customers in force on 31 Oct 2025 who are not in force now, so the two differ: customers who joined in the window or came back are in the count only.",
+         "6,000 rows are 200 customers (200 with more than one row); 200 in force at 31 Oct 2026."
+        ],
+        "window_span": {
+         "window": "12 months",
+         "moves": "12 months",
+         "cohort": "12 months",
+         "window_adj": " 12-month"
+        }
+       },
+       [
+        "MRR over time",
+        "Net revenue retention over time",
+        "MRR bridge, 12 months to 31 Oct 2026: $37,839.65 \u2192 $40,308.46",
+        "MRR by plan (as of 31 Oct 2026)",
+        "Net revenue retention by plan (12-month cohort to 31 Oct 2026)",
+        "Logo churn by plan (12-month cohort to 31 Oct 2026)",
+        "New MRR by plan (12 months to 31 Oct 2026)",
+        "Churned MRR by plan (12 months to 31 Oct 2026)",
+        "monthly recurring revenue fell 8.0% in Oct 2026 vs Sep 2026",
+        "monthly recurring revenue fell 8.0% in Oct 2026 vs Sep 2026"
+       ],
+       [
+        6000,
+        7,
+        30
+       ],
+       [
+        2024,
+        2025,
+        2026
+       ],
+       [
+        "Read as SaaS subscription data (MRR, ARR, paying customers, new MRR, churned MRR, logo churn, net revenue retention, gross revenue retention). MRR is the monthly run-rate of the customers paying at the latest date (an annual plan \u00f7 12, net of discounts; trials, paused and unpaid subscriptions out, past due in), not revenue; movements and retention compare each customer's MRR at month-ends over the 12 months to that date, and annual churn is measured on the customers paying 12 months earlier, never a monthly rate \u00d7 12. A customer who starts and leaves inside one month appears in no month-end figure.",
+        "The churned column is a flag, not a dated event: the share of rows flagged is not a churn rate."
+       ]
+      ]
+     }
+    },
+    "latency_s": 43.1,
+    "cost_usd": 0.04086,
+    "llm_calls": 2,
+    "truncated_calls": 0,
+    "rejections": [
+     "typed_refused"
+    ],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"headline\": {\n    \"text\": \"Recurring revenue is up year-over-year but has pulled back from its September 2026 peak, with net revenue retention declining meaningfully over the past year.\",\n    \"evidence\": [\"clean:story\", \"trend:mrr:YoY\", \"trend:mrr:MoM\"]\n  },\n  \"summary\": [\n    {\n      \"text\": \"Monthly recurring revenue grew +6.5% year-over-year to $40,308.46 at 31 Oct 2026, driven entirely by expansion from existing customers, with no new or reactivated revenue in the 12-month window.\",\n      \"evidence\": [\"trend:mrr:YoY\", \"clean:story\"]\n    },\n    {\n      \"text\": \"The month-over-month picture and a falling net revenue retention rate warrant attention: monthly recurring revenue dropped -8.0% from its Sep 2026 peak, and net revenue retention fell from 122.7% to 106.5% year-over-year.\",\n      \"evidence\": [\"trend:mrr:MoM\", \"clean:story\"]\n    }\n  ],\n  \"findings\": [\n    {\n      \"text\": \"Monthly recurring revenue stands at $40,308.46 at 31 Oct 2026, up +6.5% year-over-year, but down -8.0% from the Sep 2026 peak of $43,813.56.\",\n      \"evidence\": [\"clean:story\", \"trend:mrr:YoY\", \"trend:mrr:MoM\"]\n    },\n    {\n      \"text\": \"All growth over the 12 months to 31 Oct 2026 came from expansion MRR of $16,056.28 among existing customers; new MRR and reactivation MRR were both $0.00, and churned MRR was also $0.00.\",\n      \"evidence\": [\"clean:story\"]\n    },\n    {\n      \"text\": \"Net revenue retention fell from 122.7% (12-month cohort to 31 Oct 2025) to 106.5% (12-month cohort to 31 Oct 2026), a decline of 16.2 points, while gross revenue retention moved from 100.0% to 99.3% over the same comparison.\",\n      \"evidence\": [\"clean:story\"]\n    },\n    {\n      \"text\": \"Contraction MRR of $13,587.47 over the 12-month window is the primary drag on revenue retention, as no customers churned outright across the 200 accounts in force at 31 Oct 2026.\",\n      \"evidence\": [\"clean:story\"]\n    }\n  ],\n  \"claims\": [\n    {\n      \"kind\": \"comparison\",\n      \"metric\": \"net revenue retention\",\n      \"a\": \"12-month cohort to 31 Oct 2026\",\n      \"b\": \"12-month cohort to 31 Oct 2025\",\n      \"evidence_id\": \"clean:story\"\n    }\n  ],\n  \"actions\": [\n    {\n      \"action\": \"Investigate the accounts driving $13,587.47 in contraction MRR to understand whether downgrades are concentrated in specific segments or plan tiers.\",\n      \"impact\": \"Contraction is the sole drag on net revenue retention and the main risk to continued growth.\",\n      \"evidence\": [\"clean:story\"]\n    },\n    {\n      \"action\": \"Identify why new MRR was $0.00 over the 12 months to 31 Oct 2026 and assess whether new customer acquisition is being tracked or has stalled.\",\n      \"impact\": \"Growth relying entirely on expansion from a fixed base of 200 customers is structurally fragile.\",\n      \"evidence\": [\"clean:story\"]\n    },\n    {\n      \"action\": \"Monitor monthly recurring revenue closely in the months following Oct 2026 to determine whether the -8.0% month-over-month drop from the Sep 2026 peak is a one-time event or the start of a downward trend.\",\n      \"impact\": \"A sustained decline would reverse the year-over-year gain and signal deteriorating retention.\",\n      \"evidence\": [\"trend:mrr:MoM\", \"clean:story\"]\n    }\n  ],\n  \"caveats\": [\n    \"The year-over-year and month-over-month signals point in opposite directions (+6.5% YoY vs. -8.0% MoM); the current trend depends heavily on whether October's drop is temporary.\",\n    \"No new MRR was recorded in the 12-month window, which may reflect a data gap (new customers not captured) rather than a true absence of new business; this should be verified against CRM or billing records.\",\n    \"Monthly recurring revenue values range from $35.44 to $1,023.37 with outliers flagged; a small number of high-value accounts may be disproportionately influencing the expansion and contraction figures.\"\n  ],\n  \"questions\": [\n    \"Which specific accounts or plan tiers account for the $13,587.47 in contraction MRR, and is the contraction concentrated or spread across the customer base?\",\n    \"Is the absence of new MRR over 12 months a true reflection of no new customer acquisition, or are new customers being recorded in a way that does not appear in this dataset?\",\n    \"What happened in September 2026 to push monthly recurring revenue to its $43,813.56 peak, and what drove the reversal in October 2026?\"\n  ]\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "I'll work through each sentence carefully.\n\n0. Direction/trend (\"up\", \"pulled back\", \"declining\") \u2014 neither.\n1. \"Driven entirely by expansion from existing customers\" \u2014 expansion MRR is a component of MRR itself, so arithmetic \u2014 neither.\n2. \"Warrant attention\" grades trend size, not a measure's level; rest is direction/trend \u2014 neither.\n3. Direction and numbers only \u2014 neither.\n4. Components of MRR growth stated \u2014 arithmetic \u2014 neither.\n5. Direction/numbers only \u2014 neither.\n6. \"Primary drag\" \u2014 contraction MRR is a component of net revenue retention, arithmetic \u2014 neither.\n7. Recommended action \u2014 neither.\n8. \"Sole drag\" \u2014 component arithmetic; \"main risk\" \u2014 neither.\n9. Recommended action \u2014 neither.\n10. \"Structurally fragile\" \u2014 grades the growth structure/situation, not a measure's level or period performance against a norm \u2014 neither.\n11. Recommended action \u2014 neither.\n12. Conditional/what an action/event would do \u2014 neither.\n13. Question \u2014 neither.\n14. Question \u2014 neither.\n15. Question \u2014 neither.\n16. Direction/trend and conditional \u2014 neither.\n17. \"May reflect\" \u2014 hedge \u2014 neither.\n18. \"A small number of high-value accounts may be disproportionately influencing\" \u2014 outliers pulling a measure, arithmetic/hedge \u2014 neither.\n\n```json\n{\"0\": \"neither\", \"1\": \"neither\", \"2\": \"neither\", \"3\": \"neither\", \"4\": \"neither\", \"5\": \"neither\", \"6\": \"neither\", \"7\": \"neither\", \"8\": \"neither\", \"9\": \"neither\", \"10\": \"neither\", \"11\": \"neither\", \"12\": \"neither\", \"13\": \"neither\", \"14\": \"neither\", \"15\": \"neither\", \"16\": \"neither\", \"17\": \"neither\", \"18\": \"neither\"}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "contradiction",
+      "ok": false,
+      "detail": "missing ['8(\\\\.0)?%']"
+     },
+     {
+      "kind": "causal",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "insight_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "insight_dates_in_range",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "executive_no_jargon",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "claims_cite_evidence",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "contradictory",
+    "holdout": false,
+    "output": {
+     "report": {
+      "executive_summary": "Recurring revenue is up year-over-year but has pulled back from its September 2026 peak, with net revenue retention declining meaningfully over the past 12 months. Monthly recurring revenue grew +6.5% year-over-year to $40,308.46 as of 31 Oct 2026, driven entirely by expansion from existing customers with no new or churned MRR in the period. Net revenue retention fell from 122.7% to 106.5% over the same 12-month window, signalling that expansion is slowing even as logo retention remains perfect.",
+      "technical_findings": [
+       "mrr MoM: -8.0% (n = 6,000; high confidence: 6000 rows)",
+       "mrr YoY: +6.5% (n = 6,000; high confidence: 6000 rows)",
+       "mrr: median 87.35, mean 179.64, range 35.44 to 1,023.37 (n = 6,000; high confidence: 6000 rows)"
+      ],
+      "recommended_actions": [
+       {
+        "priority": 1,
+        "action": "Investigate the accounts driving $13,587.47 in contraction MRR to understand whether downgrades are concentrated in a segment or product tier.",
+        "reasoning": "Contraction is the only force working against growth; slowing it would directly lift net revenue retention.",
+        "metric_impact": "Contraction is the only force working against growth; slowing it would directly lift net revenue retention."
+       },
+       {
+        "priority": 2,
+        "action": "Review the expansion pipeline to identify which customers have headroom to grow, given that expansion MRR is the sole source of new revenue.",
+        "reasoning": "With no new MRR entering, sustaining growth depends entirely on upselling the existing 200-customer base.",
+        "metric_impact": "With no new MRR entering, sustaining growth depends entirely on upselling the existing 200-customer base."
+       },
+       {
+        "priority": 3,
+        "action": "Monitor monthly recurring revenue monthly through early 2027 to determine whether the Sep-to-Oct 2026 decline is a one-month dip or the start of a downward trend.",
+        "reasoning": "A single month's movement could be noise; confirming the direction early allows faster intervention.",
+        "metric_impact": "A single month's movement could be noise; confirming the direction early allows faster intervention."
+       }
+      ],
+      "anomaly_alerts": [
+       {
+        "title": "Support tickets: 2 extreme values",
+        "severity": "medium",
+        "description": "2 support tickets values (0.0% of rows) are far outside the usual range. They were kept.",
+        "affected_metric": "support_tickets",
+        "suggested_investigation": "Verify the largest support tickets values against the source records."
+       },
+       {
+        "title": "How these numbers are counted",
+        "severity": "low",
+        "description": "Read as SaaS subscription data (MRR, ARR, paying customers, new MRR, churned MRR, logo churn, net revenue retention, gross revenue retention). MRR is the monthly run-rate of the customers paying at the latest date (an annual plan \u00f7 12, net of discounts; trials, paused and unpaid subscriptions out, past due in), not revenue; movements and retention compare each customer's MRR at month-ends over the 12 months to that date, and annual churn is measured on the customers paying 12 months earlier, never a monthly rate \u00d7 12. A customer who starts and leaves inside one month appears in no month-end figure. The churned column is a flag, not a dated event: the share of rows flagged is not a churn rate.",
+        "affected_metric": "",
+        "suggested_investigation": ""
+       }
+      ],
+      "proactive_questions": [
+       "Which specific accounts account for the largest share of the $13,587.47 contraction MRR, and what product or usage signals preceded their downgrades?",
+       "Is the Sep-to-Oct 2026 monthly recurring revenue decline concentrated in a particular customer segment, plan type, or contract renewal cohort?",
+       "Given that new MRR is $0.00 for the full 12-month period, is there a pipeline of new customers expected to enter, and when might they appear in the data?"
+      ],
+      "methodology_notes": "Cleaning (cleaning rules-v1): Parsed numbers or dates in 1 column(s). Outliers flagged (kept) in: mrr, support_tickets. Final dataset: 6000 rows (started with 6000). Analysis (analysis v9) computed: eda, trend. Descriptive statistics use the non-missing values of each column. Month-over-month compares calendar-month totals (means for rates and 0-1 flags).",
+      "executive_view": {
+       "headline": "Recurring revenue is up year-over-year but has pulled back from its September 2026 peak, with net revenue retention declining meaningfully over the past 12 months.",
+       "headline_evidence_ids": [
+        "trend:mrr:YoY",
+        "trend:mrr:MoM",
+        "clean:story"
+       ],
+       "paragraphs": [
+        {
+         "text": "Monthly recurring revenue grew +6.5% year-over-year to $40,308.46 as of 31 Oct 2026, driven entirely by expansion from existing customers with no new or churned MRR in the period.",
+         "evidence_ids": [
+          "trend:mrr:YoY",
+          "clean:story"
+         ],
+         "typed": null
+        },
+        {
+         "text": "Net revenue retention fell from 122.7% to 106.5% over the same 12-month window, signalling that expansion is slowing even as logo retention remains perfect.",
+         "evidence_ids": [
+          "clean:story"
+         ],
+         "typed": null
+        }
+       ],
+       "findings": [
+        {
+         "text": "Monthly recurring revenue stands at $40,308.46 on 31 Oct 2026, up +6.5% year-over-year, but down from a peak of $43,813.56 reached in Sep 2026.",
+         "evidence_ids": [
+          "trend:mrr:YoY",
+          "clean:story"
+         ],
+         "typed": null
+        },
+        {
+         "text": "All MRR growth over the 12 months to 31 Oct 2026 came from expansion MRR of $16,056.28, fully offset in part by contraction MRR of $13,587.47; new MRR, reactivation MRR, and churned MRR were each $0.00.",
+         "evidence_ids": [
+          "clean:story"
+         ],
+         "typed": null
+        },
+        {
+         "text": "Net revenue retention dropped from 122.7% (12-month cohort to 31 Oct 2025) to 106.5% (12-month cohort to 31 Oct 2026), a decline of 16.2 points, while gross revenue retention moved from 100.0% to 99.3%.",
+         "evidence_ids": [
+          "clean:story"
+         ],
+         "typed": null
+        },
+        {
+         "text": "Logo churn is 0.0% for both the cohort to 31 Oct 2026 and the cohort to 31 Oct 2025, meaning all 200 customers active a year ago remain in force today.",
+         "evidence_ids": [
+          "clean:story"
+         ],
+         "typed": null
+        }
+       ],
+       "action_items": [
+        {
+         "action": "Investigate the accounts driving $13,587.47 in contraction MRR to understand whether downgrades are concentrated in a segment or product tier.",
+         "expected_impact": "Contraction is the only force working against growth; slowing it would directly lift net revenue retention.",
+         "evidence_ids": [
+          "clean:story"
+         ]
+        },
+        {
+         "action": "Review the expansion pipeline to identify which customers have headroom to grow, given that expansion MRR is the sole source of new revenue.",
+         "expected_impact": "With no new MRR entering, sustaining growth depends entirely on upselling the existing 200-customer base.",
+         "evidence_ids": [
+          "clean:story"
+         ]
+        },
+        {
+         "action": "Monitor monthly recurring revenue monthly through early 2027 to determine whether the Sep-to-Oct 2026 decline is a one-month dip or the start of a downward trend.",
+         "expected_impact": "A single month's movement could be noise; confirming the direction early allows faster intervention.",
+         "evidence_ids": [
+          "trend:mrr:MoM",
+          "clean:story"
+         ]
+        }
+       ]
+      },
+      "analyst_view": {
+       "methodology": "Cleaning (cleaning rules-v1): Parsed numbers or dates in 1 column(s). Outliers flagged (kept) in: mrr, support_tickets. Final dataset: 6000 rows (started with 6000). Analysis (analysis v9) computed: eda, trend. Descriptive statistics use the non-missing values of each column. Month-over-month compares calendar-month totals (means for rates and 0-1 flags).",
+       "statistical_notes": [
+        "mrr MoM: -8.0% (n = 6,000; high confidence: 6000 rows)",
+        "mrr YoY: +6.5% (n = 6,000; high confidence: 6000 rows)",
+        "mrr: median 87.35, mean 179.64, range 35.44 to 1,023.37 (n = 6,000; high confidence: 6000 rows)"
+       ],
+       "caveats": [
+        "The month-over-month and year-over-year signals point in opposite directions (MoM \u22128.0%, YoY +6.5%); the short-term picture is weaker than the annual one, and both should be tracked together.",
+        "Monthly recurring revenue here is a run-rate snapshot, not recognised revenue; movements reflect changes in subscription value at month-ends and exclude customers who start and leave within a single month.",
+        "The dataset covers 200 customers, a small base; a handful of large contractions or expansions can move aggregate metrics significantly, so per-account review is advisable alongside the totals.",
+        "Read as SaaS subscription data (MRR, ARR, paying customers, new MRR, churned MRR, logo churn, net revenue retention, gross revenue retention). MRR is the monthly run-rate of the customers paying at the latest date (an annual plan \u00f7 12, net of discounts; trials, paused and unpaid subscriptions out, past due in), not revenue; movements and retention compare each customer's MRR at month-ends over the 12 months to that date, and annual churn is measured on the customers paying 12 months earlier, never a monthly rate \u00d7 12. A customer who starts and leaves inside one month appears in no month-end figure.",
+        "The churned column is a flag, not a dated event: the share of rows flagged is not a churn rate.",
+        "billing_date: Parsed as dates."
+       ],
+       "code_references": [
+        "opening_mrr + new_mrr + expansion_mrr + reactivation_mrr + contraction_mrr + churned_mrr + transfer_in_mrr + transfer_out_mrr + mrr",
+        "_period = pd.to_datetime(df['billing_date'], format='mixed').dt.to_period('M'); df.sort_values('billing_date').groupby([_period, *['account_id']])['mrr'].last().groupby(level=0).sum()   # each entity's last, summed"
+       ]
+      },
+      "additional_issues_note": "",
+      "generated_at": "2026-11-16T04:26:56.665925Z",
+      "memory_used": []
+     },
+     "bundle": {
+      "question": "Is recurring revenue growing?",
+      "columns": [
+       "account_id",
+       "billing_date",
+       "plan",
+       "mrr",
+       "seats",
+       "churned",
+       "support_tickets"
+      ],
+      "evidence_ids": [
+       "clean:audit",
+       "clean:story",
+       "trend:mrr:MoM",
+       "trend:mrr:YoY",
+       "eda:mrr"
+      ],
+      "evidence": [
+       {
+        "id": "clean:audit",
+        "kind": "cleaning",
+        "claim": "Cleaning: 6000 \u2192 6000 rows, 1 logged changes",
+        "result_excerpt": "{\"rows_before\": 6000, \"rows_after\": 6000, \"decisions\": [[\"billing_date\", \"type_coerce\", 6000, 0]]}",
+        "row_count": 6000,
+        "confidence": "high",
+        "confidence_reason": "rule-based; every change below is logged",
+        "assumptions": [
+         "billing_date: Parsed as dates."
+        ]
+       },
+       {
+        "id": "clean:story",
+        "kind": "cleaning",
+        "claim": "The file's story in the product's own numbers: Logo churn (12-month cohort to 31 Oct 2026): 0.0%; a year earlier (12-month cohort to 31 Oct 2025): 0.0%, +0.0 points. Net revenue retention (12-month cohort to 31 Oct 2026): 106.5%; a year earlier (12-month cohort to 31 Oct 2025): 122.7%, -16.2 points. Gross revenue retention (12-month cohort to 31 Oct 2026): 99.3%; a year earlier (12-month cohort to 31 Oct 2025): 100.0%, -0.7 points. MRR peaked at $43,813.56 (Sep 2026) and is $40,308.46 at 31 Oct 2026 (-8.0%). MRR bridge, 12 months to 31 Oct 2026: $37,839.65 on 31 Oct 2025 + new MRR $0.00 + expansion MRR $16,056.28 + reactivation MRR $0.00 \u2212 contraction MRR $13,587.47 \u2212 churned MRR $0.00 = $40,308.46. 0 customers left at a month-end in the window (churned customers); logo churn counts only the customers in force on 31 Oct 2025 who are not in force now, so the two differ: customers who joined in the window or came back are in the count only. 6,000 rows are 200 customers (200 with more than one row); 200 in force at 31 Oct 2026.",
+        "result_excerpt": "[\"Logo churn (12-month cohort to 31 Oct 2026): 0.0%; a year earlier (12-month cohort to 31 Oct 2025): 0.0%, +0.0 points.\", \"Net revenue retention (12-month cohort to 31 Oct 2026): 106.5%; a year earlier (12-month cohort to 31 Oct 2025): 122.7%, -16.2 points.\", \"Gross revenue retention (12-month cohort to 31 Oct 2026): 99.3%; a year earlier (12-month cohort to 31 Oct 2025): 100.0%, -0.7 points.\", \"",
+        "row_count": 6000,
+        "confidence": "high",
+        "confidence_reason": "computed by the product's spell rules, never by a model",
+        "assumptions": []
+       },
+       {
+        "id": "trend:mrr:MoM",
+        "kind": "trend",
+        "claim": "mrr MoM: -8.0%",
+        "result_excerpt": "{\"column\": \"mrr\", \"period\": \"MoM\", \"direction\": \"down\", \"pct_change\": -8.0, \"segment\": null}",
+        "row_count": 6000,
+        "confidence": "high",
+        "confidence_reason": "6000 rows",
+        "assumptions": []
+       },
+       {
+        "id": "trend:mrr:YoY",
+        "kind": "trend",
+        "claim": "mrr YoY: +6.5%",
+        "result_excerpt": "{\"column\": \"mrr\", \"period\": \"YoY\", \"direction\": \"up\", \"pct_change\": 6.52, \"segment\": null}",
+        "row_count": 6000,
+        "confidence": "high",
+        "confidence_reason": "6000 rows",
+        "assumptions": []
+       },
+       {
+        "id": "eda:mrr",
+        "kind": "eda",
+        "claim": "mrr: median 87.35, mean 179.64, range 35.44 to 1,023.37",
+        "result_excerpt": "{\"mean\": 179.643, \"std\": 231.3454, \"min\": 35.44, \"max\": 1023.37, \"median\": 87.35, \"count\": 6000.0}",
+        "row_count": 6000,
+        "confidence": "high",
+        "confidence_reason": "6000 rows",
+        "assumptions": []
+       }
+      ],
+      "date_first": [
+       2024,
+       5
+      ],
+      "date_last": [
+       2026,
+       10
+      ],
+      "n_months": 30,
+      "audit_summary": "Parsed numbers or dates in 1 column(s). Outliers flagged (kept) in: mrr, support_tickets. Final dataset: 6000 rows (started with 6000).",
+      "chart_titles": [
+       "MRR over time",
+       "Net revenue retention over time",
+       "MRR bridge, 12 months to 31 Oct 2026: $37,839.65 \u2192 $40,308.46",
+       "MRR by plan (as of 31 Oct 2026)",
+       "Net revenue retention by plan (12-month cohort to 31 Oct 2026)",
+       "Logo churn by plan (12-month cohort to 31 Oct 2026)",
+       "New MRR by plan (12 months to 31 Oct 2026)",
+       "Churned MRR by plan (12 months to 31 Oct 2026)",
+       "monthly recurring revenue fell 8.0% in Oct 2026 vs Sep 2026",
+       "monthly recurring revenue fell 8.0% in Oct 2026 vs Sep 2026"
+      ],
+      "past_insights": [],
+      "corr_pairs": [],
+      "values": [
+       {
+        "eda_summary": {
+         "mrr": {
+          "mean": 179.643,
+          "std": 231.3454,
+          "min": 35.44,
+          "max": 1023.37,
+          "median": 87.35,
+          "count": 6000.0
+         }
+        },
+        "correlations": {},
+        "trends": [
+         {
+          "column": "mrr",
+          "period": "MoM",
+          "direction": "down",
+          "pct_change": -8.0,
+          "segment": null
+         },
+         {
+          "column": "mrr",
+          "period": "YoY",
+          "direction": "up",
+          "pct_change": 6.52,
+          "segment": null
+         }
+        ],
+        "segments": [],
+        "anomalies": [],
+        "statistical_tests": [],
+        "forecast_points": [],
+        "dtypes_summary": {},
+        "missing_pct": {
+         "account_id": 0.0,
+         "billing_date": 0.0,
+         "plan": 0.0,
+         "mrr": 0.0,
+         "seats": 0.0,
+         "churned": 0.0,
+         "support_tickets": 0.0
+        },
+        "kpis": [
+         {
+          "label": "MRR",
+          "value": "$40,308.46",
+          "context": "as of 31 Oct 2026",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "mrr",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "currency",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Sum of mrr over the distinct account_id in force at the date (each account_id's latest billing_date snapshot on or before the date, ended_at blank or after it) where mrr > 0; over records."
+         },
+         {
+          "label": "ARR",
+          "value": "$483,701.52",
+          "context": "as of 31 Oct 2026",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "arr",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "currency",
+           "currency": null,
+           "unit": null
+          },
+          "how": "12 \u00d7 MRR."
+         },
+         {
+          "label": "Paying customers",
+          "value": "200 customers",
+          "context": "as of 31 Oct 2026",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "paying_customers",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "count",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Distinct account_id in force at the date (each account_id's latest billing_date snapshot on or before the date, ended_at blank or after it) where mrr > 0; over records."
+         },
+         {
+          "label": "New MRR",
+          "value": "$0.00",
+          "context": "12 months to 31 Oct 2026",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "new_mrr",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "currency",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Sum of mrr over the new moves: each account_id whose value went from 0 (never in force before) to above 0 between consecutive month-ends in the period where mrr > 0; over records."
+         },
+         {
+          "label": "Churned MRR",
+          "value": "$0.00",
+          "context": "12 months to 31 Oct 2026",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "churned_mrr",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "currency",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Sum of mrr over the churn moves: each account_id whose value went to 0 between consecutive month-ends in the period where mrr > 0; over records."
+         }
+        ],
+        "pre_cleaning_missing_pct": {},
+        "unique_counts": {},
+        "skewness": {},
+        "target_correlations": {},
+        "target_col": null,
+        "column_roles_summary": {},
+        "column_units": {}
+       },
+       [
+        {
+         "claim": "Cleaning: 6000 \u2192 6000 rows, 1 logged changes",
+         "result_excerpt": "{\"rows_before\": 6000, \"rows_after\": 6000, \"decisions\": [[\"billing_date\", \"type_coerce\", 6000, 0]]}",
+         "row_count": 6000,
+         "assumptions": [
+          "billing_date: Parsed as dates."
+         ],
+         "confidence_reason": "rule-based; every change below is logged"
+        },
+        {
+         "claim": "The file's story in the product's own numbers: Logo churn (12-month cohort to 31 Oct 2026): 0.0%; a year earlier (12-month cohort to 31 Oct 2025): 0.0%, +0.0 points. Net revenue retention (12-month cohort to 31 Oct 2026): 106.5%; a year earlier (12-month cohort to 31 Oct 2025): 122.7%, -16.2 points. Gross revenue retention (12-month cohort to 31 Oct 2026): 99.3%; a year earlier (12-month cohort to 31 Oct 2025): 100.0%, -0.7 points. MRR peaked at $43,813.56 (Sep 2026) and is $40,308.46 at 31 Oct 2026 (-8.0%). MRR bridge, 12 months to 31 Oct 2026: $37,839.65 on 31 Oct 2025 + new MRR $0.00 + expansion MRR $16,056.28 + reactivation MRR $0.00 \u2212 contraction MRR $13,587.47 \u2212 churned MRR $0.00 = $40,308.46. 0 customers left at a month-end in the window (churned customers); logo churn counts only the customers in force on 31 Oct 2025 who are not in force now, so the two differ: customers who joined in the window or came back are in the count only. 6,000 rows are 200 customers (200 with more than one row); 200 in force at 31 Oct 2026.",
+         "result_excerpt": "[\"Logo churn (12-month cohort to 31 Oct 2026): 0.0%; a year earlier (12-month cohort to 31 Oct 2025): 0.0%, +0.0 points.\", \"Net revenue retention (12-month cohort to 31 Oct 2026): 106.5%; a year earlier (12-month cohort to 31 Oct 2025): 122.7%, -16.2 points.\", \"Gross revenue retention (12-month cohort to 31 Oct 2026): 99.3%; a year earlier (12-month cohort to 31 Oct 2025): 100.0%, -0.7 points.\", \"MRR peaked at $43,813.56 (Sep 2026) and is $40,308.46 at 31 Oct 2026 (-8.0%).\", \"MRR bridge, 12 months to 31 Oct 2026: $37,839.65 on 31 Oct 2025 + new MRR $0.00 + expansion MRR $16,056.28 + reactivation MRR $0.00 \\u2212 contraction MRR $13,587.47 \\u2212 churned MRR $0.00 = $40,308.46.\", \"0 customers left at a month-end in the window (churned customers); logo churn counts only the customers in force on 31 Oct 2025 who are not in force now, so the two differ: customers who joined in the window or came back are in the count only.\", \"6,000 rows are 200 customers (200 with more than one row); 200 in force at 31 Oct 2026.\"]",
+         "row_count": 6000,
+         "assumptions": [],
+         "confidence_reason": "computed by the product's spell rules, never by a model"
+        },
+        {
+         "claim": "mrr MoM: -8.0%",
+         "result_excerpt": "{\"column\": \"mrr\", \"period\": \"MoM\", \"direction\": \"down\", \"pct_change\": -8.0, \"segment\": null}",
+         "row_count": 6000,
+         "assumptions": [],
+         "confidence_reason": "6000 rows"
+        },
+        {
+         "claim": "mrr YoY: +6.5%",
+         "result_excerpt": "{\"column\": \"mrr\", \"period\": \"YoY\", \"direction\": \"up\", \"pct_change\": 6.52, \"segment\": null}",
+         "row_count": 6000,
+         "assumptions": [],
+         "confidence_reason": "6000 rows"
+        },
+        {
+         "claim": "mrr: median 87.35, mean 179.64, range 35.44 to 1,023.37",
+         "result_excerpt": "{\"mean\": 179.643, \"std\": 231.3454, \"min\": 35.44, \"max\": 1023.37, \"median\": 87.35, \"count\": 6000.0}",
+         "row_count": 6000,
+         "assumptions": [],
+         "confidence_reason": "6000 rows"
+        }
+       ],
+       {
+        "decisions": [
+         {
+          "column": "billing_date",
+          "operation": "type_coerce",
+          "strategy": "to_datetime",
+          "reason": "Parsed as dates.",
+          "rows_affected": 6000,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         }
+        ],
+        "rows_before": 6000,
+        "rows_after": 6000,
+        "columns_coerced": [
+         "billing_date"
+        ],
+        "duplicates_removed": 0,
+        "outliers_flagged": [
+         "28 mild outliers in mrr (threshold: values outside [0.629, 5,379]) \u2014 see analyst tab",
+         "2 extreme outliers in support_tickets (0.0% of data, threshold: values > 10.00)"
+        ],
+        "high_null_columns": [],
+        "summary": "Parsed numbers or dates in 1 column(s). Outliers flagged (kept) in: mrr, support_tickets. Final dataset: 6000 rows (started with 6000).",
+        "anomaly_report": {
+         "flags": [
+          {
+           "column": "mrr",
+           "extreme_count": 0,
+           "mild_count": 28,
+           "extreme_pct": 0.0,
+           "lower_bound": 0.629117327476281,
+           "upper_bound": 5379.372024803937,
+           "mild_lower_bound": 8.2468492887284,
+           "mild_upper_bound": 946.918260608107,
+           "used_log_transform": true,
+           "heavy_tailed": false,
+           "message": "28 mild outliers in mrr (threshold: values outside [0.629, 5,379]) \u2014 see analyst tab"
+          },
+          {
+           "column": "support_tickets",
+           "extreme_count": 2,
+           "mild_count": 78,
+           "extreme_pct": 0.03333333333333333,
+           "lower_bound": -4.0,
+           "upper_bound": 10.0,
+           "mild_lower_bound": -1.0,
+           "mild_upper_bound": 7.0,
+           "used_log_transform": false,
+           "heavy_tailed": false,
+           "message": "2 extreme outliers in support_tickets (0.0% of data, threshold: values > 10.00)"
+          }
+         ],
+         "methodology_note": "",
+         "eligible_columns": [
+          "mrr",
+          "seats",
+          "support_tickets"
+         ],
+         "skipped_columns": {
+          "account_id": "id column",
+          "billing_date": "datetime column",
+          "plan": "non-numeric",
+          "churned": "binary column (only 2 values)"
+         }
+        },
+        "skipped_columns": [],
+        "date_ranges": {
+         "billing_date": [
+          "2024-05-01",
+          "2026-10-31",
+          30
+         ]
+        },
+        "grain": "aggregate",
+        "partial_months": {},
+        "main_currency": null,
+        "spell_story": [
+         "Logo churn (12-month cohort to 31 Oct 2026): 0.0%; a year earlier (12-month cohort to 31 Oct 2025): 0.0%, +0.0 points.",
+         "Net revenue retention (12-month cohort to 31 Oct 2026): 106.5%; a year earlier (12-month cohort to 31 Oct 2025): 122.7%, -16.2 points.",
+         "Gross revenue retention (12-month cohort to 31 Oct 2026): 99.3%; a year earlier (12-month cohort to 31 Oct 2025): 100.0%, -0.7 points.",
+         "MRR peaked at $43,813.56 (Sep 2026) and is $40,308.46 at 31 Oct 2026 (-8.0%).",
+         "MRR bridge, 12 months to 31 Oct 2026: $37,839.65 on 31 Oct 2025 + new MRR $0.00 + expansion MRR $16,056.28 + reactivation MRR $0.00 \u2212 contraction MRR $13,587.47 \u2212 churned MRR $0.00 = $40,308.46.",
+         "0 customers left at a month-end in the window (churned customers); logo churn counts only the customers in force on 31 Oct 2025 who are not in force now, so the two differ: customers who joined in the window or came back are in the count only.",
+         "6,000 rows are 200 customers (200 with more than one row); 200 in force at 31 Oct 2026."
+        ],
+        "window_span": {
+         "window": "12 months",
+         "moves": "12 months",
+         "cohort": "12 months",
+         "window_adj": " 12-month"
+        }
+       },
+       [
+        "MRR over time",
+        "Net revenue retention over time",
+        "MRR bridge, 12 months to 31 Oct 2026: $37,839.65 \u2192 $40,308.46",
+        "MRR by plan (as of 31 Oct 2026)",
+        "Net revenue retention by plan (12-month cohort to 31 Oct 2026)",
+        "Logo churn by plan (12-month cohort to 31 Oct 2026)",
+        "New MRR by plan (12 months to 31 Oct 2026)",
+        "Churned MRR by plan (12 months to 31 Oct 2026)",
+        "monthly recurring revenue fell 8.0% in Oct 2026 vs Sep 2026",
+        "monthly recurring revenue fell 8.0% in Oct 2026 vs Sep 2026"
+       ],
+       [
+        6000,
+        7,
+        30
+       ],
+       [
+        2024,
+        2025,
+        2026
+       ],
+       [
+        "Read as SaaS subscription data (MRR, ARR, paying customers, new MRR, churned MRR, logo churn, net revenue retention, gross revenue retention). MRR is the monthly run-rate of the customers paying at the latest date (an annual plan \u00f7 12, net of discounts; trials, paused and unpaid subscriptions out, past due in), not revenue; movements and retention compare each customer's MRR at month-ends over the 12 months to that date, and annual churn is measured on the customers paying 12 months earlier, never a monthly rate \u00d7 12. A customer who starts and leaves inside one month appears in no month-end figure.",
+        "The churned column is a flag, not a dated event: the share of rows flagged is not a churn rate."
+       ]
+      ]
+     }
+    },
+    "latency_s": 38.69,
+    "cost_usd": 0.04056,
+    "llm_calls": 2,
+    "truncated_calls": 0,
+    "rejections": [
+     "typed_refused"
+    ],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"headline\": {\n    \"text\": \"Recurring revenue is up year-over-year but has pulled back from its September 2026 peak, with net revenue retention declining meaningfully over the past 12 months.\",\n    \"evidence\": [\"trend:mrr:YoY\", \"trend:mrr:MoM\", \"clean:story\"]\n  },\n  \"summary\": [\n    {\n      \"text\": \"Monthly recurring revenue grew +6.5% year-over-year to $40,308.46 as of 31 Oct 2026, driven entirely by expansion from existing customers with no new or churned MRR in the period.\",\n      \"evidence\": [\"trend:mrr:YoY\", \"clean:story\"]\n    },\n    {\n      \"text\": \"Net revenue retention fell from 122.7% to 106.5% over the same 12-month window, signalling that expansion is slowing even as logo retention remains perfect.\",\n      \"evidence\": [\"clean:story\"]\n    }\n  ],\n  \"findings\": [\n    {\n      \"text\": \"Monthly recurring revenue stands at $40,308.46 on 31 Oct 2026, up +6.5% year-over-year, but down from a peak of $43,813.56 reached in Sep 2026.\",\n      \"evidence\": [\"trend:mrr:YoY\", \"clean:story\"]\n    },\n    {\n      \"text\": \"All MRR growth over the 12 months to 31 Oct 2026 came from expansion MRR of $16,056.28, fully offset in part by contraction MRR of $13,587.47; new MRR, reactivation MRR, and churned MRR were each $0.00.\",\n      \"evidence\": [\"clean:story\"]\n    },\n    {\n      \"text\": \"Net revenue retention dropped from 122.7% (12-month cohort to 31 Oct 2025) to 106.5% (12-month cohort to 31 Oct 2026), a decline of 16.2 points, while gross revenue retention moved from 100.0% to 99.3%.\",\n      \"evidence\": [\"clean:story\"]\n    },\n    {\n      \"text\": \"Logo churn is 0.0% for both the cohort to 31 Oct 2026 and the cohort to 31 Oct 2025, meaning all 200 customers active a year ago remain in force today.\",\n      \"evidence\": [\"clean:story\"]\n    }\n  ],\n  \"claims\": [\n    {\n      \"kind\": \"comparison\",\n      \"metric\": \"net revenue retention\",\n      \"a\": \"12-month cohort to 31 Oct 2026\",\n      \"b\": \"12-month cohort to 31 Oct 2025\",\n      \"evidence_id\": \"clean:story\"\n    }\n  ],\n  \"actions\": [\n    {\n      \"action\": \"Investigate the accounts driving $13,587.47 in contraction MRR to understand whether downgrades are concentrated in a segment or product tier.\",\n      \"impact\": \"Contraction is the only force working against growth; slowing it would directly lift net revenue retention.\",\n      \"evidence\": [\"clean:story\"]\n    },\n    {\n      \"action\": \"Review the expansion pipeline to identify which customers have headroom to grow, given that expansion MRR is the sole source of new revenue.\",\n      \"impact\": \"With no new MRR entering, sustaining growth depends entirely on upselling the existing 200-customer base.\",\n      \"evidence\": [\"clean:story\"]\n    },\n    {\n      \"action\": \"Monitor monthly recurring revenue monthly through early 2027 to determine whether the Sep-to-Oct 2026 decline is a one-month dip or the start of a downward trend.\",\n      \"impact\": \"A single month's movement could be noise; confirming the direction early allows faster intervention.\",\n      \"evidence\": [\"trend:mrr:MoM\", \"clean:story\"]\n    }\n  ],\n  \"caveats\": [\n    \"The month-over-month and year-over-year signals point in opposite directions (MoM \u22128.0%, YoY +6.5%); the short-term picture is weaker than the annual one, and both should be tracked together.\",\n    \"Monthly recurring revenue here is a run-rate snapshot, not recognised revenue; movements reflect changes in subscription value at month-ends and exclude customers who start and leave within a single month.\",\n    \"The dataset covers 200 customers, a small base; a handful of large contractions or expansions can move aggregate metrics significantly, so per-account review is advisable alongside the totals.\"\n  ],\n  \"questions\": [\n    \"Which specific accounts account for the largest share of the $13,587.47 contraction MRR, and what product or usage signals preceded their downgrades?\",\n    \"Is the Sep-to-Oct 2026 monthly recurring revenue decline concentrated in a particular customer segment, plan type, or contract renewal cohort?\",\n    \"Given that new MRR is $0.00 for the full 12-month period, is there a pipeline of new customers expected to enter, and when might they appear in the data?\"\n  ]\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "I'll work through each sentence carefully.\n\n0. \"pulled back from peak\" = direction/trend; \"declining meaningfully\" = size of change. Neither grades a measure's level against a norm.\n1. MRR growth \"driven entirely by expansion from existing customers\" \u2014 expansion is a component of MRR itself, not an outside factor. Arithmetic decomposition.\n2. \"signalling that expansion is slowing\" \u2014 a hedge/sign, not a stated fact.\n3. Direction and trend only.\n4. Arithmetic decomposition of MRR into its own components.\n5. Numbers only, no grading or causal claim.\n6. Factual statement, no grade or cause.\n7. A recommended action (\"Investigate\").\n8. \"Slowing it would directly lift net revenue retention\" \u2014 a recommended/conditional action's effect. \"Only force working against growth\" \u2014 rank inside data. Neither.\n9. A recommended action.\n10. \"sustaining growth depends entirely on upselling\" \u2014 this states that the absence of new MRR (a condition) causes growth to depend on upselling. But it's framed as a conditional/recommended implication, not a stated causal fact about a measure changing.\n11. A recommended action.\n12. Hedged explanation, no cause or verdict.\n13. A question.\n14. A question.\n15. A question.\n16. \"the short-term picture is weaker than the annual one\" \u2014 \"weaker\" grades the short-term picture/period's performance against the annual one. That's a rank comparison inside the data, not against an outside norm.\n17. Data quality/methodology explanation.\n18. Data quality/scope note; \"advisable\" is a recommendation.\n\n```json\n{\"0\": \"neither\", \"1\": \"neither\", \"2\": \"neither\", \"3\": \"neither\", \"4\": \"neither\", \"5\": \"neither\", \"6\": \"neither\", \"7\": \"neither\", \"8\": \"neither\", \"9\": \"neither\", \"10\": \"neither\", \"11\": \"neither\", \"12\": \"neither\", \"13\": \"neither\", \"14\": \"neither\", \"15\": \"neither\", \"16\": \"neither\", \"17\": \"neither\", \"18\": \"neither\"}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": false
+   }
+  ]
+ }
+}

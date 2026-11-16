@@ -328,6 +328,40 @@ BOOKS = [(mrr_books(), SAAS, MRR_ROLES), (subscription_lists(), SAAS, LIST_ROLES
 SHAPES = ["mrr_export", "subscription_list", "roster", "snapshots"]
 
 
+# ── The property hook (5.7b-3): every pack's shapes run P1–P5 ──────────────────────────────────
+
+# A pack's shapes, each a generator in BOOKS. A new pack (Domain 7 on) registers its own here.
+SHAPES_BY_PACK = {"saas": ["mrr_export", "subscription_list"], "hr": ["roster", "snapshots"]}
+# Packs with no generator yet: their datasets run tier (b), the oracle and the golden only. The
+# list only shrinks (lower the count with it) and is empty before v0.1 (ROADMAP Phase 6).
+NO_GENERATOR_YET = {"retail", "banking", "healthcare", "insurance"}
+NO_GENERATOR_COUNT = 4
+
+
+def _unregistered(packs, by_pack, shapes, gaps):
+    """The packs P1–P5 never reach: no dataset in the every-filter list, or no registered shape
+    and no named gap."""
+    return sorted(d for d in packs if not by_pack.get(d) or not (shapes.get(d) or d in gaps))
+
+
+def test_every_pack_registers_its_shapes_or_is_a_known_gap():
+    from tests.test_dashboard_filters import DATASETS_BY_PACK
+    packs = {p.domain for p in dp.load_packs()}
+    assert _unregistered(packs, DATASETS_BY_PACK, SHAPES_BY_PACK, NO_GENERATOR_YET) == []
+    assert _unregistered({"iot"}, DATASETS_BY_PACK, SHAPES_BY_PACK, NO_GENERATOR_YET) == ["iot"]
+    assert len(NO_GENERATOR_YET) == NO_GENERATOR_COUNT and NO_GENERATOR_YET <= packs
+    assert not NO_GENERATOR_YET & set(SHAPES_BY_PACK)
+    for domain, shapes in SHAPES_BY_PACK.items():
+        assert shapes and all(BOOKS[SHAPES.index(s)][1].domain == domain for s in shapes), domain
+    assert sorted(s for shapes in SHAPES_BY_PACK.values() for s in shapes) == sorted(SHAPES)
+
+
+@pytest.mark.xfail(strict=True, reason="PR14-01: retail, banking, healthcare and insurance have no "
+                   "P1-P5 generator; due before v0.1 (ROADMAP Phase 6)")
+def test_every_pack_has_a_generator():
+    assert not NO_GENERATOR_YET
+
+
 @pytest.mark.parametrize("book,pack,roles", BOOKS, ids=SHAPES)
 @given(data=st.data())
 def test_p3_row_order_never_changes_a_kpi(book, pack, roles, data):

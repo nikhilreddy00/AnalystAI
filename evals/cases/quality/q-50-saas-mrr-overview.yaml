@@ -26,7 +26,10 @@ defects:
   label: overstated
   text: Annual logo churn is 27.9% (monthly churn of 2.3% × 12), so more than a quarter of customers leave
     each year.
-natural: []
+natural:   # 5.7b-3 (ADR-0009): a benchmark verdict is overreach; labelled before that class existed
+- i: 7
+  label: overstated
+  why: '"a 20.1% logo churn rate is high enough to threaten long-term growth" grades the level against a norm'
 label_note: 'Seeded over an MRR export overview: a period NRR (MRR now ÷ then, new customers in: 136.2%, the
   cohort figure is 91.1%), a causal price claim, and monthly churn × 12 presented as annual churn (the 12-month
   cohort figure is 20.1%).'

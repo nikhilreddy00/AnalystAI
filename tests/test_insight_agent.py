@@ -27,8 +27,20 @@ SESSION, _, BUNDLE = _bundle("ins-01")
 B = "trend:revenue (B):MoM"
 
 
+def _sound(response: dict, session=SESSION, flag: tuple = ()) -> str:
+    """The prose judge's reply to the model's free text (ADR-0009): 'neither' for each sentence
+    it is asked about, 'cause' for those in `flag`."""
+    from agents.insight_agent import _split, _texts
+    from agents.prose_judge import phrase_hit
+    said = list(dict.fromkeys(s for t, ex in _texts(response) for s in _split(t, session.narrative, ex)))
+    asked = [s for s in said if not phrase_hit(s)]
+    return json.dumps({str(n): "cause" if s in flag else "neither" for n, s in enumerate(asked)})
+
+
 def _run(response, session=SESSION, past=None, responses=None) -> tuple:
-    llm = RecordedClient(responses or [json.dumps(response) if isinstance(response, dict) else response])
+    judge = [_sound(response, session)] if isinstance(response, dict) else []
+    llm = RecordedClient(responses or [json.dumps(response) if isinstance(response, dict) else response,
+                                       *judge])
     report = asyncio.run(run_insight_agent(session.model_copy(deep=True), llm, past))
     return report, llm
 
@@ -50,7 +62,137 @@ def test_a_faithful_report_passes_through():
     ev = report.executive_view
     assert ev.headline == "Segment B revenue fell 12.6% last month."
     assert ev.findings[0].evidence_ids == [B] and ev.action_items[0].evidence_ids == [B]
-    assert len(llm.calls) == 1 and llm.calls[0]["system"].startswith("# Agent card: insight (v4)")
+    assert llm.calls[0]["system"].startswith("# Agent card: insight (v5)")
+    assert [c["agent"] for c in llm.calls] == ["insight", "prose_judge"]
+    assert not any("could not be checked" in c or "were removed" in c
+                   for c in report.analyst_view.caveats)
+
+
+def _named(**names):
+    """SESSION with display names that differ from the raw names written as words."""
+    session = SESSION.model_copy(deep=True)
+    session.narrative.column_display_names.update(names)
+    return session
+
+
+def test_the_judge_reads_exactly_the_free_text_the_report_would_show():
+    """One reading of the model's free text: the judge is asked about the sentences the report
+    keeps from each slot (headline, 2 paragraphs, 4 findings, 3 actions' action and impact,
+    3 questions, 3 caveats), executive text in display names, caveats as written; never the
+    over-limit items."""
+    session = _named(units="units sold")
+    ev = {"evidence": [B]}
+    response = {
+        "headline": {"text": "Headline units rose. It held.", **ev},
+        "summary": [{"text": "First paragraph on units.", **ev}, "Second paragraph on units.",
+                    "Third paragraph on units."],
+        "findings": [{"text": f"The {n} finding on units.", **ev}
+                     for n in ("first", "second", "third", "fourth", "fifth")],
+        "actions": [{"action": f"Act {n} on units.", "impact": f"Impact {n} on units.", **ev}
+                    for n in ("first", "second", "third", "fourth")],
+        "questions": [f"Why {n} units?" for n in ("first", "second", "third", "fourth")],
+        "caveats": ["", "Caveat on units.", "Last caveat on units.", "Over-limit caveat on units."]}
+    report, llm = _run(response, session)
+    body = llm.calls[1]["messages"][0]["content"]
+    asked = re.findall(r"^\d+\. (.+)$", body, flags=re.M)
+    exec_ = ["Headline units sold rose.", "It held.", "First paragraph on units sold.",
+             "Second paragraph on units sold.",
+             *(f"The {n} finding on units sold." for n in ("first", "second", "third", "fourth")),
+             *(s for n in ("first", "second", "third")
+               for s in (f"Act {n} on units sold.", f"Impact {n} on units sold.")),
+             *(f"Why {n} units sold?" for n in ("first", "second", "third"))]
+    assert asked == [*exec_, "Caveat on units.", "Last caveat on units."]
+    view = report.executive_view
+    shown = [view.headline, *(c.text for c in view.paragraphs), *(c.text for c in view.findings),
+             *(x for a in view.action_items for x in (a.action, a.expected_impact)),
+             *report.proactive_questions]
+    assert shown == ["Headline units sold rose. It held.", *exec_[2:]]
+    assert [c for c in report.analyst_view.caveats if "units" in c] == asked[-2:]
+
+
+def _traced(monkeypatch) -> list:
+    from agents import insight_agent
+    traced = []
+    monkeypatch.setattr(insight_agent, "trace_verdict", lambda *a: traced.append(a))
+    return traced
+
+
+FREE_TEXT_REMOVED = ("1 sentence(s) stating a cause or grading a result against a norm were removed: "
+                     "this data shows neither a controlled test nor an outside benchmark.")
+
+
+@pytest.mark.parametrize("pack", ["retail", "own words", "none"])
+def test_a_sentence_the_judge_flags_is_removed_and_said_and_a_failed_judge_is_said(pack, monkeypatch):
+    """ADR-0009 (D1-09): free text that states a cause or a benchmark verdict is the judge's to
+    find, never a regex's; a flagged sentence leaves and the report says why, in the pack's words
+    or the default's. A judge that fails removes nothing and says the wording went unchecked
+    (G3), never passes as checked."""
+    from agents import insight_agent
+    from domain_pack import pack_for
+    retail = pack_for("retail")
+    own = retail.model_copy(update={"text": {**retail.text, "free_text_removed": "Own: {n} cut."}})
+    monkeypatch.setattr(insight_agent, "defaults_pack", lambda contract: None)
+    monkeypatch.setattr(insight_agent, "pack_for", lambda domain: {
+        "retail": retail, "own words": own, "none": None}[pack])
+    traced = _traced(monkeypatch)
+    cause = "Segment B pricing caused the drop."
+    good = _good(findings=[{"text": f"Segment B revenue fell 12.6% in Oct 2026 vs Sep 2026. {cause}",
+                            "evidence": [B]}])
+    report, _ = _run(None, responses=[json.dumps(good), _sound(good, flag=(cause,))])
+    assert report.executive_view.findings[0].text == "Segment B revenue fell 12.6% in Oct 2026 vs Sep 2026."
+    assert ("Own: 1 cut." if pack == "own words" else FREE_TEXT_REMOVED) in report.analyst_view.caveats
+    assert ("insight", insight_agent.PROMPT_VERSION, "overreach_removed") in traced
+    grade = "Segment B revenue sits below the industry average."   # the $0 phrases hold regardless
+    good["findings"][0]["text"] += f" {grade}"
+    report, _ = _run(None, responses=[json.dumps(good), "not the json"])
+    assert cause in report.executive_view.findings[0].text
+    assert grade not in report.executive_view.findings[0].text
+    assert ("The written summary could not be checked for causes or grades the data can't show; "
+            "read its wording with care.") in report.analyst_view.caveats
+
+
+def test_typed_claims_are_written_by_code_and_a_verdict_is_said_without_one(monkeypatch):
+    """The model's causes and comparisons are data (agents/claims.py): code writes the sentence,
+    a benchmark verdict becomes a caveat with no verdict in it, and a refused claim is dropped."""
+    from agents import insight_agent
+    traced = _traced(monkeypatch)
+    good = _good(claims=[
+        {"kind": "comparison", "metric": "average revenue", "a": "B", "b": "A",
+         "evidence_id": "seg:segment/revenue"},
+        {"kind": "causal", "cause": "marketing_spend", "effect": "revenue",
+         "evidence_id": "corr:revenue__marketing_spend"},
+        {"kind": "benchmark", "metric": "revenue", "verdict": "excellent", "source": "peers"},
+        {"kind": "causal", "cause": "the price change", "effect": "revenue", "evidence_id": B}])
+    report, _ = _run(good)
+    typed = [c for c in report.executive_view.findings if c.typed]
+    assert [c.text for c in typed] == [
+        "Average revenue: B (98.06) is lower than A (121.29).",
+        "Marketing spend and revenue move together in the data: an association, not proof that "
+        "one causes the other."]
+    assert not any("excellent" in c for c in report.analyst_view.caveats)
+    assert any("no outside benchmark" in c for c in report.analyst_view.caveats)
+    assert not any("price change" in c.text for c in report.executive_view.findings)
+    assert ("insight", insight_agent.PROMPT_VERSION, "typed_refused") in traced
+
+
+def test_typed_claims_are_the_first_two_in_display_names_under_the_executive_rules():
+    """At most 2 typed claims and 1 benchmark caveat; a name is the report's display name, and a
+    comparison is said under its breakdown's measure, never the label the model wrote (5.7b-3
+    audit: 'units' over revenue's values)."""
+    seg = "seg:segment/revenue"
+    good = _good(claims=[
+        {"kind": "comparison", "metric": "units", "a": "B", "b": "A", "evidence_id": seg},
+        {"kind": "causal", "cause": "marketing_spend", "effect": "revenue",
+         "evidence_id": "corr:revenue__marketing_spend"},
+        {"kind": "comparison", "metric": "revenue", "a": "A", "b": "B", "evidence_id": seg},
+        {"kind": "benchmark", "metric": "revenue", "verdict": "excellent", "source": "peers"},
+        {"kind": "benchmark", "metric": "marketing spend", "verdict": "poor", "source": "peers"}])
+    report, _ = _run(good, _named(revenue="sales revenue"))
+    assert [c.text for c in report.executive_view.findings if c.typed] == [
+        "Average sales revenue: B (98.06) is lower than A (121.29).",
+        "Marketing spend and sales revenue move together in the data: an association, not proof "
+        "that one causes the other."]
+    assert sum("no outside benchmark" in c for c in report.analyst_view.caveats) == 1
 
 
 def test_an_ungrounded_number_removes_its_sentence_only():

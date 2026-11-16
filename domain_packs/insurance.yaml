@@ -119,7 +119,6 @@ text:
   grain_line: "One row is a claim at one valuation (or a policy transaction): count claims as distinct {key}, never rows; an average per claim divides by claims."
   unsupported_alternatives: "I can answer with what the data has: incurred, paid and open reserves by accident year, line or coverage, claim counts and severity, or the loss ratio, frequency and retention by line on a policy table. Which would help?"
   kpis_default: its premium and claims columns
-  causal_removed: "{n} sentence(s) saying a rating factor, underwriting or pricing change caused a loss result were removed: from observational data without a controlled comparison that can't be shown."
   non_product_rule: an earlier valuation of a claim (left out)
   money_rows_note: "Each claim's latest valuation{currency} only: {n} earlier valuation rows left out."
 
@@ -280,11 +279,6 @@ role_caveats:
   gender: "Gender is shown as a description only: rating or underwriting on sex is restricted or banned in several US states (NAIC Model 880, Colorado SB21-169), so no rate recommendation is made on it."
   marital_status: "Marital status is shown as a description only: refusing or limiting coverage on it is an unfair trade practice under NAIC Model 880, so no rating recommendation is made on it."
 
-causal_triggers: [rating factor, female, male, women, men, policyholders, drivers, rating factors, rating variable, underwriting, underwriter,
-                  pricing, price change, rate increase, rate change, rate action, deductible,
-                  deductibles, telematics, credit score, territory, gender, age, discount,
-                  discounts, adjuster, adjusters, claims handling, claims process, fraud unit,
-                  agent, agents, broker, brokers, campaign, program, programs]
 
 # Never said (the quality check flags it unless the sentence hedges): losses of a still-developing
 # year called final [WM p.43]

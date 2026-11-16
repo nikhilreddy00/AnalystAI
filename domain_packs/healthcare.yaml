@@ -122,7 +122,6 @@ text:
   grain_line: "One row is a claim line: count claims as distinct {key}, never rows; an average per claim divides by claims."
   unsupported_alternatives: "I can answer with what the data has: stays, length of stay, readmissions and mortality by department or month, or paid amounts and denials by payer or procedure. Which would help?"
   kpis_default: its stays and claims columns
-  causal_removed: "{n} sentence(s) saying a treatment, program or department caused an outcome were removed: from observational data without risk adjustment that can't be shown."
   cancel_rule: voided (left out)
   non_product_rule: an earlier version of a replaced claim line (left out)
   money_rows_note: "Last versions of claim lines{currency} only: {n} other rows (earlier versions or voided claims) left out."
@@ -249,13 +248,6 @@ caveats:
   test_excluded: "{n} test records are left out."
   recent_incomplete: "Service months from {from_month} on are incomplete: claims keep arriving for about {months} months after the service, so a drop there is lag, not a trend."
 
-causal_triggers: [treatment, treatments, therapy, medication, medications, drug, drugs,
-                  intervention, program, programs, care management, discharge planning,
-                  protocol, staffing, physician, physicians, surgeon, department, hospital,
-                  follow-up call, follow up call, telehealth, performs, perform, performing,
-                  performance, better care, worse care, poorer care, quality of care,
-                  in need of attention, underperform, underperforms, underperforming,
-                  coding patterns, contract terms]
 small_cell_nouns: [patients, patient, encounters, encounter, stays, stay, admissions, admission,
                    discharges, discharge, deaths, death, readmissions, readmission, members,
                    member, people, cases, beneficiaries]

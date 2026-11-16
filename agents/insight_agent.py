@@ -41,10 +41,12 @@ from guardrails import (
     mask_pii,
     ungrounded_dates,
     ungrounded_numbers,
-    claim_causal_overreach,
     claim_rank_conflict,
     without_dates,
 )
+from agents import claims as typed_claims
+from agents import prose_judge
+from domain_pack.pack import TEXT_DEFAULTS
 from llm.client import LLMClient, trace_verdict
 from orchestrator.state import (
     ActionItem,
@@ -64,7 +66,7 @@ from orchestrator.state import (
 
 logger = logging.getLogger(__name__)
 
-PROMPT_VERSION = "v4"
+PROMPT_VERSION = "v5"   # v5: causes, verdicts and comparisons as typed claims (ADR-0009)
 
 # The refusal rules are also the labelling policy of the insight eval (evals/cases/insight/).
 INSIGHT_CARD = AgentCard(
@@ -329,7 +331,31 @@ async def run_insight_agent(session: AnalysisSession, llm: LLMClient,
         # (refusal, truncation, outage) propagate from llm.complete.
         trace_verdict("insight", PROMPT_VERSION, "unparseable")
         data = {}
-    return _assemble(session, ctx, data)
+    # the model's free text, judged once for a cause or a benchmark verdict (ADR-0009)
+    said = list(dict.fromkeys(s for t, ex in _texts(data) for s in _split(t, session.narrative, ex)))
+    got = await prose_judge.flagged(said, llm)
+    return _assemble(session, ctx, data, None if got is None else {said[i] for i in got})
+
+
+def _texts(data: dict) -> list[tuple[object, bool]]:
+    """The model's free text as _assemble reads it, each with whether it is executive text."""
+    def items(key: str) -> list:
+        v = data.get(key)
+        return v if isinstance(v, list) else []
+    head = data.get("headline")
+    return [(head.get("text") if isinstance(head, dict) else head, True),
+            *((s.get("text") if isinstance(s, dict) else s, True) for s in items("summary")[:2]),
+            *((f.get("text"), True) for f in items("findings")[:4] if isinstance(f, dict)),
+            *((x, True) for a in items("actions")[:3] if isinstance(a, dict)
+              for x in (a.get("action"), a.get("impact"))),
+            *((q, True) for q in items("questions")[:3] if isinstance(q, str)),
+            *((c, False) for c in items("caveats")[:3] if isinstance(c, str))]
+
+
+def _split(text, narrative: DataNarrative | None, executive: bool) -> list[str]:
+    """A text's sentences as the report shows them (display names on executive text)."""
+    text = _clean_for_executive(str(text or ""), narrative) if executive else str(text or "")
+    return [s for s in _SENTENCE_RE.split(text.strip()) if s.strip()]
 
 
 async def _ask(ctx: InsightContext, llm: LLMClient) -> dict | None:
@@ -350,16 +376,15 @@ async def _ask(ctx: InsightContext, llm: LLMClient) -> dict | None:
     return None
 
 
-def _assemble(session: AnalysisSession, ctx: InsightContext, data: dict) -> InsightReport:
+def _assemble(session: AnalysisSession, ctx: InsightContext, data: dict,
+              overreach: set[str] | None = frozenset()) -> InsightReport:
+    """The report from the model's reply. `overreach`: the free-text sentences the prose judge
+    flagged (a cause or a benchmark verdict), removed; None when the judge failed (said)."""
     findings = session.analysis_findings
     narrative = session.narrative
     evidence = {e.id: e for e in findings.evidence}
     pool, has_dates = ctx.pool(), ctx.first is not None
-    removed = {"sentences": 0, "uncited": 0, "ranks": 0, "causal": 0}
-    contract = session.data_contract
-    pack = defaults_pack(contract)   # a removal changes the report: strong matches only
-    # 5.7: "the discount drove sales" with no experiment cited is removed, as quality flags it
-    triggers = pack.causal_triggers if pack and not any(e.kind == "test" for e in findings.evidence) else ()
+    removed = {"sentences": 0, "uncited": 0, "ranks": 0, "overreach": 0}
     # The quality check's rank rule as a repair: "B has the lowest average (98.06)" when C does
     # (ins-02, in all 3 runs) is removed before the report ships.
     groups = [{"id": i, "values": [(str(r.get("name")), r.get("value")) for r in f.results]}
@@ -372,14 +397,13 @@ def _assemble(session: AnalysisSession, ctx: InsightContext, data: dict) -> Insi
         removed["sentences"] += bool(bad)
         misranked = not bad and claim_rank_conflict(sentence, groups) is not None
         removed["ranks"] += misranked
-        causal = not bad and not misranked and bool(triggers) and \
-            claim_causal_overreach(sentence, [], triggers) is not None
-        removed["causal"] += causal
-        return not bad and not misranked and not causal
+        judged = not bad and not misranked and (prose_judge.phrase_hit(sentence) or (
+            overreach is not None and sentence in overreach))   # the phrases hold if the judge fails
+        removed["overreach"] += judged
+        return not bad and not misranked and not judged
 
     def fix(text, executive: bool = True) -> str:
-        text = _clean_for_executive(str(text or ""), narrative) if executive else str(text or "")
-        return " ".join(s for s in _SENTENCE_RE.split(text.strip()) if s.strip() and ok(s, executive))
+        return " ".join(s for s in _split(text, narrative, executive) if ok(s, executive))
 
     def cited(item) -> list[str]:
         raw = item.get("evidence") if isinstance(item, dict) else None
@@ -403,6 +427,12 @@ def _assemble(session: AnalysisSession, ctx: InsightContext, data: dict) -> Insi
             continue
         text = fix(f.get("text")) or _plain(evidence[ids[0]], findings, narrative)
         claims.append(Claim(text=text, evidence_ids=ids))
+    # causes and comparisons the model gave as data: checked and written by code (ADR-0009)
+    typed, verdicts, refused = typed_claims.settle(data.get("claims"), findings,
+                                                   lambda s: _name(s, narrative))
+    claims += [c for c in typed[:2] if ok(c.text, True)]
+    if refused:
+        trace_verdict("insight", PROMPT_VERSION, "typed_refused")
     actions: list[ActionItem] = []
     for a in items("actions")[:3]:
         ids = cited(a)
@@ -437,13 +467,16 @@ def _assemble(session: AnalysisSession, ctx: InsightContext, data: dict) -> Insi
     if removed["ranks"]:
         caveats.append(f"{removed['ranks']} sentence(s) ranking a group differently from its "
                        "breakdown were removed.")
-    if removed["causal"]:
-        trace_verdict("insight", PROMPT_VERSION, "causal_removed")
+    caveats += verdicts[:1]   # a benchmark verdict the model wanted: its value, said without one
+    if removed["overreach"]:
+        trace_verdict("insight", PROMPT_VERSION, "overreach_removed")
         pack = defaults_pack(session.data_contract) or pack_for(session.data_contract.domain
                                                                  if session.data_contract else None)
-        caveats.append(pack.say("causal_removed", n=removed["causal"]) if pack else
-                       f"{removed['causal']} sentence(s) saying an action caused a change were "
-                       "removed: without a control group that can't be shown.")
+        caveats.append(pack.say("free_text_removed", n=removed["overreach"]) if pack else
+                       TEXT_DEFAULTS["free_text_removed"].format(n=removed["overreach"]))
+    if overreach is None:   # the judge failed: say so, never pass the text as checked
+        caveats.append("The written summary could not be checked for causes or grades the data "
+                       "can't show; read its wording with care.")
 
     executive = ExecutiveSummary(headline=headline, headline_evidence_ids=head_ids,
                                  paragraphs=summary, findings=claims, action_items=actions)

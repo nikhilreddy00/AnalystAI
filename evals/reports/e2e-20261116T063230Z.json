@@ -1,0 +1,996 @@
+{
+ "meta": {
+  "suite": "e2e",
+  "report": "e2e-20261116T063230Z",
+  "k": 1,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "5bc3c93",
+  "started_at": "20261116T063230Z",
+  "only": "e2e-53",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 1,
+  "runs": 1,
+  "pass_rate": 1.0,
+  "case_majority_pass_rate": 1.0,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "hard_rules_na": 0,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 0,
+  "runs_with_prose_rewritten": 0,
+  "runs_with_pii_guard_hit": 0,
+  "cost_per_question_usd": 0.0178,
+  "latency_p50_s": 14.36,
+  "latency_p95_s": 14.36,
+  "by_domain": {
+   "healthcare": {
+    "cases": 1,
+    "k_min": 1,
+    "k_max": 1,
+    "cases_passed_all_runs": 1,
+    "pass_rate": 1.0,
+    "hard_rule_violations": 0,
+    "hard_rules_na": 0,
+    "builtin_only_cases": [],
+    "model_dependent_passed": 0,
+    "model_dependent_cases": 0
+   }
+  }
+ },
+ "runs": {
+  "e2e-53": [
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": true,
+      "detail": "want \u22480.1425 [(100.0, '%')] in answer; saw [30.0, 14.3, 2.8, 30.0, 1.0, 30.0, 20.0, 7.0, 7.0, 2.0, 2.0, 5.0]"
+     },
+     {
+      "kind": "must_not_match",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "kind": "must_not_match",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "charts_lint_clean",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "charts_have_rationale",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_exits",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "answer": "30-day readmission rate by Department: Cardiology leads at 14.3%, Orthopedics at 2.8%. How: Rows whose Discharge Date is at least 30 days before the last Admit Date followed by another row of the same MRN starting 1\u201330 days after Discharge Date (the next must have Encounter Type is inpatient / ip / inpt / i) where Encounter Type is inpatient / ip / inpt / i and Discharge Disposition is not 20 / 7 / 07 / 2 / 02 / 5 / 05 / 43 / 66 / 82 / 85 / 88 / 93 / 94 / expired / died / deceased / ama / left against medical advice / against medical advice / transferred / transfer to acute care / transfer acute, divided by rows whose Discharge Date is at least 30 days before the last Admit Date where Encounter Type is inpatient / ip / inpt / i and Discharge Disposition is not 20 / 7 / 07 / 2 / 02 / 5 / 05 / 43 / 66 / 82 / 85 / 88 / 93 / 94 / expired / died / deceased / ama / left against medical advice / against medical advice / transferred / transfer to acute care / transfer acute; over counted rows.\nCardiology 14.3%\nGeneral Medicine 8.2%\nPulmonology 8.1%\nNeurology 7.0%\nOrthopedics 2.8%\nOther (fewer than 11 each) 0.0%",
+    "pii_exits": {
+     "rule": "pii_exits",
+     "ok": true,
+     "detail": "ok"
+    },
+    "pii_canary_hits": 0,
+    "pii_model_hits": 0,
+    "pii_planted": 5144,
+    "approvals": [],
+    "output": {
+     "session_id": "ea664b7a-8495-499b-8d03-b4ea46f8dc1d",
+     "user_id": "default",
+     "conversation_history": [
+      {
+       "role": "user",
+       "content": "What is the 30-day readmission rate by department?",
+       "timestamp": "2026-11-16T06:32:44.763918Z"
+      },
+      {
+       "role": "assistant",
+       "content": "30-day readmission rate by Department: Cardiology leads at 14.3%, Orthopedics at 2.8%. How: Rows whose Discharge Date is at least 30 days before the last Admit Date followed by another row of the same MRN starting 1\u201330 days after Discharge Date (the next must have Encounter Type is inpatient / ip / inpt / i) where Encounter Type is inpatient / ip / inpt / i and Discharge Disposition is not 20 / 7 / 07 / 2 / 02 / 5 / 05 / 43 / 66 / 82 / 85 / 88 / 93 / 94 / expired / died / deceased / ama / left against medical advice / against medical advice / transferred / transfer to acute care / transfer acute, divided by rows whose Discharge Date is at least 30 days before the last Admit Date where Encounter Type is inpatient / ip / inpt / i and Discharge Disposition is not 20 / 7 / 07 / 2 / 02 / 5 / 05 / 43 / 66 / 82 / 85 / 88 / 93 / 94 / expired / died / deceased / ama / left against medical advice / against medical advice / transferred / transfer to acute care / transfer acute; over counted rows.",
+       "timestamp": "2026-11-16T06:32:44.860515Z"
+      }
+     ],
+     "connector_config": {
+      "type": "csv",
+      "file_path": "/private/tmp/claude-501/-Users-uvnikhil-Projects-AnalystAI/e615e405-f0ef-47d3-b1c1-58b4127bff63/scratchpad/e2e/uploads/evals/inpatient-1.csv",
+      "connection_string": null,
+      "table_name": null,
+      "spreadsheet_id": null,
+      "sheet_name": null,
+      "service_account_json": null,
+      "url": null,
+      "auth_type": null,
+      "auth_value": null,
+      "api_key_header": null,
+      "pagination_key": null
+     },
+     "task_plan": {
+      "raw_query": "What is the 30-day readmission rate by department?",
+      "target_metrics": [
+       "Department"
+      ],
+      "timeframe": null,
+      "segments": [
+       "Department"
+      ],
+      "analysis_types": [
+       "eda",
+       "segmentation"
+      ],
+      "output_format": "both",
+      "resume_from": null,
+      "clarification_needed": false,
+      "clarification_question": null,
+      "question_intent": "segment_compare",
+      "targeted_params": {
+       "target_columns": [],
+       "metric_column": null,
+       "date_column": "Discharge Date",
+       "segment_column": "Department",
+       "segment_value": null,
+       "group_by": "Department",
+       "variant_column": null,
+       "n": null,
+       "order": null,
+       "frequency": null,
+       "test_type": null,
+       "aggregation": null,
+       "chart_type": null,
+       "kpi": "readmission_rate",
+       "period_start": null,
+       "period_end": null,
+       "compare": null
+      }
+     },
+     "data_contract": {
+      "source_type": "csv",
+      "row_count": 4203,
+      "column_count": 12,
+      "columns": [
+       {
+        "name": "Encounter ID",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "ID-54e8833fdb21223a",
+         "ID-a1ce47c20ddc3f17",
+         "ID-5c50192da15a5874",
+         "ID-9225050660f07852",
+         "ID-cd234b9965f71b22"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "named as an identifier ('Encounter ID')",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "MRN",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "ID-63564f706bfb5a82",
+         "ID-323c27f2261e6bf7",
+         "ID-d6f33cfd12ba0754",
+         "ID-81ac7cb5b1c336ea",
+         "ID-07141b75c0ea1171"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "id: the healthcare patient",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Patient ZIP",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "778",
+         "532",
+         "503",
+         "594",
+         "153"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "a postal code: a label, not a quantity",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Admit Date",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2025-11-01T00:00:00",
+         "2025-11-01T00:00:00",
+         "2025-11-01T00:00:00",
+         "2025-11-01T00:00:00",
+         "2025-11-02T00:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Discharge Date",
+        "dtype": "datetime64[us]",
+        "nullable": true,
+        "sample_values": [
+         "2025-11-02T00:00:00",
+         "2025-11-02T00:00:00",
+         "2025-11-04T00:00:00",
+         "2025-11-03T00:00:00",
+         "2025-11-04T00:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 1.24,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Encounter Type",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Inpatient",
+         "Inpatient",
+         "Inpatient",
+         "Inpatient",
+         "Inpatient"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Department",
+        "dtype": "object",
+        "nullable": false,
+        "sample_values": [
+         "General Medicine",
+         "General Medicine",
+         "General Medicine",
+         "Cardiology",
+         "Pulmonology"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "MS-DRG",
+        "dtype": "object",
+        "nullable": true,
+        "sample_values": [
+         "313",
+         "313",
+         "392",
+         "291",
+         "194"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 16.61,
+        "role_reason": "category: the healthcare drg (a code)",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Principal Dx",
+        "dtype": "object",
+        "nullable": false,
+        "sample_values": [
+         "R07.89",
+         "R07.89",
+         "K21.9",
+         "I50.23",
+         "J18.9"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Discharge Disposition",
+        "dtype": "int64",
+        "nullable": false,
+        "sample_values": [
+         1,
+         6,
+         3,
+         1,
+         1
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "category: the healthcare disposition (a code)",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Attending NPI",
+        "dtype": "object",
+        "nullable": false,
+        "sample_values": [
+         "1655501270",
+         "1655501270",
+         "1095936794",
+         "1942713139",
+         "1242844655"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "category: the healthcare provider (a code)",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Total Charges",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         9364.75,
+         13459.49,
+         23584.66,
+         22546.09,
+         18002.63
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       }
+      ],
+      "sample_rows": [
+       {
+        "Encounter ID": "ID-54e8833fdb21223a",
+        "MRN": "ID-63564f706bfb5a82",
+        "Patient ZIP": "778",
+        "Admit Date": "2025-11-01T00:00:00",
+        "Discharge Date": "2025-11-02T00:00:00",
+        "Encounter Type": "Inpatient",
+        "Department": "General Medicine",
+        "MS-DRG": "313",
+        "Principal Dx": "R07.89",
+        "Discharge Disposition": 1,
+        "Attending NPI": "1655501270",
+        "Total Charges": 9364.75
+       },
+       {
+        "Encounter ID": "ID-a1ce47c20ddc3f17",
+        "MRN": "ID-323c27f2261e6bf7",
+        "Patient ZIP": "532",
+        "Admit Date": "2025-11-01T00:00:00",
+        "Discharge Date": "2025-11-02T00:00:00",
+        "Encounter Type": "Inpatient",
+        "Department": "General Medicine",
+        "MS-DRG": "313",
+        "Principal Dx": "R07.89",
+        "Discharge Disposition": 6,
+        "Attending NPI": "1655501270",
+        "Total Charges": 13459.49
+       },
+       {
+        "Encounter ID": "ID-5c50192da15a5874",
+        "MRN": "ID-d6f33cfd12ba0754",
+        "Patient ZIP": "503",
+        "Admit Date": "2025-11-01T00:00:00",
+        "Discharge Date": "2025-11-04T00:00:00",
+        "Encounter Type": "Inpatient",
+        "Department": "General Medicine",
+        "MS-DRG": "392",
+        "Principal Dx": "K21.9",
+        "Discharge Disposition": 3,
+        "Attending NPI": "1095936794",
+        "Total Charges": 23584.66
+       },
+       {
+        "Encounter ID": "ID-9225050660f07852",
+        "MRN": "ID-81ac7cb5b1c336ea",
+        "Patient ZIP": "594",
+        "Admit Date": "2025-11-01T00:00:00",
+        "Discharge Date": "2025-11-03T00:00:00",
+        "Encounter Type": "Inpatient",
+        "Department": "Cardiology",
+        "MS-DRG": "291",
+        "Principal Dx": "I50.23",
+        "Discharge Disposition": 1,
+        "Attending NPI": "1942713139",
+        "Total Charges": 22546.09
+       },
+       {
+        "Encounter ID": "ID-cd234b9965f71b22",
+        "MRN": "ID-07141b75c0ea1171",
+        "Patient ZIP": "153",
+        "Admit Date": "2025-11-02T00:00:00",
+        "Discharge Date": "2025-11-04T00:00:00",
+        "Encounter Type": "Inpatient",
+        "Department": "Pulmonology",
+        "MS-DRG": "194",
+        "Principal Dx": "J18.9",
+        "Discharge Disposition": 1,
+        "Attending NPI": "1242844655",
+        "Total Charges": 18002.63
+       }
+      ],
+      "date_columns": [
+       "Admit Date",
+       "Discharge Date"
+      ],
+      "id_columns": [
+       "Encounter ID",
+       "MRN"
+      ],
+      "metric_columns": [
+       "Total Charges"
+      ],
+      "schema_summary": "4,203 rows \u00d7 12 columns. Dates: Admit Date from 2025-11-01 to 2026-10-31 (daily). Metrics: Total Charges. Identifiers: Encounter ID, MRN. Categories: Patient ZIP, Encounter Type, Department, MS-DRG, Principal Dx, Discharge Disposition, Attending NPI. Missing values: MS-DRG 16.61%, Discharge Date 1.24%. Patient data: identifiers withheld (Patient Name, DOB), record numbers pseudonymised; groups under 11 records appear as 'Other (fewer than 11 each)'.",
+      "source_query": null,
+      "source_evidence": {
+       "id": "source:data",
+       "kind": "source",
+       "claim": "Loaded 4,203 rows \u00d7 12 columns from a CSV file.",
+       "code": "pd.read_csv(<uploaded file>, encoding='utf-8', sep=',')",
+       "result_excerpt": "{\"roles\": {\"id\": [\"Encounter ID\", \"MRN\"], \"category\": [\"Patient ZIP\", \"Encounter Type\", \"Department\", \"MS-DRG\", \"Principal Dx\", \"Discharge Disposition\", \"Attending NPI\"], \"date\": [\"Admit Date\", \"Discharge Date\"], \"metric\": [\"Total Charges\"]}, \"personal_data\": {}, \"fingerprint\": \"067b9d7442d0a31a\"}",
+       "row_count": 4203,
+       "confidence": "medium",
+       "confidence_reason": "The layout was detected, not given: check the notes.",
+       "assumptions": [
+        "Patient data: Patient Name, DOB withheld; Encounter ID, MRN pseudonymised. Groups under 11 records are grouped as 'Other (fewer than 11 each)'."
+       ]
+      },
+      "fingerprint": "067b9d7442d0a31a7d0f628327fc298b7765821a18c9ba2ce71b21f9cf2593b4",
+      "pii_columns": [],
+      "phi": true,
+      "deidentification": [
+       {
+        "column": "Patient Name",
+        "operation": "withhold",
+        "strategy": "drop_column",
+        "reason": "personal, free text or too specific to be a category: withheld from analysis",
+        "rows_affected": 4203,
+        "before_null_pct": 0.0,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "DOB",
+        "operation": "withhold",
+        "strategy": "drop_column",
+        "reason": "personal, free text or too specific to be a category: withheld from analysis",
+        "rows_affected": 4203,
+        "before_null_pct": 0.0,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "Encounter ID",
+        "operation": "pseudonymize",
+        "strategy": "keyed_hash",
+        "reason": "identifier replaced by a one-way pseudonym (counts and repeat visits still work)",
+        "rows_affected": 4203,
+        "before_null_pct": 0.0,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "MRN",
+        "operation": "pseudonymize",
+        "strategy": "keyed_hash",
+        "reason": "identifier replaced by a one-way pseudonym (counts and repeat visits still work)",
+        "rows_affected": 4203,
+        "before_null_pct": 0.0,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "Patient ZIP",
+        "operation": "generalize",
+        "strategy": "zip3",
+        "reason": "ZIP reduced to its first 3 digits (000 for sparsely populated areas)",
+        "rows_affected": 4203,
+        "before_null_pct": 0.0,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "Department",
+        "operation": "pool",
+        "strategy": "small_cells",
+        "reason": "groups under 11 records grouped as 'Other (fewer than 11 each)'",
+        "rows_affected": 7,
+        "before_null_pct": 0.0,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "MS-DRG",
+        "operation": "pool",
+        "strategy": "small_cells",
+        "reason": "groups under 11 records grouped as 'Other (fewer than 11 each)'",
+        "rows_affected": 7,
+        "before_null_pct": 16.6,
+        "after_null_pct": 16.6,
+        "rows_removed": 0
+       },
+       {
+        "column": "Principal Dx",
+        "operation": "pool",
+        "strategy": "small_cells",
+        "reason": "groups under 11 records grouped as 'Other (fewer than 11 each)'",
+        "rows_affected": 7,
+        "before_null_pct": 0.0,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "Attending NPI",
+        "operation": "pool",
+        "strategy": "small_cells",
+        "reason": "groups under 11 records grouped as 'Other (fewer than 11 each)'",
+        "rows_affected": 7,
+        "before_null_pct": 0.0,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       }
+      ],
+      "deidentified": true,
+      "domain": "healthcare",
+      "roles": {
+       "date": "Discharge Date",
+       "admit_date": "Admit Date",
+       "patient": "MRN",
+       "encounter": "Encounter ID",
+       "encounter_type": "Encounter Type",
+       "disposition": "Discharge Disposition",
+       "department": "Department",
+       "drg": "MS-DRG",
+       "diagnosis": "Principal Dx",
+       "provider": "Attending NPI",
+       "charges": "Total Charges"
+      },
+      "domain_confidence": "strong"
+     },
+     "cleaning_audit": {
+      "decisions": [
+       {
+        "column": "Patient Name",
+        "operation": "withhold",
+        "strategy": "drop_column",
+        "reason": "personal, free text or too specific to be a category: withheld from analysis",
+        "rows_affected": 4203,
+        "before_null_pct": 0.0,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "DOB",
+        "operation": "withhold",
+        "strategy": "drop_column",
+        "reason": "personal, free text or too specific to be a category: withheld from analysis",
+        "rows_affected": 4203,
+        "before_null_pct": 0.0,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "Encounter ID",
+        "operation": "pseudonymize",
+        "strategy": "keyed_hash",
+        "reason": "identifier replaced by a one-way pseudonym (counts and repeat visits still work)",
+        "rows_affected": 4203,
+        "before_null_pct": 0.0,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "MRN",
+        "operation": "pseudonymize",
+        "strategy": "keyed_hash",
+        "reason": "identifier replaced by a one-way pseudonym (counts and repeat visits still work)",
+        "rows_affected": 4203,
+        "before_null_pct": 0.0,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "Patient ZIP",
+        "operation": "generalize",
+        "strategy": "zip3",
+        "reason": "ZIP reduced to its first 3 digits (000 for sparsely populated areas)",
+        "rows_affected": 4203,
+        "before_null_pct": 0.0,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "Department",
+        "operation": "pool",
+        "strategy": "small_cells",
+        "reason": "groups under 11 records grouped as 'Other (fewer than 11 each)'",
+        "rows_affected": 7,
+        "before_null_pct": 0.0,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "MS-DRG",
+        "operation": "pool",
+        "strategy": "small_cells",
+        "reason": "groups under 11 records grouped as 'Other (fewer than 11 each)'",
+        "rows_affected": 7,
+        "before_null_pct": 16.6,
+        "after_null_pct": 16.6,
+        "rows_removed": 0
+       },
+       {
+        "column": "Principal Dx",
+        "operation": "pool",
+        "strategy": "small_cells",
+        "reason": "groups under 11 records grouped as 'Other (fewer than 11 each)'",
+        "rows_affected": 7,
+        "before_null_pct": 0.0,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "Attending NPI",
+        "operation": "pool",
+        "strategy": "small_cells",
+        "reason": "groups under 11 records grouped as 'Other (fewer than 11 each)'",
+        "rows_affected": 7,
+        "before_null_pct": 0.0,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "Discharge Date",
+        "operation": "keep",
+        "strategy": "left_missing",
+        "reason": "52 missing (1.2%), date: left as missing; totals and averages use the 4151 known rows.",
+        "rows_affected": 0,
+        "before_null_pct": 1.2,
+        "after_null_pct": 1.2,
+        "rows_removed": 0
+       },
+       {
+        "column": "MS-DRG",
+        "operation": "fill_unknown",
+        "strategy": "unknown_label",
+        "reason": "698 missing labels grouped as 'Unknown' (not guessed).",
+        "rows_affected": 698,
+        "before_null_pct": 16.6,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       }
+      ],
+      "rows_before": 4203,
+      "rows_after": 4203,
+      "columns_coerced": [],
+      "duplicates_removed": 0,
+      "outliers_flagged": [
+       "15 mild outliers in Total Charges (threshold: values outside [240.44, 1.86M]) \u2014 see analyst tab"
+      ],
+      "high_null_columns": [],
+      "summary": "Patient data protected first (9 steps: identifiers withheld or pseudonymised, small groups pooled). Grouped missing labels as 'Unknown' in 1 column(s). Left missing values as missing in 1 column(s); nothing was imputed. Outliers flagged (kept) in: Total Charges. Final dataset: 4203 rows (started with 4203).",
+      "anomaly_report": {
+       "flags": [
+        {
+         "column": "Total Charges",
+         "extreme_count": 0,
+         "mild_count": 15,
+         "extreme_pct": 0.0,
+         "lower_bound": 240.44370657232548,
+         "upper_bound": 1860775.0919124754,
+         "mild_lower_bound": 1642.3057203106225,
+         "mild_upper_bound": 273394.6750589241,
+         "used_log_transform": true,
+         "heavy_tailed": false,
+         "message": "15 mild outliers in Total Charges (threshold: values outside [240.44, 1.86M]) \u2014 see analyst tab"
+        }
+       ],
+       "methodology_note": "",
+       "eligible_columns": [
+        "Total Charges"
+       ],
+       "skipped_columns": {
+        "Encounter ID": "constant or unsupported",
+        "MRN": "constant or unsupported",
+        "Admit Date": "datetime column",
+        "Discharge Date": "datetime column",
+        "Encounter Type": "binary column (only 2 values)",
+        "Department": "non-numeric",
+        "MS-DRG": "non-numeric",
+        "Principal Dx": "non-numeric",
+        "Attending NPI": "non-numeric"
+       }
+      },
+      "skipped_columns": [],
+      "date_ranges": {
+       "Admit Date": [
+        "2025-11-01",
+        "2026-10-31",
+        12
+       ],
+       "Discharge Date": [
+        "2025-11-02",
+        "2026-10-31",
+        12
+       ]
+      },
+      "grain": "aggregate",
+      "partial_months": {},
+      "main_currency": null,
+      "spell_story": [],
+      "window_span": {}
+     },
+     "analysis_findings": null,
+     "chart_configs": [],
+     "insight_report": null,
+     "targeted_response": {
+      "intent": "segment_compare",
+      "answer_text": "30-day readmission rate by Department: Cardiology leads at 14.3%, Orthopedics at 2.8%. How: Rows whose Discharge Date is at least 30 days before the last Admit Date followed by another row of the same MRN starting 1\u201330 days after Discharge Date (the next must have Encounter Type is inpatient / ip / inpt / i) where Encounter Type is inpatient / ip / inpt / i and Discharge Disposition is not 20 / 7 / 07 / 2 / 02 / 5 / 05 / 43 / 66 / 82 / 85 / 88 / 93 / 94 / expired / died / deceased / ama / left against medical advice / against medical advice / transferred / transfer to acute care / transfer acute, divided by rows whose Discharge Date is at least 30 days before the last Admit Date where Encounter Type is inpatient / ip / inpt / i and Discharge Disposition is not 20 / 7 / 07 / 2 / 02 / 5 / 05 / 43 / 66 / 82 / 85 / 88 / 93 / 94 / expired / died / deceased / ama / left against medical advice / against medical advice / transferred / transfer to acute care / transfer acute; over counted rows.",
+      "chart_configs": [
+       {
+        "id": "ed92ad76-a3ff-4c0b-b173-b309a9e0026c",
+        "chart_type": "HorizontalBarChart",
+        "title": "30-day readmission rate by Department",
+        "data": [
+         {
+          "Department": "Cardiology",
+          "30-day readmission rate": 14.2509
+         },
+         {
+          "Department": "General Medicine",
+          "30-day readmission rate": 8.1535
+         },
+         {
+          "Department": "Pulmonology",
+          "30-day readmission rate": 8.0556
+         },
+         {
+          "Department": "Neurology",
+          "30-day readmission rate": 7.0122
+         },
+         {
+          "Department": "Orthopedics",
+          "30-day readmission rate": 2.8133
+         },
+         {
+          "Department": "Other (fewer than 11 each)",
+          "30-day readmission rate": 0.0
+         }
+        ],
+        "x_key": "Department",
+        "y_keys": [
+         "30-day readmission rate"
+        ],
+        "colors": [],
+        "x_label": "Department",
+        "y_label": "30-day readmission rate",
+        "show_legend": true,
+        "show_grid": true,
+        "source_finding": "kpi",
+        "value_format": "percent",
+        "layout_hint": "half_width",
+        "rationale": {
+         "rule": "targeted:kpi\u2192ranked bars",
+         "reason": "30-day readmission rate per Department, ranked. Rows whose Discharge Date is at least 30 days before the last Admit Date followed by another row of the same MRN starting 1\u201330 days after Discharge Date (the next must have Encounter Type is inpatient / ip / inpt / i) where Encounter Type is inpatient / ip / inpt / i and Discharge Disposition is not 20 / 7 / 07 / 2 / 02 / 5 / 05 / 43 / 66 / 82 / 85 / 88 / 93 / 94 / expired / died / deceased / ama / left against medical advice / against medical advice / transferred / transfer to acute care / transfer acute, divided by rows whose Discharge Date is at least 30 days before the last Admit Date where Encounter Type is inpatient / ip / inpt / i and Discharge Disposition is not 20 / 7 / 07 / 2 / 02 / 5 / 05 / 43 / 66 / 82 / 85 / 88 / 93 / 94 / expired / died / deceased / ama / left against medical advice / against medical advice / transferred / transfer to acute care / transfer acute; over counted rows.",
+         "x": "Department",
+         "y": "30-day readmission rate",
+         "split": null,
+         "aggregation": "none",
+         "n_rows": 4203,
+         "evidence_ids": [],
+         "code": "",
+         "confidence": null
+        },
+        "placement": "summary",
+        "lint_warnings": [],
+        "error_key": null,
+        "split_key": null,
+        "reference_lines": []
+       }
+      ],
+      "table_data": [
+       {
+        "Department": "Cardiology",
+        "30-day readmission rate": "14.3%"
+       },
+       {
+        "Department": "General Medicine",
+        "30-day readmission rate": "8.2%"
+       },
+       {
+        "Department": "Pulmonology",
+        "30-day readmission rate": "8.1%"
+       },
+       {
+        "Department": "Neurology",
+        "30-day readmission rate": "7.0%"
+       },
+       {
+        "Department": "Orthopedics",
+        "30-day readmission rate": "2.8%"
+       },
+       {
+        "Department": "Other (fewer than 11 each)",
+        "30-day readmission rate": "0.0%"
+       }
+      ],
+      "table_columns": [],
+      "suggestions": [],
+      "unanswerable_reason": null,
+      "generated_at": "2026-11-16T06:32:44.858120Z"
+     },
+     "expert_review": null,
+     "narrative": {
+      "column_display_names": {
+       "Encounter ID": "Encounter ID",
+       "MRN": "Medical Record Number",
+       "Patient ZIP": "Patient ZIP Code",
+       "Admit Date": "Admit Date",
+       "Discharge Date": "Discharge Date",
+       "Encounter Type": "Encounter Type",
+       "Department": "Department",
+       "MS-DRG": "MS-DRG Code",
+       "Principal Dx": "Principal Diagnosis",
+       "Discharge Disposition": "Discharge Disposition",
+       "Attending NPI": "Attending NPI",
+       "Total Charges": "Total Charges"
+      },
+      "entity_singular": "encounter",
+      "entity_plural": "encounters"
+     },
+     "iteration": 1,
+     "quality_check_attempts": 0,
+     "high_null_answer": null,
+     "prior_pii": [],
+     "error_retryable": true,
+     "error_reask": true,
+     "overview_done": true,
+     "dataset_name": null,
+     "file_hash": null,
+     "dataset_id": null,
+     "dataset_version_id": null,
+     "status": "completed",
+     "cleaned_data_path": "/private/tmp/claude-501/-Users-uvnikhil-Projects-AnalystAI/e615e405-f0ef-47d3-b1c1-58b4127bff63/scratchpad/e2e/session_data/ea664b7a-8495-499b-8d03-b4ea46f8dc1d/cleaned_data.parquet",
+     "error_message": null,
+     "created_at": "2026-11-16T06:32:31.573332Z",
+     "updated_at": "2026-11-16T06:32:44.860517Z"
+    },
+    "domain": "healthcare",
+    "latency_s": 14.36,
+    "cost_usd": 0.01783,
+    "llm_calls": 3,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "[\"Which Departments account for the highest share of Total Charges over the dataset period (2025-11-01 to 2026-10-31), and how does average Total Charges per encounter vary across Departments?\", \"How has monthly inpatient volume and average Total Charges trended over time based on Admit Date, and are there any months with notable spikes or drops that warrant investigation?\", \"What is the average length of stay (days between Admit Date and Discharge Date) by Department and Encounter Type, and which combinations are driving the longest stays?\", \"Which MS-DRGs and Principal Dx codes are associated with the highest Total Charges per encounter, and does the 16.61% missingness in MS-DRG appear concentrated in specific Departments or Encounter Types that could indicate a coding compliance issue?\", \"What are the most common Discharge Dispositions by Department, and are there specific Attending NPIs whose patients show disproportionately high rates of transfers or other high-cost disposition outcomes relative to their peers?\"]",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "{\n  \"column_display_names\": {\n    \"Encounter ID\": \"Encounter ID\",\n    \"MRN\": \"Medical Record Number\",\n    \"Patient ZIP\": \"Patient ZIP Code\",\n    \"Admit Date\": \"Admit Date\",\n    \"Discharge Date\": \"Discharge Date\",\n    \"Encounter Type\": \"Encounter Type\",\n    \"Department\": \"Department\",\n    \"MS-DRG\": \"MS-DRG Code\",\n    \"Principal Dx\": \"Principal Diagnosis\",\n    \"Discharge Disposition\": \"Discharge Disposition\",\n    \"Attending NPI\": \"Attending NPI\",\n    \"Total Charges\": \"Total Charges\"\n  },\n  \"entity_singular\": \"encounter\",\n  \"entity_plural\": \"encounters\"\n}",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "```json\n{\n  \"raw_query\": \"What is the 30-day readmission rate by department?\",\n  \"target_metrics\": [\"Department\"],\n  \"timeframe\": null,\n  \"segments\": [\"Department\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": null,\n    \"date_column\": \"Discharge Date\",\n    \"segment_column\": \"Department\",\n    \"segment_value\": null,\n    \"group_by\": \"Department\",\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": null,\n    \"chart_type\": null,\n    \"kpi\": \"readmission_rate\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ]
+ }
+}

@@ -1,0 +1,864 @@
+{
+ "set": "tune",
+ "prompt_version": "v3",
+ "prompt_sha": "e02b521e161cacf8f4b82213650afcfaacf978cedaaadc1e70a9272a74772519",
+ "set_sha": "1c772f34adbfacf159f6ce765d5cabdad77de2947a9737a37b429c7ca8e6c9ea",
+ "model": "claude-haiku-4-5",
+ "sentences": 114,
+ "tpr": {
+  "rate": 0.7692,
+  "k": 20,
+  "n": 26,
+  "ci95": [
+   0.5795,
+   0.8897
+  ]
+ },
+ "tnr": {
+  "rate": 0.8409,
+  "k": 74,
+  "n": 88,
+  "ci95": [
+   0.7505,
+   0.9028
+  ]
+ },
+ "tpr_causal": {
+  "rate": 0.6667,
+  "k": 8,
+  "n": 12,
+  "ci95": [
+   0.3906,
+   0.8619
+  ]
+ },
+ "tnr_near_causal": {
+  "rate": 0.8684,
+  "k": 33,
+  "n": 38,
+  "ci95": [
+   0.7267,
+   0.9425
+  ]
+ },
+ "tpr_benchmark": {
+  "rate": 0.8571,
+  "k": 12,
+  "n": 14,
+  "ci95": [
+   0.6006,
+   0.9599
+  ]
+ },
+ "tnr_near_benchmark": {
+  "rate": 0.8125,
+  "k": 39,
+  "n": 48,
+  "ci95": [
+   0.6806,
+   0.8981
+  ]
+ },
+ "cost_usd": 0.0135,
+ "stamp": "20261116T040722Z",
+ "rows": [
+  {
+   "text": "The discount drove a 12% rise in sales.",
+   "label": true,
+   "kind": "causal",
+   "source": "retail-regex",
+   "got": true
+  },
+  {
+   "text": "Markdowns boosted unit sales.",
+   "label": true,
+   "kind": "causal",
+   "source": "retail-regex",
+   "got": true
+  },
+  {
+   "text": "Net sales rose 20% due to the spring promotion.",
+   "label": true,
+   "kind": "causal",
+   "source": "retail-regex",
+   "got": true
+  },
+  {
+   "text": "The November promotion was responsible for the spike in units.",
+   "label": true,
+   "kind": "causal",
+   "source": "retail-regex",
+   "got": true
+  },
+  {
+   "text": "The coupon campaign contributed to the 15% rise in orders.",
+   "label": true,
+   "kind": "causal",
+   "source": "retail-regex",
+   "got": true
+  },
+  {
+   "text": "Readmissions fell, driven by the discharge program.",
+   "label": true,
+   "kind": "causal",
+   "source": "retail-regex",
+   "got": true
+  },
+  {
+   "text": "Churn fell because onboarding was strong.",
+   "label": true,
+   "kind": "causal",
+   "source": "saas-neutral",
+   "got": false
+  },
+  {
+   "text": "Retention improved since adoption was healthy.",
+   "label": true,
+   "kind": "causal",
+   "source": "saas-neutral",
+   "got": false
+  },
+  {
+   "text": "Support tickets drive churn, and we will investigate further.",
+   "label": true,
+   "kind": "causal",
+   "source": "quality-regex",
+   "got": false
+  },
+  {
+   "text": "Our findings help us understand that price drives churn.",
+   "label": true,
+   "kind": "causal",
+   "source": "quality-regex",
+   "got": false
+  },
+  {
+   "text": "Promotions increased year-end sales by 12%.",
+   "label": true,
+   "kind": "causal",
+   "source": "retail-regex",
+   "got": true
+  },
+  {
+   "text": "Churn spiked because of a poor product release.",
+   "label": true,
+   "kind": "causal",
+   "source": "saas-neutral",
+   "got": true
+  },
+  {
+   "text": "Strong NRR of 106.5% shows customers expand.",
+   "label": true,
+   "kind": "benchmark",
+   "source": "saas-verdicts",
+   "got": true
+  },
+  {
+   "text": "Poor retention among monthly plans.",
+   "label": true,
+   "kind": "benchmark",
+   "source": "saas-verdicts",
+   "got": true
+  },
+  {
+   "text": "NRR remained strong year over year.",
+   "label": true,
+   "kind": "benchmark",
+   "source": "saas-verdicts",
+   "got": true
+  },
+  {
+   "text": "Churn is low for a SaaS business.",
+   "label": true,
+   "kind": "benchmark",
+   "source": "saas-verdicts",
+   "got": true
+  },
+  {
+   "text": "Retention is a strong point for the business.",
+   "label": true,
+   "kind": "benchmark",
+   "source": "saas-verdicts",
+   "got": true
+  },
+  {
+   "text": "Churn of 3% is poor by SaaS standards.",
+   "label": true,
+   "kind": "benchmark",
+   "source": "saas-verdicts",
+   "got": true
+  },
+  {
+   "text": "A best-in-class 120% NRR.",
+   "label": true,
+   "kind": "benchmark",
+   "source": "saas-verdicts",
+   "got": true
+  },
+  {
+   "text": "NRR is top-quartile.",
+   "label": true,
+   "kind": "benchmark",
+   "source": "saas-verdicts",
+   "got": true
+  },
+  {
+   "text": "Logo churn is below the industry benchmark at 1.8% a month.",
+   "label": true,
+   "kind": "benchmark",
+   "source": "saas-verdicts",
+   "got": true
+  },
+  {
+   "text": "Retention, as expected, remains healthy.",
+   "label": true,
+   "kind": "benchmark",
+   "source": "saas-verdicts",
+   "got": true
+  },
+  {
+   "text": "Churn, because of annual contracts, is weak.",
+   "label": true,
+   "kind": "benchmark",
+   "source": "saas-verdicts",
+   "got": false
+  },
+  {
+   "text": "GRR of 91.2%, up from 89%, is solid.",
+   "label": true,
+   "kind": "benchmark",
+   "source": "saas-verdicts",
+   "got": true
+  },
+  {
+   "text": "Retention compares well with SaaS peers.",
+   "label": true,
+   "kind": "benchmark",
+   "source": "saas-verdicts",
+   "got": false
+  },
+  {
+   "text": "Net sales grew 8% year over year, driven by the North region.",
+   "label": false,
+   "near": "causal",
+   "source": "retail-regex",
+   "got": true
+  },
+  {
+   "text": "Sales rose 12%; the promotion may have contributed.",
+   "label": false,
+   "near": "causal",
+   "source": "retail-regex",
+   "got": false
+  },
+  {
+   "text": "The campaign did not cause the increase.",
+   "label": false,
+   "near": "causal",
+   "source": "retail-regex",
+   "got": false
+  },
+  {
+   "text": "Sales lifted after the promo, though without a control group the effect is unclear.",
+   "label": false,
+   "near": "causal",
+   "source": "retail-regex",
+   "got": false
+  },
+  {
+   "text": "Discounts increased 15% year over year, to $4,210.",
+   "label": false,
+   "near": "causal",
+   "source": "retail-regex",
+   "got": false
+  },
+  {
+   "text": "Sales in the promotion weeks grew 40% over the other weeks.",
+   "label": false,
+   "near": "causal",
+   "source": "retail-regex",
+   "got": false
+  },
+  {
+   "text": "Discounted orders were responsible for 30% of net sales in Q4.",
+   "label": false,
+   "near": "causal",
+   "source": "retail-regex",
+   "got": false
+  },
+  {
+   "text": "Investigate accounts with a support ticket to understand what drives high months.",
+   "label": false,
+   "near": "causal",
+   "source": "quality-regex",
+   "got": false
+  },
+  {
+   "text": "Explore which salary levels drive churn.",
+   "label": false,
+   "near": "causal",
+   "source": "quality-regex",
+   "got": false
+  },
+  {
+   "text": "Fuel cost per km is higher on long routes (r = 0.62).",
+   "label": false,
+   "near": "causal",
+   "source": "retail-regex",
+   "got": false
+  },
+  {
+   "text": "NRR reached 106.5%, driven by strong upsell.",
+   "label": false,
+   "near": "causal",
+   "source": "saas-neutral",
+   "got": true
+  },
+  {
+   "text": "Churn was 1.9%, while expansion from top-quartile accounts drove NRR to 107%.",
+   "label": false,
+   "near": "causal",
+   "source": "saas-neutral",
+   "got": true
+  },
+  {
+   "text": "Churn was concentrated in poor-fit accounts.",
+   "label": false,
+   "near": "benchmark",
+   "source": "saas-neutral",
+   "got": false
+  },
+  {
+   "text": "Retention data is poor for 2024 (few rows).",
+   "label": false,
+   "near": "benchmark",
+   "source": "saas-neutral",
+   "got": true
+  },
+  {
+   "text": "NRR fell to 91.1% after a strong start to 2025.",
+   "label": false,
+   "near": "benchmark",
+   "source": "saas-neutral",
+   "got": false
+  },
+  {
+   "text": "Churn among healthy accounts was 2%.",
+   "label": false,
+   "near": "benchmark",
+   "source": "saas-neutral",
+   "got": false
+  },
+  {
+   "text": "Retention shows a strong seasonal pattern.",
+   "label": false,
+   "near": "benchmark",
+   "source": "saas-neutral",
+   "got": false
+  },
+  {
+   "text": "NRR saw a strong rebound in Q3.",
+   "label": false,
+   "near": "benchmark",
+   "source": "saas-neutral",
+   "got": true
+  },
+  {
+   "text": "Churn was 4% in weak markets.",
+   "label": false,
+   "near": "benchmark",
+   "source": "saas-neutral",
+   "got": false
+  },
+  {
+   "text": "Retention by plan: Pro 95%, Basic 80%.",
+   "label": false,
+   "near": "none",
+   "source": "saas-neutral",
+   "got": false
+  },
+  {
+   "text": "NRR was 106.5%; healthy is not a grade this report gives.",
+   "label": false,
+   "near": "benchmark",
+   "source": "saas-neutral",
+   "got": false
+  },
+  {
+   "text": "Churn rose 3 points; a strong correlation with price.",
+   "label": false,
+   "near": "benchmark",
+   "source": "saas-neutral",
+   "got": false
+  },
+  {
+   "text": "Retention in EMEA (where demand was solid) reached 96.4%.",
+   "label": false,
+   "near": "benchmark",
+   "source": "saas-neutral",
+   "got": false
+  },
+  {
+   "text": "Churn was highest among poor payers.",
+   "label": false,
+   "near": "benchmark",
+   "source": "saas-neutral",
+   "got": false
+  },
+  {
+   "text": "Logo churn rose amid strong headwinds in SMB.",
+   "label": false,
+   "near": "benchmark",
+   "source": "saas-neutral",
+   "got": false
+  },
+  {
+   "text": "Segment B underperformed the rest of the business last month, declining roughly four times faster than the overall revenue trend.",
+   "label": false,
+   "near": "benchmark",
+   "source": "quality-reports",
+   "got": false
+  },
+  {
+   "text": "Reversing even part of the contraction would close the gap between current and peak monthly recurring revenue.",
+   "label": false,
+   "near": "causal",
+   "source": "quality-reports",
+   "got": false
+  },
+  {
+   "text": "Upselling Basic customers could rebuild expansion monthly recurring revenue with no new logo acquisition required.",
+   "label": false,
+   "near": "causal",
+   "source": "quality-reports",
+   "got": false
+  },
+  {
+   "text": "25 exact duplicate rows (same order id and all other values) were removed before analysis, which may indicate a data pipeline or ingestion issue worth investigating.",
+   "label": false,
+   "near": "causal",
+   "source": "quality-reports",
+   "got": false
+  },
+  {
+   "text": "Overall monthly recurring revenue has pulled back from its peak, and net revenue retention has declined year over year, so plan-level trends deserve close attention.",
+   "label": false,
+   "near": "benchmark",
+   "source": "quality-reports",
+   "got": false
+  },
+  {
+   "text": "Net revenue retention for the 12 months to 31 Oct 2026 is 106.5%, compared with 122.7% a year earlier \u2014 a decline of 16.2 points \u2014 signalling that expansion is slowing relative to contraction.",
+   "label": false,
+   "near": "benchmark",
+   "source": "quality-reports",
+   "got": true
+  },
+  {
+   "text": "Contraction monthly recurring revenue of $13,587.47 over the past 12 months is the sole drag on revenue, as no customers have churned and no new monthly recurring revenue has been added.",
+   "label": false,
+   "near": "causal",
+   "source": "quality-reports",
+   "got": false
+  },
+  {
+   "text": "Treatment converts better than control across all visitors and within every department.",
+   "label": false,
+   "near": "benchmark",
+   "source": "quality-reports",
+   "got": false
+  },
+  {
+   "text": "Overall, control averages 0.60 conversion and treatment averages 0.40 \u2014 suggesting control wins at the aggregate level.",
+   "label": false,
+   "near": "benchmark",
+   "source": "quality-reports",
+   "got": false
+  },
+  {
+   "text": "The reversal between the overall and department-level results is a known statistical paradox: the department mix likely differs between treatment and control, making the aggregate comparison misleading.",
+   "label": false,
+   "near": "causal",
+   "source": "quality-reports",
+   "got": false
+  },
+  {
+   "text": "Overall, the treatment group converts at a lower rate than control, but within each department the treatment consistently outperforms control \u2014 a classic Simpson's Paradox that argues against a blanket rollout without further investigation.",
+   "label": false,
+   "near": "benchmark",
+   "source": "quality-reports",
+   "got": false
+  },
+  {
+   "text": "The overall numbers favour control, yet every individual department tells the opposite story, meaning the aggregate result is misleading and the rollout decision cannot safely rest on it.",
+   "label": false,
+   "near": "benchmark",
+   "source": "quality-reports",
+   "got": false
+  },
+  {
+   "text": "Taken as a whole, the treatment group converts at 0.6 and the control group at 0.4, so treatment is better overall.",
+   "label": false,
+   "near": "benchmark",
+   "source": "quality-reports",
+   "got": false
+  },
+  {
+   "text": "This reversal between the overall and per-department results is a sign that department composition is unevenly distributed across the two groups, making the aggregate comparison unreliable.",
+   "label": false,
+   "near": "causal",
+   "source": "quality-reports",
+   "got": false
+  },
+  {
+   "text": "Unbalanced assignment is the most likely cause of the conflicting signals and must be ruled out first.",
+   "label": false,
+   "near": "causal",
+   "source": "quality-reports",
+   "got": false
+  },
+  {
+   "text": "Per-department results consistently favour treatment and are the more reliable basis for a rollout decision.",
+   "label": false,
+   "near": "benchmark",
+   "source": "quality-reports",
+   "got": false
+  },
+  {
+   "text": "Net revenue retention has declined significantly over the past year, driven entirely by expansion slowing and contraction rising, with no logo churn or new customer additions to offset it.",
+   "label": false,
+   "near": "causal",
+   "source": "quality-reports",
+   "got": true
+  },
+  {
+   "text": "Net revenue retention fell to 106.5% for the 12 months to 31 Oct 2026, down from 122.7% a year earlier \u2014 a drop of 16.2 points \u2014 signalling that existing customers are expanding much less than before.",
+   "label": false,
+   "near": "benchmark",
+   "source": "quality-reports",
+   "got": true
+  },
+  {
+   "text": "Contraction is the primary drag on net revenue retention and the main risk to sustaining year-over-year growth.",
+   "label": false,
+   "near": "causal",
+   "source": "quality-reports",
+   "got": false
+  },
+  {
+   "text": "With no new logos, any future contraction or churn has no new revenue to offset it.",
+   "label": false,
+   "near": "causal",
+   "source": "quality-reports",
+   "got": false
+  },
+  {
+   "text": "The mean order value is $301.79, far above the median, because a small number of orders reach as high as $20,000.00 and pull the average up significantly.",
+   "label": false,
+   "near": "causal",
+   "source": "quality-reports",
+   "got": false
+  },
+  {
+   "text": "Twenty-five orders were flagged as unusual due to revenue values well above the expected range, and these are concentrated enough to distort summary statistics.",
+   "label": false,
+   "near": "causal",
+   "source": "quality-reports",
+   "got": false
+  },
+  {
+   "text": "A comparison test between the two regions confirmed a real difference: North definitively earns more.",
+   "label": false,
+   "near": "benchmark",
+   "source": "quality-reports",
+   "got": false
+  },
+  {
+   "text": "Segment B revenue fell sharply in Oct 2026 and sits below the overall average, reversing what was previously reported as strong growth.",
+   "label": false,
+   "near": "benchmark",
+   "source": "quality-reports",
+   "got": true
+  },
+  {
+   "text": "All 200 customers are retained with zero logo churn, and net revenue retention of 106.5% confirms the base is still growing in aggregate.",
+   "label": false,
+   "near": "benchmark",
+   "source": "quality-reports",
+   "got": true
+  },
+  {
+   "text": "The month-over-month decline and a net revenue retention rate that has fallen from 122.7% to 106.5% year-on-year signal that expansion momentum is slowing and warrants close attention.",
+   "label": false,
+   "near": "benchmark",
+   "source": "quality-reports",
+   "got": false
+  },
+  {
+   "text": "The entire $40,308.46 base is driven by expansion MRR of $16,056.28 offset by contraction MRR of $13,587.47 over the past 12 months, with no new, reactivation, or churned MRR in the period.",
+   "label": false,
+   "near": "causal",
+   "source": "quality-reports",
+   "got": false
+  },
+  {
+   "text": "Average monthly recurring revenue varies widely by plan: Enterprise averages $860.39, Pro averages $173.36, and Basic averages $57.97, suggesting the mix of plans is a key driver of overall revenue levels.",
+   "label": false,
+   "near": "causal",
+   "source": "quality-reports",
+   "got": false
+  },
+  {
+   "text": "Contraction is the sole drag on revenue; reducing it would directly lift net revenue retention back toward prior-year levels.",
+   "label": false,
+   "near": "causal",
+   "source": "quality-reports",
+   "got": false
+  },
+  {
+   "text": "Enterprise accounts represent the highest revenue per customer, so movement in this segment has an outsized effect on total monthly recurring revenue.",
+   "label": false,
+   "near": "causal",
+   "source": "quality-reports",
+   "got": false
+  },
+  {
+   "text": "Units per order are broadly consistent across Segments A, B, and C, with no segment standing out sharply from the others.",
+   "label": false,
+   "near": "benchmark",
+   "source": "quality-reports",
+   "got": false
+  },
+  {
+   "text": "The overall revenue median is $100.17 against a mean of $102.61, and the range runs from $21.47 to $964.19, suggesting a small number of high-value orders are pulling the mean upward.",
+   "label": false,
+   "near": "causal",
+   "source": "quality-reports",
+   "got": false
+  },
+  {
+   "text": "Outliers are currently pulling the mean above the median and could distort regional comparisons.",
+   "label": false,
+   "near": "causal",
+   "source": "quality-reports",
+   "got": false
+  },
+  {
+   "text": "Segment A has the highest order count at 1,212, making it the largest segment in the dataset.",
+   "label": false,
+   "near": "benchmark",
+   "source": "quality-reports",
+   "got": false
+  },
+  {
+   "text": "Segment C has the fewest orders at 739, notably lower than the other two segments.",
+   "label": false,
+   "near": "benchmark",
+   "source": "quality-reports",
+   "got": false
+  },
+  {
+   "text": "Data quality is good overall, but the units column has 10% missing values and the notes column has too many missing entries to be reliable.",
+   "label": false,
+   "near": "benchmark",
+   "source": "quality-reports",
+   "got": false
+  },
+  {
+   "text": "Revenue in Segment B fell in Oct 2026 compared to Sep 2026, which warrants attention alongside a largely unusable notes column.",
+   "label": false,
+   "near": "benchmark",
+   "source": "quality-reports",
+   "got": false
+  },
+  {
+   "text": "Revenue for Segment C declined 12.6% in Oct 2026 versus Sep 2026, a drop worth monitoring.",
+   "label": false,
+   "near": "benchmark",
+   "source": "quality-reports",
+   "got": false
+  },
+  {
+   "text": "Revenue grew 12% month over month, with a median of $57.52, and segment A outperforms the others by a notable margin.",
+   "label": false,
+   "near": "benchmark",
+   "source": "quality-reports",
+   "got": false
+  },
+  {
+   "text": "Segment A averages $83.42 in revenue per order, well above segment B at $41.00 and segment C at $55.50.",
+   "label": false,
+   "near": "benchmark",
+   "source": "quality-reports",
+   "got": false
+  },
+  {
+   "text": "Net revenue retention has fallen to 106.5% from 122.7% a year earlier, signalling that expansion is slowing and contraction is rising.",
+   "label": false,
+   "near": "benchmark",
+   "source": "quality-reports",
+   "got": false
+  },
+  {
+   "text": "Contraction is the primary drag on net revenue retention and the main risk to revenue growth.",
+   "label": false,
+   "near": "causal",
+   "source": "quality-reports",
+   "got": false
+  },
+  {
+   "text": "A sustained decline from the September peak would accelerate the fall in net revenue retention.",
+   "label": false,
+   "near": "causal",
+   "source": "quality-reports",
+   "got": false
+  },
+  {
+   "text": "Upsell to higher tiers is the only current source of revenue growth, as new MRR is $0.00.",
+   "label": false,
+   "near": "causal",
+   "source": "quality-reports",
+   "got": false
+  },
+  {
+   "text": "Segment A averages $121.29 in revenue per order, the highest of the three segments.",
+   "label": false,
+   "near": "benchmark",
+   "source": "quality-reports",
+   "got": false
+  },
+  {
+   "text": "The lowest-earning segment's results mean the sales team should be replaced.",
+   "label": false,
+   "near": "none",
+   "source": "quality-reports",
+   "got": false
+  },
+  {
+   "text": "Segment A's average order value is the strongest of the three segments.",
+   "label": false,
+   "near": "benchmark",
+   "source": "quality-reports",
+   "got": true
+  },
+  {
+   "text": "Closing the gap between segments could raise overall average revenue.",
+   "label": false,
+   "near": "causal",
+   "source": "quality-reports",
+   "got": false
+  },
+  {
+   "text": "Segment B's revenue declined in the most recent month, a meaningful reversal that warrants attention.",
+   "label": false,
+   "near": "benchmark",
+   "source": "quality-reports",
+   "got": false
+  },
+  {
+   "text": "The more notable revenue story is that net revenue retention has declined and contraction MRR is the primary drag on growth.",
+   "label": false,
+   "near": "causal",
+   "source": "quality-reports",
+   "got": false
+  },
+  {
+   "text": "Net revenue retention fell to 106.5% (12 months to 31 Oct 2026) from 122.7% a year earlier, driven by contraction MRR of $13,587.47 against expansion MRR of $16,056.28 \u2014 a dynamic that ticket volume does not appear to explain.",
+   "label": false,
+   "near": "causal",
+   "source": "quality-reports",
+   "got": false
+  },
+  {
+   "text": "No customers churned in the window and logo churn held at 0.0%, so the revenue pressure is entirely from existing customers contracting, not leaving.",
+   "label": false,
+   "near": "causal",
+   "source": "quality-reports",
+   "got": false
+  },
+  {
+   "text": "The current gap is not reliable enough to act on.",
+   "label": false,
+   "near": "benchmark",
+   "source": "quality-reports",
+   "got": false
+  },
+  {
+   "text": "Control visitors average 12.10 session minutes versus 11.84 for treatment visitors, meaning the treatment group is not outperforming control on this metric.",
+   "label": false,
+   "near": "benchmark",
+   "source": "quality-reports",
+   "got": false
+  },
+  {
+   "text": "Overall credit quality looks healthy at the portfolio level, but the Personal product's NPL ratio of 3.4% and Credit Card's 30+ delinquency rate of 10.4% stand out against the portfolio average.",
+   "label": true,
+   "kind": "benchmark",
+   "source": "quality-reports",
+   "got": true
+  },
+  {
+   "text": "Data quality is strong after removing 729 duplicate rows, though 1,490 non-USD rows and 632 reversal entries are excluded from all money figures.",
+   "label": false,
+   "near": "benchmark",
+   "source": "quality-reports",
+   "got": false
+  },
+  {
+   "text": "A 26.3% month-over-month fall is material; confirming whether it is seasonal or structural prevents misinformed planning.",
+   "label": false,
+   "near": "benchmark",
+   "source": "quality-reports",
+   "got": false
+  },
+  {
+   "text": "Month-over-month, paid amount fell 6.3%, and the decline should be treated as a settled trend in utilization.",
+   "label": false,
+   "near": "benchmark",
+   "source": "quality-reports",
+   "got": false
+  },
+  {
+   "text": "Total attrition reached 29.6% in the 12 months to 31 Oct 2026, up from 22.8% a year earlier (+6.8 points), yet voluntary attrition moved in the opposite direction, falling from 16.9% to 15.9% over the same comparison \u2014 meaning the rise is largely involuntary.",
+   "label": false,
+   "near": "benchmark",
+   "source": "quality-reports",
+   "got": false
+  },
+  {
+   "text": "Attrition so far in 2026 is 26.2%, an annual attrition rate of 31.4% if the pace holds, the highest in four years.",
+   "label": false,
+   "near": "benchmark",
+   "source": "quality-reports",
+   "got": true
+  },
+  {
+   "text": "A workforce of 353 employees is stabilising: the 12-month attrition rate fell to 14.3% by October 2026, down from 20.9% a year earlier.",
+   "label": false,
+   "near": "benchmark",
+   "source": "quality-reports",
+   "got": true
+  },
+  {
+   "text": "The rise in logo churn and a spike in churned MRR in Feb 2026 \u2014 heavily concentrated in one Enterprise customer \u2014 are the key areas needing attention.",
+   "label": false,
+   "near": "benchmark",
+   "source": "quality-reports",
+   "got": false
+  },
+  {
+   "text": "Review Enterprise account health, particularly any remaining single-customer concentrations similar to the Feb 2026 churn event.",
+   "label": false,
+   "near": "benchmark",
+   "source": "quality-reports",
+   "got": false
+  },
+  {
+   "text": "Net revenue retention of 136.2% over the 12 months to 31 Oct 2026 shows expansion more than replaced every dollar lost.",
+   "label": false,
+   "near": "causal",
+   "source": "quality-reports",
+   "got": true
+  }
+ ]
+}

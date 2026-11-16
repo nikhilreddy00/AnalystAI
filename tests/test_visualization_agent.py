@@ -133,7 +133,8 @@ async def test_drill_down_chart_on_a_fake_column_is_skipped_and_a_measure_bar_is
     def reply(x, y):
         return json.dumps({"answer_text": "a", "chart_spec": {"chart_type": "BarChart",
                                                               "x_column": x, "y_column": y}})
-    recorded_llm.responses += [reply("nope", "revenue"), reply("units", "revenue")]
+    sound = '{"0": "neither"}'   # the prose judge on the answer's one sentence (ADR-0009)
+    recorded_llm.responses += [reply("nope", "revenue"), sound, reply("units", "revenue"), sound]
     assert (await run_drill_down_agent(session, buf.getvalue())).chart_configs == []
     charts = (await run_drill_down_agent(session, buf.getvalue())).chart_configs
     assert charts and charts[0].chart_type == ChartType.HISTOGRAM   # units is a measure

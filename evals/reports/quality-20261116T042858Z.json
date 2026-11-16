@@ -1,0 +1,1915 @@
+{
+ "meta": {
+  "suite": "quality",
+  "report": "quality-20261116T042858Z",
+  "k": 3,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "84f157f",
+  "started_at": "20261116T042858Z",
+  "only": "q-38",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 1,
+  "runs": 3,
+  "pass_rate": 0.0,
+  "case_majority_pass_rate": 0.0,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "hard_rules_na": 0,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 0,
+  "runs_with_prose_rewritten": 0,
+  "runs_with_pii_guard_hit": 0,
+  "cost_per_question_usd": 0.0126,
+  "latency_p50_s": 20.81,
+  "latency_p95_s": 24.56,
+  "defect_recall": null,
+  "false_alarm_rate": 0.1111,
+  "seeded_defects": 0,
+  "supported_claims": 27,
+  "recall_by_kind": {},
+  "recall_by_source": {},
+  "label_agreement_on_caught": null,
+  "natural_recall": null,
+  "false_alarms_on_actions": 0.0,
+  "clean_reports_with_false_alarm": 1.0,
+  "hard_review_grounded": 1.0,
+  "hard_flags_valid": 1.0,
+  "hard_no_injection_echo": 1.0,
+  "hard_bundle_reproduced": 1.0,
+  "holdout_pass_rate": null
+ },
+ "runs": {
+  "q-38-tickets-null": [
+   {
+    "checks": [
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "headline",
+      "detail": "ok"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "paragraph",
+      "detail": "ok"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "paragraph",
+      "detail": "ok"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": false,
+      "sources": [
+       "critic"
+      ],
+      "section": "finding",
+      "detail": "flagged ['critic'] (The claim states the association 'could easily be chance,' b): The association between support tickets and monthly recurrin"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "finding",
+      "detail": "ok"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "finding",
+      "detail": "ok"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "finding",
+      "detail": "ok"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "action",
+      "detail": "ok"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "action",
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "review_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "review_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "flags_valid",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "bundle_reproduced",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "null_result",
+    "holdout": false,
+    "seeded": false,
+    "output": {
+     "review": {
+      "review_summary": "9 claims checked against the evidence; 1 flagged (1 overstated).",
+      "strengths": [],
+      "gaps": [
+       "The analysis does not examine whether support tickets relate to revenue *changes* (contraction or expansion MRR) rather than absolute MRR levels. A customer with high MRR who contracts may show a different ticket pattern than one with low MRR who expands.",
+       "No breakdown of support tickets by customer cohort or plan type is provided. The relationship between tickets and revenue may differ for new versus established customers, or across plan tiers.",
+       "The analysis does not explore temporal patterns: whether tickets in one month predict revenue changes in the following month, or whether ticket spikes coincide with contraction events."
+      ],
+      "next_investigations": [
+       "Compute the correlation between support tickets and month-over-month MRR change (or contraction/expansion flags) for each customer, then average across the 200 customers. This tests whether tickets predict revenue *movement* rather than absolute level.",
+       "Segment customers by contraction status (those with negative MRR change in the 12-month window versus those without) and compare median support tickets between groups.",
+       "Lag support tickets by one month and correlate with MRR change in the following month to test whether ticket volume in month N predicts revenue movement in month N+1."
+      ],
+      "methodology_concerns": [
+       "The correlation is computed across 6,000 snapshots (one row per account per billing date), not 200 independent customers. Repeated measures of the same customer over 30 months violate independence assumptions and may inflate or deflate the correlation estimate.",
+       "The evidence reports medium confidence for a weak association (|r| = 0.04). Medium confidence typically reflects adequate sample size but does not guarantee the association is meaningful in practice; the threshold for 'negligible' is not defined in the evidence."
+      ],
+      "flags": [
+       {
+        "index": 3,
+        "section": "finding",
+        "claim": "The association between support tickets and monthly recurring revenue is negligible and could easily be chance \u2014 the two measures barely move together across all 6,000 rows.",
+        "label": "overstated",
+        "kind": "critic",
+        "reason": "The claim states the association 'could easily be chance,' but the evidence reports medium confidence, not low confidence. Medium confidence means the finding is not readily attributable to chance alone. The weakness of the association (|r| = 0.04) is supported, but the certainty framing overstates the role of chance.",
+        "evidence_ids": [
+         "corr:mrr__support_tickets"
+        ],
+        "source": "critic"
+       }
+      ],
+      "generated_at": "2026-11-16T04:29:23.683010Z"
+     },
+     "claims": [
+      {
+       "section": "headline",
+       "text": "Support tickets and monthly recurring revenue show no meaningful relationship in this dataset.",
+       "ids": [
+        "corr:mrr__support_tickets"
+       ]
+      },
+      {
+       "section": "paragraph",
+       "text": "Across 6,000 snapshots covering 200 customers, support tickets and monthly recurring revenue move together only negligibly, making it unlikely that ticket volume is a reliable signal of revenue health.",
+       "ids": [
+        "corr:mrr__support_tickets",
+        "clean:story"
+       ]
+      },
+      {
+       "section": "paragraph",
+       "text": "The more notable revenue story is that net revenue retention has declined and contraction MRR is the primary drag on growth.",
+       "ids": [
+        "clean:story"
+       ]
+      },
+      {
+       "section": "finding",
+       "text": "The association between support tickets and monthly recurring revenue is negligible and could easily be chance \u2014 the two measures barely move together across all 6,000 rows.",
+       "ids": [
+        "corr:mrr__support_tickets"
+       ]
+      },
+      {
+       "section": "finding",
+       "text": "Support tickets range from 0 to 11 with a median of 3, while monthly recurring revenue ranges from $35.44 to $1,023.37 with a median of $87.35 \u2014 the wide spread in revenue with no corresponding pattern in tickets reinforces that the two are unrelated.",
+       "ids": [
+        "eda:support_tickets",
+        "eda:mrr"
+       ]
+      },
+      {
+       "section": "finding",
+       "text": "Net revenue retention fell to 106.5% (12 months to 31 Oct 2026) from 122.7% a year earlier, driven by contraction MRR of $13,587.47 against expansion MRR of $16,056.28 \u2014 a dynamic that ticket volume does not appear to explain.",
+       "ids": [
+        "clean:story"
+       ]
+      },
+      {
+       "section": "finding",
+       "text": "No customers churned in the window and logo churn held at 0.0%, so the revenue pressure is entirely from existing customers contracting, not leaving.",
+       "ids": [
+        "clean:story"
+       ]
+      },
+      {
+       "section": "action",
+       "ids": [
+        "clean:story",
+        "corr:mrr__support_tickets"
+       ],
+       "text": "Investigate contraction MRR drivers directly \u2014 interview or survey the customers who contracted \u2014 rather than relying on support ticket volume as a proxy. Contraction MRR is the sole drag on net revenue retention and its cause is currently unexplained by the available data."
+      },
+      {
+       "section": "action",
+       "ids": [
+        "corr:mrr__support_tickets",
+        "eda:support_tickets"
+       ],
+       "text": "Enrich the dataset with ticket category, severity, or resolution time and re-run the analysis to test whether a specific ticket type relates to revenue changes. Raw ticket counts show no signal; a more granular ticket attribute might reveal a relationship that volume alone cannot."
+      }
+     ],
+     "bundle": {
+      "question": "Do support tickets relate to recurring revenue?",
+      "columns": [
+       "account_id",
+       "billing_date",
+       "plan",
+       "mrr",
+       "seats",
+       "churned",
+       "support_tickets"
+      ],
+      "evidence_ids": [
+       "clean:audit",
+       "clean:story",
+       "corr:mrr__support_tickets",
+       "eda:mrr",
+       "eda:support_tickets"
+      ],
+      "evidence": [
+       {
+        "id": "clean:audit",
+        "kind": "cleaning",
+        "claim": "Cleaning: 6000 \u2192 6000 rows, 1 logged changes",
+        "result_excerpt": "{\"rows_before\": 6000, \"rows_after\": 6000, \"decisions\": [[\"billing_date\", \"type_coerce\", 6000, 0]]}",
+        "row_count": 6000,
+        "confidence": "high",
+        "confidence_reason": "rule-based; every change below is logged",
+        "assumptions": [
+         "billing_date: Parsed as dates."
+        ]
+       },
+       {
+        "id": "clean:story",
+        "kind": "cleaning",
+        "claim": "The file's story in the product's own numbers: Logo churn (12-month cohort to 31 Oct 2026): 0.0%; a year earlier (12-month cohort to 31 Oct 2025): 0.0%, +0.0 points. Net revenue retention (12-month cohort to 31 Oct 2026): 106.5%; a year earlier (12-month cohort to 31 Oct 2025): 122.7%, -16.2 points. Gross revenue retention (12-month cohort to 31 Oct 2026): 99.3%; a year earlier (12-month cohort to 31 Oct 2025): 100.0%, -0.7 points. MRR peaked at $43,813.56 (Sep 2026) and is $40,308.46 at 31 Oct 2026 (-8.0%). MRR bridge, 12 months to 31 Oct 2026: $37,839.65 on 31 Oct 2025 + new MRR $0.00 + expansion MRR $16,056.28 + reactivation MRR $0.00 \u2212 contraction MRR $13,587.47 \u2212 churned MRR $0.00 = $40,308.46. 0 customers left at a month-end in the window (churned customers); logo churn counts only the customers in force on 31 Oct 2025 who are not in force now, so the two differ: customers who joined in the window or came back are in the count only. 6,000 rows are 200 customers (200 with more than one row); 200 in force at 31 Oct 2026.",
+        "result_excerpt": "[\"Logo churn (12-month cohort to 31 Oct 2026): 0.0%; a year earlier (12-month cohort to 31 Oct 2025): 0.0%, +0.0 points.\", \"Net revenue retention (12-month cohort to 31 Oct 2026): 106.5%; a year earlier (12-month cohort to 31 Oct 2025): 122.7%, -16.2 points.\", \"Gross revenue retention (12-month cohort to 31 Oct 2026): 99.3%; a year earlier (12-month cohort to 31 Oct 2025): 100.0%, -0.7 points.\", \"",
+        "row_count": 6000,
+        "confidence": "high",
+        "confidence_reason": "computed by the product's spell rules, never by a model",
+        "assumptions": []
+       },
+       {
+        "id": "corr:mrr__support_tickets",
+        "kind": "correlation",
+        "claim": "mrr and support_tickets: r = -0.044",
+        "result_excerpt": "{\"mrr__support_tickets\": -0.044}",
+        "row_count": 6000,
+        "confidence": "medium",
+        "confidence_reason": "weak association (|r| = 0.04)",
+        "assumptions": []
+       },
+       {
+        "id": "eda:mrr",
+        "kind": "eda",
+        "claim": "mrr: median 87.35, mean 179.64, range 35.44 to 1,023.37",
+        "result_excerpt": "{\"mean\": 179.643, \"std\": 231.3454, \"min\": 35.44, \"max\": 1023.37, \"median\": 87.35, \"count\": 6000.0}",
+        "row_count": 6000,
+        "confidence": "high",
+        "confidence_reason": "6000 rows",
+        "assumptions": []
+       },
+       {
+        "id": "eda:support_tickets",
+        "kind": "eda",
+        "claim": "support_tickets: median 3.00, mean 3.01, range 0 to 11.00",
+        "result_excerpt": "{\"mean\": 3.0077, \"std\": 1.7579, \"min\": 0.0, \"max\": 11.0, \"median\": 3.0, \"count\": 6000.0}",
+        "row_count": 6000,
+        "confidence": "high",
+        "confidence_reason": "6000 rows",
+        "assumptions": []
+       }
+      ],
+      "date_first": [
+       2024,
+       5
+      ],
+      "date_last": [
+       2026,
+       10
+      ],
+      "n_months": 30,
+      "audit_summary": "Parsed numbers or dates in 1 column(s). Outliers flagged (kept) in: mrr, support_tickets. Final dataset: 6000 rows (started with 6000).",
+      "chart_titles": [
+       "MRR over time",
+       "Net revenue retention over time",
+       "MRR bridge, 12 months to 31 Oct 2026: $37,839.65 \u2192 $40,308.46",
+       "MRR by plan (as of 31 Oct 2026)",
+       "Net revenue retention by plan (12-month cohort to 31 Oct 2026)",
+       "Logo churn by plan (12-month cohort to 31 Oct 2026)",
+       "New MRR by plan (12 months to 31 Oct 2026)",
+       "Churned MRR by plan (12 months to 31 Oct 2026)",
+       "support tickets vs monthly recurring revenue (r = 0.01)"
+      ],
+      "past_insights": [],
+      "corr_pairs": [
+       [
+        "monthly recurring revenue",
+        "support tickets"
+       ]
+      ],
+      "values": [
+       {
+        "eda_summary": {
+         "mrr": {
+          "mean": 179.643,
+          "std": 231.3454,
+          "min": 35.44,
+          "max": 1023.37,
+          "median": 87.35,
+          "count": 6000.0
+         },
+         "support_tickets": {
+          "mean": 3.0077,
+          "std": 1.7579,
+          "min": 0.0,
+          "max": 11.0,
+          "median": 3.0,
+          "count": 6000.0
+         }
+        },
+        "correlations": {
+         "mrr__support_tickets": -0.044
+        },
+        "trends": [],
+        "segments": [],
+        "anomalies": [],
+        "statistical_tests": [],
+        "forecast_points": [],
+        "dtypes_summary": {},
+        "missing_pct": {
+         "account_id": 0.0,
+         "billing_date": 0.0,
+         "plan": 0.0,
+         "mrr": 0.0,
+         "seats": 0.0,
+         "churned": 0.0,
+         "support_tickets": 0.0
+        },
+        "kpis": [
+         {
+          "label": "MRR",
+          "value": "$40,308.46",
+          "context": "as of 31 Oct 2026",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "mrr",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "currency",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Sum of mrr over the distinct account_id in force at the date (each account_id's latest billing_date snapshot on or before the date, ended_at blank or after it) where mrr > 0; over records."
+         },
+         {
+          "label": "ARR",
+          "value": "$483,701.52",
+          "context": "as of 31 Oct 2026",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "arr",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "currency",
+           "currency": null,
+           "unit": null
+          },
+          "how": "12 \u00d7 MRR."
+         },
+         {
+          "label": "Paying customers",
+          "value": "200 customers",
+          "context": "as of 31 Oct 2026",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "paying_customers",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "count",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Distinct account_id in force at the date (each account_id's latest billing_date snapshot on or before the date, ended_at blank or after it) where mrr > 0; over records."
+         },
+         {
+          "label": "New MRR",
+          "value": "$0.00",
+          "context": "12 months to 31 Oct 2026",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "new_mrr",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "currency",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Sum of mrr over the new moves: each account_id whose value went from 0 (never in force before) to above 0 between consecutive month-ends in the period where mrr > 0; over records."
+         },
+         {
+          "label": "Churned MRR",
+          "value": "$0.00",
+          "context": "12 months to 31 Oct 2026",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "churned_mrr",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "currency",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Sum of mrr over the churn moves: each account_id whose value went to 0 between consecutive month-ends in the period where mrr > 0; over records."
+         }
+        ],
+        "pre_cleaning_missing_pct": {},
+        "unique_counts": {},
+        "skewness": {},
+        "target_correlations": {},
+        "target_col": null,
+        "column_roles_summary": {},
+        "column_units": {}
+       },
+       [
+        {
+         "claim": "Cleaning: 6000 \u2192 6000 rows, 1 logged changes",
+         "result_excerpt": "{\"rows_before\": 6000, \"rows_after\": 6000, \"decisions\": [[\"billing_date\", \"type_coerce\", 6000, 0]]}",
+         "row_count": 6000,
+         "assumptions": [
+          "billing_date: Parsed as dates."
+         ],
+         "confidence_reason": "rule-based; every change below is logged"
+        },
+        {
+         "claim": "The file's story in the product's own numbers: Logo churn (12-month cohort to 31 Oct 2026): 0.0%; a year earlier (12-month cohort to 31 Oct 2025): 0.0%, +0.0 points. Net revenue retention (12-month cohort to 31 Oct 2026): 106.5%; a year earlier (12-month cohort to 31 Oct 2025): 122.7%, -16.2 points. Gross revenue retention (12-month cohort to 31 Oct 2026): 99.3%; a year earlier (12-month cohort to 31 Oct 2025): 100.0%, -0.7 points. MRR peaked at $43,813.56 (Sep 2026) and is $40,308.46 at 31 Oct 2026 (-8.0%). MRR bridge, 12 months to 31 Oct 2026: $37,839.65 on 31 Oct 2025 + new MRR $0.00 + expansion MRR $16,056.28 + reactivation MRR $0.00 \u2212 contraction MRR $13,587.47 \u2212 churned MRR $0.00 = $40,308.46. 0 customers left at a month-end in the window (churned customers); logo churn counts only the customers in force on 31 Oct 2025 who are not in force now, so the two differ: customers who joined in the window or came back are in the count only. 6,000 rows are 200 customers (200 with more than one row); 200 in force at 31 Oct 2026.",
+         "result_excerpt": "[\"Logo churn (12-month cohort to 31 Oct 2026): 0.0%; a year earlier (12-month cohort to 31 Oct 2025): 0.0%, +0.0 points.\", \"Net revenue retention (12-month cohort to 31 Oct 2026): 106.5%; a year earlier (12-month cohort to 31 Oct 2025): 122.7%, -16.2 points.\", \"Gross revenue retention (12-month cohort to 31 Oct 2026): 99.3%; a year earlier (12-month cohort to 31 Oct 2025): 100.0%, -0.7 points.\", \"MRR peaked at $43,813.56 (Sep 2026) and is $40,308.46 at 31 Oct 2026 (-8.0%).\", \"MRR bridge, 12 months to 31 Oct 2026: $37,839.65 on 31 Oct 2025 + new MRR $0.00 + expansion MRR $16,056.28 + reactivation MRR $0.00 \\u2212 contraction MRR $13,587.47 \\u2212 churned MRR $0.00 = $40,308.46.\", \"0 customers left at a month-end in the window (churned customers); logo churn counts only the customers in force on 31 Oct 2025 who are not in force now, so the two differ: customers who joined in the window or came back are in the count only.\", \"6,000 rows are 200 customers (200 with more than one row); 200 in force at 31 Oct 2026.\"]",
+         "row_count": 6000,
+         "assumptions": [],
+         "confidence_reason": "computed by the product's spell rules, never by a model"
+        },
+        {
+         "claim": "mrr and support_tickets: r = -0.044",
+         "result_excerpt": "{\"mrr__support_tickets\": -0.044}",
+         "row_count": 6000,
+         "assumptions": [],
+         "confidence_reason": "weak association (|r| = 0.04)"
+        },
+        {
+         "claim": "mrr: median 87.35, mean 179.64, range 35.44 to 1,023.37",
+         "result_excerpt": "{\"mean\": 179.643, \"std\": 231.3454, \"min\": 35.44, \"max\": 1023.37, \"median\": 87.35, \"count\": 6000.0}",
+         "row_count": 6000,
+         "assumptions": [],
+         "confidence_reason": "6000 rows"
+        },
+        {
+         "claim": "support_tickets: median 3.00, mean 3.01, range 0 to 11.00",
+         "result_excerpt": "{\"mean\": 3.0077, \"std\": 1.7579, \"min\": 0.0, \"max\": 11.0, \"median\": 3.0, \"count\": 6000.0}",
+         "row_count": 6000,
+         "assumptions": [],
+         "confidence_reason": "6000 rows"
+        }
+       ],
+       {
+        "decisions": [
+         {
+          "column": "billing_date",
+          "operation": "type_coerce",
+          "strategy": "to_datetime",
+          "reason": "Parsed as dates.",
+          "rows_affected": 6000,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         }
+        ],
+        "rows_before": 6000,
+        "rows_after": 6000,
+        "columns_coerced": [
+         "billing_date"
+        ],
+        "duplicates_removed": 0,
+        "outliers_flagged": [
+         "28 mild outliers in mrr (threshold: values outside [0.629, 5,379]) \u2014 see analyst tab",
+         "2 extreme outliers in support_tickets (0.0% of data, threshold: values > 10.00)"
+        ],
+        "high_null_columns": [],
+        "summary": "Parsed numbers or dates in 1 column(s). Outliers flagged (kept) in: mrr, support_tickets. Final dataset: 6000 rows (started with 6000).",
+        "anomaly_report": {
+         "flags": [
+          {
+           "column": "mrr",
+           "extreme_count": 0,
+           "mild_count": 28,
+           "extreme_pct": 0.0,
+           "lower_bound": 0.629117327476281,
+           "upper_bound": 5379.372024803937,
+           "mild_lower_bound": 8.2468492887284,
+           "mild_upper_bound": 946.918260608107,
+           "used_log_transform": true,
+           "heavy_tailed": false,
+           "message": "28 mild outliers in mrr (threshold: values outside [0.629, 5,379]) \u2014 see analyst tab"
+          },
+          {
+           "column": "support_tickets",
+           "extreme_count": 2,
+           "mild_count": 78,
+           "extreme_pct": 0.03333333333333333,
+           "lower_bound": -4.0,
+           "upper_bound": 10.0,
+           "mild_lower_bound": -1.0,
+           "mild_upper_bound": 7.0,
+           "used_log_transform": false,
+           "heavy_tailed": false,
+           "message": "2 extreme outliers in support_tickets (0.0% of data, threshold: values > 10.00)"
+          }
+         ],
+         "methodology_note": "",
+         "eligible_columns": [
+          "mrr",
+          "seats",
+          "support_tickets"
+         ],
+         "skipped_columns": {
+          "account_id": "id column",
+          "billing_date": "datetime column",
+          "plan": "non-numeric",
+          "churned": "binary column (only 2 values)"
+         }
+        },
+        "skipped_columns": [],
+        "date_ranges": {
+         "billing_date": [
+          "2024-05-01",
+          "2026-10-31",
+          30
+         ]
+        },
+        "grain": "aggregate",
+        "partial_months": {},
+        "main_currency": null,
+        "spell_story": [
+         "Logo churn (12-month cohort to 31 Oct 2026): 0.0%; a year earlier (12-month cohort to 31 Oct 2025): 0.0%, +0.0 points.",
+         "Net revenue retention (12-month cohort to 31 Oct 2026): 106.5%; a year earlier (12-month cohort to 31 Oct 2025): 122.7%, -16.2 points.",
+         "Gross revenue retention (12-month cohort to 31 Oct 2026): 99.3%; a year earlier (12-month cohort to 31 Oct 2025): 100.0%, -0.7 points.",
+         "MRR peaked at $43,813.56 (Sep 2026) and is $40,308.46 at 31 Oct 2026 (-8.0%).",
+         "MRR bridge, 12 months to 31 Oct 2026: $37,839.65 on 31 Oct 2025 + new MRR $0.00 + expansion MRR $16,056.28 + reactivation MRR $0.00 \u2212 contraction MRR $13,587.47 \u2212 churned MRR $0.00 = $40,308.46.",
+         "0 customers left at a month-end in the window (churned customers); logo churn counts only the customers in force on 31 Oct 2025 who are not in force now, so the two differ: customers who joined in the window or came back are in the count only.",
+         "6,000 rows are 200 customers (200 with more than one row); 200 in force at 31 Oct 2026."
+        ],
+        "window_span": {
+         "window": "12 months",
+         "moves": "12 months",
+         "cohort": "12 months",
+         "window_adj": " 12-month"
+        }
+       },
+       [
+        "MRR over time",
+        "Net revenue retention over time",
+        "MRR bridge, 12 months to 31 Oct 2026: $37,839.65 \u2192 $40,308.46",
+        "MRR by plan (as of 31 Oct 2026)",
+        "Net revenue retention by plan (12-month cohort to 31 Oct 2026)",
+        "Logo churn by plan (12-month cohort to 31 Oct 2026)",
+        "New MRR by plan (12 months to 31 Oct 2026)",
+        "Churned MRR by plan (12 months to 31 Oct 2026)",
+        "support tickets vs monthly recurring revenue (r = 0.01)"
+       ],
+       [
+        6000,
+        7,
+        30
+       ],
+       [
+        2024,
+        2025,
+        2026
+       ],
+       [
+        "Read as SaaS subscription data (MRR, ARR, paying customers, new MRR, churned MRR, logo churn, net revenue retention, gross revenue retention). MRR is the monthly run-rate of the customers paying at the latest date (an annual plan \u00f7 12, net of discounts; trials, paused and unpaid subscriptions out, past due in), not revenue; movements and retention compare each customer's MRR at month-ends over the 12 months to that date, and annual churn is measured on the customers paying 12 months earlier, never a monthly rate \u00d7 12. A customer who starts and leaves inside one month appears in no month-end figure.",
+        "The churned column is a flag, not a dated event: the share of rows flagged is not a churn rate."
+       ]
+      ]
+     },
+     "stored_evidence_ids": [
+      "clean:audit",
+      "clean:story",
+      "corr:mrr__support_tickets",
+      "eda:mrr",
+      "eda:support_tickets"
+     ]
+    },
+    "latency_s": 24.98,
+    "cost_usd": 0.01245,
+    "llm_calls": 3,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "{\"0\": \"neither\", \"1\": \"neither\", \"2\": \"neither\", \"3\": \"neither\", \"4\": \"neither\", \"5\": \"neither\", \"6\": \"neither\", \"7\": \"neither\", \"8\": \"neither\", \"9\": \"neither\", \"10\": \"neither\"}",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "```json\n{\n  \"flags\": [\n    {\n      \"claim\": 3,\n      \"label\": \"overstated\",\n      \"evidence\": [\"corr:mrr__support_tickets\"],\n      \"evidence_says\": \"r = -0.044, confidence: medium (weak association)\",\n      \"reason\": \"The claim states the association 'could easily be chance,' but the evidence reports medium confidence, not low confidence. Medium confidence means the finding is not readily attributable to chance alone. The weakness of the association (|r| = 0.04) is supported, but the certainty framing overstates the role of chance.\"\n    }\n  ],\n  \"gaps\": [\n    {\n      \"text\": \"The analysis does not examine whether support tickets relate to revenue *changes* (contraction or expansion MRR) rather than absolute MRR levels. A customer with high MRR who contracts may show a different ticket pattern than one with low MRR who expands.\",\n      \"columns\": [\"support_tickets\", \"mrr\", \"billing_date\", \"account_id\"]\n    },\n    {\n      \"text\": \"No breakdown of support tickets by customer cohort or plan type is provided. The relationship between tickets and revenue may differ for new versus established customers, or across plan tiers.\",\n      \"columns\": [\"support_tickets\", \"mrr\", \"plan\", \"account_id\"]\n    },\n    {\n      \"text\": \"The analysis does not explore temporal patterns: whether tickets in one month predict revenue changes in the following month, or whether ticket spikes coincide with contraction events.\",\n      \"columns\": [\"support_tickets\", \"mrr\", \"billing_date\", \"account_id\"]\n    }\n  ],\n  \"methodology_concerns\": [\n    {\n      \"text\": \"The correlation is computed across 6,000 snapshots (one row per account per billing date), not 200 independent customers. Repeated measures of the same customer over 30 months violate independence assumptions and may inflate or deflate the correlation estimate.\",\n      \"columns\": [\"account_id\", \"billing_date\", \"support_tickets\", \"mrr\"]\n    },\n    {\n      \"text\": \"The evidence reports medium confidence for a weak association (|r| = 0.04). Medium confidence typically reflects adequate sample size but does not guarantee the association is meaningful in practice; the threshold for 'negligible' is not defined in the evidence.\",\n      \"columns\": [\"support_tickets\", \"mrr\"]\n    }\n  ],\n  \"next_investigations\": [\n    {\n      \"text\": \"Compute the correlation between support tickets and month-over-month MRR change (or contraction/expansion flags) for each customer, then average across the 200 customers. This tests whether tickets predict revenue *movement* rather than absolute level.\",\n      \"columns\": [\"account_id\", \"billing_date\", \"mrr\", \"support_tickets\"]\n    },\n    {\n      \"text\": \"Segment customers by contraction status (those with negative MRR change in the 12-month window versus those without) and compare median support tickets between groups.\",\n      \"columns\": [\"account_id\", \"mrr\", \"billing_date\", \"support_tickets\"]\n    },\n    {\n      \"text\": \"Lag support tickets by one month and correlate with MRR change in the following month to test whether ticket volume in month N predicts revenue movement in month N+1.\",\n      \"columns\": [\"account_id\", \"billing_date\", \"support_tickets\", \"mrr\"]\n    }\n  ]\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "```json\n{\n  \"verdicts\": [\n    {\n      \"i\": 0,\n      \"holds\": true,\n      \"why\": \"The claim states the association 'could easily be chance,' but medium confidence indicates the finding is not readily attributable to chance alone; the certainty framing contradicts the confidence level reported in the evidence.\"\n    }\n  ]\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "headline",
+      "detail": "ok"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "paragraph",
+      "detail": "ok"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "paragraph",
+      "detail": "ok"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": false,
+      "sources": [
+       "critic"
+      ],
+      "section": "finding",
+      "detail": "flagged ['critic'] (The claim states the association 'could easily be chance,' b): The association between support tickets and monthly recurrin"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "finding",
+      "detail": "ok"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "finding",
+      "detail": "ok"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "finding",
+      "detail": "ok"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "action",
+      "detail": "ok"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "action",
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "review_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "review_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "flags_valid",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "bundle_reproduced",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "null_result",
+    "holdout": false,
+    "seeded": false,
+    "output": {
+     "review": {
+      "review_summary": "9 claims checked against the evidence; 1 flagged (1 overstated).",
+      "strengths": [],
+      "gaps": [
+       "The analysis does not examine whether support tickets relate to contraction or expansion MRR specifically, only to overall MRR. Since contraction MRR is identified as the primary revenue driver, a breakdown of ticket volume by customers who contracted versus expanded would test whether tickets predict revenue movement direction.",
+       "No temporal analysis is shown: whether support tickets in one month predict MRR changes in the following month. The current correlation is cross-sectional; a lagged relationship could reveal whether tickets are a leading indicator of revenue health.",
+       "The analysis does not stratify by plan or seats. If ticket volume and revenue relate differently across plan tiers or customer sizes, a pooled correlation would mask that relationship."
+      ],
+      "next_investigations": [
+       "Compute the correlation between support tickets and MRR at the customer level (one row per account id, using the latest billing date or an average), to avoid pseudoreplication from repeated snapshots of the same customer.",
+       "Segment customers by contraction status (those whose MRR fell month-over-month versus those whose MRR grew or held steady) and compare median support tickets between the two groups to test whether ticket volume differs by revenue trajectory.",
+       "Compute the lagged correlation: support tickets in month t against MRR change from month t to month t+1, to test whether tickets are a leading indicator of revenue movement."
+      ],
+      "methodology_concerns": [
+       "The correlation is computed on 6,000 rows (200 customers with multiple snapshots). The same customer appears multiple times; the rows are not independent. A customer-level correlation (one row per customer) would avoid pseudoreplication and may yield a different result.",
+       "The evidence notes that support tickets has outliers flagged and kept (range 0 to 11). With a median of 3.0 and mean of 3.01, the distribution is tight; the outliers at 11 may have outsized influence on a weak correlation. Sensitivity analysis excluding high-ticket outliers would test robustness."
+      ],
+      "flags": [
+       {
+        "index": 3,
+        "section": "finding",
+        "claim": "The association between support tickets and monthly recurring revenue is negligible and could easily be chance \u2014 the two measures barely move together across all 6,000 rows.",
+        "label": "overstated",
+        "kind": "critic",
+        "reason": "The claim states the association 'could easily be chance,' but the evidence reports medium confidence, not low confidence. Medium confidence means the finding is not readily attributable to chance alone. The weakness of the association (|r| = 0.04) is supported, but the certainty framing overstates the role of chance.",
+        "evidence_ids": [
+         "corr:mrr__support_tickets"
+        ],
+        "source": "critic"
+       }
+      ],
+      "generated_at": "2026-11-16T04:29:24.647789Z"
+     },
+     "claims": [
+      {
+       "section": "headline",
+       "text": "Support tickets and monthly recurring revenue show no meaningful relationship in this dataset.",
+       "ids": [
+        "corr:mrr__support_tickets"
+       ]
+      },
+      {
+       "section": "paragraph",
+       "text": "Across 6,000 snapshots covering 200 customers, support tickets and monthly recurring revenue move together only negligibly, making it unlikely that ticket volume is a reliable signal of revenue health.",
+       "ids": [
+        "corr:mrr__support_tickets",
+        "clean:story"
+       ]
+      },
+      {
+       "section": "paragraph",
+       "text": "The more notable revenue story is that net revenue retention has declined and contraction MRR is the primary drag on growth.",
+       "ids": [
+        "clean:story"
+       ]
+      },
+      {
+       "section": "finding",
+       "text": "The association between support tickets and monthly recurring revenue is negligible and could easily be chance \u2014 the two measures barely move together across all 6,000 rows.",
+       "ids": [
+        "corr:mrr__support_tickets"
+       ]
+      },
+      {
+       "section": "finding",
+       "text": "Support tickets range from 0 to 11 with a median of 3, while monthly recurring revenue ranges from $35.44 to $1,023.37 with a median of $87.35 \u2014 the wide spread in revenue with no corresponding pattern in tickets reinforces that the two are unrelated.",
+       "ids": [
+        "eda:support_tickets",
+        "eda:mrr"
+       ]
+      },
+      {
+       "section": "finding",
+       "text": "Net revenue retention fell to 106.5% (12 months to 31 Oct 2026) from 122.7% a year earlier, driven by contraction MRR of $13,587.47 against expansion MRR of $16,056.28 \u2014 a dynamic that ticket volume does not appear to explain.",
+       "ids": [
+        "clean:story"
+       ]
+      },
+      {
+       "section": "finding",
+       "text": "No customers churned in the window and logo churn held at 0.0%, so the revenue pressure is entirely from existing customers contracting, not leaving.",
+       "ids": [
+        "clean:story"
+       ]
+      },
+      {
+       "section": "action",
+       "ids": [
+        "clean:story",
+        "corr:mrr__support_tickets"
+       ],
+       "text": "Investigate contraction MRR drivers directly \u2014 interview or survey the customers who contracted \u2014 rather than relying on support ticket volume as a proxy. Contraction MRR is the sole drag on net revenue retention and its cause is currently unexplained by the available data."
+      },
+      {
+       "section": "action",
+       "ids": [
+        "corr:mrr__support_tickets",
+        "eda:support_tickets"
+       ],
+       "text": "Enrich the dataset with ticket category, severity, or resolution time and re-run the analysis to test whether a specific ticket type relates to revenue changes. Raw ticket counts show no signal; a more granular ticket attribute might reveal a relationship that volume alone cannot."
+      }
+     ],
+     "bundle": {
+      "question": "Do support tickets relate to recurring revenue?",
+      "columns": [
+       "account_id",
+       "billing_date",
+       "plan",
+       "mrr",
+       "seats",
+       "churned",
+       "support_tickets"
+      ],
+      "evidence_ids": [
+       "clean:audit",
+       "clean:story",
+       "corr:mrr__support_tickets",
+       "eda:mrr",
+       "eda:support_tickets"
+      ],
+      "evidence": [
+       {
+        "id": "clean:audit",
+        "kind": "cleaning",
+        "claim": "Cleaning: 6000 \u2192 6000 rows, 1 logged changes",
+        "result_excerpt": "{\"rows_before\": 6000, \"rows_after\": 6000, \"decisions\": [[\"billing_date\", \"type_coerce\", 6000, 0]]}",
+        "row_count": 6000,
+        "confidence": "high",
+        "confidence_reason": "rule-based; every change below is logged",
+        "assumptions": [
+         "billing_date: Parsed as dates."
+        ]
+       },
+       {
+        "id": "clean:story",
+        "kind": "cleaning",
+        "claim": "The file's story in the product's own numbers: Logo churn (12-month cohort to 31 Oct 2026): 0.0%; a year earlier (12-month cohort to 31 Oct 2025): 0.0%, +0.0 points. Net revenue retention (12-month cohort to 31 Oct 2026): 106.5%; a year earlier (12-month cohort to 31 Oct 2025): 122.7%, -16.2 points. Gross revenue retention (12-month cohort to 31 Oct 2026): 99.3%; a year earlier (12-month cohort to 31 Oct 2025): 100.0%, -0.7 points. MRR peaked at $43,813.56 (Sep 2026) and is $40,308.46 at 31 Oct 2026 (-8.0%). MRR bridge, 12 months to 31 Oct 2026: $37,839.65 on 31 Oct 2025 + new MRR $0.00 + expansion MRR $16,056.28 + reactivation MRR $0.00 \u2212 contraction MRR $13,587.47 \u2212 churned MRR $0.00 = $40,308.46. 0 customers left at a month-end in the window (churned customers); logo churn counts only the customers in force on 31 Oct 2025 who are not in force now, so the two differ: customers who joined in the window or came back are in the count only. 6,000 rows are 200 customers (200 with more than one row); 200 in force at 31 Oct 2026.",
+        "result_excerpt": "[\"Logo churn (12-month cohort to 31 Oct 2026): 0.0%; a year earlier (12-month cohort to 31 Oct 2025): 0.0%, +0.0 points.\", \"Net revenue retention (12-month cohort to 31 Oct 2026): 106.5%; a year earlier (12-month cohort to 31 Oct 2025): 122.7%, -16.2 points.\", \"Gross revenue retention (12-month cohort to 31 Oct 2026): 99.3%; a year earlier (12-month cohort to 31 Oct 2025): 100.0%, -0.7 points.\", \"",
+        "row_count": 6000,
+        "confidence": "high",
+        "confidence_reason": "computed by the product's spell rules, never by a model",
+        "assumptions": []
+       },
+       {
+        "id": "corr:mrr__support_tickets",
+        "kind": "correlation",
+        "claim": "mrr and support_tickets: r = -0.044",
+        "result_excerpt": "{\"mrr__support_tickets\": -0.044}",
+        "row_count": 6000,
+        "confidence": "medium",
+        "confidence_reason": "weak association (|r| = 0.04)",
+        "assumptions": []
+       },
+       {
+        "id": "eda:mrr",
+        "kind": "eda",
+        "claim": "mrr: median 87.35, mean 179.64, range 35.44 to 1,023.37",
+        "result_excerpt": "{\"mean\": 179.643, \"std\": 231.3454, \"min\": 35.44, \"max\": 1023.37, \"median\": 87.35, \"count\": 6000.0}",
+        "row_count": 6000,
+        "confidence": "high",
+        "confidence_reason": "6000 rows",
+        "assumptions": []
+       },
+       {
+        "id": "eda:support_tickets",
+        "kind": "eda",
+        "claim": "support_tickets: median 3.00, mean 3.01, range 0 to 11.00",
+        "result_excerpt": "{\"mean\": 3.0077, \"std\": 1.7579, \"min\": 0.0, \"max\": 11.0, \"median\": 3.0, \"count\": 6000.0}",
+        "row_count": 6000,
+        "confidence": "high",
+        "confidence_reason": "6000 rows",
+        "assumptions": []
+       }
+      ],
+      "date_first": [
+       2024,
+       5
+      ],
+      "date_last": [
+       2026,
+       10
+      ],
+      "n_months": 30,
+      "audit_summary": "Parsed numbers or dates in 1 column(s). Outliers flagged (kept) in: mrr, support_tickets. Final dataset: 6000 rows (started with 6000).",
+      "chart_titles": [
+       "MRR over time",
+       "Net revenue retention over time",
+       "MRR bridge, 12 months to 31 Oct 2026: $37,839.65 \u2192 $40,308.46",
+       "MRR by plan (as of 31 Oct 2026)",
+       "Net revenue retention by plan (12-month cohort to 31 Oct 2026)",
+       "Logo churn by plan (12-month cohort to 31 Oct 2026)",
+       "New MRR by plan (12 months to 31 Oct 2026)",
+       "Churned MRR by plan (12 months to 31 Oct 2026)",
+       "support tickets vs monthly recurring revenue (r = 0.01)"
+      ],
+      "past_insights": [],
+      "corr_pairs": [
+       [
+        "monthly recurring revenue",
+        "support tickets"
+       ]
+      ],
+      "values": [
+       {
+        "eda_summary": {
+         "mrr": {
+          "mean": 179.643,
+          "std": 231.3454,
+          "min": 35.44,
+          "max": 1023.37,
+          "median": 87.35,
+          "count": 6000.0
+         },
+         "support_tickets": {
+          "mean": 3.0077,
+          "std": 1.7579,
+          "min": 0.0,
+          "max": 11.0,
+          "median": 3.0,
+          "count": 6000.0
+         }
+        },
+        "correlations": {
+         "mrr__support_tickets": -0.044
+        },
+        "trends": [],
+        "segments": [],
+        "anomalies": [],
+        "statistical_tests": [],
+        "forecast_points": [],
+        "dtypes_summary": {},
+        "missing_pct": {
+         "account_id": 0.0,
+         "billing_date": 0.0,
+         "plan": 0.0,
+         "mrr": 0.0,
+         "seats": 0.0,
+         "churned": 0.0,
+         "support_tickets": 0.0
+        },
+        "kpis": [
+         {
+          "label": "MRR",
+          "value": "$40,308.46",
+          "context": "as of 31 Oct 2026",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "mrr",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "currency",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Sum of mrr over the distinct account_id in force at the date (each account_id's latest billing_date snapshot on or before the date, ended_at blank or after it) where mrr > 0; over records."
+         },
+         {
+          "label": "ARR",
+          "value": "$483,701.52",
+          "context": "as of 31 Oct 2026",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "arr",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "currency",
+           "currency": null,
+           "unit": null
+          },
+          "how": "12 \u00d7 MRR."
+         },
+         {
+          "label": "Paying customers",
+          "value": "200 customers",
+          "context": "as of 31 Oct 2026",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "paying_customers",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "count",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Distinct account_id in force at the date (each account_id's latest billing_date snapshot on or before the date, ended_at blank or after it) where mrr > 0; over records."
+         },
+         {
+          "label": "New MRR",
+          "value": "$0.00",
+          "context": "12 months to 31 Oct 2026",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "new_mrr",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "currency",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Sum of mrr over the new moves: each account_id whose value went from 0 (never in force before) to above 0 between consecutive month-ends in the period where mrr > 0; over records."
+         },
+         {
+          "label": "Churned MRR",
+          "value": "$0.00",
+          "context": "12 months to 31 Oct 2026",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "churned_mrr",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "currency",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Sum of mrr over the churn moves: each account_id whose value went to 0 between consecutive month-ends in the period where mrr > 0; over records."
+         }
+        ],
+        "pre_cleaning_missing_pct": {},
+        "unique_counts": {},
+        "skewness": {},
+        "target_correlations": {},
+        "target_col": null,
+        "column_roles_summary": {},
+        "column_units": {}
+       },
+       [
+        {
+         "claim": "Cleaning: 6000 \u2192 6000 rows, 1 logged changes",
+         "result_excerpt": "{\"rows_before\": 6000, \"rows_after\": 6000, \"decisions\": [[\"billing_date\", \"type_coerce\", 6000, 0]]}",
+         "row_count": 6000,
+         "assumptions": [
+          "billing_date: Parsed as dates."
+         ],
+         "confidence_reason": "rule-based; every change below is logged"
+        },
+        {
+         "claim": "The file's story in the product's own numbers: Logo churn (12-month cohort to 31 Oct 2026): 0.0%; a year earlier (12-month cohort to 31 Oct 2025): 0.0%, +0.0 points. Net revenue retention (12-month cohort to 31 Oct 2026): 106.5%; a year earlier (12-month cohort to 31 Oct 2025): 122.7%, -16.2 points. Gross revenue retention (12-month cohort to 31 Oct 2026): 99.3%; a year earlier (12-month cohort to 31 Oct 2025): 100.0%, -0.7 points. MRR peaked at $43,813.56 (Sep 2026) and is $40,308.46 at 31 Oct 2026 (-8.0%). MRR bridge, 12 months to 31 Oct 2026: $37,839.65 on 31 Oct 2025 + new MRR $0.00 + expansion MRR $16,056.28 + reactivation MRR $0.00 \u2212 contraction MRR $13,587.47 \u2212 churned MRR $0.00 = $40,308.46. 0 customers left at a month-end in the window (churned customers); logo churn counts only the customers in force on 31 Oct 2025 who are not in force now, so the two differ: customers who joined in the window or came back are in the count only. 6,000 rows are 200 customers (200 with more than one row); 200 in force at 31 Oct 2026.",
+         "result_excerpt": "[\"Logo churn (12-month cohort to 31 Oct 2026): 0.0%; a year earlier (12-month cohort to 31 Oct 2025): 0.0%, +0.0 points.\", \"Net revenue retention (12-month cohort to 31 Oct 2026): 106.5%; a year earlier (12-month cohort to 31 Oct 2025): 122.7%, -16.2 points.\", \"Gross revenue retention (12-month cohort to 31 Oct 2026): 99.3%; a year earlier (12-month cohort to 31 Oct 2025): 100.0%, -0.7 points.\", \"MRR peaked at $43,813.56 (Sep 2026) and is $40,308.46 at 31 Oct 2026 (-8.0%).\", \"MRR bridge, 12 months to 31 Oct 2026: $37,839.65 on 31 Oct 2025 + new MRR $0.00 + expansion MRR $16,056.28 + reactivation MRR $0.00 \\u2212 contraction MRR $13,587.47 \\u2212 churned MRR $0.00 = $40,308.46.\", \"0 customers left at a month-end in the window (churned customers); logo churn counts only the customers in force on 31 Oct 2025 who are not in force now, so the two differ: customers who joined in the window or came back are in the count only.\", \"6,000 rows are 200 customers (200 with more than one row); 200 in force at 31 Oct 2026.\"]",
+         "row_count": 6000,
+         "assumptions": [],
+         "confidence_reason": "computed by the product's spell rules, never by a model"
+        },
+        {
+         "claim": "mrr and support_tickets: r = -0.044",
+         "result_excerpt": "{\"mrr__support_tickets\": -0.044}",
+         "row_count": 6000,
+         "assumptions": [],
+         "confidence_reason": "weak association (|r| = 0.04)"
+        },
+        {
+         "claim": "mrr: median 87.35, mean 179.64, range 35.44 to 1,023.37",
+         "result_excerpt": "{\"mean\": 179.643, \"std\": 231.3454, \"min\": 35.44, \"max\": 1023.37, \"median\": 87.35, \"count\": 6000.0}",
+         "row_count": 6000,
+         "assumptions": [],
+         "confidence_reason": "6000 rows"
+        },
+        {
+         "claim": "support_tickets: median 3.00, mean 3.01, range 0 to 11.00",
+         "result_excerpt": "{\"mean\": 3.0077, \"std\": 1.7579, \"min\": 0.0, \"max\": 11.0, \"median\": 3.0, \"count\": 6000.0}",
+         "row_count": 6000,
+         "assumptions": [],
+         "confidence_reason": "6000 rows"
+        }
+       ],
+       {
+        "decisions": [
+         {
+          "column": "billing_date",
+          "operation": "type_coerce",
+          "strategy": "to_datetime",
+          "reason": "Parsed as dates.",
+          "rows_affected": 6000,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         }
+        ],
+        "rows_before": 6000,
+        "rows_after": 6000,
+        "columns_coerced": [
+         "billing_date"
+        ],
+        "duplicates_removed": 0,
+        "outliers_flagged": [
+         "28 mild outliers in mrr (threshold: values outside [0.629, 5,379]) \u2014 see analyst tab",
+         "2 extreme outliers in support_tickets (0.0% of data, threshold: values > 10.00)"
+        ],
+        "high_null_columns": [],
+        "summary": "Parsed numbers or dates in 1 column(s). Outliers flagged (kept) in: mrr, support_tickets. Final dataset: 6000 rows (started with 6000).",
+        "anomaly_report": {
+         "flags": [
+          {
+           "column": "mrr",
+           "extreme_count": 0,
+           "mild_count": 28,
+           "extreme_pct": 0.0,
+           "lower_bound": 0.629117327476281,
+           "upper_bound": 5379.372024803937,
+           "mild_lower_bound": 8.2468492887284,
+           "mild_upper_bound": 946.918260608107,
+           "used_log_transform": true,
+           "heavy_tailed": false,
+           "message": "28 mild outliers in mrr (threshold: values outside [0.629, 5,379]) \u2014 see analyst tab"
+          },
+          {
+           "column": "support_tickets",
+           "extreme_count": 2,
+           "mild_count": 78,
+           "extreme_pct": 0.03333333333333333,
+           "lower_bound": -4.0,
+           "upper_bound": 10.0,
+           "mild_lower_bound": -1.0,
+           "mild_upper_bound": 7.0,
+           "used_log_transform": false,
+           "heavy_tailed": false,
+           "message": "2 extreme outliers in support_tickets (0.0% of data, threshold: values > 10.00)"
+          }
+         ],
+         "methodology_note": "",
+         "eligible_columns": [
+          "mrr",
+          "seats",
+          "support_tickets"
+         ],
+         "skipped_columns": {
+          "account_id": "id column",
+          "billing_date": "datetime column",
+          "plan": "non-numeric",
+          "churned": "binary column (only 2 values)"
+         }
+        },
+        "skipped_columns": [],
+        "date_ranges": {
+         "billing_date": [
+          "2024-05-01",
+          "2026-10-31",
+          30
+         ]
+        },
+        "grain": "aggregate",
+        "partial_months": {},
+        "main_currency": null,
+        "spell_story": [
+         "Logo churn (12-month cohort to 31 Oct 2026): 0.0%; a year earlier (12-month cohort to 31 Oct 2025): 0.0%, +0.0 points.",
+         "Net revenue retention (12-month cohort to 31 Oct 2026): 106.5%; a year earlier (12-month cohort to 31 Oct 2025): 122.7%, -16.2 points.",
+         "Gross revenue retention (12-month cohort to 31 Oct 2026): 99.3%; a year earlier (12-month cohort to 31 Oct 2025): 100.0%, -0.7 points.",
+         "MRR peaked at $43,813.56 (Sep 2026) and is $40,308.46 at 31 Oct 2026 (-8.0%).",
+         "MRR bridge, 12 months to 31 Oct 2026: $37,839.65 on 31 Oct 2025 + new MRR $0.00 + expansion MRR $16,056.28 + reactivation MRR $0.00 \u2212 contraction MRR $13,587.47 \u2212 churned MRR $0.00 = $40,308.46.",
+         "0 customers left at a month-end in the window (churned customers); logo churn counts only the customers in force on 31 Oct 2025 who are not in force now, so the two differ: customers who joined in the window or came back are in the count only.",
+         "6,000 rows are 200 customers (200 with more than one row); 200 in force at 31 Oct 2026."
+        ],
+        "window_span": {
+         "window": "12 months",
+         "moves": "12 months",
+         "cohort": "12 months",
+         "window_adj": " 12-month"
+        }
+       },
+       [
+        "MRR over time",
+        "Net revenue retention over time",
+        "MRR bridge, 12 months to 31 Oct 2026: $37,839.65 \u2192 $40,308.46",
+        "MRR by plan (as of 31 Oct 2026)",
+        "Net revenue retention by plan (12-month cohort to 31 Oct 2026)",
+        "Logo churn by plan (12-month cohort to 31 Oct 2026)",
+        "New MRR by plan (12 months to 31 Oct 2026)",
+        "Churned MRR by plan (12 months to 31 Oct 2026)",
+        "support tickets vs monthly recurring revenue (r = 0.01)"
+       ],
+       [
+        6000,
+        7,
+        30
+       ],
+       [
+        2024,
+        2025,
+        2026
+       ],
+       [
+        "Read as SaaS subscription data (MRR, ARR, paying customers, new MRR, churned MRR, logo churn, net revenue retention, gross revenue retention). MRR is the monthly run-rate of the customers paying at the latest date (an annual plan \u00f7 12, net of discounts; trials, paused and unpaid subscriptions out, past due in), not revenue; movements and retention compare each customer's MRR at month-ends over the 12 months to that date, and annual churn is measured on the customers paying 12 months earlier, never a monthly rate \u00d7 12. A customer who starts and leaves inside one month appears in no month-end figure.",
+        "The churned column is a flag, not a dated event: the share of rows flagged is not a churn rate."
+       ]
+      ]
+     },
+     "stored_evidence_ids": [
+      "clean:audit",
+      "clean:story",
+      "corr:mrr__support_tickets",
+      "eda:mrr",
+      "eda:support_tickets"
+     ]
+    },
+    "latency_s": 20.81,
+    "cost_usd": 0.01268,
+    "llm_calls": 3,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "{\"0\": \"neither\", \"1\": \"neither\", \"2\": \"neither\", \"3\": \"neither\", \"4\": \"neither\", \"5\": \"neither\", \"6\": \"neither\", \"7\": \"neither\", \"8\": \"neither\", \"9\": \"neither\", \"10\": \"neither\"}",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "```json\n{\n  \"flags\": [\n    {\n      \"claim\": 3,\n      \"label\": \"overstated\",\n      \"evidence\": [\"corr:mrr__support_tickets\"],\n      \"evidence_says\": \"r = -0.044, confidence: medium (weak association)\",\n      \"reason\": \"The claim states the association 'could easily be chance,' but the evidence reports medium confidence, not low confidence. Medium confidence means the finding is not readily attributable to chance alone. The weakness of the association (|r| = 0.04) is supported, but the certainty framing overstates the role of chance.\"\n    }\n  ],\n  \"gaps\": [\n    {\n      \"text\": \"The analysis does not examine whether support tickets relate to contraction or expansion MRR specifically, only to overall MRR. Since contraction MRR is identified as the primary revenue driver, a breakdown of ticket volume by customers who contracted versus expanded would test whether tickets predict revenue movement direction.\",\n      \"columns\": [\"support_tickets\", \"mrr\", \"billing_date\", \"account_id\"]\n    },\n    {\n      \"text\": \"No temporal analysis is shown: whether support tickets in one month predict MRR changes in the following month. The current correlation is cross-sectional; a lagged relationship could reveal whether tickets are a leading indicator of revenue health.\",\n      \"columns\": [\"support_tickets\", \"mrr\", \"billing_date\", \"account_id\"]\n    },\n    {\n      \"text\": \"The analysis does not stratify by plan or seats. If ticket volume and revenue relate differently across plan tiers or customer sizes, a pooled correlation would mask that relationship.\",\n      \"columns\": [\"support_tickets\", \"mrr\", \"plan\", \"seats\"]\n    }\n  ],\n  \"methodology_concerns\": [\n    {\n      \"text\": \"The correlation is computed on 6,000 rows (200 customers with multiple snapshots). The same customer appears multiple times; the rows are not independent. A customer-level correlation (one row per customer) would avoid pseudoreplication and may yield a different result.\",\n      \"columns\": [\"account_id\", \"support_tickets\", \"mrr\"]\n    },\n    {\n      \"text\": \"The evidence notes that support_tickets has outliers flagged and kept (range 0 to 11). With a median of 3.0 and mean of 3.01, the distribution is tight; the outliers at 11 may have outsized influence on a weak correlation. Sensitivity analysis excluding high-ticket outliers would test robustness.\",\n      \"columns\": [\"support_tickets\", \"mrr\"]\n    }\n  ],\n  \"next_investigations\": [\n    {\n      \"text\": \"Compute the correlation between support tickets and MRR at the customer level (one row per account_id, using the latest billing_date or an average), to avoid pseudoreplication from repeated snapshots of the same customer.\",\n      \"columns\": [\"account_id\", \"support_tickets\", \"mrr\", \"billing_date\"]\n    },\n    {\n      \"text\": \"Segment customers by contraction status (those whose MRR fell month-over-month versus those whose MRR grew or held steady) and compare median support tickets between the two groups to test whether ticket volume differs by revenue trajectory.\",\n      \"columns\": [\"account_id\", \"mrr\", \"billing_date\", \"support_tickets\"]\n    },\n    {\n      \"text\": \"Compute the lagged correlation: support tickets in month t against MRR change from month t to month t+1, to test whether tickets are a leading indicator of revenue movement.\",\n      \"columns\": [\"account_id\", \"billing_date\", \"support_tickets\", \"mrr\"]\n    }\n  ]\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "```json\n{\n  \"verdicts\": [\n    {\n      \"i\": 0,\n      \"holds\": true,\n      \"why\": \"The claim states the association 'could easily be chance,' but medium confidence indicates the finding is not readily attributable to chance alone; the certainty framing contradicts the evidence's confidence level.\"\n    }\n  ]\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "headline",
+      "detail": "ok"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "paragraph",
+      "detail": "ok"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "paragraph",
+      "detail": "ok"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": false,
+      "sources": [
+       "critic"
+      ],
+      "section": "finding",
+      "detail": "flagged ['critic'] (The claim states the association 'could easily be chance,' b): The association between support tickets and monthly recurrin"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "finding",
+      "detail": "ok"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "finding",
+      "detail": "ok"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "finding",
+      "detail": "ok"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "action",
+      "detail": "ok"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "action",
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "review_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "review_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "flags_valid",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "bundle_reproduced",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "null_result",
+    "holdout": false,
+    "seeded": false,
+    "output": {
+     "review": {
+      "review_summary": "9 claims checked against the evidence; 1 flagged (1 overstated).",
+      "strengths": [],
+      "gaps": [
+       "The analysis does not examine whether support tickets relate to contraction or expansion MRR separately, only to overall MRR. Since contraction is the stated revenue driver, a breakdown of ticket volume by customers who contracted versus expanded would test whether tickets predict the specific revenue movement the report identifies as the problem.",
+       "The dataset spans 30 months (May 2024 to Oct 2026) but the correlation is computed across all 6,000 rows without examining whether the relationship between tickets and revenue changes over time or differs by cohort.",
+       "No evidence addresses whether the 200 customers in the dataset differ in size, plan type, or tenure, which could confound the relationship between ticket volume and revenue if larger or older customers both have more tickets and higher MRR for structural reasons."
+      ],
+      "next_investigations": [
+       "Correlate support tickets with month-over-month MRR change (expansion or contraction) for each customer, rather than absolute MRR level, to test whether ticket volume predicts the revenue movements the report identifies as the core issue.",
+       "Segment customers by plan type or MRR cohort (e.g., small, medium, large) and compute the correlation between support tickets and MRR within each segment to test whether the relationship differs by customer size.",
+       "Examine the 200 customers who contracted (those with lower MRR in Oct 2026 than Oct 2025) and compare their support ticket counts before and after contraction to see whether ticket volume changed in the months leading up to the revenue drop."
+      ],
+      "methodology_concerns": [
+       "The correlation is computed on 6,000 rows (snapshots) but represents only 200 unique customers. The effective sample size for a customer-level relationship is much smaller, which may inflate the confidence of the medium-confidence rating.",
+       "The evidence notes that support tickets has outliers flagged and kept; the range is 0 to 11 with mean 3.01 and median 3.00, suggesting the distribution is tight. A weak correlation on a compressed variable may mask relationships that emerge only at high ticket volumes."
+      ],
+      "flags": [
+       {
+        "index": 3,
+        "section": "finding",
+        "claim": "The association between support tickets and monthly recurring revenue is negligible and could easily be chance \u2014 the two measures barely move together across all 6,000 rows.",
+        "label": "overstated",
+        "kind": "critic",
+        "reason": "The claim states the association 'could easily be chance,' but the evidence reports medium confidence, not low confidence. Medium confidence means the finding is not readily attributable to chance alone. The weakness of the association (|r| = 0.04) is supported, but the certainty framing overstates the role of chance.",
+        "evidence_ids": [
+         "corr:mrr__support_tickets"
+        ],
+        "source": "critic"
+       }
+      ],
+      "generated_at": "2026-11-16T04:29:24.563936Z"
+     },
+     "claims": [
+      {
+       "section": "headline",
+       "text": "Support tickets and monthly recurring revenue show no meaningful relationship in this dataset.",
+       "ids": [
+        "corr:mrr__support_tickets"
+       ]
+      },
+      {
+       "section": "paragraph",
+       "text": "Across 6,000 snapshots covering 200 customers, support tickets and monthly recurring revenue move together only negligibly, making it unlikely that ticket volume is a reliable signal of revenue health.",
+       "ids": [
+        "corr:mrr__support_tickets",
+        "clean:story"
+       ]
+      },
+      {
+       "section": "paragraph",
+       "text": "The more notable revenue story is that net revenue retention has declined and contraction MRR is the primary drag on growth.",
+       "ids": [
+        "clean:story"
+       ]
+      },
+      {
+       "section": "finding",
+       "text": "The association between support tickets and monthly recurring revenue is negligible and could easily be chance \u2014 the two measures barely move together across all 6,000 rows.",
+       "ids": [
+        "corr:mrr__support_tickets"
+       ]
+      },
+      {
+       "section": "finding",
+       "text": "Support tickets range from 0 to 11 with a median of 3, while monthly recurring revenue ranges from $35.44 to $1,023.37 with a median of $87.35 \u2014 the wide spread in revenue with no corresponding pattern in tickets reinforces that the two are unrelated.",
+       "ids": [
+        "eda:support_tickets",
+        "eda:mrr"
+       ]
+      },
+      {
+       "section": "finding",
+       "text": "Net revenue retention fell to 106.5% (12 months to 31 Oct 2026) from 122.7% a year earlier, driven by contraction MRR of $13,587.47 against expansion MRR of $16,056.28 \u2014 a dynamic that ticket volume does not appear to explain.",
+       "ids": [
+        "clean:story"
+       ]
+      },
+      {
+       "section": "finding",
+       "text": "No customers churned in the window and logo churn held at 0.0%, so the revenue pressure is entirely from existing customers contracting, not leaving.",
+       "ids": [
+        "clean:story"
+       ]
+      },
+      {
+       "section": "action",
+       "ids": [
+        "clean:story",
+        "corr:mrr__support_tickets"
+       ],
+       "text": "Investigate contraction MRR drivers directly \u2014 interview or survey the customers who contracted \u2014 rather than relying on support ticket volume as a proxy. Contraction MRR is the sole drag on net revenue retention and its cause is currently unexplained by the available data."
+      },
+      {
+       "section": "action",
+       "ids": [
+        "corr:mrr__support_tickets",
+        "eda:support_tickets"
+       ],
+       "text": "Enrich the dataset with ticket category, severity, or resolution time and re-run the analysis to test whether a specific ticket type relates to revenue changes. Raw ticket counts show no signal; a more granular ticket attribute might reveal a relationship that volume alone cannot."
+      }
+     ],
+     "bundle": {
+      "question": "Do support tickets relate to recurring revenue?",
+      "columns": [
+       "account_id",
+       "billing_date",
+       "plan",
+       "mrr",
+       "seats",
+       "churned",
+       "support_tickets"
+      ],
+      "evidence_ids": [
+       "clean:audit",
+       "clean:story",
+       "corr:mrr__support_tickets",
+       "eda:mrr",
+       "eda:support_tickets"
+      ],
+      "evidence": [
+       {
+        "id": "clean:audit",
+        "kind": "cleaning",
+        "claim": "Cleaning: 6000 \u2192 6000 rows, 1 logged changes",
+        "result_excerpt": "{\"rows_before\": 6000, \"rows_after\": 6000, \"decisions\": [[\"billing_date\", \"type_coerce\", 6000, 0]]}",
+        "row_count": 6000,
+        "confidence": "high",
+        "confidence_reason": "rule-based; every change below is logged",
+        "assumptions": [
+         "billing_date: Parsed as dates."
+        ]
+       },
+       {
+        "id": "clean:story",
+        "kind": "cleaning",
+        "claim": "The file's story in the product's own numbers: Logo churn (12-month cohort to 31 Oct 2026): 0.0%; a year earlier (12-month cohort to 31 Oct 2025): 0.0%, +0.0 points. Net revenue retention (12-month cohort to 31 Oct 2026): 106.5%; a year earlier (12-month cohort to 31 Oct 2025): 122.7%, -16.2 points. Gross revenue retention (12-month cohort to 31 Oct 2026): 99.3%; a year earlier (12-month cohort to 31 Oct 2025): 100.0%, -0.7 points. MRR peaked at $43,813.56 (Sep 2026) and is $40,308.46 at 31 Oct 2026 (-8.0%). MRR bridge, 12 months to 31 Oct 2026: $37,839.65 on 31 Oct 2025 + new MRR $0.00 + expansion MRR $16,056.28 + reactivation MRR $0.00 \u2212 contraction MRR $13,587.47 \u2212 churned MRR $0.00 = $40,308.46. 0 customers left at a month-end in the window (churned customers); logo churn counts only the customers in force on 31 Oct 2025 who are not in force now, so the two differ: customers who joined in the window or came back are in the count only. 6,000 rows are 200 customers (200 with more than one row); 200 in force at 31 Oct 2026.",
+        "result_excerpt": "[\"Logo churn (12-month cohort to 31 Oct 2026): 0.0%; a year earlier (12-month cohort to 31 Oct 2025): 0.0%, +0.0 points.\", \"Net revenue retention (12-month cohort to 31 Oct 2026): 106.5%; a year earlier (12-month cohort to 31 Oct 2025): 122.7%, -16.2 points.\", \"Gross revenue retention (12-month cohort to 31 Oct 2026): 99.3%; a year earlier (12-month cohort to 31 Oct 2025): 100.0%, -0.7 points.\", \"",
+        "row_count": 6000,
+        "confidence": "high",
+        "confidence_reason": "computed by the product's spell rules, never by a model",
+        "assumptions": []
+       },
+       {
+        "id": "corr:mrr__support_tickets",
+        "kind": "correlation",
+        "claim": "mrr and support_tickets: r = -0.044",
+        "result_excerpt": "{\"mrr__support_tickets\": -0.044}",
+        "row_count": 6000,
+        "confidence": "medium",
+        "confidence_reason": "weak association (|r| = 0.04)",
+        "assumptions": []
+       },
+       {
+        "id": "eda:mrr",
+        "kind": "eda",
+        "claim": "mrr: median 87.35, mean 179.64, range 35.44 to 1,023.37",
+        "result_excerpt": "{\"mean\": 179.643, \"std\": 231.3454, \"min\": 35.44, \"max\": 1023.37, \"median\": 87.35, \"count\": 6000.0}",
+        "row_count": 6000,
+        "confidence": "high",
+        "confidence_reason": "6000 rows",
+        "assumptions": []
+       },
+       {
+        "id": "eda:support_tickets",
+        "kind": "eda",
+        "claim": "support_tickets: median 3.00, mean 3.01, range 0 to 11.00",
+        "result_excerpt": "{\"mean\": 3.0077, \"std\": 1.7579, \"min\": 0.0, \"max\": 11.0, \"median\": 3.0, \"count\": 6000.0}",
+        "row_count": 6000,
+        "confidence": "high",
+        "confidence_reason": "6000 rows",
+        "assumptions": []
+       }
+      ],
+      "date_first": [
+       2024,
+       5
+      ],
+      "date_last": [
+       2026,
+       10
+      ],
+      "n_months": 30,
+      "audit_summary": "Parsed numbers or dates in 1 column(s). Outliers flagged (kept) in: mrr, support_tickets. Final dataset: 6000 rows (started with 6000).",
+      "chart_titles": [
+       "MRR over time",
+       "Net revenue retention over time",
+       "MRR bridge, 12 months to 31 Oct 2026: $37,839.65 \u2192 $40,308.46",
+       "MRR by plan (as of 31 Oct 2026)",
+       "Net revenue retention by plan (12-month cohort to 31 Oct 2026)",
+       "Logo churn by plan (12-month cohort to 31 Oct 2026)",
+       "New MRR by plan (12 months to 31 Oct 2026)",
+       "Churned MRR by plan (12 months to 31 Oct 2026)",
+       "support tickets vs monthly recurring revenue (r = 0.01)"
+      ],
+      "past_insights": [],
+      "corr_pairs": [
+       [
+        "monthly recurring revenue",
+        "support tickets"
+       ]
+      ],
+      "values": [
+       {
+        "eda_summary": {
+         "mrr": {
+          "mean": 179.643,
+          "std": 231.3454,
+          "min": 35.44,
+          "max": 1023.37,
+          "median": 87.35,
+          "count": 6000.0
+         },
+         "support_tickets": {
+          "mean": 3.0077,
+          "std": 1.7579,
+          "min": 0.0,
+          "max": 11.0,
+          "median": 3.0,
+          "count": 6000.0
+         }
+        },
+        "correlations": {
+         "mrr__support_tickets": -0.044
+        },
+        "trends": [],
+        "segments": [],
+        "anomalies": [],
+        "statistical_tests": [],
+        "forecast_points": [],
+        "dtypes_summary": {},
+        "missing_pct": {
+         "account_id": 0.0,
+         "billing_date": 0.0,
+         "plan": 0.0,
+         "mrr": 0.0,
+         "seats": 0.0,
+         "churned": 0.0,
+         "support_tickets": 0.0
+        },
+        "kpis": [
+         {
+          "label": "MRR",
+          "value": "$40,308.46",
+          "context": "as of 31 Oct 2026",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "mrr",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "currency",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Sum of mrr over the distinct account_id in force at the date (each account_id's latest billing_date snapshot on or before the date, ended_at blank or after it) where mrr > 0; over records."
+         },
+         {
+          "label": "ARR",
+          "value": "$483,701.52",
+          "context": "as of 31 Oct 2026",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "arr",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "currency",
+           "currency": null,
+           "unit": null
+          },
+          "how": "12 \u00d7 MRR."
+         },
+         {
+          "label": "Paying customers",
+          "value": "200 customers",
+          "context": "as of 31 Oct 2026",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "paying_customers",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "count",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Distinct account_id in force at the date (each account_id's latest billing_date snapshot on or before the date, ended_at blank or after it) where mrr > 0; over records."
+         },
+         {
+          "label": "New MRR",
+          "value": "$0.00",
+          "context": "12 months to 31 Oct 2026",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "new_mrr",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "currency",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Sum of mrr over the new moves: each account_id whose value went from 0 (never in force before) to above 0 between consecutive month-ends in the period where mrr > 0; over records."
+         },
+         {
+          "label": "Churned MRR",
+          "value": "$0.00",
+          "context": "12 months to 31 Oct 2026",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "churned_mrr",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "currency",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Sum of mrr over the churn moves: each account_id whose value went to 0 between consecutive month-ends in the period where mrr > 0; over records."
+         }
+        ],
+        "pre_cleaning_missing_pct": {},
+        "unique_counts": {},
+        "skewness": {},
+        "target_correlations": {},
+        "target_col": null,
+        "column_roles_summary": {},
+        "column_units": {}
+       },
+       [
+        {
+         "claim": "Cleaning: 6000 \u2192 6000 rows, 1 logged changes",
+         "result_excerpt": "{\"rows_before\": 6000, \"rows_after\": 6000, \"decisions\": [[\"billing_date\", \"type_coerce\", 6000, 0]]}",
+         "row_count": 6000,
+         "assumptions": [
+          "billing_date: Parsed as dates."
+         ],
+         "confidence_reason": "rule-based; every change below is logged"
+        },
+        {
+         "claim": "The file's story in the product's own numbers: Logo churn (12-month cohort to 31 Oct 2026): 0.0%; a year earlier (12-month cohort to 31 Oct 2025): 0.0%, +0.0 points. Net revenue retention (12-month cohort to 31 Oct 2026): 106.5%; a year earlier (12-month cohort to 31 Oct 2025): 122.7%, -16.2 points. Gross revenue retention (12-month cohort to 31 Oct 2026): 99.3%; a year earlier (12-month cohort to 31 Oct 2025): 100.0%, -0.7 points. MRR peaked at $43,813.56 (Sep 2026) and is $40,308.46 at 31 Oct 2026 (-8.0%). MRR bridge, 12 months to 31 Oct 2026: $37,839.65 on 31 Oct 2025 + new MRR $0.00 + expansion MRR $16,056.28 + reactivation MRR $0.00 \u2212 contraction MRR $13,587.47 \u2212 churned MRR $0.00 = $40,308.46. 0 customers left at a month-end in the window (churned customers); logo churn counts only the customers in force on 31 Oct 2025 who are not in force now, so the two differ: customers who joined in the window or came back are in the count only. 6,000 rows are 200 customers (200 with more than one row); 200 in force at 31 Oct 2026.",
+         "result_excerpt": "[\"Logo churn (12-month cohort to 31 Oct 2026): 0.0%; a year earlier (12-month cohort to 31 Oct 2025): 0.0%, +0.0 points.\", \"Net revenue retention (12-month cohort to 31 Oct 2026): 106.5%; a year earlier (12-month cohort to 31 Oct 2025): 122.7%, -16.2 points.\", \"Gross revenue retention (12-month cohort to 31 Oct 2026): 99.3%; a year earlier (12-month cohort to 31 Oct 2025): 100.0%, -0.7 points.\", \"MRR peaked at $43,813.56 (Sep 2026) and is $40,308.46 at 31 Oct 2026 (-8.0%).\", \"MRR bridge, 12 months to 31 Oct 2026: $37,839.65 on 31 Oct 2025 + new MRR $0.00 + expansion MRR $16,056.28 + reactivation MRR $0.00 \\u2212 contraction MRR $13,587.47 \\u2212 churned MRR $0.00 = $40,308.46.\", \"0 customers left at a month-end in the window (churned customers); logo churn counts only the customers in force on 31 Oct 2025 who are not in force now, so the two differ: customers who joined in the window or came back are in the count only.\", \"6,000 rows are 200 customers (200 with more than one row); 200 in force at 31 Oct 2026.\"]",
+         "row_count": 6000,
+         "assumptions": [],
+         "confidence_reason": "computed by the product's spell rules, never by a model"
+        },
+        {
+         "claim": "mrr and support_tickets: r = -0.044",
+         "result_excerpt": "{\"mrr__support_tickets\": -0.044}",
+         "row_count": 6000,
+         "assumptions": [],
+         "confidence_reason": "weak association (|r| = 0.04)"
+        },
+        {
+         "claim": "mrr: median 87.35, mean 179.64, range 35.44 to 1,023.37",
+         "result_excerpt": "{\"mean\": 179.643, \"std\": 231.3454, \"min\": 35.44, \"max\": 1023.37, \"median\": 87.35, \"count\": 6000.0}",
+         "row_count": 6000,
+         "assumptions": [],
+         "confidence_reason": "6000 rows"
+        },
+        {
+         "claim": "support_tickets: median 3.00, mean 3.01, range 0 to 11.00",
+         "result_excerpt": "{\"mean\": 3.0077, \"std\": 1.7579, \"min\": 0.0, \"max\": 11.0, \"median\": 3.0, \"count\": 6000.0}",
+         "row_count": 6000,
+         "assumptions": [],
+         "confidence_reason": "6000 rows"
+        }
+       ],
+       {
+        "decisions": [
+         {
+          "column": "billing_date",
+          "operation": "type_coerce",
+          "strategy": "to_datetime",
+          "reason": "Parsed as dates.",
+          "rows_affected": 6000,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         }
+        ],
+        "rows_before": 6000,
+        "rows_after": 6000,
+        "columns_coerced": [
+         "billing_date"
+        ],
+        "duplicates_removed": 0,
+        "outliers_flagged": [
+         "28 mild outliers in mrr (threshold: values outside [0.629, 5,379]) \u2014 see analyst tab",
+         "2 extreme outliers in support_tickets (0.0% of data, threshold: values > 10.00)"
+        ],
+        "high_null_columns": [],
+        "summary": "Parsed numbers or dates in 1 column(s). Outliers flagged (kept) in: mrr, support_tickets. Final dataset: 6000 rows (started with 6000).",
+        "anomaly_report": {
+         "flags": [
+          {
+           "column": "mrr",
+           "extreme_count": 0,
+           "mild_count": 28,
+           "extreme_pct": 0.0,
+           "lower_bound": 0.629117327476281,
+           "upper_bound": 5379.372024803937,
+           "mild_lower_bound": 8.2468492887284,
+           "mild_upper_bound": 946.918260608107,
+           "used_log_transform": true,
+           "heavy_tailed": false,
+           "message": "28 mild outliers in mrr (threshold: values outside [0.629, 5,379]) \u2014 see analyst tab"
+          },
+          {
+           "column": "support_tickets",
+           "extreme_count": 2,
+           "mild_count": 78,
+           "extreme_pct": 0.03333333333333333,
+           "lower_bound": -4.0,
+           "upper_bound": 10.0,
+           "mild_lower_bound": -1.0,
+           "mild_upper_bound": 7.0,
+           "used_log_transform": false,
+           "heavy_tailed": false,
+           "message": "2 extreme outliers in support_tickets (0.0% of data, threshold: values > 10.00)"
+          }
+         ],
+         "methodology_note": "",
+         "eligible_columns": [
+          "mrr",
+          "seats",
+          "support_tickets"
+         ],
+         "skipped_columns": {
+          "account_id": "id column",
+          "billing_date": "datetime column",
+          "plan": "non-numeric",
+          "churned": "binary column (only 2 values)"
+         }
+        },
+        "skipped_columns": [],
+        "date_ranges": {
+         "billing_date": [
+          "2024-05-01",
+          "2026-10-31",
+          30
+         ]
+        },
+        "grain": "aggregate",
+        "partial_months": {},
+        "main_currency": null,
+        "spell_story": [
+         "Logo churn (12-month cohort to 31 Oct 2026): 0.0%; a year earlier (12-month cohort to 31 Oct 2025): 0.0%, +0.0 points.",
+         "Net revenue retention (12-month cohort to 31 Oct 2026): 106.5%; a year earlier (12-month cohort to 31 Oct 2025): 122.7%, -16.2 points.",
+         "Gross revenue retention (12-month cohort to 31 Oct 2026): 99.3%; a year earlier (12-month cohort to 31 Oct 2025): 100.0%, -0.7 points.",
+         "MRR peaked at $43,813.56 (Sep 2026) and is $40,308.46 at 31 Oct 2026 (-8.0%).",
+         "MRR bridge, 12 months to 31 Oct 2026: $37,839.65 on 31 Oct 2025 + new MRR $0.00 + expansion MRR $16,056.28 + reactivation MRR $0.00 \u2212 contraction MRR $13,587.47 \u2212 churned MRR $0.00 = $40,308.46.",
+         "0 customers left at a month-end in the window (churned customers); logo churn counts only the customers in force on 31 Oct 2025 who are not in force now, so the two differ: customers who joined in the window or came back are in the count only.",
+         "6,000 rows are 200 customers (200 with more than one row); 200 in force at 31 Oct 2026."
+        ],
+        "window_span": {
+         "window": "12 months",
+         "moves": "12 months",
+         "cohort": "12 months",
+         "window_adj": " 12-month"
+        }
+       },
+       [
+        "MRR over time",
+        "Net revenue retention over time",
+        "MRR bridge, 12 months to 31 Oct 2026: $37,839.65 \u2192 $40,308.46",
+        "MRR by plan (as of 31 Oct 2026)",
+        "Net revenue retention by plan (12-month cohort to 31 Oct 2026)",
+        "Logo churn by plan (12-month cohort to 31 Oct 2026)",
+        "New MRR by plan (12 months to 31 Oct 2026)",
+        "Churned MRR by plan (12 months to 31 Oct 2026)",
+        "support tickets vs monthly recurring revenue (r = 0.01)"
+       ],
+       [
+        6000,
+        7,
+        30
+       ],
+       [
+        2024,
+        2025,
+        2026
+       ],
+       [
+        "Read as SaaS subscription data (MRR, ARR, paying customers, new MRR, churned MRR, logo churn, net revenue retention, gross revenue retention). MRR is the monthly run-rate of the customers paying at the latest date (an annual plan \u00f7 12, net of discounts; trials, paused and unpaid subscriptions out, past due in), not revenue; movements and retention compare each customer's MRR at month-ends over the 12 months to that date, and annual churn is measured on the customers paying 12 months earlier, never a monthly rate \u00d7 12. A customer who starts and leaves inside one month appears in no month-end figure.",
+        "The churned column is a flag, not a dated event: the share of rows flagged is not a churn rate."
+       ]
+      ]
+     },
+     "stored_evidence_ids": [
+      "clean:audit",
+      "clean:story",
+      "corr:mrr__support_tickets",
+      "eda:mrr",
+      "eda:support_tickets"
+     ]
+    },
+    "latency_s": 16.02,
+    "cost_usd": 0.01272,
+    "llm_calls": 3,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "{\"0\": \"neither\", \"1\": \"neither\", \"2\": \"neither\", \"3\": \"neither\", \"4\": \"neither\", \"5\": \"neither\", \"6\": \"neither\", \"7\": \"neither\", \"8\": \"neither\", \"9\": \"neither\", \"10\": \"neither\"}",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "```json\n{\n  \"flags\": [\n    {\n      \"claim\": 3,\n      \"label\": \"overstated\",\n      \"evidence\": [\"corr:mrr__support_tickets\"],\n      \"evidence_says\": \"r = -0.044, confidence: medium (weak association)\",\n      \"reason\": \"The claim states the association 'could easily be chance,' but the evidence reports medium confidence, not low confidence. Medium confidence means the finding is not readily attributable to chance alone. The weakness of the association (|r| = 0.04) is supported, but the certainty framing overstates the role of chance.\"\n    }\n  ],\n  \"gaps\": [\n    {\n      \"text\": \"The analysis does not examine whether support tickets relate to contraction or expansion MRR separately, only to overall MRR. Since contraction is the stated revenue driver, a breakdown of ticket volume by customers who contracted versus expanded would test whether tickets predict the specific revenue movement the report identifies as the problem.\",\n      \"columns\": [\"support_tickets\", \"mrr\", \"billing_date\", \"account_id\"]\n    },\n    {\n      \"text\": \"The dataset spans 30 months (May 2024 to Oct 2026) but the correlation is computed across all 6,000 rows without examining whether the relationship between tickets and revenue changes over time or differs by cohort.\",\n      \"columns\": [\"support_tickets\", \"mrr\", \"billing_date\"]\n    },\n    {\n      \"text\": \"No evidence addresses whether the 200 customers in the dataset differ in size, plan type, or tenure, which could confound the relationship between ticket volume and revenue if larger or older customers both have more tickets and higher MRR for structural reasons.\",\n      \"columns\": [\"account_id\", \"plan\", \"mrr\", \"support_tickets\"]\n    }\n  ],\n  \"methodology_concerns\": [\n    {\n      \"text\": \"The correlation is computed on 6,000 rows (snapshots) but represents only 200 unique customers. The effective sample size for a customer-level relationship is much smaller, which may inflate the confidence of the medium-confidence rating.\",\n      \"columns\": [\"account_id\", \"support_tickets\", \"mrr\"]\n    },\n    {\n      \"text\": \"The evidence notes that support_tickets has outliers flagged and kept; the range is 0 to 11 with mean 3.01 and median 3.00, suggesting the distribution is tight. A weak correlation on a compressed variable may mask relationships that emerge only at high ticket volumes.\",\n      \"columns\": [\"support_tickets\"]\n    }\n  ],\n  \"next_investigations\": [\n    {\n      \"text\": \"Correlate support tickets with month-over-month MRR change (expansion or contraction) for each customer, rather than absolute MRR level, to test whether ticket volume predicts the revenue movements the report identifies as the core issue.\",\n      \"columns\": [\"support_tickets\", \"mrr\", \"billing_date\", \"account_id\"]\n    },\n    {\n      \"text\": \"Segment customers by plan type or MRR cohort (e.g., small, medium, large) and compute the correlation between support tickets and MRR within each segment to test whether the relationship differs by customer size.\",\n      \"columns\": [\"plan\", \"mrr\", \"support_tickets\"]\n    },\n    {\n      \"text\": \"Examine the 200 customers who contracted (those with lower MRR in Oct 2026 than Oct 2025) and compare their support ticket counts before and after contraction to see whether ticket volume changed in the months leading up to the revenue drop.\",\n      \"columns\": [\"account_id\", \"support_tickets\", \"mrr\", \"billing_date\"]\n    }\n  ]\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "```json\n{\n  \"verdicts\": [\n    {\n      \"i\": 0,\n      \"holds\": true,\n      \"why\": \"The claim states the association 'could easily be chance,' but medium confidence indicates the finding is not readily attributable to chance alone; the certainty framing contradicts the confidence level reported in the evidence.\"\n    }\n  ]\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": false
+   }
+  ]
+ }
+}

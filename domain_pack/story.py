@@ -3,6 +3,7 @@ agents read, the first questions."""
 from __future__ import annotations
 
 import re
+from typing import NamedTuple
 
 import pandas as pd
 
@@ -13,7 +14,7 @@ from .pack import (CONDITIONS, Cond, KPI, Maturity, Measured, MeasuredBy, Pack, 
 from .detect import main_currency, row_kinds
 from .spell import (WINDOW_MONTHS, Window, _ended_undated, has_spell, not_counted_yet,
                     today_only, window, window_words)
-from .ledger import MOVES
+from .ledger import BRIDGE, MOVES, SIGN
 from .kpi import (_person_col, computable, kpi_roles, ledger_kpi, measure, stock_kpi, stock_rows,
                   used_terms)
 
@@ -181,6 +182,36 @@ def spell_story(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> list[str
     return out
 
 
+class Bridge(NamedTuple):
+    stock: KPI
+    opening: KPI
+    start: float
+    now: float
+    moves: dict[str, tuple[KPI, float]]   # move → (its KPI, its value), in BRIDGE order
+
+    @property
+    def rest(self) -> float:
+        """What the moves don't split (a pack without expansion: an entity's rise and fall)."""
+        return self.now - self.start - sum(SIGN[m] * v for m, (_, v) in self.moves.items())
+
+
+def bridge(pack: Pack, df: pd.DataFrame, roles: dict[str, str], moves=BRIDGE, **at) -> Bridge | None:
+    """THE bridge (GLOSSARY Bridge) of the money stock tile: its opening, each of `moves` the pack
+    has a KPI for (in BRIDGE order) and its closing, each by `measure` (`at`: full, window, cut),
+    so every step is its own tile. None without a stock, an opening, new and churn, or when any
+    of them is unavailable: a bridge with a step missing would not add up."""
+    stock, opening = stock_kpi(pack, roles, "money"), ledger_kpi(pack, roles, "opening")
+    parts = {m: k for m in BRIDGE if m in moves and (k := ledger_kpi(pack, roles, "moves", m))}
+    if not (stock and opening and "new" in parts and "churn" in parts):
+        return None
+    val = {m: _fact(df, roles, pack, k.name, **at) for m, k in parts.items()}
+    start = _fact(df, roles, pack, opening.name, **at)
+    now = _fact(df, roles, pack, stock.name, **at)
+    if start is None or now is None or None in val.values():
+        return None
+    return Bridge(stock, opening, start, now, {m: (parts[m], v) for m, v in val.items()})
+
+
 def _ledger_story(pack: Pack, df: pd.DataFrame, roles: dict[str, str], w: Window) -> list[str]:
     """The ledger's facts (Domain 6 S9), from the pack's KPIs of one moves or opening term each:
     the bridge (opening + new + expansion + reactivation − contraction − churned = now), the
@@ -189,29 +220,20 @@ def _ledger_story(pack: Pack, df: pd.DataFrame, roles: dict[str, str], w: Window
     month, with its largest single entity's share and group. No line without its KPIs."""
     out: list[str] = []
     lo, as_of = w.lo, w.as_of
-    stock = stock_kpi(pack, roles, "money")
-    parts = {m: ledger_kpi(pack, roles, "moves", m) for m in ("new", "expansion", "reactivation",
-                                                              "contraction", "churn")}
-    opening = ledger_kpi(pack, roles, "opening")
     say = lambda k, v: _amount(df, roles, k, v)   # noqa: E731
     words = pack.spell.words
-    if stock and opening and parts["new"] and parts["churn"]:
-        val = {m: _fact(df, roles, pack, k.name) for m, k in parts.items() if k}
-        start, now = _fact(df, roles, pack, opening.name), _fact(df, roles, pack, stock.name)
-        if start is not None and now is not None and None not in val.values():
-            terms = [f"+ {k.phrase} {say(k, val[m])}" if m not in ("contraction", "churn")
-                     else f"− {k.phrase} {say(k, val[m])}" for m, k in parts.items() if k]
-            rest = now - start - sum(v if m not in ("contraction", "churn") else -v for m, v in val.items())
-            if not parts["expansion"] and abs(rest) >= 0.005:   # it ties, always (pass 3: \$198 off)
-                terms.append(f"{'+' if rest > 0 else '−'} {words.unsplit} {say(stock, abs(rest))}")
-            begin = w.moves_from   # the bridge opens where its moves start
-            span = window_words(pack, df, roles, parts["new"].name)   # the moves' own words
-            if not span or begin >= as_of:
-                return out   # no month of moves: no bridge (pass 5: '0 months to 26 Oct')
-            out.append(f"{words.bridge.format(stock=stock.label)}, {span}: {say(stock, start)} on "
-                       f"{begin:%-d %b %Y} " + " ".join(terms) + f" = {say(stock, now)}."
-                       + ("" if parts["expansion"] else
-                          " " + words.unsplit_why.format(singular=words.singular)))
+    if b := bridge(pack, df, roles, MOVES):   # the story's bridge: no transfers in the whole
+        terms = [f"{'+' if SIGN[m] > 0 else '−'} {k.phrase} {say(k, v)}" for m, (k, v) in b.moves.items()]
+        split = "expansion" in b.moves
+        if not split and abs(b.rest) >= 0.005:   # it ties, always (pass 3: \$198 off)
+            terms.append(f"{'+' if b.rest > 0 else '−'} {words.unsplit} {say(b.stock, abs(b.rest))}")
+        begin = w.moves_from   # the bridge opens where its moves start
+        span = window_words(pack, df, roles, b.moves["new"][0].name)   # the moves' own words
+        if not span or begin >= as_of:
+            return out   # no month of moves: no bridge (pass 5: '0 months to 26 Oct')
+        out.append(f"{words.bridge.format(stock=b.stock.label)}, {span}: {say(b.stock, b.start)} on "
+                   f"{begin:%-d %b %Y} " + " ".join(terms) + f" = {say(b.stock, b.now)}."
+                   + ("" if split else " " + words.unsplit_why.format(singular=words.singular)))
     lost, rate = ledger_kpi(pack, roles, "moves", "churn", "count"), next(
         (k for k in pack.kpis if k.tile and k.unit == "percent" and computable(pack, k.name, roles)
          and any(t.spell == "retained" and t.sum is None for alt in k.num for t in alt)), None)
@@ -219,7 +241,7 @@ def _ledger_story(pack: Pack, df: pd.DataFrame, roles: dict[str, str], w: Window
             and _fact(df, roles, pack, rate.name) is not None:   # never without its rate
         out.append(words.left_vs_rate.format(n=f"{n:,.0f}", who=words.plural, lost=lost.phrase,
                                              rate=rate.phrase, start=f"{w.cohort_start:%-d %b %Y}"))
-    if (k := parts["churn"]) is not None:
+    if (k := ledger_kpi(pack, roles, "moves", "churn")) is not None:
         frame = df.assign(_period=pd.Series(pd.NaT, index=df.index).astype("period[M]"))
         e = _fact(frame, roles, pack, k.name, by="_period")
         e = e[[p for p in e.index if p.end_time.normalize() > lo]] if e is not None else None

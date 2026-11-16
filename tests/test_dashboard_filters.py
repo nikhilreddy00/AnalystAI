@@ -259,12 +259,19 @@ def _filter_columns(clean, contract, k: int = 8) -> list[tuple[str, list[str]]]:
     return [(c, v) for c, v in out if as_text(shown[c]).isin(v).all()][:k]
 
 
-PACK_DATASETS = ["retail_lines", "store_weeks", "b2b_invoices", "loan_tape", "loan_tape_messy",
-                 "card_ledger", "bank_balances", "bank_statement", "ledger_drcr", "deposits_daily",
-                 "inpatient", "encounters", "health_claims", "policies", "loss_run", "claims",
-                 "hr_roster", "hr_roster_onerow", "hr_snapshots", "employees",
-                 "saas_subscriptions", "saas_mrr_snapshots", "saas_invoices", "subscriptions",
-                 "saas_accounts"]
+# Each pack's datasets (the pack each one reads as is checked in
+# test_every_domain_dataset_is_in_the_every_filter_check); the property hook reads it too.
+DATASETS_BY_PACK = {
+    "retail": ["retail_lines", "store_weeks", "b2b_invoices"],
+    "banking": ["loan_tape", "loan_tape_messy", "card_ledger", "bank_balances", "bank_statement",
+                "ledger_drcr", "deposits_daily"],
+    "healthcare": ["inpatient", "encounters", "health_claims"],
+    "insurance": ["policies", "loss_run", "claims"],
+    "hr": ["hr_roster", "hr_roster_onerow", "hr_snapshots", "employees"],
+    "saas": ["saas_subscriptions", "saas_mrr_snapshots", "saas_invoices", "subscriptions",
+             "saas_accounts"],
+}
+PACK_DATASETS = [n for names in DATASETS_BY_PACK.values() for n in names]
 
 
 @pytest.mark.parametrize("name", PACK_DATASETS)
@@ -479,6 +486,9 @@ def test_every_domain_dataset_is_in_the_every_filter_check():
     domains = [n for n in datagen.DATASETS if _built(n)[2].domain_confidence == "strong"]
     missing = sorted(set(domains) - set(PACK_DATASETS))
     assert not missing, f"add to PACK_DATASETS (every filter on every domain): {missing}"
+    filed = {n: d for d, names in DATASETS_BY_PACK.items() for n in names}
+    wrong = {n: _built(n)[2].domain for n in PACK_DATASETS if _built(n)[2].domain != filed[n]}
+    assert not wrong, f"filed under another pack in DATASETS_BY_PACK: {wrong}"
 
 
 def test_a_books_ratio_tile_says_its_spread_over_the_rankable_groups():

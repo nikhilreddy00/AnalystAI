@@ -1,0 +1,1772 @@
+{
+ "meta": {
+  "suite": "quality",
+  "report": "quality-20261116T042835Z",
+  "k": 3,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "84f157f",
+  "started_at": "20261116T042835Z",
+  "only": "q-15",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 1,
+  "runs": 3,
+  "pass_rate": 1.0,
+  "case_majority_pass_rate": 1.0,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "hard_rules_na": 0,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 3,
+  "runs_with_prose_rewritten": 0,
+  "runs_with_pii_guard_hit": 0,
+  "cost_per_question_usd": 0.0093,
+  "latency_p50_s": 9.93,
+  "latency_p95_s": 10.52,
+  "defect_recall": 1.0,
+  "false_alarm_rate": 0.0,
+  "seeded_defects": 6,
+  "supported_claims": 18,
+  "recall_by_kind": {
+   "certainty": 1.0
+  },
+  "recall_by_source": {
+   "check": 1.0,
+   "critic": 0.0
+  },
+  "label_agreement_on_caught": 1.0,
+  "natural_recall": null,
+  "false_alarms_on_actions": 0.0,
+  "clean_reports_with_false_alarm": null,
+  "hard_review_grounded": 1.0,
+  "hard_flags_valid": 1.0,
+  "hard_no_injection_echo": 1.0,
+  "hard_bundle_reproduced": 1.0,
+  "holdout_pass_rate": null
+ },
+ "runs": {
+  "q-15-gap-not-significant": [
+   {
+    "checks": [
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "headline",
+      "detail": "ok"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "paragraph",
+      "detail": "ok"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "paragraph",
+      "detail": "ok"
+     },
+     {
+      "kind": "defect",
+      "ok": true,
+      "defect": "certainty",
+      "sources": [
+       "check"
+      ],
+      "label_match": true,
+      "detail": "[certainty] caught by ['check']North averages $113.32 per order while South averages $94.03, so North"
+     },
+     {
+      "kind": "defect",
+      "ok": true,
+      "defect": "certainty",
+      "sources": [
+       "check"
+      ],
+      "label_match": true,
+      "detail": "[certainty] caught by ['check']A comparison test between the two regions confirmed a real difference:"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "finding",
+      "detail": "ok"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "action",
+      "detail": "ok"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "action",
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "review_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "review_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "flags_valid",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "bundle_reproduced",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "contradictory",
+    "holdout": false,
+    "seeded": true,
+    "output": {
+     "review": {
+      "review_summary": "8 claims checked against the evidence; 2 flagged (2 overstated).",
+      "strengths": [],
+      "gaps": [
+       "The analysis does not break down revenue by region over time (by month or quarter within the 11-month period). This would show whether the North-South difference is consistent across the date range or driven by specific periods.",
+       "No analysis of other metrics (units sold, discount, marketing spend) by region is provided. These could explain or contextualize the revenue difference between North and South."
+      ],
+      "next_investigations": [
+       "Compare mean revenue by region within each discount level or marketing spend bracket to determine whether the North-South gap persists across customer acquisition strategies.",
+       "Analyze revenue by region and month (or quarter) across the 11-month period to check whether the North advantage is stable or driven by specific time windows."
+      ],
+      "methodology_concerns": [
+       "The notes column is 100% missing, which the data-quality summary flags as 'review recommended' for columns with >40% missing. This loss of context may mask important order-level drivers of regional revenue differences."
+      ],
+      "flags": [
+       {
+        "index": 3,
+        "section": "finding",
+        "claim": "North averages $113.32 per order while South averages $94.03, so North clearly and reliably out-earns the South.",
+        "label": "overstated",
+        "kind": "certainty",
+        "reason": "states certainty ('clearly'), but the evidence is weak: only 24 rows",
+        "evidence_ids": [
+         "seg:region/revenue"
+        ],
+        "source": "check"
+       },
+       {
+        "index": 4,
+        "section": "finding",
+        "claim": "A comparison test between the two regions confirmed a real difference: North definitively earns more.",
+        "label": "overstated",
+        "kind": "certainty",
+        "reason": "states certainty ('confirmed'), but the evidence is weak: only 24 rows",
+        "evidence_ids": [
+         "test:0"
+        ],
+        "source": "check"
+       }
+      ],
+      "generated_at": "2026-11-16T04:28:45.734686Z"
+     },
+     "claims": [
+      {
+       "section": "headline",
+       "text": "North averages higher revenue than South, but with only 24 rows the difference could be chance.",
+       "ids": [
+        "seg:region/revenue",
+        "test:0"
+       ]
+      },
+      {
+       "section": "paragraph",
+       "text": "North averages $113.32 per order and South averages $94.03, yet the statistical test falls just short of a reliable signal at this sample size.",
+       "ids": [
+        "seg:region/revenue",
+        "test:0"
+       ]
+      },
+      {
+       "section": "paragraph",
+       "text": "The notes column is entirely missing, so any context it might have provided about orders is unavailable.",
+       "ids": [
+        "clean:audit"
+       ]
+      },
+      {
+       "section": "finding",
+       "text": "North averages $113.32 per order while South averages $94.03, so North clearly and reliably out-earns the South.",
+       "ids": [
+        "seg:region/revenue"
+       ]
+      },
+      {
+       "section": "finding",
+       "text": "A comparison test between the two regions confirmed a real difference: North definitively earns more.",
+       "ids": [
+        "test:0"
+       ]
+      },
+      {
+       "section": "finding",
+       "text": "Across all orders, revenue ranges from $55.34 to $135.76 with a median of $98.65, showing meaningful spread within the dataset.",
+       "ids": [
+        "eda:revenue"
+       ]
+      },
+      {
+       "section": "action",
+       "ids": [
+        "test:0",
+        "seg:region/revenue"
+       ],
+       "text": "Collect more orders \u2014 aim for a substantially larger sample \u2014 before acting on the North vs. South revenue gap. Ensures any regional strategy is based on a reliable signal rather than a result that could be chance."
+      },
+      {
+       "section": "action",
+       "ids": [
+        "clean:audit"
+       ],
+       "text": "Investigate and populate the notes column, which is currently 100% missing. Restores context that may explain order-level variation and support deeper regional analysis."
+      }
+     ],
+     "bundle": {
+      "question": "Does the North region earn more than the South?",
+      "columns": [
+       "order_id",
+       "order_date",
+       "segment",
+       "region",
+       "revenue",
+       "units",
+       "discount",
+       "marketing_spend",
+       "customer_email",
+       "customer_name",
+       "notes"
+      ],
+      "evidence_ids": [
+       "clean:audit",
+       "seg:region/revenue",
+       "test:0",
+       "eda:revenue"
+      ],
+      "evidence": [
+       {
+        "id": "clean:audit",
+        "kind": "cleaning",
+        "claim": "Cleaning: 24 \u2192 24 rows, 2 logged changes",
+        "result_excerpt": "{\"rows_before\": 24, \"rows_after\": 24, \"decisions\": [[\"order_date\", \"type_coerce\", 24, 0], [\"notes\", \"keep\", 0, 0]]}",
+        "row_count": 24,
+        "confidence": "medium",
+        "confidence_reason": "many missing or unreadable values in notes",
+        "assumptions": [
+         "order_date: Parsed as dates.",
+         "notes: 24 of 24 values missing (100%): too empty to use with confidence; left as missing."
+        ]
+       },
+       {
+        "id": "seg:region/revenue",
+        "kind": "segment",
+        "claim": "mean revenue by region (2 groups)",
+        "result_excerpt": "{\"segment_column\": \"region\", \"metric_column\": \"revenue\", \"aggregation\": \"mean\", \"results\": [{\"name\": \"North\", \"value\": 113.3167}, {\"name\": \"South\", \"value\": 94.03}]}",
+        "row_count": 24,
+        "confidence": "low",
+        "confidence_reason": "only 24 rows",
+        "assumptions": []
+       },
+       {
+        "id": "test:0",
+        "kind": "test",
+        "claim": "Welch's t-test: revenue by region",
+        "result_excerpt": "{\"test_name\": \"Welch's t-test\", \"statistic\": 1.999291891, \"p_value\": 0.06493069686, \"interpretation\": \"revenue by region\"}",
+        "row_count": 24,
+        "confidence": "low",
+        "confidence_reason": "only 24 rows",
+        "assumptions": []
+       },
+       {
+        "id": "eda:revenue",
+        "kind": "eda",
+        "claim": "revenue: median 98.65, mean 101.26, range 55.34 to 135.76",
+        "result_excerpt": "{\"mean\": 101.2625, \"std\": 23.2546, \"min\": 55.34, \"max\": 135.76, \"median\": 98.65, \"count\": 24.0}",
+        "row_count": 24,
+        "confidence": "low",
+        "confidence_reason": "only 24 rows",
+        "assumptions": []
+       }
+      ],
+      "date_first": [
+       2025,
+       11
+      ],
+      "date_last": [
+       2026,
+       9
+      ],
+      "n_months": 11,
+      "audit_summary": "Parsed numbers or dates in 1 column(s). More than 40% missing in: notes \u2014 review recommended. Final dataset: 24 rows (started with 24).",
+      "chart_titles": [
+       "Average revenue by region: North highest (113.32), South lowest (94.03)",
+       "revenue distribution",
+       "Total revenue by month",
+       "segment Breakdown \u2014 A Leads at 33%",
+       "revenue vs marketing spend (r = 0.47)",
+       "Correlation Heatmap"
+      ],
+      "past_insights": [],
+      "corr_pairs": [],
+      "values": [
+       {
+        "eda_summary": {
+         "revenue": {
+          "mean": 101.2625,
+          "std": 23.2546,
+          "min": 55.34,
+          "max": 135.76,
+          "median": 98.65,
+          "count": 24.0
+         }
+        },
+        "correlations": {},
+        "trends": [],
+        "segments": [
+         {
+          "segment_column": "region",
+          "metric_column": "revenue",
+          "aggregation": "mean",
+          "results": [
+           {
+            "name": "North",
+            "value": 113.3167
+           },
+           {
+            "name": "South",
+            "value": 94.03
+           }
+          ],
+          "label": null
+         }
+        ],
+        "anomalies": [],
+        "statistical_tests": [
+         {
+          "test_name": "Welch's t-test",
+          "statistic": 1.999291891301196,
+          "p_value": 0.06493069686155219,
+          "interpretation": "revenue by region"
+         }
+        ],
+        "forecast_points": [],
+        "dtypes_summary": {},
+        "missing_pct": {
+         "order_id": 0.0,
+         "order_date": 0.0,
+         "segment": 0.0,
+         "region": 0.0,
+         "revenue": 0.0,
+         "units": 0.0,
+         "discount": 0.0,
+         "marketing_spend": 0.0,
+         "customer_email": 0.0,
+         "customer_name": 0.0,
+         "notes": 100.0
+        },
+        "kpis": [
+         {
+          "label": "Total Orders",
+          "value": "24",
+          "context": "24 order records",
+          "recipe": {
+           "kind": "row_count",
+           "column": null,
+           "kpi": null,
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": null,
+           "currency": null,
+           "unit": null
+          },
+          "how": "Count of all 24 rows after cleaning."
+         },
+         {
+          "label": "Avg revenue",
+          "value": "$101.26",
+          "context": "Range $55.34 \u2013 $135.76",
+          "recipe": {
+           "kind": "metric_avg",
+           "column": "revenue",
+           "kpi": null,
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "currency",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Mean of revenue over its non-missing rows."
+         },
+         {
+          "label": "Top segment",
+          "value": "A",
+          "context": "33.3% of orders",
+          "recipe": {
+           "kind": "top_cat",
+           "column": "segment",
+           "kpi": null,
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": null,
+           "currency": null,
+           "unit": null
+          },
+          "how": "Most frequent value of segment, and its share of rows."
+         },
+         {
+          "label": "discount Variability",
+          "value": "CV 0.64",
+          "context": "Mean 12.0% \u00b1 7.7%",
+          "recipe": {
+           "kind": "highest_cv",
+           "column": "discount",
+           "kpi": null,
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "percent",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Coefficient of variation (std / |mean|) of discount, the most variable measure."
+         }
+        ],
+        "pre_cleaning_missing_pct": {},
+        "unique_counts": {},
+        "skewness": {},
+        "target_correlations": {},
+        "target_col": null,
+        "column_roles_summary": {},
+        "column_units": {}
+       },
+       [
+        {
+         "claim": "Cleaning: 24 \u2192 24 rows, 2 logged changes",
+         "result_excerpt": "{\"rows_before\": 24, \"rows_after\": 24, \"decisions\": [[\"order_date\", \"type_coerce\", 24, 0], [\"notes\", \"keep\", 0, 0]]}",
+         "row_count": 24,
+         "assumptions": [
+          "order_date: Parsed as dates.",
+          "notes: 24 of 24 values missing (100%): too empty to use with confidence; left as missing."
+         ],
+         "confidence_reason": "many missing or unreadable values in notes"
+        },
+        {
+         "claim": "mean revenue by region (2 groups)",
+         "result_excerpt": "{\"segment_column\": \"region\", \"metric_column\": \"revenue\", \"aggregation\": \"mean\", \"results\": [{\"name\": \"North\", \"value\": 113.3167}, {\"name\": \"South\", \"value\": 94.03}]}",
+         "row_count": 24,
+         "assumptions": [],
+         "confidence_reason": "only 24 rows"
+        },
+        {
+         "claim": "Welch's t-test: revenue by region",
+         "result_excerpt": "{\"test_name\": \"Welch's t-test\", \"statistic\": 1.999291891, \"p_value\": 0.06493069686, \"interpretation\": \"revenue by region\"}",
+         "row_count": 24,
+         "assumptions": [],
+         "confidence_reason": "only 24 rows"
+        },
+        {
+         "claim": "revenue: median 98.65, mean 101.26, range 55.34 to 135.76",
+         "result_excerpt": "{\"mean\": 101.2625, \"std\": 23.2546, \"min\": 55.34, \"max\": 135.76, \"median\": 98.65, \"count\": 24.0}",
+         "row_count": 24,
+         "assumptions": [],
+         "confidence_reason": "only 24 rows"
+        }
+       ],
+       {
+        "decisions": [
+         {
+          "column": "order_date",
+          "operation": "type_coerce",
+          "strategy": "to_datetime",
+          "reason": "Parsed as dates.",
+          "rows_affected": 24,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "notes",
+          "operation": "keep",
+          "strategy": "high_null",
+          "reason": "24 of 24 values missing (100%): too empty to use with confidence; left as missing.",
+          "rows_affected": 0,
+          "before_null_pct": 100.0,
+          "after_null_pct": 100.0,
+          "rows_removed": 0
+         }
+        ],
+        "rows_before": 24,
+        "rows_after": 24,
+        "columns_coerced": [
+         "order_date"
+        ],
+        "duplicates_removed": 0,
+        "outliers_flagged": [],
+        "high_null_columns": [
+         "notes"
+        ],
+        "summary": "Parsed numbers or dates in 1 column(s). More than 40% missing in: notes \u2014 review recommended. Final dataset: 24 rows (started with 24).",
+        "anomaly_report": {
+         "flags": [],
+         "methodology_note": "",
+         "eligible_columns": [
+          "revenue",
+          "units",
+          "discount",
+          "marketing_spend"
+         ],
+         "skipped_columns": {
+          "order_id": "id column",
+          "order_date": "datetime column",
+          "segment": "non-numeric",
+          "region": "binary column (only 2 values)",
+          "customer_email": "non-numeric",
+          "customer_name": "non-numeric",
+          "notes": "constant or unsupported"
+         }
+        },
+        "skipped_columns": [],
+        "date_ranges": {
+         "order_date": [
+          "2025-11-11",
+          "2026-09-02",
+          11
+         ]
+        },
+        "grain": "order",
+        "partial_months": {},
+        "main_currency": null,
+        "spell_story": [],
+        "window_span": {}
+       },
+       [
+        "Average revenue by region: North highest (113.32), South lowest (94.03)",
+        "revenue distribution",
+        "Total revenue by month",
+        "segment Breakdown \u2014 A Leads at 33%",
+        "revenue vs marketing spend (r = 0.47)",
+        "Correlation Heatmap"
+       ],
+       [
+        24,
+        11,
+        11
+       ],
+       [
+        2025,
+        2026
+       ],
+       [
+        "Read as retail sales data because it has quantity, revenue, order id, date and email columns; if these are not sales, the sales figures here don't apply.",
+        "The data covers 11 months, so month-over-month changes may be seasonal; there is no same month last year to compare with."
+       ]
+      ]
+     },
+     "stored_evidence_ids": [
+      "clean:audit",
+      "seg:region/revenue",
+      "test:0",
+      "eda:revenue"
+     ]
+    },
+    "latency_s": 10.59,
+    "cost_usd": 0.00923,
+    "llm_calls": 3,
+    "truncated_calls": 0,
+    "rejections": [
+     "flag_not_verified"
+    ],
+    "replies": [
+     {
+      "text": "{\"0\": \"neither\", \"1\": \"neither\", \"2\": \"neither\", \"3\": \"neither\", \"4\": \"neither\", \"5\": \"neither\", \"6\": \"neither\", \"7\": \"neither\", \"8\": \"neither\", \"9\": \"neither\", \"10\": \"neither\"}",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "```json\n{\n  \"flags\": [\n    {\n      \"claim\": 2,\n      \"label\": \"contradicted\",\n      \"evidence\": [\"clean:audit\"],\n      \"evidence_says\": \"notes: 24 of 24 values missing (100%): too empty to use with confidence\",\n      \"reason\": \"The claim says the notes column is 'entirely missing', which is correct, but then states 'any context it might have provided about orders is unavailable.' The evidence shows the column exists but is empty (100% missing values), not that it never existed or was never populated. The claim's framing overstates the absence as a data loss rather than an empty field.\"\n    }\n  ],\n  \"gaps\": [\n    {\n      \"text\": \"The analysis does not break down revenue by region over time (by month or quarter within the 11-month period). This would show whether the North-South difference is consistent across the date range or driven by specific periods.\",\n      \"columns\": [\"region\", \"order_date\", \"revenue\"]\n    },\n    {\n      \"text\": \"No analysis of other metrics (units sold, discount, marketing spend) by region is provided. These could explain or contextualize the revenue difference between North and South.\",\n      \"columns\": [\"region\", \"units\", \"discount\", \"marketing_spend\", \"revenue\"]\n    }\n  ],\n  \"methodology_concerns\": [\n    {\n      \"text\": \"Sample size is very small (24 rows total, likely 12 per region). The Welch's t-test p-value of 0.065 falls just above the conventional 0.05 threshold, and confidence is marked low. The evidence itself notes this limitation, but the practical power to detect a true difference is weak.\",\n      \"columns\": [\"region\", \"revenue\"]\n    },\n    {\n      \"text\": \"The notes column is 100% missing, which the data-quality summary flags as 'review recommended' for columns with >40% missing. This loss of context may mask important order-level drivers of regional revenue differences.\",\n      \"columns\": [\"notes\"]\n    }\n  ],\n  \"next_investigations\": [\n    {\n      \"text\": \"Compare mean revenue by region within each discount level or marketing spend bracket to determine whether the North-South gap persists across customer acquisition strategies.\",\n      \"columns\": [\"region\", \"discount\", \"marketing_spend\", \"revenue\"]\n    },\n    {\n      \"text\": \"Analyze revenue by region and month (or quarter) across the 11-month period to check whether the North advantage is stable or driven by specific time windows.\",\n      \"columns\": [\"region\", \"order_date\", \"revenue\"]\n    }\n  ]\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "```json\n{\n  \"verdicts\": [\n    {\n      \"i\": 0,\n      \"holds\": false,\n      \"why\": \"The claim accurately states the notes column is entirely missing (100% missing values per evidence), and correctly concludes that context is unavailable; the objection conflates 'entirely missing' with 'never existed,' but the claim's meaning is clear and supported by the evidence.\"\n    }\n  ]\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "headline",
+      "detail": "ok"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "paragraph",
+      "detail": "ok"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "paragraph",
+      "detail": "ok"
+     },
+     {
+      "kind": "defect",
+      "ok": true,
+      "defect": "certainty",
+      "sources": [
+       "check"
+      ],
+      "label_match": true,
+      "detail": "[certainty] caught by ['check']North averages $113.32 per order while South averages $94.03, so North"
+     },
+     {
+      "kind": "defect",
+      "ok": true,
+      "defect": "certainty",
+      "sources": [
+       "check"
+      ],
+      "label_match": true,
+      "detail": "[certainty] caught by ['check']A comparison test between the two regions confirmed a real difference:"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "finding",
+      "detail": "ok"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "action",
+      "detail": "ok"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "action",
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "review_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "review_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "flags_valid",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "bundle_reproduced",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "contradictory",
+    "holdout": false,
+    "seeded": true,
+    "output": {
+     "review": {
+      "review_summary": "8 claims checked against the evidence; 2 flagged (2 overstated).",
+      "strengths": [],
+      "gaps": [
+       "The analysis does not break down revenue by region over time (by month or quarter within the 11-month period). This would show whether the North-South difference is consistent across the date range or driven by specific periods.",
+       "No analysis of other metrics (units sold, discount, marketing spend) by region is provided. These could explain or contextualize the revenue difference between North and South."
+      ],
+      "next_investigations": [
+       "Analyze revenue by region and order date (month or quarter) to determine whether the North-South difference is stable over time or driven by specific periods.",
+       "Compare units, discount, and marketing spend by region to identify whether differences in these factors explain the revenue gap."
+      ],
+      "methodology_concerns": [
+       "The notes column is 100% missing, which may hide important context (e.g., data quality issues, order types, or regional factors) that could affect the revenue comparison."
+      ],
+      "flags": [
+       {
+        "index": 3,
+        "section": "finding",
+        "claim": "North averages $113.32 per order while South averages $94.03, so North clearly and reliably out-earns the South.",
+        "label": "overstated",
+        "kind": "certainty",
+        "reason": "states certainty ('clearly'), but the evidence is weak: only 24 rows",
+        "evidence_ids": [
+         "seg:region/revenue"
+        ],
+        "source": "check"
+       },
+       {
+        "index": 4,
+        "section": "finding",
+        "claim": "A comparison test between the two regions confirmed a real difference: North definitively earns more.",
+        "label": "overstated",
+        "kind": "certainty",
+        "reason": "states certainty ('confirmed'), but the evidence is weak: only 24 rows",
+        "evidence_ids": [
+         "test:0"
+        ],
+        "source": "check"
+       }
+      ],
+      "generated_at": "2026-11-16T04:28:45.732555Z"
+     },
+     "claims": [
+      {
+       "section": "headline",
+       "text": "North averages higher revenue than South, but with only 24 rows the difference could be chance.",
+       "ids": [
+        "seg:region/revenue",
+        "test:0"
+       ]
+      },
+      {
+       "section": "paragraph",
+       "text": "North averages $113.32 per order and South averages $94.03, yet the statistical test falls just short of a reliable signal at this sample size.",
+       "ids": [
+        "seg:region/revenue",
+        "test:0"
+       ]
+      },
+      {
+       "section": "paragraph",
+       "text": "The notes column is entirely missing, so any context it might have provided about orders is unavailable.",
+       "ids": [
+        "clean:audit"
+       ]
+      },
+      {
+       "section": "finding",
+       "text": "North averages $113.32 per order while South averages $94.03, so North clearly and reliably out-earns the South.",
+       "ids": [
+        "seg:region/revenue"
+       ]
+      },
+      {
+       "section": "finding",
+       "text": "A comparison test between the two regions confirmed a real difference: North definitively earns more.",
+       "ids": [
+        "test:0"
+       ]
+      },
+      {
+       "section": "finding",
+       "text": "Across all orders, revenue ranges from $55.34 to $135.76 with a median of $98.65, showing meaningful spread within the dataset.",
+       "ids": [
+        "eda:revenue"
+       ]
+      },
+      {
+       "section": "action",
+       "ids": [
+        "test:0",
+        "seg:region/revenue"
+       ],
+       "text": "Collect more orders \u2014 aim for a substantially larger sample \u2014 before acting on the North vs. South revenue gap. Ensures any regional strategy is based on a reliable signal rather than a result that could be chance."
+      },
+      {
+       "section": "action",
+       "ids": [
+        "clean:audit"
+       ],
+       "text": "Investigate and populate the notes column, which is currently 100% missing. Restores context that may explain order-level variation and support deeper regional analysis."
+      }
+     ],
+     "bundle": {
+      "question": "Does the North region earn more than the South?",
+      "columns": [
+       "order_id",
+       "order_date",
+       "segment",
+       "region",
+       "revenue",
+       "units",
+       "discount",
+       "marketing_spend",
+       "customer_email",
+       "customer_name",
+       "notes"
+      ],
+      "evidence_ids": [
+       "clean:audit",
+       "seg:region/revenue",
+       "test:0",
+       "eda:revenue"
+      ],
+      "evidence": [
+       {
+        "id": "clean:audit",
+        "kind": "cleaning",
+        "claim": "Cleaning: 24 \u2192 24 rows, 2 logged changes",
+        "result_excerpt": "{\"rows_before\": 24, \"rows_after\": 24, \"decisions\": [[\"order_date\", \"type_coerce\", 24, 0], [\"notes\", \"keep\", 0, 0]]}",
+        "row_count": 24,
+        "confidence": "medium",
+        "confidence_reason": "many missing or unreadable values in notes",
+        "assumptions": [
+         "order_date: Parsed as dates.",
+         "notes: 24 of 24 values missing (100%): too empty to use with confidence; left as missing."
+        ]
+       },
+       {
+        "id": "seg:region/revenue",
+        "kind": "segment",
+        "claim": "mean revenue by region (2 groups)",
+        "result_excerpt": "{\"segment_column\": \"region\", \"metric_column\": \"revenue\", \"aggregation\": \"mean\", \"results\": [{\"name\": \"North\", \"value\": 113.3167}, {\"name\": \"South\", \"value\": 94.03}]}",
+        "row_count": 24,
+        "confidence": "low",
+        "confidence_reason": "only 24 rows",
+        "assumptions": []
+       },
+       {
+        "id": "test:0",
+        "kind": "test",
+        "claim": "Welch's t-test: revenue by region",
+        "result_excerpt": "{\"test_name\": \"Welch's t-test\", \"statistic\": 1.999291891, \"p_value\": 0.06493069686, \"interpretation\": \"revenue by region\"}",
+        "row_count": 24,
+        "confidence": "low",
+        "confidence_reason": "only 24 rows",
+        "assumptions": []
+       },
+       {
+        "id": "eda:revenue",
+        "kind": "eda",
+        "claim": "revenue: median 98.65, mean 101.26, range 55.34 to 135.76",
+        "result_excerpt": "{\"mean\": 101.2625, \"std\": 23.2546, \"min\": 55.34, \"max\": 135.76, \"median\": 98.65, \"count\": 24.0}",
+        "row_count": 24,
+        "confidence": "low",
+        "confidence_reason": "only 24 rows",
+        "assumptions": []
+       }
+      ],
+      "date_first": [
+       2025,
+       11
+      ],
+      "date_last": [
+       2026,
+       9
+      ],
+      "n_months": 11,
+      "audit_summary": "Parsed numbers or dates in 1 column(s). More than 40% missing in: notes \u2014 review recommended. Final dataset: 24 rows (started with 24).",
+      "chart_titles": [
+       "Average revenue by region: North highest (113.32), South lowest (94.03)",
+       "revenue distribution",
+       "Total revenue by month",
+       "segment Breakdown \u2014 A Leads at 33%",
+       "revenue vs marketing spend (r = 0.47)",
+       "Correlation Heatmap"
+      ],
+      "past_insights": [],
+      "corr_pairs": [],
+      "values": [
+       {
+        "eda_summary": {
+         "revenue": {
+          "mean": 101.2625,
+          "std": 23.2546,
+          "min": 55.34,
+          "max": 135.76,
+          "median": 98.65,
+          "count": 24.0
+         }
+        },
+        "correlations": {},
+        "trends": [],
+        "segments": [
+         {
+          "segment_column": "region",
+          "metric_column": "revenue",
+          "aggregation": "mean",
+          "results": [
+           {
+            "name": "North",
+            "value": 113.3167
+           },
+           {
+            "name": "South",
+            "value": 94.03
+           }
+          ],
+          "label": null
+         }
+        ],
+        "anomalies": [],
+        "statistical_tests": [
+         {
+          "test_name": "Welch's t-test",
+          "statistic": 1.999291891301196,
+          "p_value": 0.06493069686155219,
+          "interpretation": "revenue by region"
+         }
+        ],
+        "forecast_points": [],
+        "dtypes_summary": {},
+        "missing_pct": {
+         "order_id": 0.0,
+         "order_date": 0.0,
+         "segment": 0.0,
+         "region": 0.0,
+         "revenue": 0.0,
+         "units": 0.0,
+         "discount": 0.0,
+         "marketing_spend": 0.0,
+         "customer_email": 0.0,
+         "customer_name": 0.0,
+         "notes": 100.0
+        },
+        "kpis": [
+         {
+          "label": "Total Orders",
+          "value": "24",
+          "context": "24 order records",
+          "recipe": {
+           "kind": "row_count",
+           "column": null,
+           "kpi": null,
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": null,
+           "currency": null,
+           "unit": null
+          },
+          "how": "Count of all 24 rows after cleaning."
+         },
+         {
+          "label": "Avg revenue",
+          "value": "$101.26",
+          "context": "Range $55.34 \u2013 $135.76",
+          "recipe": {
+           "kind": "metric_avg",
+           "column": "revenue",
+           "kpi": null,
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "currency",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Mean of revenue over its non-missing rows."
+         },
+         {
+          "label": "Top segment",
+          "value": "A",
+          "context": "33.3% of orders",
+          "recipe": {
+           "kind": "top_cat",
+           "column": "segment",
+           "kpi": null,
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": null,
+           "currency": null,
+           "unit": null
+          },
+          "how": "Most frequent value of segment, and its share of rows."
+         },
+         {
+          "label": "discount Variability",
+          "value": "CV 0.64",
+          "context": "Mean 12.0% \u00b1 7.7%",
+          "recipe": {
+           "kind": "highest_cv",
+           "column": "discount",
+           "kpi": null,
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "percent",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Coefficient of variation (std / |mean|) of discount, the most variable measure."
+         }
+        ],
+        "pre_cleaning_missing_pct": {},
+        "unique_counts": {},
+        "skewness": {},
+        "target_correlations": {},
+        "target_col": null,
+        "column_roles_summary": {},
+        "column_units": {}
+       },
+       [
+        {
+         "claim": "Cleaning: 24 \u2192 24 rows, 2 logged changes",
+         "result_excerpt": "{\"rows_before\": 24, \"rows_after\": 24, \"decisions\": [[\"order_date\", \"type_coerce\", 24, 0], [\"notes\", \"keep\", 0, 0]]}",
+         "row_count": 24,
+         "assumptions": [
+          "order_date: Parsed as dates.",
+          "notes: 24 of 24 values missing (100%): too empty to use with confidence; left as missing."
+         ],
+         "confidence_reason": "many missing or unreadable values in notes"
+        },
+        {
+         "claim": "mean revenue by region (2 groups)",
+         "result_excerpt": "{\"segment_column\": \"region\", \"metric_column\": \"revenue\", \"aggregation\": \"mean\", \"results\": [{\"name\": \"North\", \"value\": 113.3167}, {\"name\": \"South\", \"value\": 94.03}]}",
+         "row_count": 24,
+         "assumptions": [],
+         "confidence_reason": "only 24 rows"
+        },
+        {
+         "claim": "Welch's t-test: revenue by region",
+         "result_excerpt": "{\"test_name\": \"Welch's t-test\", \"statistic\": 1.999291891, \"p_value\": 0.06493069686, \"interpretation\": \"revenue by region\"}",
+         "row_count": 24,
+         "assumptions": [],
+         "confidence_reason": "only 24 rows"
+        },
+        {
+         "claim": "revenue: median 98.65, mean 101.26, range 55.34 to 135.76",
+         "result_excerpt": "{\"mean\": 101.2625, \"std\": 23.2546, \"min\": 55.34, \"max\": 135.76, \"median\": 98.65, \"count\": 24.0}",
+         "row_count": 24,
+         "assumptions": [],
+         "confidence_reason": "only 24 rows"
+        }
+       ],
+       {
+        "decisions": [
+         {
+          "column": "order_date",
+          "operation": "type_coerce",
+          "strategy": "to_datetime",
+          "reason": "Parsed as dates.",
+          "rows_affected": 24,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "notes",
+          "operation": "keep",
+          "strategy": "high_null",
+          "reason": "24 of 24 values missing (100%): too empty to use with confidence; left as missing.",
+          "rows_affected": 0,
+          "before_null_pct": 100.0,
+          "after_null_pct": 100.0,
+          "rows_removed": 0
+         }
+        ],
+        "rows_before": 24,
+        "rows_after": 24,
+        "columns_coerced": [
+         "order_date"
+        ],
+        "duplicates_removed": 0,
+        "outliers_flagged": [],
+        "high_null_columns": [
+         "notes"
+        ],
+        "summary": "Parsed numbers or dates in 1 column(s). More than 40% missing in: notes \u2014 review recommended. Final dataset: 24 rows (started with 24).",
+        "anomaly_report": {
+         "flags": [],
+         "methodology_note": "",
+         "eligible_columns": [
+          "revenue",
+          "units",
+          "discount",
+          "marketing_spend"
+         ],
+         "skipped_columns": {
+          "order_id": "id column",
+          "order_date": "datetime column",
+          "segment": "non-numeric",
+          "region": "binary column (only 2 values)",
+          "customer_email": "non-numeric",
+          "customer_name": "non-numeric",
+          "notes": "constant or unsupported"
+         }
+        },
+        "skipped_columns": [],
+        "date_ranges": {
+         "order_date": [
+          "2025-11-11",
+          "2026-09-02",
+          11
+         ]
+        },
+        "grain": "order",
+        "partial_months": {},
+        "main_currency": null,
+        "spell_story": [],
+        "window_span": {}
+       },
+       [
+        "Average revenue by region: North highest (113.32), South lowest (94.03)",
+        "revenue distribution",
+        "Total revenue by month",
+        "segment Breakdown \u2014 A Leads at 33%",
+        "revenue vs marketing spend (r = 0.47)",
+        "Correlation Heatmap"
+       ],
+       [
+        24,
+        11,
+        11
+       ],
+       [
+        2025,
+        2026
+       ],
+       [
+        "Read as retail sales data because it has quantity, revenue, order id, date and email columns; if these are not sales, the sales figures here don't apply.",
+        "The data covers 11 months, so month-over-month changes may be seasonal; there is no same month last year to compare with."
+       ]
+      ]
+     },
+     "stored_evidence_ids": [
+      "clean:audit",
+      "seg:region/revenue",
+      "test:0",
+      "eda:revenue"
+     ]
+    },
+    "latency_s": 9.93,
+    "cost_usd": 0.0094,
+    "llm_calls": 3,
+    "truncated_calls": 0,
+    "rejections": [
+     "flag_not_verified"
+    ],
+    "replies": [
+     {
+      "text": "{\"0\": \"neither\", \"1\": \"neither\", \"2\": \"neither\", \"3\": \"neither\", \"4\": \"neither\", \"5\": \"neither\", \"6\": \"neither\", \"7\": \"neither\", \"8\": \"neither\", \"9\": \"neither\", \"10\": \"neither\"}",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "```json\n{\n  \"flags\": [\n    {\n      \"claim\": 2,\n      \"label\": \"contradicted\",\n      \"evidence\": [\"clean:audit\"],\n      \"evidence_says\": \"notes: 24 of 24 values missing (100%): too empty to use with confidence\",\n      \"reason\": \"The claim says the notes column is 'entirely missing', which is correct, but then states 'any context it might have provided about orders is unavailable.' The evidence shows the column exists but is empty (100% missing values), not that it never existed or was never populated. The claim's framing overstates the absence as a data loss rather than an empty field.\"\n    }\n  ],\n  \"gaps\": [\n    {\n      \"text\": \"The analysis does not break down revenue by region over time (by month or quarter within the 11-month period). This would show whether the North-South difference is consistent across the date range or driven by specific periods.\",\n      \"columns\": [\"region\", \"order_date\", \"revenue\"]\n    },\n    {\n      \"text\": \"No analysis of other metrics (units sold, discount, marketing spend) by region is provided. These could explain or contextualize the revenue difference between North and South.\",\n      \"columns\": [\"region\", \"units\", \"discount\", \"marketing_spend\", \"revenue\"]\n    }\n  ],\n  \"methodology_concerns\": [\n    {\n      \"text\": \"The sample size is very small (24 rows total, likely 12 per region). The Welch's t-test p-value of 0.065 falls just above the conventional 0.05 threshold, and confidence is marked low. Any conclusion about a real difference is premature.\",\n      \"columns\": [\"region\", \"revenue\"]\n    },\n    {\n      \"text\": \"The notes column is 100% missing, which may hide important context (e.g., data quality issues, order types, or regional factors) that could affect the revenue comparison.\",\n      \"columns\": [\"notes\"]\n    }\n  ],\n  \"next_investigations\": [\n    {\n      \"text\": \"Collect additional orders to increase sample size and re-run the statistical test. Aim for at least 50\u2013100 rows per region to achieve reliable power.\",\n      \"columns\": [\"region\", \"revenue\"]\n    },\n    {\n      \"text\": \"Analyze revenue by region and order date (month or quarter) to determine whether the North-South difference is stable over time or driven by specific periods.\",\n      \"columns\": [\"region\", \"order_date\", \"revenue\"]\n    },\n    {\n      \"text\": \"Compare units, discount, and marketing spend by region to identify whether differences in these factors explain the revenue gap.\",\n      \"columns\": [\"region\", \"units\", \"discount\", \"marketing_spend\", \"revenue\"]\n    }\n  ]\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "```json\n{\n  \"verdicts\": [\n    {\n      \"i\": 0,\n      \"holds\": false,\n      \"why\": \"The claim accurately states the notes column is entirely missing (100% missing values per evidence), and correctly concludes that context is unavailable; the objection conflates 'entirely missing' with 'never existed,' but the claim's meaning is clear and supported by the evidence.\"\n    }\n  ]\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "headline",
+      "detail": "ok"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "paragraph",
+      "detail": "ok"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "paragraph",
+      "detail": "ok"
+     },
+     {
+      "kind": "defect",
+      "ok": true,
+      "defect": "certainty",
+      "sources": [
+       "check"
+      ],
+      "label_match": true,
+      "detail": "[certainty] caught by ['check']North averages $113.32 per order while South averages $94.03, so North"
+     },
+     {
+      "kind": "defect",
+      "ok": true,
+      "defect": "certainty",
+      "sources": [
+       "check"
+      ],
+      "label_match": true,
+      "detail": "[certainty] caught by ['check']A comparison test between the two regions confirmed a real difference:"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "finding",
+      "detail": "ok"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "action",
+      "detail": "ok"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "action",
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "review_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "review_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "flags_valid",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "bundle_reproduced",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "contradictory",
+    "holdout": false,
+    "seeded": true,
+    "output": {
+     "review": {
+      "review_summary": "8 claims checked against the evidence; 2 flagged (2 overstated).",
+      "strengths": [],
+      "gaps": [
+       "The analysis does not break down revenue by region over time (order date) to check whether the North\u2013South difference is consistent across the 11-month period or driven by specific months.",
+       "No analysis of revenue by segment within each region, which could reveal whether the North advantage holds across all segments or is concentrated in one.",
+       "The report does not examine the distribution of orders (count) by region, so it is unclear whether the revenue difference reflects higher average order value, more orders, or both."
+      ],
+      "next_investigations": [
+       "Collect additional orders to increase sample size and re-run the Welch's t-test to determine whether the North\u2013South revenue difference reaches statistical significance.",
+       "Analyze mean revenue by region and segment to check whether the North advantage is consistent across all segments or driven by specific ones.",
+       "Plot revenue by region and order date to identify whether the North\u2013South difference is stable over the 11-month period or concentrated in specific months."
+      ],
+      "methodology_concerns": [
+       "The notes column is 100% missing, preventing any qualitative validation or context for the revenue figures and regional patterns."
+      ],
+      "flags": [
+       {
+        "index": 3,
+        "section": "finding",
+        "claim": "North averages $113.32 per order while South averages $94.03, so North clearly and reliably out-earns the South.",
+        "label": "overstated",
+        "kind": "certainty",
+        "reason": "states certainty ('clearly'), but the evidence is weak: only 24 rows",
+        "evidence_ids": [
+         "seg:region/revenue"
+        ],
+        "source": "check"
+       },
+       {
+        "index": 4,
+        "section": "finding",
+        "claim": "A comparison test between the two regions confirmed a real difference: North definitively earns more.",
+        "label": "overstated",
+        "kind": "certainty",
+        "reason": "states certainty ('confirmed'), but the evidence is weak: only 24 rows",
+        "evidence_ids": [
+         "test:0"
+        ],
+        "source": "check"
+       }
+      ],
+      "generated_at": "2026-11-16T04:28:45.388345Z"
+     },
+     "claims": [
+      {
+       "section": "headline",
+       "text": "North averages higher revenue than South, but with only 24 rows the difference could be chance.",
+       "ids": [
+        "seg:region/revenue",
+        "test:0"
+       ]
+      },
+      {
+       "section": "paragraph",
+       "text": "North averages $113.32 per order and South averages $94.03, yet the statistical test falls just short of a reliable signal at this sample size.",
+       "ids": [
+        "seg:region/revenue",
+        "test:0"
+       ]
+      },
+      {
+       "section": "paragraph",
+       "text": "The notes column is entirely missing, so any context it might have provided about orders is unavailable.",
+       "ids": [
+        "clean:audit"
+       ]
+      },
+      {
+       "section": "finding",
+       "text": "North averages $113.32 per order while South averages $94.03, so North clearly and reliably out-earns the South.",
+       "ids": [
+        "seg:region/revenue"
+       ]
+      },
+      {
+       "section": "finding",
+       "text": "A comparison test between the two regions confirmed a real difference: North definitively earns more.",
+       "ids": [
+        "test:0"
+       ]
+      },
+      {
+       "section": "finding",
+       "text": "Across all orders, revenue ranges from $55.34 to $135.76 with a median of $98.65, showing meaningful spread within the dataset.",
+       "ids": [
+        "eda:revenue"
+       ]
+      },
+      {
+       "section": "action",
+       "ids": [
+        "test:0",
+        "seg:region/revenue"
+       ],
+       "text": "Collect more orders \u2014 aim for a substantially larger sample \u2014 before acting on the North vs. South revenue gap. Ensures any regional strategy is based on a reliable signal rather than a result that could be chance."
+      },
+      {
+       "section": "action",
+       "ids": [
+        "clean:audit"
+       ],
+       "text": "Investigate and populate the notes column, which is currently 100% missing. Restores context that may explain order-level variation and support deeper regional analysis."
+      }
+     ],
+     "bundle": {
+      "question": "Does the North region earn more than the South?",
+      "columns": [
+       "order_id",
+       "order_date",
+       "segment",
+       "region",
+       "revenue",
+       "units",
+       "discount",
+       "marketing_spend",
+       "customer_email",
+       "customer_name",
+       "notes"
+      ],
+      "evidence_ids": [
+       "clean:audit",
+       "seg:region/revenue",
+       "test:0",
+       "eda:revenue"
+      ],
+      "evidence": [
+       {
+        "id": "clean:audit",
+        "kind": "cleaning",
+        "claim": "Cleaning: 24 \u2192 24 rows, 2 logged changes",
+        "result_excerpt": "{\"rows_before\": 24, \"rows_after\": 24, \"decisions\": [[\"order_date\", \"type_coerce\", 24, 0], [\"notes\", \"keep\", 0, 0]]}",
+        "row_count": 24,
+        "confidence": "medium",
+        "confidence_reason": "many missing or unreadable values in notes",
+        "assumptions": [
+         "order_date: Parsed as dates.",
+         "notes: 24 of 24 values missing (100%): too empty to use with confidence; left as missing."
+        ]
+       },
+       {
+        "id": "seg:region/revenue",
+        "kind": "segment",
+        "claim": "mean revenue by region (2 groups)",
+        "result_excerpt": "{\"segment_column\": \"region\", \"metric_column\": \"revenue\", \"aggregation\": \"mean\", \"results\": [{\"name\": \"North\", \"value\": 113.3167}, {\"name\": \"South\", \"value\": 94.03}]}",
+        "row_count": 24,
+        "confidence": "low",
+        "confidence_reason": "only 24 rows",
+        "assumptions": []
+       },
+       {
+        "id": "test:0",
+        "kind": "test",
+        "claim": "Welch's t-test: revenue by region",
+        "result_excerpt": "{\"test_name\": \"Welch's t-test\", \"statistic\": 1.999291891, \"p_value\": 0.06493069686, \"interpretation\": \"revenue by region\"}",
+        "row_count": 24,
+        "confidence": "low",
+        "confidence_reason": "only 24 rows",
+        "assumptions": []
+       },
+       {
+        "id": "eda:revenue",
+        "kind": "eda",
+        "claim": "revenue: median 98.65, mean 101.26, range 55.34 to 135.76",
+        "result_excerpt": "{\"mean\": 101.2625, \"std\": 23.2546, \"min\": 55.34, \"max\": 135.76, \"median\": 98.65, \"count\": 24.0}",
+        "row_count": 24,
+        "confidence": "low",
+        "confidence_reason": "only 24 rows",
+        "assumptions": []
+       }
+      ],
+      "date_first": [
+       2025,
+       11
+      ],
+      "date_last": [
+       2026,
+       9
+      ],
+      "n_months": 11,
+      "audit_summary": "Parsed numbers or dates in 1 column(s). More than 40% missing in: notes \u2014 review recommended. Final dataset: 24 rows (started with 24).",
+      "chart_titles": [
+       "Average revenue by region: North highest (113.32), South lowest (94.03)",
+       "revenue distribution",
+       "Total revenue by month",
+       "segment Breakdown \u2014 A Leads at 33%",
+       "revenue vs marketing spend (r = 0.47)",
+       "Correlation Heatmap"
+      ],
+      "past_insights": [],
+      "corr_pairs": [],
+      "values": [
+       {
+        "eda_summary": {
+         "revenue": {
+          "mean": 101.2625,
+          "std": 23.2546,
+          "min": 55.34,
+          "max": 135.76,
+          "median": 98.65,
+          "count": 24.0
+         }
+        },
+        "correlations": {},
+        "trends": [],
+        "segments": [
+         {
+          "segment_column": "region",
+          "metric_column": "revenue",
+          "aggregation": "mean",
+          "results": [
+           {
+            "name": "North",
+            "value": 113.3167
+           },
+           {
+            "name": "South",
+            "value": 94.03
+           }
+          ],
+          "label": null
+         }
+        ],
+        "anomalies": [],
+        "statistical_tests": [
+         {
+          "test_name": "Welch's t-test",
+          "statistic": 1.999291891301196,
+          "p_value": 0.06493069686155219,
+          "interpretation": "revenue by region"
+         }
+        ],
+        "forecast_points": [],
+        "dtypes_summary": {},
+        "missing_pct": {
+         "order_id": 0.0,
+         "order_date": 0.0,
+         "segment": 0.0,
+         "region": 0.0,
+         "revenue": 0.0,
+         "units": 0.0,
+         "discount": 0.0,
+         "marketing_spend": 0.0,
+         "customer_email": 0.0,
+         "customer_name": 0.0,
+         "notes": 100.0
+        },
+        "kpis": [
+         {
+          "label": "Total Orders",
+          "value": "24",
+          "context": "24 order records",
+          "recipe": {
+           "kind": "row_count",
+           "column": null,
+           "kpi": null,
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": null,
+           "currency": null,
+           "unit": null
+          },
+          "how": "Count of all 24 rows after cleaning."
+         },
+         {
+          "label": "Avg revenue",
+          "value": "$101.26",
+          "context": "Range $55.34 \u2013 $135.76",
+          "recipe": {
+           "kind": "metric_avg",
+           "column": "revenue",
+           "kpi": null,
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "currency",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Mean of revenue over its non-missing rows."
+         },
+         {
+          "label": "Top segment",
+          "value": "A",
+          "context": "33.3% of orders",
+          "recipe": {
+           "kind": "top_cat",
+           "column": "segment",
+           "kpi": null,
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": null,
+           "currency": null,
+           "unit": null
+          },
+          "how": "Most frequent value of segment, and its share of rows."
+         },
+         {
+          "label": "discount Variability",
+          "value": "CV 0.64",
+          "context": "Mean 12.0% \u00b1 7.7%",
+          "recipe": {
+           "kind": "highest_cv",
+           "column": "discount",
+           "kpi": null,
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "percent",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Coefficient of variation (std / |mean|) of discount, the most variable measure."
+         }
+        ],
+        "pre_cleaning_missing_pct": {},
+        "unique_counts": {},
+        "skewness": {},
+        "target_correlations": {},
+        "target_col": null,
+        "column_roles_summary": {},
+        "column_units": {}
+       },
+       [
+        {
+         "claim": "Cleaning: 24 \u2192 24 rows, 2 logged changes",
+         "result_excerpt": "{\"rows_before\": 24, \"rows_after\": 24, \"decisions\": [[\"order_date\", \"type_coerce\", 24, 0], [\"notes\", \"keep\", 0, 0]]}",
+         "row_count": 24,
+         "assumptions": [
+          "order_date: Parsed as dates.",
+          "notes: 24 of 24 values missing (100%): too empty to use with confidence; left as missing."
+         ],
+         "confidence_reason": "many missing or unreadable values in notes"
+        },
+        {
+         "claim": "mean revenue by region (2 groups)",
+         "result_excerpt": "{\"segment_column\": \"region\", \"metric_column\": \"revenue\", \"aggregation\": \"mean\", \"results\": [{\"name\": \"North\", \"value\": 113.3167}, {\"name\": \"South\", \"value\": 94.03}]}",
+         "row_count": 24,
+         "assumptions": [],
+         "confidence_reason": "only 24 rows"
+        },
+        {
+         "claim": "Welch's t-test: revenue by region",
+         "result_excerpt": "{\"test_name\": \"Welch's t-test\", \"statistic\": 1.999291891, \"p_value\": 0.06493069686, \"interpretation\": \"revenue by region\"}",
+         "row_count": 24,
+         "assumptions": [],
+         "confidence_reason": "only 24 rows"
+        },
+        {
+         "claim": "revenue: median 98.65, mean 101.26, range 55.34 to 135.76",
+         "result_excerpt": "{\"mean\": 101.2625, \"std\": 23.2546, \"min\": 55.34, \"max\": 135.76, \"median\": 98.65, \"count\": 24.0}",
+         "row_count": 24,
+         "assumptions": [],
+         "confidence_reason": "only 24 rows"
+        }
+       ],
+       {
+        "decisions": [
+         {
+          "column": "order_date",
+          "operation": "type_coerce",
+          "strategy": "to_datetime",
+          "reason": "Parsed as dates.",
+          "rows_affected": 24,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "notes",
+          "operation": "keep",
+          "strategy": "high_null",
+          "reason": "24 of 24 values missing (100%): too empty to use with confidence; left as missing.",
+          "rows_affected": 0,
+          "before_null_pct": 100.0,
+          "after_null_pct": 100.0,
+          "rows_removed": 0
+         }
+        ],
+        "rows_before": 24,
+        "rows_after": 24,
+        "columns_coerced": [
+         "order_date"
+        ],
+        "duplicates_removed": 0,
+        "outliers_flagged": [],
+        "high_null_columns": [
+         "notes"
+        ],
+        "summary": "Parsed numbers or dates in 1 column(s). More than 40% missing in: notes \u2014 review recommended. Final dataset: 24 rows (started with 24).",
+        "anomaly_report": {
+         "flags": [],
+         "methodology_note": "",
+         "eligible_columns": [
+          "revenue",
+          "units",
+          "discount",
+          "marketing_spend"
+         ],
+         "skipped_columns": {
+          "order_id": "id column",
+          "order_date": "datetime column",
+          "segment": "non-numeric",
+          "region": "binary column (only 2 values)",
+          "customer_email": "non-numeric",
+          "customer_name": "non-numeric",
+          "notes": "constant or unsupported"
+         }
+        },
+        "skipped_columns": [],
+        "date_ranges": {
+         "order_date": [
+          "2025-11-11",
+          "2026-09-02",
+          11
+         ]
+        },
+        "grain": "order",
+        "partial_months": {},
+        "main_currency": null,
+        "spell_story": [],
+        "window_span": {}
+       },
+       [
+        "Average revenue by region: North highest (113.32), South lowest (94.03)",
+        "revenue distribution",
+        "Total revenue by month",
+        "segment Breakdown \u2014 A Leads at 33%",
+        "revenue vs marketing spend (r = 0.47)",
+        "Correlation Heatmap"
+       ],
+       [
+        24,
+        11,
+        11
+       ],
+       [
+        2025,
+        2026
+       ],
+       [
+        "Read as retail sales data because it has quantity, revenue, order id, date and email columns; if these are not sales, the sales figures here don't apply.",
+        "The data covers 11 months, so month-over-month changes may be seasonal; there is no same month last year to compare with."
+       ]
+      ]
+     },
+     "stored_evidence_ids": [
+      "clean:audit",
+      "seg:region/revenue",
+      "test:0",
+      "eda:revenue"
+     ]
+    },
+    "latency_s": 9.46,
+    "cost_usd": 0.00938,
+    "llm_calls": 3,
+    "truncated_calls": 0,
+    "rejections": [
+     "flag_not_verified"
+    ],
+    "replies": [
+     {
+      "text": "{\"0\": \"neither\", \"1\": \"neither\", \"2\": \"neither\", \"3\": \"neither\", \"4\": \"neither\", \"5\": \"neither\", \"6\": \"neither\", \"7\": \"neither\", \"8\": \"neither\", \"9\": \"neither\", \"10\": \"neither\"}",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "```json\n{\n  \"flags\": [\n    {\n      \"claim\": 2,\n      \"label\": \"contradicted\",\n      \"evidence\": [\"clean:audit\"],\n      \"evidence_says\": \"notes: 24 of 24 values missing (100%): too empty to use with confidence\",\n      \"reason\": \"The claim says the notes column is 'entirely missing', which is correct, but then states 'any context it might have provided about orders is unavailable.' The evidence shows the column exists but is empty (100% missing values), not that it never contained context. The claim overstates the absence by implying lost information rather than an empty field.\"\n    }\n  ],\n  \"gaps\": [\n    {\n      \"text\": \"The analysis does not break down revenue by region over time (order date) to check whether the North\u2013South difference is consistent across the 11-month period or driven by specific months.\",\n      \"columns\": [\"region\", \"order_date\", \"revenue\"]\n    },\n    {\n      \"text\": \"No analysis of revenue by segment within each region, which could reveal whether the North advantage holds across all segments or is concentrated in one.\",\n      \"columns\": [\"region\", \"segment\", \"revenue\"]\n    },\n    {\n      \"text\": \"The report does not examine the distribution of orders (count) by region, so it is unclear whether the revenue difference reflects higher average order value, more orders, or both.\",\n      \"columns\": [\"region\", \"order_id\"]\n    }\n  ],\n  \"methodology_concerns\": [\n    {\n      \"text\": \"Sample size is very small (24 rows total, likely ~12 per region), which limits statistical power. The p-value of 0.065 is just above the conventional 0.05 threshold, and the confidence on both the segmentation and test is marked low.\",\n      \"columns\": []\n    },\n    {\n      \"text\": \"The notes column is 100% missing, preventing any qualitative validation or context for the revenue figures and regional patterns.\",\n      \"columns\": []\n    }\n  ],\n  \"next_investigations\": [\n    {\n      \"text\": \"Collect additional orders to increase sample size and re-run the Welch's t-test to determine whether the North\u2013South revenue difference reaches statistical significance.\",\n      \"columns\": [\"region\", \"revenue\"]\n    },\n    {\n      \"text\": \"Analyze mean revenue by region and segment to check whether the North advantage is consistent across all segments or driven by specific ones.\",\n      \"columns\": [\"region\", \"segment\", \"revenue\"]\n    },\n    {\n      \"text\": \"Plot revenue by region and order date to identify whether the North\u2013South difference is stable over the 11-month period or concentrated in specific months.\",\n      \"columns\": [\"region\", \"order_date\", \"revenue\"]\n    }\n  ]\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "```json\n{\n  \"verdicts\": [\n    {\n      \"i\": 0,\n      \"holds\": false,\n      \"why\": \"The claim accurately states the notes column is entirely missing (100% missing values) and correctly concludes that context is unavailable; the objection conflates 'entirely missing' with 'never contained data,' which are different issues not addressed by the claim.\"\n    }\n  ]\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ]
+ }
+}

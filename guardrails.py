@@ -430,7 +430,8 @@ def ungrounded_numbers(text: str, evidence: Any, rel_tol: float = 0.005) -> list
 _MONTH = (r"Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|June?|July?|Aug(?:ust)?|"
           r"Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?")
 _DATE_RE = re.compile(
-    rf"\b(?:(?P<mon>{_MONTH})\.?(?P<day>\s+\d{{1,2}}(?:st|nd|rd|th)?,?)?\s+(?P<year>(?:19|20)\d\d)"
+    rf"\b(?:(?P<lday>\d{{1,2}}\s+)?(?P<mon>{_MONTH})\.?(?P<day>\s+\d{{1,2}}(?:st|nd|rd|th)?,?)?"
+    r"\s+(?P<year>(?:19|20)\d\d)"
     r"|(?P<iso>(?:19|20)\d\d-[01]\d)(?:-[0-3]\d)?"
     r"|Q(?P<q>[1-4])\s+(?P<qyear>(?:19|20)\d\d)"
     r"|(?<![\d.,$])(?P<bare>(?:19|20)\d\d)(?![\d.,%]\d|%))\b(?!-[01]\d)", re.I)
@@ -504,7 +505,7 @@ def ungrounded_dates(text: str, first: tuple[int, int] | None,
         for sentence in _SENTENCE_RE.split(text):
             named = [m for m in _DATE_RE.finditer(sentence) if not m["bare"]]
             # A day ("from Nov 1, 2025") is a start or an event date, not the data's scope.
-            if (len(named) == 1 and not named[0]["day"] and _months(named[0])
+            if (len(named) == 1 and not (named[0]["day"] or named[0]["lday"]) and _months(named[0])
                     and len(_MONTH_WORD_RE.findall(sentence)) == 1   # "September and October 2026"
                     and _months(named[0])[0] == _months(named[0])[1]
                     and _SCOPE_RE.search(sentence) and not _POSITION_RE.search(sentence)):
@@ -533,13 +534,9 @@ _YOY_RE = re.compile(r"\b(?:year[- ]over[- ]year|yoy|annual(?:ly)?|year[- ]on[- 
 _MOM_RE = re.compile(r"\b(?:month[- ]over[- ]month|mom|month[- ]on[- ]month|last month|"
                      r"(?:previous|prior|preceding) month|(?:latest|most recent|recent) month|"
                      r"monthly change|a month earlier)\b", re.I)
-_CAUSAL_RE = re.compile(r"\b(?:drives?|drove|driving|driven by|causes?|caused|causing|leads? to|"
-                        r"led to|results? in|resulted in|resulting in|because of|thanks to|"
-                        r"boosts?|boosted|boosting|lifts?|lifted|lifting|fuel(?:s|ed|led|ing)|"
-                        r"pays? for (?:it|them)sel(?:f|ves)|makes? .{0,20}"
-                        r"(?:rise|grow|increase))\b", re.I)
 # an investigation that asks ('understand what drives …', 'explore which …'), never the word
-# alone: 'explore more SKUs' beside a claim leaves the claim one (audit after PR #1)
+# alone: 'explore more SKUs' beside a claim leaves the claim one (audit after PR #1). Read by the
+# profit check; causes and benchmark verdicts are the prose judge's (ADR-0009, 5.7b-3)
 _NOT_ASSERTED_RE = re.compile(r"\b(?:whether|if|test|experiment|validate|determine|isolate|"
                               r"(?:understand|investigate|explore|examine)\s+(?:what|why|how|which)|"
                               r"could|may|might|not|n't|no|rather than|imply|implies|possible|"
@@ -736,69 +733,6 @@ def claim_rank_conflict(text: str, groups: list[dict]) -> str | None:
             g = holders[0]
             return (f"calls {lab} the {'lowest' if low else 'highest'}, but [{g['id']}] ranks it "
                     f"otherwise: " + ", ".join(f"{n} {round(v, 2):g}" for n, v in g["values"]))
-    return None
-
-
-_SPAN_END_RE = re.compile(r"[.;!?]|\b(?:but|while|whereas|although|though|however|yet)\b", re.I)
-# the trigger path only (a domain pack's words): more ways to give a cause than the shared rule
-_TRIGGER_CAUSAL_RE = re.compile(_CAUSAL_RE.pattern[:-3] + r"|due to|owing to|as a result of|"
-                                r"attributable to|"
-                                # a share is no cause: 'responsible for 30% of net sales'
-                                r"(?:responsible for|contribut(?:ed|es|ing) to)(?!\s+(?:about |around "
-                                r"|roughly |nearly |over |under )?\$?\d|\s+(?:a|the)\s+(?:\w+\s+)?share))\b",
-                                re.I)
-_PREPOSITIONS = "in|at|on|of|during|with|without|from|for|under|after|before|by|over|across"
-# a verb with an object ('increased units', 'increased 2025 holiday sales'): what ends the verb
-# phrase instead ('Discounts increased 15%', '… markedly', '… as a share', '… while') is the
-# trigger word's own change, a fact
-_SUBJECT_VERB_RE = re.compile(
-    r"\b(?:increased|raised|doubled|tripled|grew|drove up|pushed up)\b(?=\s+"
-    r"(?!(?:by|in|on|at|from|to|over|across|during|per|each|again|and|but|or|as|while|when|"
-    r"whereas|compared|versus|vs|than|since|after|before|until|through|again|yoy|mom|wow)\b)"
-    r"(?!\w+ly\b)"
-    r"(?!(?:this|last|next|that)\s+(?:week|month|quarter|year|season|period)\b(?!'s))"
-    r"(?!(?:week|month|quarter|year)\s+(?:over|on)\s+(?:week|month|quarter|year)\b)"
-    r"(?![$£€]|\d[\d.,]*\s*(?:%|x\b|pts?\b|points?\b|percent\b|per cent\b|times\b|[.;,!?]|$))"
-    r"[\w'])", re.I)
-
-
-def claim_causal_overreach(text: str, cited_kinds: list[str],
-                           triggers: list[str] | tuple = ()) -> str | None:
-    """Cause asserted where every cited item is a correlation; or (Phase 5.7, a domain pack's
-    `causal_triggers`: discount, promo, campaign …) a cause given to one of those words,
-    whatever is cited, unless an experiment (a test) is cited: without a control group a
-    promotion's effect can't be told from the season or the mix. The trigger may sit anywhere in
-    the asserted span (up to the sentence's end or a contrast: '…, driven by the season and the
-    Black Friday promotions'), or be the subject ('The markdown increased units'); a hedged
-    span ('may', 'without a control group … unclear') is no claim."""
-    for m in _CAUSAL_RE.finditer(text):
-        clause = _clause_at(text, m.start(), m.end())
-        if _NOT_ASSERTED_RE.search(clause):
-            continue
-        if cited_kinds and all(k == "correlation" for k in cited_kinds):
-            return f"states a cause ('{m.group(0)}') from a correlation"
-    if not triggers or "test" in cited_kinds:
-        return None
-    for sentence in _SENTENCE_RE.split(text):
-        if _NOT_ASSERTED_RE.search(sentence):
-            continue
-        verbs = [*_TRIGGER_CAUSAL_RE.finditer(sentence), *_SUBJECT_VERB_RE.finditer(sentence)]
-        for v in verbs:
-            end = _SPAN_END_RE.search(sentence, v.end())
-            start = max((x.end() for x in _SPAN_END_RE.finditer(sentence, 0, v.start())), default=0)
-            span = sentence[start:end.start() if end else len(sentence)]
-            # increased …: the trigger must head the subject ('The markdown increased'), not modify
-            # it ('Sales in the promotion weeks grew', 'Units sold at a discount increased')
-            subject = _TRIGGER_CAUSAL_RE.fullmatch(v.group(0)) is None
-            if subject:
-                span = sentence[start:v.start()]
-            word = next((t for t in triggers if re.search(
-                rf"^(?:(?!\b(?:{_PREPOSITIONS})\b).)*(?<![-\w]){re.escape(t)}(?:s|es|ing|ed)?\s*$"
-                if subject else rf"(?<![-\w]){re.escape(t)}(?:ing|ed)?\b",   # never 'non-discounted'
-                span.strip() if subject else span, re.I)), None)
-            if word:
-                return (f"says the {word} caused a change ('{v.group(0)}'); without a control group "
-                        "that can't be told from the season or the mix")
     return None
 
 

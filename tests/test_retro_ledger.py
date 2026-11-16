@@ -7,7 +7,7 @@ ROOT = Path(__file__).resolve().parents[1]
 LEDGER = ROOT / "docs" / "retro-ledger.md"
 COLUMNS = ["id", "class", "domain(s)", "finding", "fix", "enforced-by", "recurrences"]
 SUMMARY = ["class", "rows", "unenforced", "recurrences"]
-UNENFORCED = 83   # the ratchet: prose-only rows; it only goes down
+UNENFORCED = 78   # the ratchet: prose-only rows; it only goes down
 
 
 def _tables() -> list[list[list[str]]]:
@@ -61,11 +61,11 @@ def test_enforced_by_names_checks_that_exist():
 
 
 def test_each_recurring_class_is_closed_by_a_check_and_names_its_known_limits():
-    """5.7b-2 Done-when: C1–C7 and C9 each closed by a check in the ledger. A class's rows
-    still prose-only are named as its known limits, every one of them."""
+    """5.7b-2 Done-when: C1–C7 and C9 each closed by a check in the ledger; 5.7b-3: C8. A
+    class's rows still prose-only are named as its known limits, every one of them."""
     classes = {r[0]: r for r in _table(["class", "structural rule", "check", "closed in",
                                         "known limits (unenforced rows)"])}
-    assert set(classes) == {"C1", "C2", "C3", "C4", "C5", "C6", "C7", "C9"}
+    assert set(classes) == {f"C{n}" for n in range(1, 10)}
     for c, r in classes.items():
         _checks_exist(c, r[2])
         open_rows = sorted(x[0] for x in _table(COLUMNS) if x[1] == c and x[5] == "unenforced")

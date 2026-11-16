@@ -28,10 +28,12 @@ from agents.insight_agent import InsightContext
 from agents.utils import strip_markdown_fences, with_display_names
 from api.config import settings
 from domain_pack import defaults_pack, pack_for
+from agents import claims as typed_claims
+from agents import prose_judge
 from guardrails import (
+    _SENTENCE_RE,
     UNTRUSTED_NOTE,
     check_columns,
-    claim_causal_overreach,
     claim_profit_without_cost,
     claim_direction_conflict,
     claim_group_conflict,
@@ -51,6 +53,7 @@ from llm.client import LLMClient, trace_verdict
 from orchestrator.state import (
     AgentCard,
     AnalysisSession,
+    Claim,
     Evidence,
     ExpertReview,
     InsightReport,
@@ -91,6 +94,7 @@ QUALITY_CARD = AgentCard(
 _PROMPTS = Path(__file__).parent.parent / "prompts" / "quality"
 _SYSTEM = (QUALITY_CARD.render() + "\n\n" + (_PROMPTS / f"{PROMPT_VERSION}.md").read_text()
            + "\n" + UNTRUSTED_NOTE)
+JUDGE_FAILED = " The wording check could not run: causes and grades were not checked."
 _VERIFY_VERSION = "verify_v2"   # v2: the critic's definition of contradicted
 _VERIFY_SYSTEM = (_PROMPTS / f"{_VERIFY_VERSION}.md").read_text() + "\n" + UNTRUSTED_NOTE
 _LABELS = ("unsupported", "contradicted", "overstated")
@@ -108,7 +112,8 @@ def report_claims(report: InsightReport) -> list[dict]:
             if report.executive_summary.strip() else []
     out = [{"section": "headline", "text": ev.headline, "ids": ev.headline_evidence_ids}]
     out += [{"section": "paragraph", "text": c.text, "ids": c.evidence_ids} for c in ev.paragraphs]
-    out += [{"section": "finding", "text": c.text, "ids": c.evidence_ids} for c in ev.findings]
+    out += [{"section": "finding", "text": c.text, "ids": c.evidence_ids, "typed": c.typed}
+            for c in ev.findings]
     out += [{"section": "action", "text": f"{a.action} {a.expected_impact}".strip(),
              "ids": a.evidence_ids} for a in ev.action_items]
     return [c for c in out if c["text"].strip()]
@@ -153,10 +158,13 @@ def _evidence_lines(ctx: InsightContext) -> dict[str, str]:
 
 
 def check_claims(session: AnalysisSession, report: InsightReport,
-                 ctx: InsightContext | None = None) -> list[ReviewFlag]:
+                 ctx: InsightContext | None = None,
+                 overreach: set[str] | None = frozenset()) -> list[ReviewFlag]:
     """Code checks of every claim against the evidence it cites; one flag per claim, the
     first rule that fails (dates, direction, period, group, number, citation, cause,
-    certainty)."""
+    certainty). A typed claim is re-checked against its evidence and its own sentence; a free
+    sentence the prose judge flagged (`overreach`), or a benchmark phrase, is a cause or a verdict
+    the data can't show (ADR-0009)."""
     ctx = ctx or insight_agent.build_context(session)
     evidence = {e.id: e for e in (session.analysis_findings.evidence
                                   if session.analysis_findings else [])}
@@ -168,7 +176,7 @@ def check_claims(session: AnalysisSession, report: InsightReport,
     base = [ctx.facts, ctx.quality, pool[-2], pool[-1]]   # facts, quality, conventions, years
     contract = session.data_contract
     pack = defaults_pack(contract)   # pack conventions: strong matches only (a weak one only hedges)
-    triggers = pack.causal_triggers if pack else ()
+    name = lambda s: insight_agent._name(s, session.narrative)   # noqa: E731 (the report's names)
     # the profit rule is a pack's: only one that names its cost roles has it
     has_cost = not (pack and pack.cost_roles) or bool(set(pack.cost_roles) & set(contract.roles))
     # small cells: on patient data any phi pack's nouns (strong or weak); elsewhere a pack with
@@ -224,8 +232,13 @@ def check_claims(session: AnalysisSession, report: InsightReport,
                      f"states {nums[0]}, which is not in the evidence it cites ({', '.join(ids) or 'none'})")
         elif unknown or (not ids and c["section"] in ("finding", "action")):
             found = ("citation", "unsupported", "cites no evidence that exists")
-        elif r := claim_causal_overreach(text, [e.kind for e in cited], triggers):
-            found = ("causal", "overstated", r)
+        elif r := typed_claims.recheck(Claim(text=text, evidence_ids=c["ids"], typed=c.get("typed")),
+                                       session.analysis_findings, name):
+            found = ("causal", "overstated", f"its typed claim no longer holds ({r})")
+        elif any(prose_judge.phrase_hit(s) or (overreach is not None and s in overreach)
+                 for s in _SENTENCE_RE.split(text)):
+            found = ("causal", "overstated", "states a cause or grades a result against a norm, "
+                                             "which this data can't show")
         elif r := claim_overstated_certainty(text, [e.confidence_reason for e in cited
                                                     if e.confidence == "low"]):
             found = ("certainty", "overstated", r)
@@ -398,19 +411,28 @@ def _summary(n_claims: int, flags: list[ReviewFlag], critic_note: str) -> str:
 
 
 async def run_quality_check(session: AnalysisSession, llm: LLMClient, critic: bool = True,
-                            past: list[str] | None = None) -> ExpertReview:
+                            past: list[str] | None = None, judge: bool | None = None) -> ExpertReview:
     """The review of session.insight_report. `critic=False` runs the code checks only; `past`
-    are the earlier analyses the insight agent was shown, so the critic sees them too."""
+    are the earlier analyses the insight agent was shown, so the critic sees them too. `judge`
+    (default: with the critic) runs the prose judge over the free claims first."""
     report = session.insight_report
     if report is None:
         raise ValueError("An InsightReport must be present before the quality check.")
     ctx = insight_agent.build_context(session, past)
     claims = report_claims(report)
-    flags = check_claims(session, report, ctx)
+    overreach: set[str] | None = frozenset()
+    note = ""
+    if critic if judge is None else judge:
+        said = list(dict.fromkeys(s for c in claims if not c.get("typed")
+                                  for s in _SENTENCE_RE.split(c["text"]) if s.strip()))
+        got = await prose_judge.flagged(said, llm)
+        overreach = None if got is None else {said[i] for i in got}
+        if got is None:
+            note = JUDGE_FAILED
+    flags = check_claims(session, report, ctx, overreach)
     gaps: list[str] = []
     concerns: list[str] = []
     investigations: list[str] = []
-    note = ""
     if critic:
         qctx = build_context(session, report, flags, ctx)
         pool = ctx.pool() + [[c["text"] for c in claims], qctx.values]
@@ -430,7 +452,7 @@ async def run_quality_check(session: AnalysisSession, llm: LLMClient, critic: bo
         except AgentError:   # refusal, truncation, outage: the checks still stand
             trace_verdict("quality", PROMPT_VERSION, "critic_failed")
         if data is None:
-            note = (" The written review could not be generated this time; the flags come "
+            note += (" The written review could not be generated this time; the flags come "
                     "from the automatic checks.")
         else:
             known = {e.id for e in session.analysis_findings.evidence} \

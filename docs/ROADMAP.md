@@ -515,6 +515,25 @@ dataset should land in a workspace users can come back to. Expected size: 2 sess
   - after each fix round, one reviewer reads only that fix diff before the next broad pass;
   - pass 1 broad; later passes only re-open areas the previous fixes touched;
   - the per-pass count (major/minor) is recorded in the review note's bug ledger.
+- **The audit procedure (added 2026-11-15, 5.7b-3; from Domain 7 on it replaces "audit until an
+  auditor finds nothing"):**
+  1. Reviews start only when the properties (`tests/test_properties.py`, P1–P5 and D) and the
+     mutation gate (`scripts/mutation.py --check`) are green on the branch.
+  2. 1–2 read-only reviewer passes. The brief is the invariant list (P1–P5, the hard rules, the
+     one-definition guards in `tests/test_one_definition.py`) and the class ledger
+     (`docs/retro-ledger.md`: classes C0–C9 and their rows), never the diff.
+  3. One pass runs on a different Claude model than the builder's (only Claude models are wired
+     here; a different model family is not available).
+  4. A finding is a ledger row, or a recurrence that raises an existing row's count, and closes
+     with a plant-proven check (`scripts/mutation.py --plant`). Pass 2 re-reads only what pass
+     1's fixes touched.
+  5. **Stop rule:** properties, the mutation gate and the ledger checks
+     (`tests/test_retro_ledger.py`) are green. "An auditor found nothing" is no longer the rule.
+  6. The session note names each plan-mode step and this stop rule
+     (`tests/test_plan_steps.py`).
+- **A new pack registers its shapes with the P1–P5 generators** (`SHAPES_BY_PACK` in
+  `tests/test_properties.py`), or the property hook fails; retail, banking, healthcare and
+  insurance are a named gap (PR14-01) that only shrinks.
 - **Domain regression contract (added 2026-11-02, after Domain 1; applies to every domain
   session and to Phase 6).** Building domain N must never break domains 1..N-1, and after all
   eight, uploading any domain's data again must find no bug. Enforced by code, not memory:
@@ -732,6 +751,10 @@ dataset should land in a workspace users can come back to. Expected size: 2 sess
   - **Done when:** the regex judges are gone or fenced, with judge TPR/TNR ≥ 0.9 on the held-out
     set; insight and quality hard rules 100% and pass rates ≥ baseline; charts live in a
     1440 px Playwright check on SaaS; the 5.7 contract updated; spend ≤ $5; CI green.
+  - **Status: ✅ 2026-11-16** (`docs/baselines/phase5_7b_3.md`). The judge runs on Sonnet 4.6,
+    not Haiku (ADR-0009 amended), with held-out TPR 0.92 and TNR 0.94. Quality's live pass rate
+    is 0.82 against 0.90 at B0, from critic drift (on main too) and two judge false positives,
+    both recorded. Spend $3.85.
 - **Measured on Domain 7:** audit-found majors per class, and the pass count. Target ≤ 2 passes.
 
 ### Phase 5.8: Data sources (added 2026-11-03 at the user's request)
@@ -768,7 +791,9 @@ Phase 5.8 (data sources) → Phase 6.
   - E2E answer correctness is ≥ 80% and hard rules hold 100%;
   - a fresh clone on a clean machine reaches a first answer in ≤ 15 minutes, following only the
     README;
-  - a second person (or a clean VM run) confirms it.
+  - a second person (or a clean VM run) confirms it;
+  - every domain pack runs the P1–P5 property generators: `NO_GENERATOR_YET` in
+    `tests/test_properties.py` is empty (PR14-01; `test_every_pack_has_a_generator` XPASSes).
 
 ---
 
@@ -821,5 +846,5 @@ without a committed eval report or test run that shows the number.
 | 5.6 | Durable runs (run records, Postgres queue + worker, LangGraph checkpoints, replayable events; fixes audit B3/B4) and the analysis workspace (left sidebar, datasets, immutable report snapshots) — runs after Phase 5 Ingestion, before 5.5 (added 2026-10-29) | **5.6a durable runs ✅ (2026-10-30)** `docs/baselines/phase5_6a.md` (kill at all 11 checkpoints → identical report, memory + Postgres; post-phase audit fixed 9 bugs; reconnect replay exact; approval after restart; prod refuses without PG; e2e 100%; $0.90; ADR-0006); **5.6b workspace ✅ (2026-10-31)** `docs/baselines/phase5_6b.md` (reopened report = delivered (sha256 + DOM); delete leaves 0 in every store, memory + Postgres; sidebar list p95 5.4 ms at 200 threads, 390 px; plan red-team + 2 independent reviews + confirmation before done; e2e 100%; $0.82; ADR-0007) |
 | 5.5 | Domain coverage: ~8 domain datasets in analysis + E2E evals, PHI masking, generic labels (added 2026-10-27) | ✅ done (2026-11-01) — `docs/baselines/phase5_5.md` (8 domains pass: 6 every run, IoT + SaaS by majority; analysis 68/68 k=1, domain 22/22 k=3 majority; e2e 34/34, hard 0; PHI recall 100%, over-masking 0; E2B gets pseudonyms; prompt v8 (ratio + question); final audit bar NOT met in 3 passes, 2 narrow reviews after; $4.37; ADR-0008; merged 2026-11-01) |
 | 5.7 | Domain depth, one domain per session (added 2026-11-01): domain pack + expert brief per domain, every agent tested end to end; **< $5 eval spend per domain session**; order: 1 sales/retail (pilot) → 2 banking → 3 healthcare → 4 insurance → 5 HR → 6 SaaS → 7 IoT → 8 logistics | 1 retail ✅ 11-02, 2 banking ✅ 11-02, plan v2 recurring bug classes ✅ 11-03, 3 healthcare ✅ 11-03, 4 insurance ✅ 11-03, 5 HR ✅ 11-05, 6 SaaS ✅ 11-06, post-Domain-6 review (PR #1/#2) ✅ 11-06: metrics, spend, audits and time per domain in `docs/baselines/phase5_7_<domain>.md` — next: **5.7b structural fixes** (the 9 recurring classes in PR #1, the ledger charts, the `domain_pack.py` split; plan mode with domain-modeling + codebase-design, $0 unless measured), then **7 IoT** |
-| 5.7b | Structural fixes, from audits to properties (added 2026-11-09): 3 sessions, $0 / $0 / ≤ $5 | **5.7b-1 foundations ✅ (2026-11-09)** `docs/baselines/phase5_7b_1.md` (retro ledger 234 rows; reference oracle = truth and product on all 6 spell datasets; P1–P5 + D on 5 small-book shapes and 25 pack datasets, 12 known failures pinned xfail-strict by class; mutation baseline of 23 spell/ledger/pack-column functions, 80.1% (lowest: layout_columns, filled_statuses ~35%); `domain_pack/` in 8 layers under import-linter, golden + domain_diff + snapshot text byte-identical; $0); **5.7b-2a ✅ (2026-11-10)** `docs/baselines/phase5_7b_2.md` (`Window` and `KPIValue` from one constructor each, declared snapshot cadence; 11 of 12 xfails flipped, 2 new findings pinned; no number moved by the window; C5 CHANGES listed; mutation gate on changed lines; $0); **5.7b-2b ✅ (2026-11-12)** same file (one `term_rows`, an entity × part ledger with transfer moves, C4 by the question, the scorer reads the reference; 2 xfails flipped, PR9-01 found and fixed; CHANGES only on SaaS by-segment moves; $0 rescore, pass rates unchanged; $0); **5.7b-2c ✅ (2026-11-13)** same file (units by the KPI's own unit with a deterministic ask, scale declared per header with one `rate_values`, ledger sentences in `SpellWords` under an output guard, `{window}`/`{moves}`/`{cohort}` from the data, the pre-push mutation gate in hook and CI; last xfail flipped; C1–C7 and C9 closed, UNENFORCED 88 → 83; 643 changed-line mutants, 103 survivors → 7 named equivalents; CHANGES only on saas_invoices billings dates; $0) — next **5.7b-3**, then **7 IoT** |
+| 5.7b | Structural fixes, from audits to properties (added 2026-11-09): 3 sessions, $0 / $0 / ≤ $5 | **5.7b-1 foundations ✅ (2026-11-09)** `docs/baselines/phase5_7b_1.md` (retro ledger 234 rows; reference oracle = truth and product on all 6 spell datasets; P1–P5 + D on 5 small-book shapes and 25 pack datasets, 12 known failures pinned xfail-strict by class; mutation baseline of 23 spell/ledger/pack-column functions, 80.1% (lowest: layout_columns, filled_statuses ~35%); `domain_pack/` in 8 layers under import-linter, golden + domain_diff + snapshot text byte-identical; $0); **5.7b-2a ✅ (2026-11-10)** `docs/baselines/phase5_7b_2.md` (`Window` and `KPIValue` from one constructor each, declared snapshot cadence; 11 of 12 xfails flipped, 2 new findings pinned; no number moved by the window; C5 CHANGES listed; mutation gate on changed lines; $0); **5.7b-2b ✅ (2026-11-12)** same file (one `term_rows`, an entity × part ledger with transfer moves, C4 by the question, the scorer reads the reference; 2 xfails flipped, PR9-01 found and fixed; CHANGES only on SaaS by-segment moves; $0 rescore, pass rates unchanged; $0); **5.7b-2c ✅ (2026-11-13)** same file (units by the KPI's own unit with a deterministic ask, scale declared per header with one `rate_values`, ledger sentences in `SpellWords` under an output guard, `{window}`/`{moves}`/`{cohort}` from the data, the pre-push mutation gate in hook and CI; last xfail flipped; C1–C7 and C9 closed, UNENFORCED 88 → 83; 643 changed-line mutants, 103 survivors → 7 named equivalents; CHANGES only on saas_invoices billings dates; $0); **5.7b-3 ✅ (2026-11-16)** `docs/baselines/phase5_7b_3.md` (typed claims checked and written by code, causal and benchmark regexes deleted, a binary prose judge on Sonnet 4.6 with held-out TPR 0.92 / TNR 0.94; MRR bridge and NRR line on the SaaS overview; the audit procedure in the 5.7 contract; the property hook with a 4-pack gap due before v0.1; C8 closed, UNENFORCED 83 → 78; insight 0.96 at k=1 with 0 hard, quality checks-only 0.86 = B0, live 0.82 (critic drift, judge false positives, recorded); E2E 6/6; CHANGES only on the 4 SaaS datasets' charts; $3.85) — **5.7b done**; next **7 IoT** (needs sign-off) |
 | 6 | E2E hardening + open-source v0.1 release | pending |

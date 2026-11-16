@@ -396,20 +396,6 @@ def test_a_finished_datasets_pct_header_keeps_its_scale():
     assert row["mrr"] == pytest.approx(row["unit_amount"] * row["quantity"] * (1 - row["discount_pct"]) / months)
 
 
-def test_a_benchmark_verdict_after_the_metric_is_never_said():
-    """Audit pass 2 (a stored ins-04 report): 'net revenue retention of 106.5% — healthy' passed
-    the never_say pattern, which wanted 'is/looks' before the verdict."""
-    import re
-    pack = dp.pack_for("saas")
-    bench = next(n for n in pack.never_say if "benchmark" in n.reason)
-    for t in ("with net revenue retention of 106.5% — healthy, but below last year",
-              "Logo churn of 18.8% is healthy for a B2B SaaS business", "NRR is best-in-class"):
-        assert re.search(bench.pattern, t, re.I), t
-    for t in ("Net revenue retention was 91.1% over the 12 months to 31 Oct 2026.",
-              "Logo churn rose to 18.8% from 13.7%."):
-        assert not re.search(bench.pattern, t, re.I), t
-
-
 def test_on_short_data_the_bridge_still_adds_up_and_says_its_span():
     """Fix-diff review of audit 1: on 7 months of data the cohort opened before the data (\$0) and
     the bridge was off by the opening MRR."""
@@ -576,81 +562,6 @@ def test_pass_3_windows_spans_and_the_list_bridge():
     assert tail == pytest.approx(t["mrr"])
 
 
-def test_a_neutral_strong_or_weak_is_no_verdict():
-    import re
-    bench = next(n for n in dp.pack_for("saas").never_say if "benchmark" in n.reason)
-    for t in ("Logo churn rose to 20.1% while new MRR showed strong growth.",
-              "Net revenue retention fell to 91.1%, driven by weak expansion in SMB.",
-              "Logo churn of 18.8% is strong evidence of a problem."):
-        assert not re.search(bench.pattern, t, re.I), t
-    for t in ("gross revenue retention remains strong at 99.3%.",
-              "with net revenue retention of 106.5% — healthy, but below last year"):
-        assert re.search(bench.pattern, t, re.I), t
-
-
-# audit pass 5's own sentences (a reviewer wrote them; "NRR had a strong quarter" is ambiguous
-# and left out) plus the real report sentences of passes 2-4
-_V = ["Strong NRR of 106.5% shows customers expand.", "Weak retention in SMB drags MRR.",
- "Poor retention among monthly plans.", "Excellent net revenue retention of 112%.",
- "NRR remained strong year over year.", "Retention was strong month over month.",
- "Gross revenue retention is above the benchmark.", "NRR of 106.5% is well above the SMB median.",
-
- "Retention is solid at 95%.", "Churn is low for a SaaS business.", "NRR is robust.",
- "Retention is a strong point for the business.", "Churn is a weak spot.",
- "Retention is strong, at 99.3%.", "GRR is weak; expansion is fine.",
- "Churn of 3% is poor by SaaS standards.", "NRR above 100% signals a healthy business.",
- "A best-in-class 120% NRR.", "Logo churn is excellent at 2%.", "Net revenue retention is world-class.",
- "NRR is top-quartile.", "Retention compares well with SaaS peers."]
-_N = ["Churn was concentrated in poor-fit accounts.", "Retention data is poor for 2024 (few rows).",
- "Churn rose despite strong performance in Enterprise.", "NRR fell to 91.1% after a strong start to 2025.",
- "Churn among healthy accounts was 2%.", "Logo churn rose amid strong headwinds in SMB.",
- "Retention shows a strong seasonal pattern.", "Churn shows a strong upward trend.",
- "NRR saw a strong rebound in Q3.", "Churn hit weak cohorts hardest.", "Churn was 4% in weak markets.",
- "Retention fell; strong customers stayed.", "NRR reached 106.5%, driven by strong upsell.",
- "Logo churn of 18.8% coincided with strong new MRR.", "Churn spiked after a poor product release.",
- "GRR was 99.3% with strong expansion.", "Churn rose 3 points; a strong correlation with price.",
- "Retention by plan: Pro 95%, Basic 80%.", "Churn was highest among poor payers.",
- "NRR was 106.5%; healthy is not a grade this report gives.", "Churn fell after strong onboarding.",
- "Retention improved with strong adoption of the new tier."]
-VERDICTS = [*_V, "Logo churn is below the industry benchmark at 1.8% a month.",
-            "GRR sits below median for mid-market SaaS.", "Retention is weaker than the SaaS median.", "NRR is healthy.", "Churn is weak at 4%.", "Retention, at 95.0% GRR, is solid.",
-            "Overall, churn was poor.", "Retention looks robust, at 112%.", "NRR (as of October 2026) is strong.", "NRR, as of October, at 106.5%, is strong.",
-            "Retention, hence, is robust.", "Net dollar retention, so far, seems strong.", "NRR, as of October 2026, is strong.", "Retention, as expected, remains healthy.",
-            "Logo churn, yet again, was poor.", "NRR, so far this year, is healthy.",
-            "Churn, because of annual contracts, is weak.", "NRR, thus far, remains robust.", "Net revenue retention, at 106.5% over the 12 months to 31 Oct 2026, is strong.",
-            "NRR, which reached 104%, remains healthy.", "GRR of 91.2%, up from 89%, is solid.",
-            "Retention in Enterprise, SMB and Mid-Market is strong.", "Churn, at 2.1% a month, is relatively strong.", "with net revenue retention of 106.5% — healthy, but below", "GRR remains strong at 99.3%.",
-            "Logo churn of 18.8% is healthy for a B2B SaaS business", "NRR is healthy and improving."]
-NEUTRAL = [*_N, "Retention in EMEA (where demand was solid) reached 96.4%.",
-           "Churn rose in March after an outage, when support response times were weak.",
-           "Churn rose when support was weak.",
-           "Churn was 1.9%, while expansion from top-quartile accounts drove NRR to 107%.", "NRR rose 3.5 points as upsell activity was strong in Q3.",
-           "Churn fell because onboarding was strong.", "Retention improved since adoption was healthy.",
-           "Churn rose in SMB so the pipeline is weak.", "NRR fell with higher churn, so the team is strong.",
-           "Churn rose with lower retention, as onboarding was weak.",
-           "Retention fell with more churn, since adoption was poor.",
-           "MRR rose despite churn, as expansion was strong.", "Churn dropped in Q3, so the team is strong.",
-           "Churn was flat, so the pipeline remains healthy.", "Retention held, as adoption was strong.", "Logo churn rose to 20.1% while new MRR showed strong growth.",
-           "Net revenue retention fell to 91.1%, driven by weak expansion in SMB.",
-           "Logo churn of 18.8% is strong evidence of a problem.",
-           "Net revenue retention was 91.1% over the 12 months to 31 Oct 2026."]
-
-
-@pytest.mark.parametrize("t", VERDICTS)
-def test_every_benchmark_verdict_is_never_said(t):
-    """Audit pass 4: the pass-3 narrowing let 11 of 21 verdicts through."""
-    import re
-    bench = next(n for n in dp.pack_for("saas").never_say if "benchmark" in n.reason)
-    assert re.search(bench.pattern, t, re.I)
-
-
-@pytest.mark.parametrize("t", NEUTRAL)
-def test_a_neutral_sentence_is_no_verdict(t):
-    import re
-    bench = next(n for n in dp.pack_for("saas").never_say if "benchmark" in n.reason)
-    assert not re.search(bench.pattern, t, re.I)
-
-
 @pytest.mark.parametrize("header, vals, want", [("rebate_pct", [10, 12.5, 15, 7.5], [90, 87.5, 85, 92.5]),
                                                 ("rebate", [1, 1, 1, 20], [99, 99, 99, 80]),
                                                 ("rebate", [0.2, 0.2, 0.1], [80, 80, 90])])
@@ -695,17 +606,6 @@ def test_pass_5_minors():
     assert line.startswith(f"MRR bridge, {dp.window_words(pack, df, roles, 'new_mrr')}:")
 
 
-@pytest.mark.parametrize("t, verdict", [
-    ("Churn was poor-fit driven.", False), ("Retention figures are poor for 2024 (few rows).", False),
-    ("Churn coverage is weak before 2025.", False), ("The churn analysis is solid.", False),
-    ("Retention is still quite solid.", True), ("Churn is low compared with industry benchmarks.", True),
-    ("NRR is impressive at 115%.", True)])
-def test_pass_6_sentences(t, verdict):
-    import re
-    bench = next(n for n in dp.pack_for("saas").never_say if "benchmark" in n.reason)
-    assert bool(re.search(bench.pattern, t, re.I)) == verdict
-
-
 def test_short_snapshots_bridge_months_are_its_moves():
     """Pass 6: on Aug-Oct snapshots the bridge said '3 months' (2 months of moves)."""
     df, _, pack, roles, _ = _setup("saas_mrr_snapshots")
@@ -716,19 +616,60 @@ def test_short_snapshots_bridge_months_are_its_moves():
         "MRR bridge, 2 months to 31 Oct 2026: $538,652.55 on 31 Aug 2026")
 
 
-@pytest.mark.parametrize("t", ["NRR was 104%; expansion was strong in Enterprise.",
-                               "Retention fell to 88% while pipeline is healthy.",
-                               "Churn in SMB, where new bookings are strong, rose to 4%."])
-def test_a_verdict_in_another_clause_is_not_the_metrics(t):
-    import re
-    bench = next(n for n in dp.pack_for("saas").never_say if "benchmark" in n.reason)
-    assert not re.search(bench.pattern, t, re.I)
-
-
 def test_one_month_of_moves_is_unknown_never_zero():
     df, _, pack, roles, _ = _setup("saas_mrr_snapshots")
     one = df[pd.to_datetime(df["month"]) == pd.to_datetime(df["month"]).max()]
     assert dp.compute_kpi(one, roles, pack, "new_mrr") is None
+
+
+def test_the_story_bridge_line_signs_each_move_and_has_no_transfers_in_the_whole():
+    df, _, pack, roles, _ = _setup("saas_mrr_snapshots")
+    line = next(ln for ln in dp.spell_story(pack, df, roles) if ln.startswith("MRR bridge"))
+    assert line == ("MRR bridge, 12 months to 31 Oct 2026: $412,929.08 on 31 Oct 2025 + new MRR "
+                    "$176,207.56 + expansion MRR $89,367.79 + reactivation MRR $6,462.68 − contraction "
+                    "MRR $36,744.52 − churned MRR $85,613.74 = $562,608.85.")
+
+
+def test_the_bridge_reads_its_window_and_the_money_stock(monkeypatch):
+    """bridge(**at): opening and closing are measured on the window asked, as the moves are; the
+    stock is the money one even when a count tile comes first; any unavailable step: no bridge."""
+    from domain_pack import story
+    df, _, pack, roles, _ = _setup("saas_mrr_snapshots")
+    at = {"full": df, "window": ("2026-01-01", "2026-06-30")}
+    b, whole = dp.bridge(pack, df, roles, dp.MOVES, **at), dp.bridge(pack, df, roles, dp.MOVES)
+    assert b.start == pytest.approx(dp.measure(df, roles, pack, "opening_mrr", **at).value) != whole.start
+    assert b.now == pytest.approx(dp.measure(df, roles, pack, "mrr", **at).value) != whole.now
+    heads_first = pack.model_copy(update={"kpis": sorted(pack.kpis, key=lambda k: k.name != "paying_customers")})
+    assert dp.bridge(heads_first, df, roles, dp.MOVES).stock.name == "mrr"
+    fact = story._fact
+    for gone in ("opening_mrr", "mrr", "new_mrr"):
+        monkeypatch.setattr(story, "_fact", lambda d, r, p, name, **kw: None if name == gone
+                            else fact(d, r, p, name, **kw))
+        assert story.bridge(pack, df, roles, dp.MOVES) is None, gone
+
+
+def test_the_story_line_says_a_rest_only_when_unsplit_and_needs_a_month_of_moves(monkeypatch):
+    """_ledger_story: a split bridge never shows a rest; an unsplit one shows it from half a cent;
+    no span, or moves that start at the as-of: no bridge line."""
+    from domain_pack import story
+    df, _, pack, roles, _ = _setup("saas_mrr_snapshots")
+    real = dp.bridge(pack, df, roles, dp.MOVES)
+    unsplit = pack.spell.words.unsplit
+    w = dp.window(pack, df, roles)
+
+    def line(b, frame=df, win=w):
+        monkeypatch.setattr(story, "bridge", lambda *a, **k: b)
+        return next((ln for ln in story._ledger_story(pack, frame, roles, win)
+                     if ln.startswith("MRR bridge")), None)
+    assert unsplit not in line(real._replace(now=real.now + 1))   # split: every change is a move
+    moves = {m: (real.moves[m][0], 0.0) for m in ("new", "churn")}
+    assert unsplit in line(real._replace(start=0.0, now=0.005, moves=moves))   # rest 0.005
+    monkeypatch.setattr(story, "window_words", lambda *a, **k: "")
+    assert line(real) is None
+    monkeypatch.setattr(story, "window_words", lambda *a, **k: "1 month")
+    one = df[pd.to_datetime(df["month"]) == pd.to_datetime(df["month"]).max()]
+    w1 = dp.window(pack, one, roles)
+    assert w1.moves_from == w1.as_of and line(real, one, w1) is None
 
 
 def test_a_partial_first_month_is_no_year_over_year_base():
@@ -1021,3 +962,106 @@ def test_billings_names_the_invoice_dates_it_sums():
     raw["kpis"] = [{**k, "dated_by": "plan"} if k["name"] == "billings" else k for k in raw["kpis"]]
     with pytest.raises(ValueError, match="dated_by plan is not a date role"):
         dp.Pack.model_validate(raw)
+
+
+# ── 5.7b-3: the ledger charts (PR1-20) ────────────────────────────────────────────────────────
+
+def _bridge(name, filters=None):
+    from agents.visualization_agent import filtered_dashboard
+    from tests.test_dashboard_filters import _dashboard
+    clean, contract, charts, _, _ = _dashboard(name)
+    chart = next((c for c in charts if c.rationale and c.rationale.rule == "pack:bridge→bars"), None)
+    if chart is None or filters is None:
+        return clean, contract, chart, chart and chart.data, chart and chart.title
+    out = filtered_dashboard(clean, contract, charts, filters)
+    return clean, contract, chart, out["charts"][chart.id], out["titles"][chart.id]
+
+
+SMB = {"segment": {"kind": "equality", "value": "SMB"}}
+
+
+@pytest.mark.parametrize("name, filters", [("saas_mrr_snapshots", None), ("saas_mrr_snapshots", SMB),
+                                           ("saas_subscriptions", None), ("saas_subscriptions", SMB)])
+def test_each_bridge_bar_is_its_tile_and_the_bridge_adds_up(name, filters):
+    """PR1-20 (D2-09, C3): every bar is its KPI's own number on the same rows (a filter's part, its
+    cut), the falls negative, and opening + the bars = closing: in the whole and in a segment,
+    where a customer moving in or out of it is a bar of its own."""
+    clean, contract, chart, data, title = _bridge(name, filters)
+    pack = dp.pack_for("saas")
+    roles = {r: c for r, c in contract.roles.items() if c in clean.columns}
+    part = clean if filters is None else clean[clean[roles["segment"]] == "SMB"]
+    at = {} if filters is None else {"full": clean, "cut": (roles["segment"],)}
+    tile = {k.label: (dp.SIGN[m], dp.measure(part, roles, pack, k.name, **at).value)
+            for m in dp.BRIDGE if (k := dp.ledger_kpi(pack, roles, "moves", m))}
+    bars = {d["step"]: d["value"] for d in data}
+    assert [s for s in bars if s in tile] == list(tile)   # every move the pack measures, in order
+    for step, (sign, v) in tile.items():
+        assert bars[step] == pytest.approx(sign * v, abs=0.005), step
+    opening = dp.measure(part, roles, pack, "opening_mrr", **at).value
+    closing = dp.measure(part, roles, pack, "mrr", **at).value
+    assert opening + sum(bars.values()) == pytest.approx(closing, abs=0.05)
+    assert title.endswith(f"→ ${closing:,.2f}")
+    if "Expansion MRR" in bars:   # the moves split every change: no rest bar
+        assert len(bars) == len(tile)
+    if filters is not None and name == "saas_mrr_snapshots":   # customers moved between segments
+        assert bars["MRR moved in"] > 0 > bars["MRR moved out"]
+
+
+def test_the_bridge_reads_the_tiles_window_and_a_date_range_moves_it():
+    """D1-14 (C2): the bridge's span is its moves' window words (the tiles'), and a dashboard date
+    range is the spell KPIs' window: the bridge and its title follow it."""
+    clean, contract, chart, data, title = _bridge("saas_mrr_snapshots")
+    pack = dp.pack_for("saas")
+    roles = {r: c for r, c in contract.roles.items() if c in clean.columns}
+    assert f", {dp.window_words(pack, clean, roles, 'new_mrr')}:" in title
+    h1 = {roles["month"]: {"kind": "date_range", "from": "2026-01-01", "to": "2026-06-30"}}
+    *_, cut, cut_title = _bridge("saas_mrr_snapshots", h1)
+    assert "30 Jun 2026" in cut_title and cut != data
+    win = ("2026-01-01", "2026-06-30")
+    new = dp.measure(clean, roles, pack, "new_mrr", full=clean, window=win).value
+    assert {d["step"]: d["value"] for d in cut}["New MRR"] == pytest.approx(new, abs=0.005)
+    from agents.visualization_agent import bridge_chart, build_context
+    ctx = build_context(clean, contract=contract)
+    ctx.full, ctx.window = clean, win
+    assert bridge_chart(clean, ctx).rationale.reason.startswith("MRR from 31 Dec 2025 to 30 Jun 2026")
+
+
+def test_an_unavailable_move_draws_no_bridge_and_a_spell_without_moves_none():
+    """D1-40 (C5): a list without its end date can't count churn (Unavailable): no bridge, never a
+    $0 churn bar; HR's spells have no ledger moves: no bridge."""
+    from agents.visualization_agent import bridge_chart, build_context
+    clean, contract, chart, *_ = _bridge("saas_subscriptions")
+    assert chart is not None
+    roles = {r: c for r, c in contract.roles.items() if r != "ended_at"}
+    blind = contract.model_copy(update={"roles": roles})
+    assert bridge_chart(clean, build_context(clean, contract=blind)) is None
+    assert _bridge("hr_snapshots")[2] is None
+
+
+def test_the_bridge_is_drawn_without_a_group_and_its_rationale_names_the_rest_bar():
+    """5.7b-3 audit: data with no overview group still gets its bridge (it came only before a group
+    chart), and a rest bar, the one bar no tile measures, is named so in the rationale."""
+    from agents.visualization_agent import build_context, pack_overview_charts
+    clean, contract, chart, *_ = _bridge("saas_subscriptions")
+    assert "but the last" in chart.rationale.reason
+    assert "but the last" not in _bridge("saas_mrr_snapshots")[2].rationale.reason
+    groups = set(dp.pack_for("saas").overview_groups)
+    bare = contract.model_copy(update={"roles": {r: c for r, c in contract.roles.items()
+                                                 if r not in groups}})
+    rules = [c.rationale.rule for c in pack_overview_charts(clean, build_context(clean, contract=bare))]
+    assert "pack:bridge→bars" in rules
+
+
+def test_the_ledger_charts_lint_clean_and_keep_their_colours_under_a_filter():
+    """finalize_charts keeps both (a rationale, no lint objection); each bridge step keeps its
+    colour whatever a filter does to the values (colours are by position in the frontend)."""
+    from agents.visualization_agent import _NEGATIVE, _POSITIVE, build_context, finalize_charts
+    from tests.test_dashboard_filters import _dashboard
+    clean, contract, charts, _, _ = _dashboard("saas_mrr_snapshots")
+    kept = finalize_charts(charts, build_context(clean, contract=contract))
+    assert "pack:bridge→bars" in [c.rationale.rule for c in kept]
+    assert "Net revenue retention over time" in [c.title for c in kept]
+    _, _, chart, data, _ = _bridge("saas_mrr_snapshots", SMB)
+    assert [d["step"] for d in data] == [d["step"] for d in chart.data]
+    falls = {"Contraction MRR", "Churned MRR", "MRR moved out"}
+    assert chart.colors == [_NEGATIVE if d["step"] in falls else _POSITIVE for d in chart.data]

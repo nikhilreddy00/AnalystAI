@@ -18,6 +18,7 @@ render as the live one did), one dataset, and test hooks: POST /__reset, POST /_
 """
 
 import json
+import os
 import sys
 import threading
 import time
@@ -63,7 +64,14 @@ reset()
 
 
 def scenario() -> str:
-    return open(SCEN).read().strip()
+    """The scenario a test set; none set yet (a fresh checkout: the file is git-ignored) is full."""
+    return open(SCEN).read().strip() if os.path.exists(SCEN) else "full"
+
+
+def dash() -> str:
+    """The dashboard fixture's folder: a scenario's own (`make_fixture.py fixtures/<name> --dataset
+    <name>`, e.g. saas_mrr_snapshots), else the default one."""
+    return f"{D}/{scenario()}" if os.path.isdir(f"{D}/{scenario()}") else D
 
 
 def run_events() -> list[dict]:
@@ -94,10 +102,11 @@ def filtered(filters: dict) -> dict:
     from agents.visualization_agent import filtered_dashboard
     from orchestrator.state import ChartConfig, DataContract
 
-    latest = json.load(open(D + "/dash_latest.json"))["latest"]
+    d = dash()
+    latest = json.load(open(d + "/dash_latest.json"))["latest"]
     return filtered_dashboard(
-        pd.read_parquet(D + "/dash_frame.parquet"),
-        DataContract.model_validate_json(open(D + "/dash_contract.json").read()),
+        pd.read_parquet(d + "/dash_frame.parquet"),
+        DataContract.model_validate_json(open(d + "/dash_contract.json").read()),
         [ChartConfig.model_validate(c) for c in latest["charts"]], filters, latest["raw_query"])
 
 
@@ -185,9 +194,9 @@ class H(BaseHTTPRequestHandler):
             return self._json({**DATASET, "latest": VERSION, "versions": [VERSION],
                                "threads": threads, "charts": []})
         if p == "/dashboard/latest":
-            return self._json(json.load(open(D + "/dash_latest.json")))
+            return self._json(json.load(open(dash() + "/dash_latest.json")))
         if p == "/dashboard/latest/data":
-            return self._json(json.load(open(D + "/dash_data.json")))
+            return self._json(json.load(open(dash() + "/dash_data.json")))
         if p.startswith("/dashboard"):
             return self._json([])
         return self._json({}, 200)

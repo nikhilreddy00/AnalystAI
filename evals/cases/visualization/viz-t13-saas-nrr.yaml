@@ -1,0 +1,22 @@
+id: viz-t13-saas-nrr
+category: targeted
+label_note: 'SaaS: NRR by month is a cohort rate at each month-end (the cohort of up to 12 months
+  ending there): a line of a rate, never a sum of MRR per month.'
+dataset:
+  name: saas_mrr_snapshots
+  seed: 1
+question: How has net revenue retention moved month by month?
+plan:
+  intent: time_series
+  analysis_types: []
+  target_metrics: []
+  segments: []
+  targeted_params:
+    kpi: nrr
+    frequency: M
+expect:
+- types:
+  - LineChart
+  x: month
+  y: Net revenue retention
+  agg: none

@@ -511,10 +511,26 @@ class AnomalyAlert(BaseModel):
     suggested_investigation: str
 
 
+class TypedClaim(BaseModel):
+    """5.7b-3 (ADR-0009, GLOSSARY Typed claim): a cause, a benchmark verdict or a comparison the
+    insight model gives as data; agents/claims.py checks it and writes its sentence."""
+    kind: Literal["causal", "benchmark", "comparison"]
+    evidence_id: str = ""
+    cause: str = ""        # causal
+    effect: str = ""
+    metric: str = ""       # benchmark, comparison
+    verdict: str = ""      # benchmark: never said (the data holds no outside norm)
+    source: str = ""
+    a: str = ""            # comparison: two groups of the cited breakdown
+    b: str = ""
+
+
 class Claim(BaseModel):
-    """Phase 5 Insight: one executive sentence and the Evidence ids it rests on."""
+    """Phase 5 Insight: one executive sentence and the Evidence ids it rests on; a typed claim's
+    sentence is written by code from `typed`."""
     text: str
     evidence_ids: list[str] = Field(default_factory=list)
+    typed: TypedClaim | None = None
 
 
 class ActionItem(BaseModel):

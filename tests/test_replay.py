@@ -77,6 +77,20 @@ _SAAS_AUDIT1 = ("Domain 6 audit 1: the SaaS pack's caveat (a one-month customer 
                 "figure), the ledger story in generic words and the cohort window words changed the "
                 "deterministic text after the model")
 CHANGED = {
+    ("insight-20261116T035805Z.json", "ins-15-gap-not-significant"):
+        "5.7b-3 smoke: a typed comparison on evidence short of high confidence says the gap may "
+        "not hold (the plain one failed the hedge check)",
+    **{("insight-20261116T040022Z.json", c): "5.7b-3 insight k=1: a typed cause on evidence short of "
+       "high confidence says even the association may not hold"
+       for c in ("ins-17-low-n-correlation", "ins-37-discount-null")},
+    # PR14-03: a sentence naming a day-first date ("covers 885 employees at 31 Oct 2026") was
+    # removed as a one-month scope claim; it is kept now
+    **{(r, c): "5.7b-3 E2E: a day-first date is a day, never a one-month scope claim"
+       for r, c in (("insight-20261116T042427Z.json", "ins-47-hr-roster-overview"),
+                    ("insight-20261116T042427Z.json", "ins-48-hr-snapshots-overview"),
+                    ("insight-20261116T042427Z.json", "ins-49-saas-subscriptions-overview"),
+                    ("insight-20261116T042427Z.json", "ins-50-saas-mrr-overview"),
+                    ("insight-20261116T042657Z.json", "ins-49-saas-subscriptions-overview"))},
     # 5.7b-2a (C5, PR1-05): a 20-row ticket list read as SaaS has no end-date column, so churned
     # MRR and logo churn can't be counted: no longer named as KPIs it reads (they read 0 before)
     ("insight-20261106T181700Z.json", "ins-16-tickets-not-significant-holdout"):
@@ -161,8 +175,30 @@ async def test_stored_replies_reproduce_their_stored_output(suite, report, cid, 
     monkeypatch.setitem(harness._budget, "max", 1.0)
     case = next(c for c in harness.load_cases(suite, None) if c["id"] == cid)
     again = await _replay(suite, case, run["replies"])
-    if (report, cid) in CHANGED:   # changed as stated: it must now differ, and pass its checks
-        assert not _same(again["output"], run["output"]), f"{report} {cid}: listed but unchanged"
-        assert again["passed"], f"{report} {cid}: changed, yet still failing: {again['checks']}"
+    if (report, cid) in CHANGED:   # changed as stated: it differs, and fails no check it passed
+        if _same(again["output"], run["output"]):   # a k=3 report: a reply the change never met
+            runs = json.loads((REPORTS / report).read_text())["runs"][cid]
+            assert len(runs) > 1, f"{report} {cid}: listed but unchanged"
+            return
+        failing = {c["detail"] for c in again["checks"] if not c["ok"]}
+        assert failing <= {c["detail"] for c in run["checks"] if not c["ok"]}, (
+            f"{report} {cid}: changed, and newly failing: {again['checks']}")
         return
     assert _same(again["output"], run["output"]), f"{report} {cid}: a post-model step changed"
+
+
+async def test_replay_mode_replays_the_models_and_calls_only_the_judge():
+    """evals.run --replay (5.7b-3): a stored run's model replies come back in order, its stored
+    judge replies are dropped, and only the prose judge reaches the live client."""
+    stored = {"runs": {"c1": [{"replies": [{"text": '{"answer": 1}'}, {"text": '```json\n{"0": "cause"}'},
+                                           {"text": '{"answer": 2}'}]}]}}
+    live = RecordedClient(['{"0": "neither"}'])
+    client = harness.ReplayClient(live, stored)
+    harness.REPLAY_CASE.set("c1")
+    ask = {"messages": [{"role": "user", "content": "q"}], "max_tokens": 9, "prompt_version": "v"}
+    assert (await client.complete(agent="insight", **ask)).text == '{"answer": 1}'
+    assert (await client.complete(agent="prose_judge", **ask)).text == '{"0": "neither"}'
+    assert (await client.complete(agent="quality", **ask)).text == '{"answer": 2}'
+    assert [c["agent"] for c in live.calls] == ["prose_judge"]
+    with pytest.raises(Exception):
+        await client.complete(agent="quality", **ask)

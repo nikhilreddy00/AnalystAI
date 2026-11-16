@@ -1,4 +1,86 @@
 {
+ "agents/claims.py::_named": {
+  "equivalents": [],
+  "hash": "485d439f20902ec4"
+ },
+ "agents/claims.py::_norm": {
+  "equivalents": [],
+  "hash": "25374bd642adecfd"
+ },
+ "agents/claims.py::_pair": {
+  "equivalents": [],
+  "hash": "c246ab996ff8a6ad"
+ },
+ "agents/claims.py::check": {
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "said = _norm(ev.claim) + \"XX XX\" + _norm(ev.id)",
+    "old": "said = _norm(ev.claim) + \" \" + _norm(ev.id)",
+    "reason": "the joiner matters only for a name running from the claim's end into the id, and an evidence id starts with a kind prefix (corr:, seg:, trend:) that no metric or group name holds"
+   }
+  ],
+  "hash": "c8387fa8743782f5"
+ },
+ "agents/claims.py::recheck": {
+  "equivalents": [],
+  "hash": "3839906f13a824e4"
+ },
+ "agents/claims.py::render": {
+  "equivalents": [],
+  "hash": "316ec01bb304b222"
+ },
+ "agents/claims.py::settle": {
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "caveats.append(render(t, None, name))",
+    "old": "caveats.append(render(t, findings, name))",
+    "reason": "only a benchmark claim reaches this line, and render's benchmark branch returns before it reads findings"
+   }
+  ],
+  "hash": "3d44c3086ae1f24c"
+ },
+ "agents/claims.py::typed": {
+  "equivalents": [],
+  "hash": "fe69e1b4dc76a39a"
+ },
+ "agents/drill_down_agent.py::run_drill_down_agent": {
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "contract.row_count if contract else 1],",
+    "old": "contract.row_count if contract else 0],",
+    "reason": "without a contract checked_answer finds no pack and returns before it reads shown"
+   }
+  ]
+ },
+ "agents/quality_agent.py::check_claims": {
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "elif r := typed_claims.recheck(Claim(text=text, typed=c.get(\"typed\")),",
+    "old": "elif r := typed_claims.recheck(Claim(text=text, evidence_ids=c[\"ids\"], typed=c.get(\"typed\")),",
+    "reason": "recheck reads only the claim's text and typed fields"
+   }
+  ]
+ },
+ "agents/quality_agent.py::run_quality_check": {
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "overreach: set[str] | None = None",
+    "old": "overreach: set[str] | None = frozenset()",
+    "reason": "the default reaches check_claims only when the judge doesn't run, and an empty set and None both match no sentence"
+   },
+   {
+    "n": 1,
+    "new": "flags = check_claims(session, report, None, overreach)",
+    "old": "flags = check_claims(session, report, ctx, overreach)",
+    "reason": "check_claims then rebuilds the context with build_context(session), which differs only in memory, and check_claims never reads memory"
+   }
+  ]
+ },
  "agents/targeted_analysis_agent.py::_also_named": {
   "equivalents": [
    {
@@ -64,11 +146,22 @@
   "equivalents": [
    {
     "n": 1,
-    "new": "terms.append(f\"{'+' if rest >= 0 else '−'} {words.unsplit} {say(stock, abs(rest))}\")",
-    "old": "terms.append(f\"{'+' if rest > 0 else '−'} {words.unsplit} {say(stock, abs(rest))}\")",
-    "reason": "the line runs only when abs(rest) >= 0.005, so rest is never 0 there"
+    "new": "terms.append(f\"{'+' if b.rest >= 0 else '−'} {words.unsplit} {say(b.stock, abs(b.rest))}\")",
+    "old": "terms.append(f\"{'+' if b.rest > 0 else '−'} {words.unsplit} {say(b.stock, abs(b.rest))}\")",
+    "reason": "the line runs only when abs(b.rest) >= 0.005, so the rest is never 0 there"
+   },
+   {
+    "n": 1,
+    "new": "terms = [f\"{'+' if SIGN[m] >= 0 else '−'} {k.phrase} {say(k, v)}\" for m, (k, v) in b.moves.items()]",
+    "old": "terms = [f\"{'+' if SIGN[m] > 0 else '−'} {k.phrase} {say(k, v)}\" for m, (k, v) in b.moves.items()]",
+    "reason": "every SIGN value is +1 or -1, never 0"
    }
-  ]
+  ],
+  "hash": "66e631757c679cba"
+ },
+ "domain_pack/story.py::bridge": {
+  "equivalents": [],
+  "hash": "507bcb4bf459cc27"
  },
  "domain_pack/story.py::unit_said": {
   "equivalents": [
@@ -79,5 +172,9 @@
     "reason": "the \\b anchors leave a non-word character or a string edge on both sides, so no unit word's boundary changes"
    }
   ]
+ },
+ "evals/scoring.py::score_quality": {
+  "equivalents": [],
+  "hash": "157a12e6f433673e"
  }
 }

@@ -1,0 +1,416 @@
+{
+ "set": "tune",
+ "prompt_version": "v1",
+ "prompt_sha": "d83589ee32ad709460cecd34e325327828f7cfb8cff7e34a10cbaf8013b01eff",
+ "set_sha": "1c772f34adbfacf159f6ce765d5cabdad77de2947a9737a37b429c7ca8e6c9ea",
+ "model": "claude-haiku-4-5",
+ "sentences": 50,
+ "tpr": {
+  "rate": 0.52,
+  "k": 13,
+  "n": 25,
+  "ci95": [
+   0.335,
+   0.6997
+  ]
+ },
+ "tnr": {
+  "rate": 0.88,
+  "k": 22,
+  "n": 25,
+  "ci95": [
+   0.7004,
+   0.9583
+  ]
+ },
+ "tpr_causal": {
+  "rate": 0.6667,
+  "k": 8,
+  "n": 12,
+  "ci95": [
+   0.3906,
+   0.8619
+  ]
+ },
+ "tnr_near_causal": {
+  "rate": 0.75,
+  "k": 9,
+  "n": 12,
+  "ci95": [
+   0.4677,
+   0.9111
+  ]
+ },
+ "tpr_benchmark": {
+  "rate": 0.3846,
+  "k": 5,
+  "n": 13,
+  "ci95": [
+   0.1771,
+   0.6448
+  ]
+ },
+ "tnr_near_benchmark": {
+  "rate": 1.0,
+  "k": 12,
+  "n": 12,
+  "ci95": [
+   0.7575,
+   1.0
+  ]
+ },
+ "cost_usd": 0.0047,
+ "stamp": "20261115T222737Z",
+ "rows": [
+  {
+   "text": "The discount drove a 12% rise in sales.",
+   "label": true,
+   "kind": "causal",
+   "source": "retail-regex",
+   "got": true
+  },
+  {
+   "text": "Markdowns boosted unit sales.",
+   "label": true,
+   "kind": "causal",
+   "source": "retail-regex",
+   "got": true
+  },
+  {
+   "text": "Net sales rose 20% due to the spring promotion.",
+   "label": true,
+   "kind": "causal",
+   "source": "retail-regex",
+   "got": true
+  },
+  {
+   "text": "The November promotion was responsible for the spike in units.",
+   "label": true,
+   "kind": "causal",
+   "source": "retail-regex",
+   "got": true
+  },
+  {
+   "text": "The coupon campaign contributed to the 15% rise in orders.",
+   "label": true,
+   "kind": "causal",
+   "source": "retail-regex",
+   "got": true
+  },
+  {
+   "text": "Readmissions fell, driven by the discharge program.",
+   "label": true,
+   "kind": "causal",
+   "source": "retail-regex",
+   "got": true
+  },
+  {
+   "text": "Churn fell because onboarding was strong.",
+   "label": true,
+   "kind": "causal",
+   "source": "saas-neutral",
+   "got": true
+  },
+  {
+   "text": "Retention improved since adoption was healthy.",
+   "label": true,
+   "kind": "causal",
+   "source": "saas-neutral",
+   "got": false
+  },
+  {
+   "text": "Support tickets drive churn, and we will investigate further.",
+   "label": true,
+   "kind": "causal",
+   "source": "quality-regex",
+   "got": false
+  },
+  {
+   "text": "Our findings help us understand that price drives churn.",
+   "label": true,
+   "kind": "causal",
+   "source": "quality-regex",
+   "got": false
+  },
+  {
+   "text": "Promotions increased year-end sales by 12%.",
+   "label": true,
+   "kind": "causal",
+   "source": "retail-regex",
+   "got": false
+  },
+  {
+   "text": "Churn spiked because of a poor product release.",
+   "label": true,
+   "kind": "causal",
+   "source": "saas-neutral",
+   "got": true
+  },
+  {
+   "text": "Strong NRR of 106.5% shows customers expand.",
+   "label": true,
+   "kind": "benchmark",
+   "source": "saas-verdicts",
+   "got": false
+  },
+  {
+   "text": "Poor retention among monthly plans.",
+   "label": true,
+   "kind": "benchmark",
+   "source": "saas-verdicts",
+   "got": false
+  },
+  {
+   "text": "NRR remained strong year over year.",
+   "label": true,
+   "kind": "benchmark",
+   "source": "saas-verdicts",
+   "got": false
+  },
+  {
+   "text": "Churn is low for a SaaS business.",
+   "label": true,
+   "kind": "benchmark",
+   "source": "saas-verdicts",
+   "got": false
+  },
+  {
+   "text": "Retention is a strong point for the business.",
+   "label": true,
+   "kind": "benchmark",
+   "source": "saas-verdicts",
+   "got": false
+  },
+  {
+   "text": "Churn of 3% is poor by SaaS standards.",
+   "label": true,
+   "kind": "benchmark",
+   "source": "saas-verdicts",
+   "got": true
+  },
+  {
+   "text": "A best-in-class 120% NRR.",
+   "label": true,
+   "kind": "benchmark",
+   "source": "saas-verdicts",
+   "got": true
+  },
+  {
+   "text": "NRR is top-quartile.",
+   "label": true,
+   "kind": "benchmark",
+   "source": "saas-verdicts",
+   "got": true
+  },
+  {
+   "text": "Logo churn is below the industry benchmark at 1.8% a month.",
+   "label": true,
+   "kind": "benchmark",
+   "source": "saas-verdicts",
+   "got": true
+  },
+  {
+   "text": "Retention, as expected, remains healthy.",
+   "label": true,
+   "kind": "benchmark",
+   "source": "saas-verdicts",
+   "got": false
+  },
+  {
+   "text": "Churn, because of annual contracts, is weak.",
+   "label": true,
+   "kind": "benchmark",
+   "source": "saas-verdicts",
+   "got": false
+  },
+  {
+   "text": "GRR of 91.2%, up from 89%, is solid.",
+   "label": true,
+   "kind": "benchmark",
+   "source": "saas-verdicts",
+   "got": true
+  },
+  {
+   "text": "Retention compares well with SaaS peers.",
+   "label": true,
+   "kind": "benchmark",
+   "source": "saas-verdicts",
+   "got": false
+  },
+  {
+   "text": "Net sales grew 8% year over year, driven by the North region.",
+   "label": false,
+   "near": "causal",
+   "source": "retail-regex",
+   "got": true
+  },
+  {
+   "text": "Sales rose 12%; the promotion may have contributed.",
+   "label": false,
+   "near": "causal",
+   "source": "retail-regex",
+   "got": false
+  },
+  {
+   "text": "The campaign did not cause the increase.",
+   "label": false,
+   "near": "causal",
+   "source": "retail-regex",
+   "got": false
+  },
+  {
+   "text": "Sales lifted after the promo, though without a control group the effect is unclear.",
+   "label": false,
+   "near": "causal",
+   "source": "retail-regex",
+   "got": false
+  },
+  {
+   "text": "Discounts increased 15% year over year, to $4,210.",
+   "label": false,
+   "near": "causal",
+   "source": "retail-regex",
+   "got": false
+  },
+  {
+   "text": "Sales in the promotion weeks grew 40% over the other weeks.",
+   "label": false,
+   "near": "causal",
+   "source": "retail-regex",
+   "got": false
+  },
+  {
+   "text": "Discounted orders were responsible for 30% of net sales in Q4.",
+   "label": false,
+   "near": "causal",
+   "source": "retail-regex",
+   "got": false
+  },
+  {
+   "text": "Investigate accounts with a support ticket to understand what drives high months.",
+   "label": false,
+   "near": "causal",
+   "source": "quality-regex",
+   "got": false
+  },
+  {
+   "text": "Explore which salary levels drive churn.",
+   "label": false,
+   "near": "causal",
+   "source": "quality-regex",
+   "got": false
+  },
+  {
+   "text": "Fuel cost per km is higher on long routes (r = 0.62).",
+   "label": false,
+   "near": "causal",
+   "source": "retail-regex",
+   "got": false
+  },
+  {
+   "text": "NRR reached 106.5%, driven by strong upsell.",
+   "label": false,
+   "near": "causal",
+   "source": "saas-neutral",
+   "got": true
+  },
+  {
+   "text": "Churn was 1.9%, while expansion from top-quartile accounts drove NRR to 107%.",
+   "label": false,
+   "near": "causal",
+   "source": "saas-neutral",
+   "got": true
+  },
+  {
+   "text": "Churn was concentrated in poor-fit accounts.",
+   "label": false,
+   "near": "benchmark",
+   "source": "saas-neutral",
+   "got": false
+  },
+  {
+   "text": "Retention data is poor for 2024 (few rows).",
+   "label": false,
+   "near": "benchmark",
+   "source": "saas-neutral",
+   "got": false
+  },
+  {
+   "text": "NRR fell to 91.1% after a strong start to 2025.",
+   "label": false,
+   "near": "benchmark",
+   "source": "saas-neutral",
+   "got": false
+  },
+  {
+   "text": "Churn among healthy accounts was 2%.",
+   "label": false,
+   "near": "benchmark",
+   "source": "saas-neutral",
+   "got": false
+  },
+  {
+   "text": "Retention shows a strong seasonal pattern.",
+   "label": false,
+   "near": "benchmark",
+   "source": "saas-neutral",
+   "got": false
+  },
+  {
+   "text": "NRR saw a strong rebound in Q3.",
+   "label": false,
+   "near": "benchmark",
+   "source": "saas-neutral",
+   "got": false
+  },
+  {
+   "text": "Churn was 4% in weak markets.",
+   "label": false,
+   "near": "benchmark",
+   "source": "saas-neutral",
+   "got": false
+  },
+  {
+   "text": "Retention by plan: Pro 95%, Basic 80%.",
+   "label": false,
+   "near": "none",
+   "source": "saas-neutral",
+   "got": false
+  },
+  {
+   "text": "NRR was 106.5%; healthy is not a grade this report gives.",
+   "label": false,
+   "near": "benchmark",
+   "source": "saas-neutral",
+   "got": false
+  },
+  {
+   "text": "Churn rose 3 points; a strong correlation with price.",
+   "label": false,
+   "near": "benchmark",
+   "source": "saas-neutral",
+   "got": false
+  },
+  {
+   "text": "Retention in EMEA (where demand was solid) reached 96.4%.",
+   "label": false,
+   "near": "benchmark",
+   "source": "saas-neutral",
+   "got": false
+  },
+  {
+   "text": "Churn was highest among poor payers.",
+   "label": false,
+   "near": "benchmark",
+   "source": "saas-neutral",
+   "got": false
+  },
+  {
+   "text": "Logo churn rose amid strong headwinds in SMB.",
+   "label": false,
+   "near": "benchmark",
+   "source": "saas-neutral",
+   "got": false
+  }
+ ]
+}

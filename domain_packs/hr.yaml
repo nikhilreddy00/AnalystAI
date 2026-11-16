@@ -125,7 +125,6 @@ text:
   grain_line: "One row is an employment spell or a person's month-end snapshot: count people as distinct {key}, never rows."
   unsupported_alternatives: "I can answer with what the data has: headcount and FTE now or by month, separations and hires, attrition (all, voluntary, involuntary) over the {window} to the latest date, by department, level or location, and average salary of current staff. Which would help?"
   kpis_default: its headcount, hire and termination columns
-  causal_removed: "{n} sentence(s) saying pay, a manager, performance or a policy caused people to leave were removed: from observational data without a controlled comparison that can't be shown."
 
 kpis:
   - name: headcount
@@ -293,12 +292,6 @@ role_caveats:
   salary: "Pay is annual base salary as recorded: part-time salaries are not full-time equivalents, so groups with more part-timers (often women) show lower pay than on a full-time-equivalent basis, which the unadjusted pay gap uses; pay is never shown for a group of fewer than 11 people."
   original_hire_date: "This file lists each person once with their latest hire date: an earlier employment's exit is not in it, so separations and past headcount from it run slightly low."
 
-causal_triggers: [salary, salaries, pay, paid, lowest-paid, highest-paid, underpaid, compensation,
-                  raise, raises, bonus, bonuses, promotion,
-                  promotions, manager, managers, management, performance, rating, ratings,
-                  remote, hybrid, office, training, benefits, overtime, commute, workload,
-                  engagement, culture, policy, policies, program, programs, flexible working,
-                  tenure, women, men, gender, ethnicity, age]
 
 never_say:
   - {pattern: '\b(?:flight[- ]risks?|(?:is|are|will be)\s+(?:likely|expected|about)\s+to\s+(?:quit|leave|resign)|at risk of (?:leaving|quitting))\b',

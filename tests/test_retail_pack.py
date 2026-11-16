@@ -874,31 +874,66 @@ def test_must_say_lines_reach_the_summary_alerts_and_the_analyst_view():
     assert not any(a.title == "How these numbers are counted" for a in _alerts(other)[0])
 
 
-@pytest.mark.parametrize("sentence, flagged", [
-    ("The discount drove a 12% rise in sales.", True), ("Markdowns boosted unit sales.", True),
-    ("Higher discounts lifted order counts.", True),
-    ("Discount levels were flat while seasonality drove the rise.", False),
-    ("Sales rose 12%; the promotion may have contributed.", False),
-    ("The campaign did not cause the increase.", False),
-    ("Net sales grew 8% year over year, driven by the North region.", False),
-    ("Readmissions fell, driven by the discharge program.", False),   # another domain's words
-])
-def test_promotions_are_not_credited_with_a_change_without_a_control(sentence, flagged):
-    from guardrails import claim_causal_overreach
-    assert bool(claim_causal_overreach(sentence, ["segment"], RETAIL.causal_triggers)) is flagged
-    assert claim_causal_overreach(sentence, ["test"], RETAIL.causal_triggers) is None   # an A/B test
-
-
 def test_a_drill_down_answer_keeps_only_what_the_analysis_supports():
+    """An ungrounded number, and a sentence the prose judge flagged (a cause: ADR-0009), are
+    removed and counted."""
     from agents.drill_down_agent import checked_answer
     s = _audited("retail_lines")
     shown = ["Net sales were $310,635.46 over 2,272 orders."]
     out = checked_answer("Net sales were $310,635.46. The discount drove that. It was $999,999.",
-                         s, shown)
+                         s, shown, {"The discount drove that."})
     assert out.startswith("Net sales were $310,635.46.") and "discount" not in out
     assert "2 sentence(s)" in out
     assert checked_answer("It was $999,999.", s, shown).startswith("I couldn't answer")
     assert checked_answer("", s, shown) == ""
+    # a failed judge: what passes the number checks stays, and the answer says it went unjudged
+    assert checked_answer("Net sales were $310,635.46.", s, shown, None) == (
+        "Net sales were $310,635.46. (Its wording could not be checked for causes the data "
+        "can't show.)")
+    # the data has dates: a bare year is a date, never an ungrounded number
+    assert checked_answer("In 2026 net sales were $310,635.46.", s, shown) == \
+        "In 2026 net sales were $310,635.46."
+
+
+def test_the_drill_down_handler_judges_its_answer_where_a_pack_matches(recorded_llm):
+    """run_drill_down_agent: on pack data the judge reads each sentence and a flagged one goes
+    (no note); a failed judge keeps the rest with the note; the row count is shown to the checks;
+    no pack (or no contract): still judged (5.7b-3 audit: a cause is wrong on any data), its numbers
+    unchecked as before; an empty answer: the fixed reply."""
+    import asyncio
+    import json
+    from agents.drill_down_agent import run_drill_down_agent
+    from orchestrator.state import InsightReport
+
+    def ask(session):   # sync: _audited runs its own event loop
+        return asyncio.run(run_drill_down_agent(session, None))
+    report = InsightReport(executive_summary="s", technical_findings=[], recommended_actions=[],
+                           anomaly_alerts=[], proactive_questions=[], methodology_notes="")
+    s = _audited("retail_lines")
+    s.insight_report = report
+    rows = s.data_contract.row_count
+    said = f"The file has {rows:,} rows. The discount drove that."
+    reply = json.dumps({"answer_text": said})
+    recorded_llm.responses += [reply, '{"0": "neither", "1": "cause"}']
+    r = ask(s)
+    assert r.answer_text == f"The file has {rows:,} rows. (1 sentence(s) that the analysis can't " \
+                            "support were removed.)"
+    recorded_llm.responses += [reply, "not json"]   # the judge failed: nothing it flagged goes
+    r = ask(s)
+    assert r.answer_text == f"{said} (Its wording could not be checked for causes the data can't show.)"
+    recorded_llm.responses += [json.dumps({"answer_text": ""})]
+    assert ask(s).answer_text == \
+        "I couldn't formulate a direct answer to that."
+    plain = AnalysisSession(session_id="t", data_contract=_contract(
+        pd.DataFrame({"x": ["a", "b"], "y": [1.0, 2.0]})), insight_report=report)
+    none = AnalysisSession(session_id="t", insight_report=report)
+    for other in (plain, none):
+        n = len(recorded_llm.calls)
+        recorded_llm.responses += [json.dumps({"answer_text": "It was 99,999. Price drove it."}),
+                                   '{"0": "neither", "1": "cause"}']
+        assert ask(other).answer_text == \
+            "It was 99,999. (1 sentence(s) that the analysis can't support were removed.)"
+        assert recorded_llm.calls[n + 1]["agent"] == "prose_judge"
 
 
 async def test_first_questions_are_the_domains_when_the_model_fails(recorded_llm):
@@ -1306,58 +1341,6 @@ def test_the_models_own_column_wins_over_a_bare_sales_word():
     # with the pack's rows and periods (paid intake gate: 'net sales' on store_weeks' Net Sales)
     assert _pack_params({}, c, "What were gross sales by location?") == {"kpi": "gross_sales"}
     assert _pack_params({}, c, "How much sales tax by location?") == {}
-
-
-@pytest.mark.parametrize("sentence, flagged", [
-    ("November sales rose 40%, driven by the holiday season and Black Friday promotions.", True),
-    ("The markdown increased units sold by 30%.", True),
-    ("Sales lifted after the promo, though without a control group the effect is unclear.", False),
-    ("Units increased 5% in stores without a promotion.", False),
-    ("The Black Friday promotion doubled weekend traffic.", True),
-    # diff review: a trigger inside a modifier is a description, not a cause
-    ("Sales in the promotion weeks grew 40% over the other weeks.", False),
-    ("Units sold at a discount increased from 120 to 180.", False),
-    ("The campaign weeks grew 8% but non-campaign weeks grew 10%.", False),
-    # audit pass 2 (M4): the trigger word's own change is a fact, not a cause (no object)
-    ("Discounts increased 15% year over year, to $4,210.", False),
-    ("Markdowns doubled in November.", False),
-    ("Total discount increased 12%.", False),
-    ("Promotions grew from 3 to 7 per month.", False),
-    # diff review 3 (M5): a noun phrase may open with a year, a digit, this or last ...
-    ("Promotions increased year-end sales by 12%.", True),
-    ("The Black Friday promotion increased this quarter's revenue.", True),
-    ("Discounts increased 2025 holiday sales.", True),
-    ("Promotions increased last-minute orders.", True),
-    # ... and an adverb, 'as' or 'while' ends the verb phrase: the word's own change
-    ("Promotions increased markedly in Q4.", False),
-    ("Coupons increased as a share of orders.", False),
-    ("Discounts increased while sales were flat.", False),
-    ("Discounts increased $500 in March.", False),
-    # audit pass 3 (M5): a time phrase after the verb is the word's own change ...
-    ("Discounts increased year over year.", False),
-    ("Promotions doubled last quarter.", False),
-    ("Markdowns grew this year, to 8% of gross sales.", False),
-    # ... (M6) and these phrasings give the cause
-    ("Net sales rose 20% due to the spring promotion.", True),
-    ("Sales rose 20% as a result of the discount.", True),
-    ("The November promotion was responsible for the spike in units.", True),
-    ("The coupon campaign contributed to the 15% rise in orders.", True),
-    ("Discounting raised order volume in March.", True),
-    # audit pass 4 (m4, m5): a share is no cause; 'non-discounted' is not a discount
-    ("Discounted orders were responsible for 30% of net sales in Q4.", False),
-    ("Coupon orders contributed to 12% of December net sales.", False),
-    ("Net sales rose 8% in Q4, driven by full-price demand for non-discounted lines.", False),
-])
-def test_promotions_given_credit_anywhere_in_the_claim(sentence, flagged):
-    from guardrails import claim_causal_overreach
-    assert bool(claim_causal_overreach(sentence, ["segment"], RETAIL.causal_triggers)) is flagged
-
-
-@pytest.mark.parametrize("sentence", ["Fuel cost per km is higher on long routes (r = 0.62).",
-                                      "Diesel fuel spend tracks distance closely."])
-def test_fuel_the_noun_is_no_cause(sentence):
-    from guardrails import claim_causal_overreach
-    assert claim_causal_overreach(sentence, ["correlation"]) is None
 
 
 def test_profit_claims_need_a_cost_or_profit_column():

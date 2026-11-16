@@ -15,6 +15,7 @@ recordings (full.sse …) are left as they are.
 
 import json
 import sys
+from pathlib import Path
 
 sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[2]))
 from evals import datagen
@@ -29,6 +30,7 @@ from evals.run import load_cases, viz_session
 
 OUT = sys.argv[1]
 DATASET = sys.argv[sys.argv.index("--dataset") + 1] if "--dataset" in sys.argv else None
+Path(OUT).mkdir(parents=True, exist_ok=True)   # a scenario's own folder (fixtures/<dataset>)
 
 
 def write_dashboard(frame, contract, charts, kpis, query) -> None:
@@ -45,11 +47,14 @@ def write_dashboard(frame, contract, charts, kpis, query) -> None:
 
 
 if DATASET:
-    from agents.visualization_agent import build_context, generate_dashboard_charts, pack_overview_charts
+    from agents.visualization_agent import (build_context, finalize_charts, generate_dashboard_charts,
+                                            pack_overview_charts)
     from tests.test_oracle import _built
     _, frame, contract, _ = _built(DATASET)
     ctx = build_context(frame, contract=contract)
-    built = pack_overview_charts(frame, ctx) + generate_dashboard_charts(frame, ctx.roles, ctx=ctx)
+    # every chart leaves the backend through finalize_charts (D3-10: the fixture is that path too)
+    built = finalize_charts(pack_overview_charts(frame, ctx)
+                            + generate_dashboard_charts(frame, ctx.roles, ctx=ctx), ctx)
     tiles = generate_smart_kpis(frame, ctx.roles, "overview", contract=contract)
     write_dashboard(frame, contract, [c.model_dump() for c in built], [k.model_dump() for k in tiles],
                     "Give me an overview of this dataset")

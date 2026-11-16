@@ -199,7 +199,8 @@ def test_a_balance_report_says_its_as_of_date(tape):
 
 def test_a_drill_down_on_a_weak_match_is_checked_and_one_with_no_pack_is_not():
     """Domain 1 left drill-down checks gated to strong matches (R5): an account + balance frame
-    is a weak banking match, and an invented number or a rate cut credited with a change goes."""
+    is a weak banking match, and an invented number or a rate cut credited with a change (the
+    prose judge's flag, ADR-0009) goes."""
     from agents.drill_down_agent import checked_answer
     from orchestrator.state import AnalysisSession
     weak = pd.DataFrame({"account_id": [1001, 1002, 1003], "account_type": ["a", "b", "a"],
@@ -209,7 +210,7 @@ def test_a_drill_down_on_a_weak_match_is_checked_and_one_with_no_pack_is_not():
     s = AnalysisSession(session_id="t", data_contract=c)
     shown = ["Balances total 13,700.70 across 3 accounts."]
     out = checked_answer("Balances total 13,700.70. The rate cut drove that. It was 99,999.",
-                         s, shown)
+                         s, shown, {"The rate cut drove that."})
     assert out.startswith("Balances total 13,700.70.") and "2 sentence(s)" in out
     plain = AnalysisSession(session_id="t", data_contract=_contract(
         pd.DataFrame({"x": ["a", "b"], "y": [1.0, 2.0]})))

@@ -11,7 +11,8 @@ import json
 import sys
 
 from agents import analysis_agent
-from evals.run import load_cases, run_e2e_case
+from api.config import settings
+from evals.run import EVAL_ENCRYPTION_KEY, load_cases, run_e2e_case
 from llm.client import ClaudeClient, set_client
 
 
@@ -26,6 +27,8 @@ class Recorder:
 
 
 async def main(case_id: str, out: str) -> None:
+    if not settings.encryption_key:   # as evals.run: pseudonyms need a key (5.7b-3: the run crashed)
+        settings.encryption_key = EVAL_ENCRYPTION_KEY
     llm, outputs = Recorder(ClaudeClient()), []
     run_code = analysis_agent.run_code
 
@@ -38,6 +41,8 @@ async def main(case_id: str, out: str) -> None:
     set_client(llm)
     result = await run_e2e_case(load_cases("e2e", case_id)[0])
     cost = sum(r["cost_usd"] for r in llm.replies)
+    if result["error"]:   # a failed run is no fixture: the committed one stays
+        raise SystemExit(f"{case_id} failed (${cost:.4f}), nothing written: {result['error']}")
     with open(out, "w") as f:
         json.dump({"case": case_id, "replies": llm.replies, "sandbox": outputs,
                    "approvals": result["approvals"], "error": result["error"],
