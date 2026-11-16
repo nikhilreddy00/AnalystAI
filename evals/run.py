@@ -786,7 +786,7 @@ def _insight_case(cid: str) -> dict:
 QUALITY_CHECKS_ONLY = {"on": False}   # --checks-only: the deterministic half, at $0
 # The paid quality report whose prose-judge replies --checks-only replays (ADR-0009, 5.7b-3):
 # the judge is a review's first call, so its reply is each run's first. Set after a paid run.
-QUALITY_JUDGE_REPORT: str | None = None
+QUALITY_JUDGE_REPORT: str | None = "quality-20261116T041831Z.json"   # judge v3 (--replay of the k=1 run)
 
 
 def judge_replay(case: dict):
