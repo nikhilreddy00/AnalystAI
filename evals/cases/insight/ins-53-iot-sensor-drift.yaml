@@ -1,6 +1,6 @@
 id: ins-53-iot-sensor-drift
 domain: iot
-category: trap
+category: adversarial
 label_note: 'Domain 7 (K5, T16, T18): failures are more frequent at high vibration (planted), an association; S07''s
   temperature drifts up. Never "S07 fails because it drifts" or "vibration causes failures"; temperature by month is
   a mean, never a sum.'

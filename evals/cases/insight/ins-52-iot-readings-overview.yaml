@@ -1,6 +1,6 @@
 id: ins-52-iot-readings-overview
 domain: iot
-category: trap
+category: data_quality
 label_note: 'Domain 7 historian dump (K5, T16, T5, T7): vibration and alarms move together, an association, never
   "vibration causes alarms"; line C read in deg C after conversion; the stuck S03 and the S05 silence are data
   quality, never a steady process or downtime.'

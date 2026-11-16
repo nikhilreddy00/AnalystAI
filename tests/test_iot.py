@@ -105,6 +105,17 @@ def test_a_flow_kpi_asked_without_a_period_leads_with_its_overall_value():
     assert text.startswith("MTTR by period"), text   # a grain asked: the series, as before
 
 
+def test_a_machine_id_is_no_date_filter():
+    """Browser read (mock stack): the dashboard offered 'Machine' as a date range; pandas reads
+    'M01' as 00:00:01 on 1 Jan of year 1. Columns are dated by the load's one rule (F2)."""
+    from agents.visualization_agent import classify_columns
+    df = pd.DataFrame({"Machine": [f"M{i:02d}" for i in range(1, 11)] * 3,
+                       "Day": pd.date_range("2026-08-01", periods=30).strftime("%Y-%m-%d"),
+                       "x": range(30)})
+    roles = classify_columns(df)
+    assert "Machine" not in roles["datetime_cols"] and "Day" in roles["datetime_cols"]
+
+
 def test_mttr_reads_finished_corrective_orders_in_exact_hours():
     """T3/T4/T19, S-c: a PM is no repair, an open order has no finish yet, a cancelled one is no
     work; a repair across the 25 Oct 2026 clock change is 2.75 h in UTC. (2.75 + 1) / 2."""

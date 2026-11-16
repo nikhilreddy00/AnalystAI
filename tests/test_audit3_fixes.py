@@ -65,7 +65,9 @@ def test_an_intake_default_sum_of_a_reading_ranks_by_its_average():
     df, truth = datagen.make("sensor_readings", 1)
     c = _contract(df)
     p = TargetedParams(metric_column="temperature", group_by="line", aggregation="sum")
-    assert ta._asked_agg(p, c, "Which line runs hottest?").aggregation is None
+    # Domain 7: sensor_readings reads as the iot pack, whose reading is non-additive: the pack
+    # names the mean itself (before, the semantic layer's default mean, left unset)
+    assert ta._asked_agg(p, c, "Which line runs hottest?").aggregation in (None, "mean")
     assert ta._asked_agg(p, c, "Total temperature by line").aggregation == "sum"
     r = ta.handle_top_n(df, ta._asked_agg(p, c, "Which line runs hottest?"), c)
     assert f"{truth['mean_temp_by_line']['B']:,.2f}" in r.answer_text

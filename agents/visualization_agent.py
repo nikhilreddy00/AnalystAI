@@ -26,6 +26,7 @@ import pandas as pd
 from scipy import stats as scipy_stats
 
 from agents.analysis_agent import segment_id
+from connectors.base import parse_text_dates
 from agents.utils import (
     ranked,
     LevelUnavailable,
@@ -199,15 +200,11 @@ def classify_columns(df: pd.DataFrame) -> dict:
         if pd.api.types.is_datetime64_any_dtype(s):
             roles["datetime_cols"].append(col)  # type: ignore[union-attr]
             continue
-        if pd.api.types.is_string_dtype(s) and nunique > 3:
-            sample = s.head(100)
-            try:
-                parsed = pd.to_datetime(sample, format="mixed", errors="coerce")
-                if parsed.notna().sum() / len(parsed) > 0.8:
-                    roles["datetime_cols"].append(col)  # type: ignore[union-attr]
-                    continue
-            except Exception:
-                pass
+        # the load's one date rule (Domain 7: pandas alone read machine 'M01' as a time)
+        if pd.api.types.is_string_dtype(s) and nunique > 3 and \
+                parse_text_dates(s.head(100), 0.8) is not None:
+            roles["datetime_cols"].append(col)  # type: ignore[union-attr]
+            continue
 
         # Binary
         if nunique == 2:

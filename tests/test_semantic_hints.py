@@ -162,8 +162,10 @@ def _kpi(df, contract):
 
 
 def test_a_layer_unit_formats_the_tile():
+    # the generic tiles' unit (Domain 7: the file is iot data, whose tiles are the pack's; the
+    # generic strip is asked for directly)
     df, _ = datagen.make("sensor_readings", 1)
-    k = _kpi(df, _contract(df))
+    k = _kpi(df, _contract(df).model_copy(update={"domain": None}))
     assert k.value.endswith("\u00a0°C") and k.recipe.unit == "°C" and "$" not in k.value
 
 
