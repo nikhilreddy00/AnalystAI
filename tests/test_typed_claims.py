@@ -132,6 +132,9 @@ def test_a_causal_name_may_come_from_its_evidences_claim_or_its_id():
     t = TypedClaim(kind="causal", cause="plan", effect="churned",
                    evidence_id="seg:plan/churned:ratio:churn_rate")
     assert check(t, FINDINGS) is None   # 'churned': the id's only
+    ends = _ev("corr:x__y", "correlation", "discount and basket size")
+    t = TypedClaim(kind="causal", cause="discount", effect="basket size", evidence_id="corr:x__y")
+    assert check(t, FINDINGS.model_copy(update={"evidence": [ends]})) is None   # the claim's last words
 
 
 def test_a_benchmark_needs_a_metric_and_is_said_in_one_sentence():
