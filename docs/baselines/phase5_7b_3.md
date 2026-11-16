@@ -133,4 +133,8 @@ and "a check fires late" decides nothing in code.
 - The named equivalents (`docs/mutation/gate.json`) are a joiner, `>=` vs `>` on non-zero signs,
   the `frozenset()` vs `None` default, and similar.
 - `_named`'s last survivor (the claim–id joiner) was killed by a test.
+- `guardrails.py` joined `source_paths`, as plan item G9 intended; it had been copied only. The
+  date guard `ungrounded_dates` scores 1.0.
+- The echo scorer `score_quality` scored 0.69 at first. Its longest-name-first order and the
+  column exemption are now pinned, and the dead defaults were dropped, so it scores 1.0.
 - `--record`, then `--check main` passes.
