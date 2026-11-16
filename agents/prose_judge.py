@@ -40,7 +40,7 @@ async def flagged(sentences: list[str], llm: LLMClient) -> set[int] | None:
     body = "\n".join(f"{n}. {mask_pii(sentences[i])}" for n, i in enumerate(ask))
     try:
         result = await llm.complete(agent="prose_judge", prompt_version=PROMPT_VERSION,
-                                    model=settings.llm_model, max_tokens=1000, system=_SYSTEM,
+                                    model=settings.llm_model, max_tokens=2000, system=_SYSTEM,
                                     messages=[{"role": "user", "content": delimit_untrusted(body)}])
         # the first JSON object (the model may explain after it): a verdict per sentence, by number
         says = json.loads(re.search(r"\{[^{}]*\}", result.text).group())

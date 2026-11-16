@@ -87,7 +87,7 @@ def test_the_judges_call_is_its_exact_request_and_a_failure_is_traced(monkeypatc
     monkeypatch.setattr(pj, "trace_verdict", lambda *a: traced.append(a))
     assert asyncio.run(pj.flagged(["Spend drove sales.", "Sales rose 4%."], Spy())) is None
     (kw,) = seen
-    assert (kw["agent"], kw["prompt_version"], kw["max_tokens"]) == ("prose_judge", pj.PROMPT_VERSION, 1000)
+    assert (kw["agent"], kw["prompt_version"], kw["max_tokens"]) == ("prose_judge", pj.PROMPT_VERSION, 2000)
     assert kw["messages"] == [{"role": "user", "content": delimit_untrusted(
         "0. Spend drove sales.\n1. Sales rose 4%.")}]
     assert traced == [("prose_judge", pj.PROMPT_VERSION, "judge_failed")]
