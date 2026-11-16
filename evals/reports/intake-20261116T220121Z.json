@@ -1,0 +1,452 @@
+{
+ "meta": {
+  "suite": "intake",
+  "report": "intake-20261116T220121Z",
+  "k": 1,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "7928dcb",
+  "started_at": "20261116T220121Z",
+  "only": "intake-iot",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 5,
+  "runs": 5,
+  "pass_rate": 0.8,
+  "case_majority_pass_rate": 0.8,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "hard_rules_na": 0,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 0,
+  "runs_with_prose_rewritten": 0,
+  "runs_with_pii_guard_hit": 0,
+  "cost_per_question_usd": 0.0161,
+  "latency_p50_s": 6.05,
+  "latency_p95_s": 32.04,
+  "intent_accuracy": 0.6667,
+  "column_mapping": null,
+  "param_accuracy": 1.0,
+  "asks_when_ambiguous": null,
+  "no_ask_when_clear": 1.0,
+  "invented_columns_shipped": 0,
+  "model_invented_columns": 0,
+  "injections_followed": 0,
+  "first_run_pass_rate": null,
+  "holdout_pass_rate": null,
+  "pass_rate_by_category": {
+   "clear": 0.8
+  }
+ },
+ "runs": {
+  "intake-iot-01": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got segment_compare, want ['segment_compare', 'top_n']"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got availability, want availability"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "What is our uptime by line?",
+     "target_metrics": [
+      "Planned Minutes",
+      "Unplanned Downtime (min)",
+      "Changeover (min)"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Line"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [
+       "Planned Minutes",
+       "Unplanned Downtime (min)",
+       "Changeover (min)"
+      ],
+      "metric_column": null,
+      "date_column": null,
+      "segment_column": "Line",
+      "segment_value": null,
+      "group_by": "Line",
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "sum",
+      "chart_type": "HorizontalBarChart",
+      "kpi": "availability",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 6.05,
+    "cost_usd": 0.01586,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"What is our uptime by line?\",\n  \"target_metrics\": [\"Planned Minutes\", \"Unplanned Downtime (min)\", \"Changeover (min)\"],\n  \"timeframe\": null,\n  \"segments\": [\"Line\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [\"Planned Minutes\", \"Unplanned Downtime (min)\", \"Changeover (min)\"],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": \"Line\",\n    \"segment_value\": null,\n    \"group_by\": \"Line\",\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"sum\",\n    \"chart_type\": \"HorizontalBarChart\",\n    \"kpi\": \"availability\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "intake-iot-02": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got time_series, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got quality_rate, want quality_rate"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "What's our yield?",
+     "target_metrics": [
+      "Good Count",
+      "Total Count"
+     ],
+     "timeframe": null,
+     "segments": [],
+     "analysis_types": [
+      "eda"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "time_series",
+     "targeted_params": {
+      "target_columns": [
+       "Good Count",
+       "Total Count"
+      ],
+      "metric_column": null,
+      "date_column": null,
+      "segment_column": null,
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": null,
+      "chart_type": null,
+      "kpi": "quality_rate",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 4.68,
+    "cost_usd": 0.01522,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"What's our yield?\",\n  \"target_metrics\": [\"Good Count\", \"Total Count\"],\n  \"timeframe\": null,\n  \"segments\": [],\n  \"analysis_types\": [\"eda\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"overview\",\n  \"targeted_params\": {\n    \"target_columns\": [\"Good Count\", \"Total Count\"],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": null,\n    \"segment_value\": null,\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": null,\n    \"chart_type\": null,\n    \"kpi\": \"quality_rate\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "intake-iot-03": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=True, expected True"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "What is our MTBF?",
+     "target_metrics": [],
+     "timeframe": null,
+     "segments": [],
+     "analysis_types": [
+      "eda"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": true,
+     "clarification_question": "MTBF requires a column tracking **operating hours** (or uptime) per asset between failures \u2014 this dataset does not contain one. I can offer two approximations instead: **(a)** use calendar time between consecutive failure work orders per asset (via REPORTDATE + FAILURECODE), noting ~48% of FAILURECODE is missing; or **(b)** use ACTSTART \u2192 ACTFINISH durations as a proxy for downtime and infer uptime if you can supply a total observation window. Which approach would you like, or do you have an operating-hours column to add?",
+     "question_intent": "drill_down",
+     "targeted_params": {
+      "target_columns": [
+       "ASSETNUM",
+       "REPORTDATE",
+       "FAILURECODE",
+       "ACTSTART",
+       "ACTFINISH"
+      ],
+      "metric_column": null,
+      "date_column": "REPORTDATE",
+      "segment_column": "ASSETNUM",
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": null,
+      "chart_type": null,
+      "kpi": "mtbf",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 38.37,
+    "cost_usd": 0.01955,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"What is our MTBF?\",\n  \"target_metrics\": [],\n  \"timeframe\": null,\n  \"segments\": [],\n  \"analysis_types\": [\"eda\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": true,\n  \"clarification_question\": \"MTBF (Mean Time Between Failures) requires knowing the total operating time for each asset between failure events. This dataset has work order dates (REPORTDATE, ACTSTART, ACTFINISH) and asset IDs (ASSETNUM), but it is missing a dedicated **operating hours** or **uptime** column \u2014 the cumulative run time between failures that MTBF needs as its numerator. Could you confirm: (a) Is there a separate asset runtime or uptime feed we can join to this data? (b) Or should we approximate MTBF using the calendar time between consecutive failure work orders per asset (using REPORTDATE and FAILURECODE), with the caveat that this is an approximation and ~48% of FAILURECODE values are missing?\",\n  \"clarification_question\": \"MTBF requires a column tracking **operating hours** (or uptime) per asset between failures \u2014 this dataset does not contain one. I can offer two approximations instead: **(a)** use calendar time between consecutive failure work orders per asset (via REPORTDATE + FAILURECODE), noting ~48% of FAILURECODE is missing; or **(b)** use ACTSTART \u2192 ACTFINISH durations as a proxy for downtime and infer uptime if you can supply a total observation window. Which approach would you like, or do you have an operating-hours column to add?\",\n  \"question_intent\": \"drill_down\",\n  \"targeted_params\": {\n    \"target_columns\": [\"ASSETNUM\", \"REPORTDATE\", \"FAILURECODE\", \"ACTSTART\", \"ACTFINISH\"],\n    \"metric_column\": null,\n    \"date_column\": \"REPORTDATE\",\n    \"segment_column\": \"ASSETNUM\",\n    \"segment_value\": null,\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": null,\n    \"chart_type\": null\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "intake-iot-04": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=True, expected True"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "What is the Cpk of the line C temperature?",
+     "target_metrics": [
+      "Temperature"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Line"
+     ],
+     "analysis_types": [
+      "eda"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": true,
+     "clarification_question": "Cpk needs specification limits and a stable process: capability (Cpk/Ppk) compares spread with the spec, which this data doesn't give. I can answer with what the data has: OEE, availability, performance and quality by line, machine or shift; MTBF; MTTR and corrective work orders by asset; or readings by sensor and line. Which would help?",
+     "question_intent": "hypothesis_test",
+     "targeted_params": {
+      "target_columns": [
+       "Temperature"
+      ],
+      "metric_column": "Temperature",
+      "date_column": null,
+      "segment_column": "Line",
+      "segment_value": "C",
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": null,
+      "chart_type": null,
+      "kpi": null,
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 6.71,
+    "cost_usd": 0.0158,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"What is the Cpk of the line C temperature?\",\n  \"target_metrics\": [\"Temperature\"],\n  \"timeframe\": null,\n  \"segments\": [\"Line\"],\n  \"analysis_types\": [\"eda\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": true,\n  \"clarification_question\": \"To calculate Cpk for Line C's Temperature, I need the specification limits for this process \u2014 these aren't in the dataset. Could you provide: (1) the Lower Specification Limit (LSL) and (2) the Upper Specification Limit (USL) for Temperature? For example: LSL = 60\u00b0, USL = 80\u00b0. Without these, Cpk cannot be computed.\",\n  \"question_intent\": \"hypothesis_test\",\n  \"targeted_params\": {\n    \"target_columns\": [\"Temperature\"],\n    \"metric_column\": \"Temperature\",\n    \"date_column\": null,\n    \"segment_column\": \"Line\",\n    \"segment_value\": \"C\",\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": null,\n    \"chart_type\": null\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "intake-iot-05": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": false,
+      "detail": "got outlier_scan, want ['time_series']"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "segment_value: got S07, want S07"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "Is sensor S07's temperature in control?",
+     "target_metrics": [
+      "Temperature"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Sensor"
+     ],
+     "analysis_types": [
+      "eda",
+      "trend",
+      "anomaly"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "outlier_scan",
+     "targeted_params": {
+      "target_columns": [
+       "Temperature"
+      ],
+      "metric_column": "Temperature",
+      "date_column": "Timestamp",
+      "segment_column": "Sensor",
+      "segment_value": "S07",
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": "D",
+      "test_type": null,
+      "aggregation": null,
+      "chart_type": null,
+      "kpi": null,
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 4.56,
+    "cost_usd": 0.0142,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"Is sensor S07's temperature in control?\",\n  \"target_metrics\": [\"Temperature\"],\n  \"timeframe\": null,\n  \"segments\": [\"Sensor\"],\n  \"analysis_types\": [\"eda\", \"trend\", \"anomaly\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"outlier_scan\",\n  \"targeted_params\": {\n    \"target_columns\": [\"Temperature\"],\n    \"metric_column\": \"Temperature\",\n    \"date_column\": \"Timestamp\",\n    \"segment_column\": \"Sensor\",\n    \"segment_value\": \"S07\",\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": \"D\",\n    \"test_type\": null,\n    \"aggregation\": null,\n    \"chart_type\": null\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": false
+   }
+  ]
+ }
+}

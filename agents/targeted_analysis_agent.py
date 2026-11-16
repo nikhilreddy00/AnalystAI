@@ -198,6 +198,11 @@ def run_targeted_analysis(session: AnalysisSession) -> TargetedResponse:
                                                "Ask without a period (the whole data)"])
     if handler is handle_kpi:
         extra = {"full": full, "intent": intent}
+    metric = params.metric_column or (params.target_columns[:1] or [None])[0] if params else None
+    if intent == QuestionIntent.OUTLIER_SCAN and params and \
+            _one_series_measure(conventions, contract, params, metric, df):
+        # one series' process reading: its outliers are the days beyond its control limits
+        handler, params = handle_time_series, params.model_copy(update={"metric_column": metric})
     response = handler(df, params, contract, ctx=ctx, **extra)
     if handler is handle_kpi and response.answer_text and not response.unanswerable_reason:
         response.answer_text += _also_named(full, params, contract, pack, session.task_plan.raw_query)

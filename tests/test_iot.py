@@ -105,6 +105,20 @@ def test_a_flow_kpi_asked_without_a_period_leads_with_its_overall_value():
     assert text.startswith("MTTR by period"), text   # a grain asked: the series, as before
 
 
+def test_an_outlier_scan_of_one_sensors_reading_is_its_control_chart():
+    """Intake run, intake-iot-05: 'Is sensor S07's temperature in control?' came as outlier_scan
+    with the right params (Temperature, Sensor S07, daily). One series' continuous measure: its
+    outliers are the points beyond its control limits, so it is answered by the control chart."""
+    from tests.test_oracle import answer
+    text, _ = answer("machine_readings", "outlier_scan", "Is sensor S07's temperature in control?",
+                     target_columns=["Temperature"], metric_column="Temperature",
+                     segment_column="Sensor", segment_value="S07", frequency="D")
+    assert "Control limits" in text and "UCL" in text, text
+    text, _ = answer("machine_readings", "outlier_scan", "Any odd vibration values?",
+                     target_columns=["Vibration (mm/s)"])
+    assert "Control limits" not in text   # no named series: the scan, as before
+
+
 def test_a_machine_id_is_no_date_filter():
     """Browser read (mock stack): the dashboard offered 'Machine' as a date range; pandas reads
     'M01' as 00:00:01 on 1 Jan of year 1. Columns are dated by the load's one rule (F2)."""

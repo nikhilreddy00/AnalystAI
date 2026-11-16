@@ -38,7 +38,8 @@ expect:
   must_mention:
   - vibration
   must_not_match:
-  - \bvibration\b[^.]{0,40}\b(?:causes?|caused|drives?|leads? to)\b[^.]{0,30}\bfailures?\b
+  # a sentence claiming it; "association does not confirm that vibration causes failures" is right
+  - (?:^|[.!?]\s+)(?:(?!\b(?:not|no|never|cannot)\b|n't\b)[^.!?])*?\bvibration\b(?:(?!\b(?:not|no|never)\b)[^.!?]){0,40}?\b(?:causes?|caused|drives?|leads? to)\b[^.!?]{0,30}\bfailures?\b
   - \bS07\b[^.]{0,40}\bfail\w*\b[^.]{0,20}\bbecause\b
   - \b(?:sum|total) (?:of )?(?:the )?temperatures?\b
   - net sales|order value|\bMRR\b|readmission|loss ratio|headcount|attrition|\bNPL\b
