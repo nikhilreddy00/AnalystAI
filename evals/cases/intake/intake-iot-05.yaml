@@ -1,0 +1,15 @@
+id: intake-iot-05
+category: clear
+pipeline: production
+source:
+  dataset: machine_readings
+  seed: 1
+overview_done: true
+question: "Is sensor S07's temperature in control?"
+expect:
+  ask: false
+  intent_any:
+  - time_series
+  params:
+    segment_value: S07
+rationale: "Domain 7 (U2): one sensor's reading over time is its control chart (the targeted time series of S07)."

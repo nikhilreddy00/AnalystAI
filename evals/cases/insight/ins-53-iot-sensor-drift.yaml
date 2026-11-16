@@ -1,0 +1,44 @@
+id: ins-53-iot-sensor-drift
+domain: iot
+category: trap
+label_note: 'Domain 7 (K5, T16, T18): failures are more frequent at high vibration (planted), an association; S07''s
+  temperature drifts up. Never "S07 fails because it drifts" or "vibration causes failures"; temperature by month is
+  a mean, never a sum.'
+dataset:
+  name: sensor_readings
+  seed: 1
+question: Give me an overview of this dataset.
+entity:
+- reading
+- readings
+plan:
+  target_metrics:
+  - temperature
+  - vibration
+  - failure
+  segments:
+  - line
+  - sensor_id
+  analysis_types:
+  - eda
+  - trend
+  - correlation
+  - segmentation
+findings:
+- kind: trend
+  column: temperature
+- kind: correlation
+  a: vibration
+  b: failure
+- kind: segment
+  segment_column: sensor_id
+  metric: temperature
+  aggregation: mean
+expect:
+  must_mention:
+  - vibration
+  must_not_match:
+  - \bvibration\b[^.]{0,40}\b(?:causes?|caused|drives?|leads? to)\b[^.]{0,30}\bfailures?\b
+  - \bS07\b[^.]{0,40}\bfail\w*\b[^.]{0,20}\bbecause\b
+  - \b(?:sum|total) (?:of )?(?:the )?temperatures?\b
+  - net sales|order value|\bMRR\b|readmission|loss ratio|headcount|attrition|\bNPL\b

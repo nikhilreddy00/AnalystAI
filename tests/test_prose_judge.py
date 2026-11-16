@@ -11,7 +11,8 @@ SETS = Path(__file__).resolve().parents[1] / "evals" / "cases" / "prose_judge"
 # a held-out set changed after its run is no held-out set (ledger D6-12, PR1-08).
 FROZEN = {
     "guide.md": "c19db456f5b2fb1fe19fd288c4571fbf8968c4feef065aad373ec976de46ff2e",
-    "tuning.yaml": "5d23c819a44e36cf6482d2b89086c1432d313c71e2ebe456ba167e6c36029027",
+    # 2026-11-16, Domain 7 (K5): 14 IoT sentences appended before any run on them; held-out unchanged
+    "tuning.yaml": "ac2e49ad6761694be4a28a80a3ba8bda57469c97f89f0afc7a981023072a2814",
     "held_out.yaml": "1c772f34adbfacf159f6ce765d5cabdad77de2947a9737a37b429c7ca8e6c9ea",
     # 2026-11-16, before any v3 run: real report sentences judge v2 over-flagged (paid quality run)
     "tuning_reports.yaml": "a5d1917c0eb435c9d63969fd9ab9eac57eda1782712737f6ab518733517e8f35",

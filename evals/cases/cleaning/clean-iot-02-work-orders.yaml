@@ -1,0 +1,20 @@
+id: clean-iot-02-work-orders
+dataset:
+  name: work_orders
+  seed: 1
+category: iot
+expect_decisions:
+- column: '*'
+  operation: flag
+  strategy: cancel
+  truth_key: cancelled_wos
+forbid:
+- operation: flag
+  strategy: series_gap
+- operation: flag
+  strategy: series_clash
+- operation: drop_duplicates
+- operation: fill_unknown
+  column: ACTFINISH
+label_note: 'Domain 7 CMMS log (T19, T4): cancelled orders flagged and kept (left out of every count); an open
+  order''s blank finish is the layout, never filled; a work-order log is no time series.'

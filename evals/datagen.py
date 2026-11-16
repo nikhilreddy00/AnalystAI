@@ -586,9 +586,11 @@ def _shift_production_truth(df: pd.DataFrame) -> dict:
         "stops": int(d["Stops"].sum()), "unplanned_downtime_min": int(d["Unplanned Downtime (min)"].sum()),
         "run_hours": d["_run"].sum() / 60,
         "oee_by_line": {k: v["oee"] for k, v in by_line.items()},
+        "oee_by_running_line": {k: v["oee"] for k, v in by_line.items() if v["oee"] is not None},
         "availability_by_shift": {k: v["availability"] for k, v in by_shift.items()},
         "oee_by_shift": {k: v["oee"] for k, v in by_shift.items()},
         "mtbf_by_machine": {k: v["mtbf_hours"] for k, v in by_machine.items()},
+        "mtbf_by_failing_machine": {k: v["mtbf_hours"] for k, v in by_machine.items() if v["mtbf_hours"]},
         "zero_failure_run_hours": {k: d.loc[d["Machine"] == k, "_run"].sum() / 60
                                    for k, v in by_machine.items() if v["mtbf_hours"] is None and
                                    d.loc[d["Machine"] == k, "_run"].sum() > 0},

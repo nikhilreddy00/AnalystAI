@@ -1,0 +1,19 @@
+id: viz-t14-iot-mttr
+category: targeted
+label_note: 'Domain 7 work-order overview: MTTR by asset as ranked bars (finished corrective orders only), never a
+  count of distinct assets by asset (every bar 1).'
+dataset:
+  name: work_orders
+  seed: 1
+question: Give me an overview of our maintenance
+plan:
+  intent: overview
+  analysis_types: []
+  target_metrics: []
+  segments: []
+expect:
+- types:
+  - HorizontalBarChart
+  x: ASSETNUM
+  y: MTTR
+  agg: none

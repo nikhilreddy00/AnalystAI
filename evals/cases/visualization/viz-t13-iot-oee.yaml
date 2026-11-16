@@ -1,0 +1,19 @@
+id: viz-t13-iot-oee
+category: targeted
+label_note: 'Domain 7 shift report overview: OEE by line as ranked bars, each line its pooled OEE (sum of ideal
+  cycle x good / planned minutes over its shifts), never a mean of shift OEEs; line D (never scheduled) is no bar.'
+dataset:
+  name: shift_production
+  seed: 1
+question: Give me an overview of our production
+plan:
+  intent: overview
+  analysis_types: []
+  target_metrics: []
+  segments: []
+expect:
+- types:
+  - HorizontalBarChart
+  x: Line
+  y: OEE
+  agg: none

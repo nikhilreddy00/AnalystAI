@@ -1,0 +1,18 @@
+id: e2e-88
+domain: iot
+dataset:
+  name: machine_readings
+  seed: 1
+question: Is sensor S07's temperature in control?
+overview_done: true
+checks:
+- kind: must_match
+  pattern: '(?i)control limits'
+- kind: must_not_match
+  pattern: '(?i)out of (?:spec|specification|tolerance)'
+hard_rules:
+- charts_lint_clean
+- charts_have_rationale
+- non_empty_or_error
+label_note: 'Domain 7 (T21, U2): S07 drifts +0.05 C a day: its daily means cross the upper control limit from late
+  August. Control limits come from the process, never a specification.'

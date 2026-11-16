@@ -1,0 +1,37 @@
+id: dom-iot-work-orders
+category: domain
+dataset:
+  name: work_orders
+  seed: 1
+roles:
+  WONUM: id
+  ASSETNUM:
+  - category
+  - id
+  WORKTYPE: category
+  STATUS: category
+  FAILURECODE: category
+  REPORTDATE: date
+  ACTSTART: date
+  ACTFINISH: date
+  REPORTEDBY:
+  - category
+  - id
+pii:
+  REPORTEDBY: name
+traps:
+- REPORTEDBY
+- ACTFINISH
+expect_domain: iot
+expect_roles:
+  date: REPORTDATE
+  actual_start: ACTSTART
+  actual_finish: ACTFINISH
+  asset: ASSETNUM
+  work_order: WONUM
+  work_type: WORKTYPE
+  failure_code: FAILURECODE
+  status: STATUS
+  reported_by: REPORTEDBY
+label_note: 'Domain 7 Maximo export (T11, T14): times in UTC; REPORTEDBY holds logins (JSMITH), which identify
+  people.'

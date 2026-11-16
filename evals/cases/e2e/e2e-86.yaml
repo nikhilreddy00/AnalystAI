@@ -1,0 +1,21 @@
+id: e2e-86
+domain: iot
+source: json
+dataset:
+  name: machine_readings
+  seed: 1
+question: What is the average temperature on each line?
+overview_done: true
+checks:
+- kind: number_in_answer
+  truth_key: mean_temp_c_by_line.Line C
+  rel_tol: 0.002
+- kind: must_not_number
+  truth_key: naive_mean_temp
+  rel_tol: 0.003
+hard_rules:
+- charts_lint_clean
+- charts_have_rationale
+- non_empty_or_error
+label_note: 'Domain 7 (T5; JSON): line C''s deg F readings are converted by their unit column, Bad and -9999 are
+  no measurement: line C 71.1 C, never ~158 or the 92.4 mixed mean.'

@@ -2773,12 +2773,14 @@ def _overview_asks(pack, roles: dict[str, str], columns) -> list[tuple[QuestionI
         can = [money, ratio] if money and ratio else [money] if money else []
     if not can:
         return []
-    group = next((roles[r] for r in pack.overview_groups if roles.get(r) in columns), None)
+    role = next((r for r in pack.overview_groups if roles.get(r) in columns), None)
+    group = roles.get(role) if role else None
     series = [k for k in can if k.name in pack.overview_series] or can[:1]
     asks = [(QuestionIntent.TIME_SERIES, TargetedParams(kpi=k.name, frequency="M")) for k in series]
-    if group:
+    if group:   # never a distinct count of the group's own column by it: every bar is 1
         asks += [(QuestionIntent.TOP_N, TargetedParams(kpi=k.name, segment_column=group,
-                                                       group_by=group)) for k in can]
+                                                       group_by=group)) for k in can
+                 if not (k.den is None and all(t.nunique == role for alt in k.num for t in alt))]
     return asks
 
 

@@ -1,0 +1,44 @@
+id: ins-51-iot-shift-overview
+domain: iot
+category: straightforward
+label_note: 'Domain 7 MES shift report: OEE 70.8% pooled over planned production time (never a mean of shift OEEs),
+  its three factors, MTBF as run hours per failure with its assumption; no benchmark verdict (world-class 85%), no
+  schedule read into MTBF, no cause from a breakdown.'
+dataset:
+  name: shift_production
+  seed: 1
+question: Give me an overview of this dataset.
+entity:
+- shift
+- shifts
+plan:
+  target_metrics:
+  - Good Count
+  - Unplanned Downtime (min)
+  segments:
+  - Line
+  - Shift
+  analysis_types:
+  - eda
+  - segmentation
+  - trend
+findings:
+- kind: segment
+  segment_column: Line
+  metric: Unplanned Downtime (min)
+  aggregation: sum
+- kind: segment
+  segment_column: Shift
+  metric: Good Count
+  aggregation: sum
+- kind: trend
+  column: Good Count
+expect:
+  must_mention:
+  - OEE
+  - planned
+  must_not_match:
+  - \b(?:world[- ]class|best[- ]in[- ]class|industry (?:average|standard|benchmark))\b
+  - \b(?:fails?|breaks? down)\s+(?:about\s+|roughly\s+)?every\s+\d
+  - \baverage (?:of|across) (?:the )?(?:shift|daily) OEEs?\b
+  - net sales|order value|\bMRR\b|readmission|loss ratio|headcount|attrition|\bNPL\b

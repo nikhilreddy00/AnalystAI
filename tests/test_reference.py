@@ -117,8 +117,9 @@ CASES = {
                              "unplanned_downtime_min": "unplanned_downtime"}, {
         "row_count": FILE, "pii_columns": FILE, "stops": "stops are no KPI: never failures",
         "over_100_performance_rows": FILE, "run_hours": "run_minutes / 60 (checked as MTBF's numerator)",
-        **{k: BY_GROUP for k in ("oee_by_line", "availability_by_shift", "oee_by_shift",
-                                 "mtbf_by_machine", "zero_failure_run_hours", "good_by_day")},
+        **{k: BY_GROUP for k in ("oee_by_line", "oee_by_running_line", "availability_by_shift",
+                                 "oee_by_shift", "mtbf_by_machine", "mtbf_by_failing_machine",
+                                 "zero_failure_run_hours", "good_by_day")},
         **{k: NAIVE for k in ("naive_mean_shift_oee", "naive_good_by_end_day",
                               "naive_mtbf_with_stops")}}),
     "work_orders": (1, {"mttr_hours": "mttr", "corrective_wos": "corrective_wos",

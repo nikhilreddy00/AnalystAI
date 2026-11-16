@@ -136,7 +136,7 @@ kpis:
      den: [[{sum: planned_minutes}]]}
   - {name: availability, label: Availability, unit: percent, tile: true,
      num: [[{kpi: run_minutes}]], den: [[{sum: planned_minutes}]]}
-  - {name: performance, label: Performance, unit: percent, tile: true,
+  - {name: performance, label: Performance rate, unit: percent, tile: true,
      num: [[{sum: [ideal_cycle_s, "*", total_count], times: 0.016666666666666666}]],
      den: [[{kpi: run_minutes}]]}
   - {name: quality_rate, label: Quality (first-pass yield), unit: percent, tile: true,
@@ -170,7 +170,7 @@ kpis:
   - {name: pm_share, label: Preventive share of work orders, unit: percent,
      num: [[{nunique: work_order, where: [[{role: work_type, in: [pm, preventive, planned]}]]}]],
      den: [[{nunique: work_order}]]}
-  - {name: assets, label: Assets reporting, unit: count, tile: true, num: [[{nunique: asset}]]}
+  - {name: assets, label: Assets, unit: count, tile: true, num: [[{nunique: asset}]]}
   - {name: alarms, label: Alarms, unit: count, tile: true, num: [[{sum: alarm}]]}
 
 glossary:

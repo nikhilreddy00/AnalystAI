@@ -1,0 +1,30 @@
+id: iot-5
+domain: iot
+category: ratio
+pipeline: production
+dataset:
+  name: work_orders
+  seed: 1
+question: What is the mean time to repair for corrective and emergency work orders?
+task:
+  analysis_types:
+  - segmentation
+  target_metrics:
+  - ACTFINISH
+  segments:
+  - WORKTYPE
+checks:
+- kind: segment_value_truth
+  planted: true
+  segment: WORKTYPE
+  truth_key: mttr_by_worktype
+  abs_tol: 0.05
+  scales:
+  - 1
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
+- numbers_grounded
+label_note: 'Domain 7 (T3, T4, T19, T20): MTTR = actual finish - actual start in hours over finished CM/EM
+  orders; preventive orders are no repair, open and cancelled ones have no finish, a COMP order with no
+  finish is left out. CM 3.52 h, EM 5.96 h (seed 1).'

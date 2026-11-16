@@ -405,19 +405,21 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
             code = df[ucol].astype("string").str.replace(r"\s+", "", regex=True).str.lower()
             done = pd.Series(False, index=df.index)   # a row is converted once ('deg F', 'degF')
             for unit, (scale, offset) in rule.convert.items():
-                hit = code.eq(re.sub(r"\s+", "", unit).lower()).fillna(False) & df[col].notna() & ~done
-                done |= hit
+                row = code.eq(re.sub(r"\s+", "", unit).lower()).fillna(False) & ~done
+                done |= row
+                hit = row & df[col].notna()   # a blank value (a Bad reading) keeps no old unit
                 if n := int(hit.sum()):
                     pct = _null_pct(df[col])
                     df[col] = df[col].mask(hit, df[col] * scale + offset)
-                    upct = _null_pct(df[ucol])
-                    df[ucol] = df[ucol].mask(hit, rule.to)
                     log(col, "type_coerce", "unit_converted",
                         f"{n} {role.replace('_', ' ')} values in {unit} (their {ucol}) converted to "
                         f"{rule.to}: × {scale:g} {'+' if offset >= 0 else '−'} {abs(offset):g}.",
                         n, pct, _null_pct(df[col]))
+                if m := int(row.sum()):
+                    upct = _null_pct(df[ucol])
+                    df[ucol] = df[ucol].mask(row, rule.to)
                     log(ucol, "type_coerce", "unit_converted",
-                        f"{n} rows' unit changed from {unit} to {rule.to} with their values.", n, upct, upct)
+                        f"{m} rows' unit changed from {unit} to {rule.to}, with their values.", m, upct, upct)
         for role, rule in ctx.pack.signed_by.items():   # an unsigned amount and its Dr/Cr
             col, ind = ctx.roles.get(role), ctx.roles.get(rule.indicator)
             if col is None or ind is None or not pd.api.types.is_numeric_dtype(df[col]) \

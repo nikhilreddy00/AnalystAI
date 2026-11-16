@@ -1,0 +1,16 @@
+id: intake-iot-01
+category: clear
+pipeline: production
+source:
+  dataset: shift_production
+  seed: 1
+overview_done: true
+question: "What is our uptime by line?"
+expect:
+  ask: false
+  intent_any:
+  - segment_compare
+  - top_n
+  params:
+    kpi: availability
+rationale: "Domain 7: on a shift report 'uptime' is availability (run / planned production time), not a SaaS service level."
