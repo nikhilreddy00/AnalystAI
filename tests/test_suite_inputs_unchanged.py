@@ -16,7 +16,14 @@ from evals.snapshot import GOLDEN, snapshot
 
 # The domain being built: {suite: {case or dataset: why}}. Empty right after a pin.
 # Re-pinned at 5.7b-2's end (2026-11-13); its diff is named in docs/baselines/phase5_7b_2.md.
-CHANGES: dict[str, dict[str, str]] = {}
+CHANGES: dict[str, dict[str, str]] = {
+    # Domain 7 (IoT, planned at B0 per lesson 33): sensor_readings now reads as the iot pack
+    # (contract domain, roles, a failures tile, cleaning flags), so its outputs and every case on
+    # it change. Re-measured at Domain 7's analysis and E2E gates.
+    "deterministic": {f"sensor_readings-{s}": "Domain 7: read as the iot pack" for s in (1, 2, 3)},
+    "analysis": {c: "Domain 7: sensor_readings read as the iot pack" for c in ("iot-1", "iot-2", "iot-3")},
+    "e2e": {c: "Domain 7: sensor_readings read as the iot pack" for c in ("e2e-31", "e2e-32")},
+}
 
 
 GOLDEN_NOW = json.loads(GOLDEN.read_text())
