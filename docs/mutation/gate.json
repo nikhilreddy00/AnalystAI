@@ -1,4 +1,12 @@
 {
+ "agents/claims.py::_norm": {
+  "equivalents": [],
+  "hash": "25374bd642adecfd"
+ },
+ "agents/claims.py::_pair": {
+  "equivalents": [],
+  "hash": "c246ab996ff8a6ad"
+ },
  "agents/claims.py::check": {
   "equivalents": [
    {
@@ -7,7 +15,16 @@
     "old": "said = _norm(ev.claim) + \" \" + _norm(ev.id)",
     "reason": "the joiner matters only for a name running from the claim's end into the id, and an evidence id starts with a kind prefix (corr:, seg:, trend:) that no metric or group name holds"
    }
-  ]
+  ],
+  "hash": "2281d996e6b8e0d5"
+ },
+ "agents/claims.py::recheck": {
+  "equivalents": [],
+  "hash": "3839906f13a824e4"
+ },
+ "agents/claims.py::render": {
+  "equivalents": [],
+  "hash": "5b7467eebd8ec1ac"
  },
  "agents/claims.py::settle": {
   "equivalents": [
@@ -17,7 +34,12 @@
     "old": "caveats.append(render(t, findings, name))",
     "reason": "only a benchmark claim reaches this line, and render's benchmark branch returns before it reads findings"
    }
-  ]
+  ],
+  "hash": "3d44c3086ae1f24c"
+ },
+ "agents/claims.py::typed": {
+  "equivalents": [],
+  "hash": "fe69e1b4dc76a39a"
  },
  "agents/drill_down_agent.py::run_drill_down_agent": {
   "equivalents": [
@@ -130,7 +152,12 @@
     "old": "terms = [f\"{'+' if SIGN[m] > 0 else '−'} {k.phrase} {say(k, v)}\" for m, (k, v) in b.moves.items()]",
     "reason": "every SIGN value is +1 or -1, never 0"
    }
-  ]
+  ],
+  "hash": "66e631757c679cba"
+ },
+ "domain_pack/story.py::bridge": {
+  "equivalents": [],
+  "hash": "507bcb4bf459cc27"
  },
  "domain_pack/story.py::unit_said": {
   "equivalents": [
