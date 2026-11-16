@@ -653,7 +653,8 @@ dataset should land in a workspace users can come back to. Expected size: 2 sess
   - **Red before green.** A property or check is written first, fails on today's code for the
     class it targets, then the fix makes it green.
   - **A finding closes only with a check** (a test, hook, type, property or cap), recorded in
-    `docs/retro-ledger.md` with its class and recurrence count. Prose-only = "unenforced".
+    `docs/retro-ledger.md` with its class and recurrence count (query: `scripts/ledger.py`).
+    Prose-only = "unenforced".
   - **Every finished domain stays byte-identical** unless a CHANGES entry says why: golden,
     `domain_diff.py main --show`, `evals.snapshot text`.
   - **$0** except session 3's paid steps (cap $5).

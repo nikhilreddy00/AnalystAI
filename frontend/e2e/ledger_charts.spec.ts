@@ -54,7 +54,9 @@ test("the MRR bridge and NRR by month-end follow a segment filter (1440 px)", as
   await expect(bridge.locator("xpath=..").getByText("shows unfiltered data")).toHaveCount(0);
   await expect(bridge.getByText(/→ \$60,819\.02/)).toBeVisible();   // the SMB closing MRR
   await page.waitForTimeout(1_600);   // the bars' animation to the filtered values
-  await page.screenshot({ path: "test-results/ledger-charts-1440.png", fullPage: true });
+  // the charts alone (a full page at 1440 px is ~190k characters to read back; retro 5.7b-3)
+  await bridge.screenshot({ path: "test-results/ledger-bridge-1440.png" });
+  await nrr.screenshot({ path: "test-results/ledger-nrr-1440.png" });
 });
 
 // PR14-02 (Open): a click on a bar sets no filter on any chart (Recharts 3 passes no activeLabel

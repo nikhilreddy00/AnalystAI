@@ -1,5 +1,8 @@
 # Retro ledger (Domains 1–6, PRs #1–#3)
 
+**Query rows instead of reading the file:** `uv run python scripts/ledger.py --help` (by class,
+recurrences, files a branch touches, unenforced).
+
 One row per audit, gate, browser or retro finding, so recurrences per class can be counted. Built 2026-11-09 from `docs/baselines/phase5_7_*.md`, the two research docs, PR #1–#3, `CODING_STANDARDS.md` and the domain-depth lessons. D1/D2 notes give only counts per audit pass, so their rows come from the post-domain audit, the gate causes, carry bullets and known limits.
 - **Add a row:** next id for the domain (`D7-01`, `PR4-01`); one class; `enforced-by` names the check. A finding that comes back is not a new row: add the domain to its row and raise `recurrences`.
 - **Open:** a fix that starts "Open" is not fixed; its `enforced-by` is an xfail-strict test pinning the bug, which fails the suite (XPASS) the day the bug is fixed, so the row is updated then.

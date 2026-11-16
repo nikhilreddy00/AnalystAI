@@ -12,3 +12,7 @@ Supabase keys or API credits. Auth and the backend are mocked; components, the
    NEXT_PUBLIC_API_URL=http://127.0.0.1:8100 ./node_modules/.bin/next dev -p 3100 -H 127.0.0.1`
 4. In Playwright, set a fake session at localStorage `sb-127-auth-token` (any non-expired
    `expires_at`), upload any file, and ask a question. Pick the run with `fixtures/scenario`.
+5. Screenshot the element under check (`locator.screenshot`), never `fullPage`: a full 1440 px
+   page costs ~190k characters each time it is read back.
+
+`npx playwright test` (the committed specs) builds the fixtures itself: `frontend/e2e/global-setup.ts`.
