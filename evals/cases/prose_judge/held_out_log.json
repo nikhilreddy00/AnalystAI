@@ -62,5 +62,69 @@
   },
   "cost_usd": 0.0096,
   "stamp": "20261115T222847Z"
+ },
+ {
+  "set": "held-out",
+  "prompt_version": "v3",
+  "prompt_sha": "62ac324749365e916182f082a67e9028edbfa30d24df5f7fcff3e9b35009b8c5",
+  "set_sha": "1c772f34adbfacf159f6ce765d5cabdad77de2947a9737a37b429c7ca8e6c9ea",
+  "model": "claude-sonnet-4-6",
+  "sentences": 100,
+  "tpr": {
+   "rate": 0.92,
+   "k": 46,
+   "n": 50,
+   "ci95": [
+    0.8116,
+    0.9685
+   ]
+  },
+  "tnr": {
+   "rate": 0.94,
+   "k": 47,
+   "n": 50,
+   "ci95": [
+    0.8378,
+    0.9794
+   ]
+  },
+  "tpr_causal": {
+   "rate": 0.931,
+   "k": 27,
+   "n": 29,
+   "ci95": [
+    0.7804,
+    0.9809
+   ]
+  },
+  "tnr_near_causal": {
+   "rate": 0.9259,
+   "k": 25,
+   "n": 27,
+   "ci95": [
+    0.7663,
+    0.9794
+   ]
+  },
+  "tpr_benchmark": {
+   "rate": 0.9048,
+   "k": 19,
+   "n": 21,
+   "ci95": [
+    0.7109,
+    0.9735
+   ]
+  },
+  "tnr_near_benchmark": {
+   "rate": 0.9412,
+   "k": 16,
+   "n": 17,
+   "ci95": [
+    0.7302,
+    0.9895
+   ]
+  },
+  "cost_usd": 0.0522,
+  "stamp": "20261116T041312Z"
  }
 ]
