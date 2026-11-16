@@ -477,11 +477,32 @@ def _is_date(text: str, m: re.Match) -> bool:
     return not m["bare"] or bool(_YEAR_CUE_RE.search(text[:m.start()]))
 
 
+# A clock time (K1, Domain 7): its own `T` after a date is consumed with it. A bare "2:30" is
+# a time only with seconds, am/pm, a zone, an hour of 13+, a date before it or a time cue ("at
+# 11:30"); otherwise it stays a number, so a wrong duration ("MTTR 2:30") is still checked.
+_TIME_RE = re.compile(
+    r"(?:(?<=\d)T|(?<![\w.:/]))(?P<h>[01]?\d|2[0-3]):[0-5]\d(?P<s>:[0-5]\d(?:\.\d+)?)?"
+    r"(?P<z>\s?[ap]\.?m\.?(?!\w)|Z\b|[+-][01]\d:?[0-5]\d)?(?![\d:])", re.I)
+_TIME_CUE_RE = re.compile(r"(?:\d{4}-\d\d-\d\d[T ]?|\b(?:at|from|to|until|till|between|and|by|"
+                          r"before|after|since|around)\s+)$", re.I)
+# Day-level forms the main pattern leaves: a slash date, a month and day with no year.
+_SLASH_DATE_RE = re.compile(r"\b(?:\d{1,2}/\d{1,2}/\d{2,4}|\d{4}/\d{1,2}/\d{1,2})\b")
+_MONTH_DAY_RE = re.compile(rf"\b(?:{_MONTH})\b\.?\s+\d{{1,2}}(?:st|nd|rd|th)?\b"
+                           r"(?![.,]\d|\s*(?:%|percent))", re.I)
+
+
+def _clock(text: str, m: re.Match) -> bool:
+    return bool(m["s"] or m["z"] or int(m["h"]) >= 13 or _TIME_CUE_RE.search(text[:m.start()]))
+
+
 def without_dates(text: str, has_dates: bool) -> str:
-    """The text with its date mentions removed, so number grounding doesn't read a day or a
-    year as a claim. Bare years stay when the data has no dates (then they're just numbers)."""
-    return _DATE_RE.sub(
+    """The text with its date and clock-time mentions removed, so number grounding doesn't read
+    a day, a year or an hour as a claim. Bare years stay when the data has no dates (then
+    they're just numbers). The one date stripper: the eval scorers read through it too."""
+    text = _TIME_RE.sub(lambda m: " " if _clock(text, m) else m[0], text)
+    text = _DATE_RE.sub(
         lambda m: m[0] if m["bare"] and (not has_dates or not _is_date(text, m)) else " ", text)
+    return _MONTH_DAY_RE.sub(" ", _SLASH_DATE_RE.sub(" ", text))
 
 
 def ungrounded_dates(text: str, first: tuple[int, int] | None,

@@ -191,6 +191,34 @@ def test_without_dates_hides_days_and_years_from_number_grounding():
     assert g.without_dates("2025 orders", has_dates=False) == "2025 orders"
 
 
+@pytest.mark.parametrize("text", [
+    "At 2026-10-31 20:00 the line read 47.6.",
+    "At 2026-10-31T20:00:00Z the line read 47.6.",
+    "At 2026-10-31T20:00+02:00 the line read 47.6.",
+    "At 2026-10-31 20:00:15 the line read 47.6.",
+    "The night shift ran from 22:00 to 06:00 and read 47.6.",
+    "Alarms peaked at 14:45 UTC with 47.6.",
+    "Readings at 11:30 pm and at 8:15 a.m. averaged 47.6.",
+    "The stop began at 11:30 and the line read 47.6.",
+    "Logged 23:59:59 with 47.6.",
+])
+def test_a_clock_time_is_no_number_claim(text):
+    """K1 (Domain 7, from the 5.7b-3 retro): a clock time beside a date was read as a number
+    ('2026-10-31 20:00 … 31.2' flagged '20'; the evidence here is 47.6 so a day can't round to it). One stripper for the product and the scorers."""
+    assert g.ungrounded_numbers(g.without_dates(text, True), {"r": 47.6}) == []
+
+
+@pytest.mark.parametrize("text, bad", [
+    ("MTTR was 2:30 against 47.6.", ["30"]),        # a duration, no time cue: still a claim
+    ("A 3:1 ratio and 47.6.", []),                    # small integers are prose anyway
+    ("Step 13 and Land 27 read 47.6.", ["13", "27"]),  # words beside numbers stay numbers
+    ("In Q3 2026 the plant read 47.6 on 24/7 running.", ["24"]),
+    ("Version 12.30 shipped; it read 47.6.", ["12.30"]),
+])
+def test_a_number_that_is_no_clock_time_is_still_checked(text, bad):
+    assert g.ungrounded_numbers(g.without_dates(text, True), {"r": 47.6}) == bad
+
+
 def test_a_bare_count_is_not_a_year():
     """Audit: '2000 orders' in a dated dataset was read as the year 2000 and its sentence dropped."""
     first, last = (2025, 11), (2026, 10)
