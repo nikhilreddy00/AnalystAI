@@ -107,15 +107,10 @@ jobs:
       - run: node --experimental-strip-types --test src/lib/*.test.ts   # pure helpers
       # Phase 5.6a: dropped stream + reopened tab replay every event once (mock backend, $0)
       - run: npx playwright install --with-deps chromium
-      # the dashboard fixtures (git-ignored, $0): the real pack output on the eval data
+      # the mock API and the dashboard fixtures (git-ignored, $0, built by e2e/global-setup.ts)
       - uses: astral-sh/setup-uv@v6
         with:
           python-version: "3.11"
-      - run: uv run python scripts/ui_check/make_fixture.py scripts/ui_check/fixtures --dashboard-only
-        working-directory: .
-      # 5.7b-3: the ledger charts spec's scenario folder
-      - run: uv run python scripts/ui_check/make_fixture.py scripts/ui_check/fixtures/saas_mrr_snapshots --dataset saas_mrr_snapshots
-        working-directory: .
       - run: npx playwright test
 
   evals:

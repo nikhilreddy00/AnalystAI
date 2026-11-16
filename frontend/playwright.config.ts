@@ -6,6 +6,7 @@ const fixtures = "../scripts/ui_check/fixtures";
 
 export default defineConfig({
   testDir: "./e2e",
+  globalSetup: "./e2e/global-setup.ts",   // CI's start state: fixtures built, no scenario file
   timeout: 90_000,
   workers: 1, // the mock serves one run at a time
   use: { baseURL: "http://127.0.0.1:3100", browserName: "chromium" },

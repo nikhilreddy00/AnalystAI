@@ -3,22 +3,33 @@ import re
 from collections import Counter
 from pathlib import Path
 
+from scripts import ledger
+
 ROOT = Path(__file__).resolve().parents[1]
 LEDGER = ROOT / "docs" / "retro-ledger.md"
 COLUMNS = ["id", "class", "domain(s)", "finding", "fix", "enforced-by", "recurrences"]
 SUMMARY = ["class", "rows", "unenforced", "recurrences"]
-UNENFORCED = 78   # the ratchet: prose-only rows; it only goes down
+UNENFORCED = 77   # the ratchet: prose-only rows; it only goes down
 
 
 def _tables() -> list[list[list[str]]]:
-    tables, cur = [], []
-    for line in LEDGER.read_text().splitlines() + [""]:
-        if line.startswith("|"):
-            cur.append([c.strip() for c in re.split(r"(?<!\\)\|", line.strip())[1:-1]])
-        elif cur:
-            tables.append(cur)
-            cur = []
-    return tables
+    return ledger.tables(LEDGER.read_text())   # the one parser: scripts/ledger.py queries it too
+
+
+def test_the_query_filters_rows_by_class_recurrences_files_and_enforcement():
+    rs = [{"id": "A-1", "class": "C8", "recurrences": "3", "enforced-by": "`tests/test_a.py`",
+           "finding": "x in guardrails.py", "fix": "", "domain(s)": "D1"},
+          {"id": "A-2", "class": "C8", "recurrences": "0", "enforced-by": "unenforced",
+           "finding": "y", "fix": "agents/insight_agent.py", "domain(s)": "D2"},
+          {"id": "A-3", "class": "C0", "recurrences": "5", "enforced-by": "unenforced",
+           "finding": "z", "fix": "", "domain(s)": "D3"}]
+    ids = lambda got: [r["id"] for r in got]   # noqa: E731
+    assert ids(ledger.select(rs, cls="C8")) == ["A-1", "A-2"]
+    assert ids(ledger.select(rs, min_rec=2)) == ["A-1", "A-3"]
+    assert ids(ledger.select(rs, files=["guardrails.py"])) == ["A-1"]
+    assert ids(ledger.select(rs, files=["src/agents/insight_agent.py"])) == ["A-2"]   # basename
+    assert ids(ledger.select(rs, unenforced=True, cls="C0")) == ["A-3"]
+    assert len(ledger.rows(LEDGER.read_text())) == len(_table(COLUMNS))
 
 
 def _table(header: list[str]) -> list[list[str]]:

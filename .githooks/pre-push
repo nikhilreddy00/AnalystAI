@@ -60,10 +60,7 @@ if [ "${PREPUSH_E2E:-0}" = 1 ]; then
       echo "pre-push: port $port is in use (the live stack? scripts/live_check/down.sh)"; exit 1
     fi
   done
-  uv run python scripts/ui_check/make_fixture.py scripts/ui_check/fixtures --dashboard-only > /dev/null
-  uv run python scripts/ui_check/make_fixture.py scripts/ui_check/fixtures/saas_mrr_snapshots \
-    --dataset saas_mrr_snapshots > /dev/null
-  (cd frontend && npx playwright test)
+  (cd frontend && npx playwright test)   # e2e/global-setup.ts builds the fixtures, as on CI
 fi
 if [ "$(tree)" != "$start" ]; then
   echo "pre-push: files changed while the checks ran: commit them and push again"; exit 1

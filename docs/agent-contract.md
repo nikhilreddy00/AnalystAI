@@ -242,7 +242,9 @@ Cost history (moved from CLAUDE.md, 2026-11-03): Phase 4 cost $15.44 (two checke
   2026-10-28; a failure must be diagnosed, a pass on retry is not a diagnosis). `--max-usd` (default $2)
   refuses over-budget runs — raise it deliberately, say the estimate to the user first; stop and tell the
   user if a run costs >30% over its estimate. A cheaper model ships only if it matches every target.
-  Per-phase costs and what drove them: `docs/agent-contract.md` → "Eval cost playbook". **The playbook is in `docs/agent-contract.md` → "Eval cost playbook"; follow it every PR.**
+  Per-phase costs and what drove them, followed every PR: "Eval cost playbook" below.
+- **Reading a report**: its `.md` lists each case's failing checks; one case's runs, any run field
+  (`replies`, `output`) and summed spend: `uv run python -m evals.report --help`.
 - **SQL eval**: `TEST_PG_URL=postgresql+psycopg://… uv run python -m evals.run sql --k 1 --only <case>` — the
   URL must be a scratch database (the run drops and rebuilds schemas `shop`/`bank` from `evals/sqlgen.py`).
   PG tests skip without `TEST_PG_URL`; CI always sets it. Local scratch PG (no Docker): `initdb -D <dir> -U postgres -A trust`,

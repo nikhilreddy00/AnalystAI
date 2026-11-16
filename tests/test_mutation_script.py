@@ -5,9 +5,10 @@ from pathlib import Path
 
 import pytest
 
-from scripts.mutation import (ROOT, check, function_hashes, functions_touching, mutant_lines,
-                              naming, plant, plant_verdict, planted, progress, recorded, runnable,
-                              scores, uncommitted, unnamed, unreached, without_spinner)
+from scripts.mutation import (GATED, ROOT, check, function_hashes, functions_touching,
+                              mutant_lines, naming, outside_source_paths, plant, plant_verdict,
+                              planted, progress, recorded, runnable, scores, uncommitted,
+                              undefined, unnamed, unreached, without_spinner)
 
 
 def test_mutants_are_scored_per_function_and_an_untested_mutant_is_not_killed():
@@ -289,6 +290,31 @@ def test_the_hook_and_ci_both_run_the_gate():
     assert call in hook
     job = ci.split("\n  zero-suites:", 1)[1].split("\n  frontend:", 1)[0]
     assert call in job and "fetch-depth: 0" in job
+
+
+def test_a_changed_product_file_outside_source_paths_is_named_never_silently_skipped():
+    """Retro 5.7b-3: guardrails.py sat in also_copy only, so --changed-since never mutated its
+    changed lines and said nothing; the gate found it at the end, a run late."""
+    paths = ["domain_pack/", "agents/claims.py"]
+    changed = ["domain_pack/kpi.py", "agents/claims.py", "guardrails.py", "agents/x.py",
+               "tests/test_x.py", "scripts/y.py", "evals/reference_kpis.py", "docs/a.md",
+               "frontend/e2e/s.ts"]
+    assert outside_source_paths(changed, paths) == ["agents/x.py", "guardrails.py"]
+
+
+def test_every_gated_file_is_one_mutmut_mutates():
+    import tomllib
+    paths = tomllib.loads((ROOT / "pyproject.toml").read_text())["tool"]["mutmut"]["source_paths"]
+    assert outside_source_paths(list(GATED), paths) == []
+
+
+def test_a_named_function_no_source_path_defines_is_refused_before_any_worktree(tmp_path):
+    (tmp_path / "pkg").mkdir()
+    (tmp_path / "pkg" / "a.py").write_text("def f():\n    return 1\n\nclass P:\n    def k(self):\n"
+                                           "        return 2\n")
+    (tmp_path / "g.py").write_text("def h():\n    return 3\n")
+    assert undefined(["f", "P.k", "h"], ["pkg/"], tmp_path) == ["h"]
+    assert undefined(["f", "h"], ["pkg/", "g.py"], tmp_path) == []
 
 
 def test_the_committed_gate_is_well_formed():
