@@ -308,6 +308,26 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
                 log(col, "sentinel_null", "numeric_sentinel",
                     f"{n} values coded {', '.join(f'{c:g}' for c in found)} (the export's 'unknown', "
                     f"not a real {role.replace('_', ' ')}) read as missing.", n, pct, _null_pct(df[col]))
+        for flag, rule in ctx.pack.invalid_when.items():   # a value its own flag calls no measurement
+            fcol = ctx.roles.get(flag)
+            if fcol is None:
+                continue
+            said = df[fcol].astype("string").str.strip().str.lower()
+            bad = said.isin([v.lower() for v in rule.values])
+            for role in rule.blanks:
+                col = ctx.roles.get(role)
+                if col is None or not (hit := bad & df[col].notna()).any():
+                    continue
+                n, pct = int(hit.sum()), _null_pct(df[col])
+                df[col] = df[col].mask(hit)
+                log(col, "sentinel_null", "invalid_flag",
+                    f"{n} {role.replace('_', ' ')} values on {int(bad.sum())} row"
+                    f"{'s' if int(bad.sum()) != 1 else ''} its {fcol} marks invalid "
+                    f"({', '.join(rule.values)}) read as missing; the rows are kept.", n, pct,
+                    _null_pct(df[col]))
+            if n := int(said.isin([v.lower() for v in rule.doubtful]).sum()):
+                log(fcol, "flag", "doubtful_flag", f"{n} rows marked {', '.join(rule.doubtful)}: "
+                    "kept and counted.", n)
         for role, rule in ctx.pack.signed_by.items():   # an unsigned amount and its Dr/Cr
             col, ind = ctx.roles.get(role), ctx.roles.get(rule.indicator)
             if col is None or ind is None or not pd.api.types.is_numeric_dtype(df[col]) \

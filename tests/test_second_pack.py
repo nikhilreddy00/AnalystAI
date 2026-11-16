@@ -106,6 +106,36 @@ def test_the_validator_needs_nothing_retail():
     assert Path(domain_pack.PACKS / "retail.yaml").exists()
 
 
+GAUGE = BANK.replace("  quantity:", """  quality: {kind: category, headers: [quality]}
+  quantity:""") + """invalid_when:
+  quality: {values: [Bad, '0'], doubtful: [Uncertain], blanks: [amount]}
+"""
+
+
+def test_a_value_its_own_flag_marks_invalid_is_blanked_and_said_never_averaged():
+    """F6 (Domain 7): a historian's Bad reading is no measurement (OPC UA: never used), yet a
+    non-additive measure reads every row (rows_for), so it reached every mean and chart. The
+    pack names the flag: those values are blanked like a sentinel, the row kept and counted;
+    Uncertain is kept and counted. A pack without the field changes nothing."""
+    from agents.cleaning_agent import CleanContext, clean
+    pack = Pack.model_validate(__import__("yaml").safe_load(GAUGE))
+    df = pd.DataFrame({"account_id": list("ABCDE"), "amount": [10.0, 900.0, 12.0, 11.0, 13.0],
+                       "quality": ["Good", "Bad", "Uncertain", "0", "good"]})
+    roles = {c: c for c in df.columns}
+    out, audit = clean(CleanContext(df=df, ids={"account_id"}, dates=set(), targets=set(),
+                                    drop_high_null=False, pack=pack, roles=roles))
+    assert len(out) == 5 and out["amount"].isna().tolist() == [False, True, False, True, False]
+    said = " ".join(d.reason for d in audit.decisions)
+    assert "2 amount values" in said and "1 row" in said and "Uncertain" in said
+    out, _ = clean(CleanContext(df=df, ids={"account_id"}, dates=set(), targets=set(),
+                                drop_high_null=False, pack=Pack.model_validate(
+                                    __import__("yaml").safe_load(BANK)),
+                                roles={"account_id": "account_id", "amount": "amount"}))
+    assert out["amount"].notna().all()
+    with pytest.raises(ValueError, match="invalid_when"):
+        Pack.model_validate(__import__("yaml").safe_load(GAUGE.replace("blanks: [amount]", "blanks: [nope]")))
+
+
 SETTLE = BANK.replace("  quantity:", """  settled_at: {kind: date, headers: [settled_at]}
   quantity:""").replace("kpis:\n", """kpis:
   - {name: settle_hours, label: Hours to settle, unit: number, unit_word: hours,

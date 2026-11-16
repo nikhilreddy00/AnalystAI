@@ -89,6 +89,14 @@ class Role(_Strict):
         return self
 
 
+class Invalid(_Strict):
+    """A quality flag's values (matched as text, any case): `values` make the `blanks` measures
+    of that row no measurement; `doubtful` ones are kept and counted."""
+    values: list[str]
+    doubtful: list[str] = Field(default_factory=list)
+    blanks: list[str]
+
+
 class Cond(_Strict):
     """One condition on a role's value: words (`in` / `not_in`, case, spaces, dashes and
     underscores ignored) or a number (`gt` … `le`)."""
@@ -371,6 +379,9 @@ class Pack(_Strict):
     test_marker: str | None = None  # regex on the raw order / customer / email values
     test_roles: list[str] = Field(default_factory=list)
     sentinels: dict[str, list[float]] = Field(default_factory=dict)   # role → codes for "unknown"
+    # flag role → the values marking its row's measures as no measurement (a historian's Bad):
+    # Cleaning blanks those measures like a sentinel; `doubtful` values are kept and counted
+    invalid_when: dict[str, Invalid] = Field(default_factory=dict)
     # role → its sign from an indicator: Cleaning signs the values once (every consumer reads them)
     signed_by: dict[str, SignRule] = Field(default_factory=dict)
     ranges: dict[str, dict[Literal["gt", "ge", "lt", "le"], float]] = Field(default_factory=dict)
@@ -509,6 +520,8 @@ class Pack(_Strict):
                 if (other := seen.get(h)) and self.roles[other].kind == r.kind:
                     errors.append(f"header {h!r} is in roles {other} and {role} of the same kind")
                 seen.setdefault(h, role)
+        errors += [f"invalid_when {f}: unknown role {r}" for f, rule in self.invalid_when.items()
+                   for r in [f, *rule.blanks] if r not in self.roles]
         refs = [*self.order_fields, *self.sentinels, *self.ranges, *self.credit_prefix, *self.non_product,
                 *self.test_roles, *self.negative_is_return, *self.item_roles, *self.cost_roles, *self.overview_groups,
                 *(r for r in (self.order_key, self.location_role, self.snapshot_key,
