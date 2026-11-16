@@ -12,7 +12,7 @@ A mutant no selected test reaches counts as not killed; timeouts are shown apart
         tests/test_properties.py -k p2   # one hand-planted bug: exit 0 when a test catches it
 
 `--changed-since REF` mutates every function in `[tool.mutmut] source_paths` whose lines the
-diff REF...HEAD touches; `--lines REF` then runs only their mutants on lines that diff changed
+diff REF...HEAD touches (and names the changed product files outside source_paths: not mutated); `--lines REF` then runs only their mutants on lines that diff changed
 and lists each survivor by file:line (the 5.7b-2 gate: 0 survivors on changed lines but the
 equivalents gate.json names, in any source file). `--plant` replaces the one exact occurrence of OLD
 with NEW in a worktree and runs the tests: caught = they pass on HEAD and one fails with the
@@ -198,9 +198,31 @@ def recorded(gate: dict, hashes: dict[str, str],
     return new, unexplained
 
 
+def source_paths(root: Path = ROOT) -> list[str]:
+    return tomllib.loads((root / "pyproject.toml").read_text())["tool"]["mutmut"]["source_paths"]
+
+
+def outside_source_paths(files: list[str], paths: list[str]) -> list[str]:
+    """The product .py files mutmut never mutates (tests, scripts, the frontend and the oracle,
+    checked against the generators, are never product files)."""
+    def product(f):
+        return (f.endswith(".py") and not f.startswith(("tests/", "scripts/", "frontend/"))
+                and f != "evals/reference_kpis.py")
+    return sorted(f for f in files if product(f)
+                  and not any(f == p or (p.endswith("/") and f.startswith(p)) for p in paths))
+
+
+def undefined(functions: list[str], paths: list[str], root: Path = ROOT) -> list[str]:
+    """The named functions no source_paths file defines (mutmut would have no mutant of them)."""
+    files = [g for p in paths for g in ((root / p).rglob("*.py") if p.endswith("/")
+                                        else [root / p])]
+    defined = {n for g in files for n, _ in _defs(g.read_text(), every=True)}
+    return [f for f in functions if f not in defined]
+
+
 def changed_lines(ref: str) -> dict[str, set[int]]:
     """Per source_paths file, the HEAD lines the diff ref...HEAD adds or changes."""
-    paths = tomllib.loads((ROOT / "pyproject.toml").read_text())["tool"]["mutmut"]["source_paths"]
+    paths = source_paths()
     diff = subprocess.run(["git", "-C", str(ROOT), "diff", "-U0", f"{ref}...HEAD", "--", *paths],
                           capture_output=True, text=True, check=True).stdout
     touched: dict[str, set[int]] = {}
@@ -424,8 +446,7 @@ def main() -> int:
     if args.plant:
         _refuse_uncommitted([args.plant[0], *args.tests])
         return plant(*args.plant, args.tests, args.keyword)
-    _refuse_uncommitted([*tomllib.loads((ROOT / "pyproject.toml").read_text())["tool"]["mutmut"]
-                         ["source_paths"], *args.tests])
+    _refuse_uncommitted([*source_paths(), *args.tests])
     if dropped := [t for t in args.tests if t not in runnable(args.tests)]:
         print("left out (they read the sources mutmut rewrites): " + " ".join(dropped))
         args.tests = runnable(args.tests) or ap.error("no --tests left to run")
@@ -435,10 +456,19 @@ def main() -> int:
         if skipped := sorted(set(changed_functions(args.changed_since, every=True)) - set(args.functions)):
             print(f"not mutated (decorated: mutmut skips them; their tests are their check): "
                   f"{' '.join(skipped)}")
+        diff = subprocess.run(["git", "-C", str(ROOT), "diff", "--name-only", "--diff-filter=d",
+                               f"{args.changed_since}...HEAD"], capture_output=True, text=True,
+                              check=True).stdout.split()
+        if outside := outside_source_paths(diff, source_paths()):
+            print(f"NOT MUTATED, changed but outside [tool.mutmut] source_paths (move a file "
+                  f"there from also_copy to gate it): {' '.join(outside)}")
         if not args.functions:
             return 0
     if not args.functions:
         ap.error("name a function, or pass --changed-since")
+    if missing := undefined(args.functions, source_paths()):
+        ap.error(f"no [tool.mutmut] source_paths file defines {' '.join(missing)} (move its file "
+                 f"there from also_copy)")
     head = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "--short", "HEAD"],
                           capture_output=True, text=True, check=True).stdout.strip()
     with worktree() as wt:
