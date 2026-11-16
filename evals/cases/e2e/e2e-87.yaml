@@ -11,6 +11,7 @@ checks:
 - kind: must_not_number
   truth_key: naive_mtbf_with_stops
   rel_tol: 0.01
+  unit: ' hours'
 hard_rules:
 - charts_lint_clean
 - charts_have_rationale

@@ -10,9 +10,11 @@ checks:
 - kind: number_in_answer
   truth_key: mttr_hours
   rel_tol: 0.003
+  unit: ' hours'
 - kind: must_not_number
   truth_key: naive_mttr_every_type
   rel_tol: 0.003
+  unit: ' hours'
 hard_rules:
 - charts_lint_clean
 - charts_have_rationale
