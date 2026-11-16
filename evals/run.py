@@ -207,6 +207,7 @@ def score_analysis(case: dict, findings, error: str | None, baseline: bool = Tru
     # spell data: the scorer reads the independent reference on the raw table (5.7b-2b)
     spell = (case["dataset"]["name"], raw) if case["dataset"]["name"] in SPECS else None
     df, contract = working_frame(case)
+    df = cleaned_for_analysis(case, df, contract)[0]   # production cases: the cleaned frame (D7)
     df = model_frame(df, contract)[0] if contract and contract.domain else df   # the model's own frame
     checks = []
     for spec in case["checks"]:

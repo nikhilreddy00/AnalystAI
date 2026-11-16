@@ -316,6 +316,20 @@ def test_a_derived_metric_on_a_text_column_neither_crashes_nor_counts_false():
     assert false_findings(_findings(segments=[seg, ratio]), df, {})["false"] == 0
 
 
+def test_a_production_case_is_scored_on_the_frame_the_model_read():
+    """Domain 7 analysis gate (D3-10, scorer drift): iot-7's model summarised the cleaned frame
+    (deg F converted, -9999 and Bad readings blank: mean 71.01 C, the truth) and the scorer
+    recomputed on the uncleaned working frame (mixed units): 10 'false' claims on right numbers."""
+    from evals.run import load_cases, score_analysis
+    from evals import datagen
+    case = next(c for c in load_cases("analysis", None) if c["id"] == "iot-7")
+    truth = datagen.make("machine_readings", 1)[1]
+    stats = {"mean": truth["mean_temp_c"], "count": truth["row_count"] - truth["exact_duplicates"]
+             - truth["sentinel_temps"] - truth["bad_readings"]}
+    got = score_analysis(case, _findings(eda_summary={"Temperature": stats}), None, baseline=False)
+    assert got["false_findings"]["false"] == 0, got["false_findings"]
+
+
 async def test_a_harness_exception_fails_one_run_not_the_report(monkeypatch):
     import asyncio
 
