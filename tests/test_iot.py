@@ -52,6 +52,33 @@ def test_a_shift_report_and_a_work_order_log_are_no_series():
         assert not [d for d in decisions if d.strategy.startswith("series_")], name
 
 
+def test_one_sensors_reading_over_time_is_a_control_chart_with_its_limits_said():
+    """F8 (U2): S07 drifts +0.05 °C a day (T21). One series' continuous measure over time is an
+    individuals chart of daily means: CL and limits x̄ ± 3·MR̄/1.128 from its first 30 days,
+    drawn as reference lines, the days outside counted, and said to be control (not spec)
+    limits on autocorrelated readings."""
+    from tests.test_oracle import _built
+    from agents.targeted_analysis_agent import handle_time_series
+    from orchestrator.state import TargetedParams
+    _, clean, contract, _ = _built("machine_readings")
+    r = handle_time_series(clean, TargetedParams(metric_column="Temperature", segment_column="Sensor",
+                                                 segment_value="S07"), contract)
+    chart = r.chart_configs[0]
+    lines = {x["label"]: x["value"] for x in chart.reference_lines}
+    s07 = clean[clean["Sensor"] == "S07"].assign(day=lambda d: pd.to_datetime(d["Timestamp"]).dt.normalize())
+    daily = s07.groupby("day")["Temperature"].mean().iloc[:30]
+    mr = daily.diff().abs().mean()
+    assert lines == pytest.approx({"CL": daily.mean(), "UCL": daily.mean() + 3 * mr / 1.128,
+                                   "LCL": daily.mean() - 3 * mr / 1.128})
+    assert len(chart.data) >= 90 and "control limits" in r.answer_text.lower()
+    assert "%" not in r.answer_text   # °C has no true zero: changes in degrees, never percent
+    assert "not specification limits" in r.answer_text and "days above the upper limit" in r.answer_text
+    stuck = clean.assign(Temperature=68.4)   # S-d: no variation, no limits (a stuck instrument?)
+    r = handle_time_series(stuck, TargetedParams(metric_column="Temperature", segment_column="Sensor",
+                                                 segment_value="S07"), contract)
+    assert not r.chart_configs[0].reference_lines and "no variation" in r.answer_text
+
+
 def test_mttr_reads_finished_corrective_orders_in_exact_hours():
     """T3/T4/T19, S-c: a PM is no repair, an open order has no finish yet, a cancelled one is no
     work; a repair across the 25 Oct 2026 clock change is 2.75 h in UTC. (2.75 + 1) / 2."""

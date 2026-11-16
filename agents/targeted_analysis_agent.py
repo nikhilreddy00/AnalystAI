@@ -610,7 +610,10 @@ def handle_time_series(df: pd.DataFrame, params: TargetedParams, contract: DataC
     asked = asked if asked in {"sum", "mean", "median", "count", "min", "max"} else None
     agg = effective_agg(contract, metric, asked) or "sum"   # "balance at month end": each account's last
     conventions = defaults_pack(contract)   # a domain's conventions only on a strong match
-    freq = (params.frequency or (_default_freq(df[date], agg) if conventions else "M")).upper()
+    spc = _one_series_measure(conventions, contract, params, metric, df)
+    agg = "mean" if spc else agg   # an individuals chart reads each day's mean reading
+    freq = (params.frequency or ("D" if spc else _default_freq(df[date], agg) if conventions
+                                 else "M")).upper()
     if freq not in {"D", "W", "M", "Q", "Y"}:
         freq = "M"
     if agg in ("last", "first") and freq == "D":
@@ -672,7 +675,9 @@ def handle_time_series(df: pd.DataFrame, params: TargetedParams, contract: DataC
     pct = pct_change(last, first)
     direction = "up" if last > first else ("down" if last < first else "flat")
     scope = f" for {params.segment_column} {group}" if group is not None else ""
-    size = f" {abs(pct):.1f}%" if pct is not None else f" ({_num(first)} → {_num(last)})"
+    # a process reading (°C) has no true zero: its change is in its own units, never a percent
+    size = f" by {_num(abs(last - first))} ({_num(first)} → {_num(last)})" if spc else \
+        f" {abs(pct):.1f}%" if pct is not None else f" ({_num(first)} → {_num(last)})"
     answer = (
         f"{metric}{avg_week}{scope} trended {direction}{size} from {series.index[0].date()} to "
         f"{series.index[-1].date()} (freq={freq}, agg={_agg_name(agg, True)})."
@@ -686,7 +691,8 @@ def handle_time_series(df: pd.DataFrame, params: TargetedParams, contract: DataC
         # "How did X change last month?" asks about the latest step, not the whole range.
         step = pct_change(series.iloc[-1], series.iloc[-2])
         answer += (f" Latest period ({series.index[-1].date()}) vs the one before: "
-                   + (f"{step:+.1f}% " if step is not None else "")
+                   + (f"{series.iloc[-1] - series.iloc[-2]:+,.2f} " if spc else
+                      f"{step:+.1f}% " if step is not None else "")
                    + f"({_num(series.iloc[-2])} → {_num(series.iloc[-1])}).")
     answer += partial
     chart = _chart(
@@ -695,6 +701,23 @@ def handle_time_series(df: pd.DataFrame, params: TargetedParams, contract: DataC
         y_label=_with_unit(_of(agg, metric, True), metric, contract) + avg_week,
         source="time_series",
     )
+    if spc and freq == "D":   # one series' continuous measure: its control chart (Domain 7, F8)
+        limits = control_limits(series)
+        if isinstance(limits, str):
+            answer += f" No control limits: {limits}."
+        else:
+            cl, ucl, lcl = limits
+            chart.reference_lines = [{"value": round(v, 4), "label": k, "axis": "y"}
+                                     for k, v in (("UCL", ucl), ("CL", cl), ("LCL", lcl))]
+            after = series.iloc[BASELINE_DAYS:]
+            above, below = after[after > ucl], after[after < lcl]
+            answer += (f" Control limits (an individuals chart of daily means; centre and limits "
+                       f"from the first {BASELINE_DAYS} days, x̄ ± 3·MR̄/1.128): CL {_num(cl)}, "
+                       f"UCL {_num(ucl)}, LCL {_num(lcl)}; after them {len(above)} days above the "
+                       f"upper limit" + (f" (first {above.index[0].date()})" if len(above) else "")
+                       + f" and {len(below)} below the lower one. These are control limits from the "
+                       "process itself, not specification limits; readings close in time are alike, "
+                       "so points outside come more often than 3 sigma suggests.")
     code = _code(f"df.set_index(pd.to_datetime(df[{date!r}]))[{metric!r}].resample({freq!r})",
                  agg, metric, contract, over=f"pd.Grouper(key={date!r}, freq={freq!r})")
     if kept:
@@ -706,6 +729,32 @@ def handle_time_series(df: pd.DataFrame, params: TargetedParams, contract: DataC
          f"({freq}){scope}{'; each month is its average week' if avg_week else ''}. {kept}".strip(), date, metric,
          agg, len(s), code=code)
     return TargetedResponse(intent=QuestionIntent.TIME_SERIES, answer_text=answer, chart_configs=[chart])
+
+
+BASELINE_DAYS = 30   # phase I: the days the centre and limits are estimated on
+
+
+def _one_series_measure(pack, contract: DataContract, params: TargetedParams, metric: str,
+                        df: pd.DataFrame) -> bool:
+    """A continuous measure (the pack's stuck_hours roles) of ONE named series (its series_key):
+    a process reading over time, read on a control chart."""
+    if pack is None or not pack.series_key or _named_group(df, params) is None:
+        return False
+    return params.segment_column == contract.roles.get(pack.series_key) and metric in {
+        contract.roles.get(r) for r in pack.stuck_hours}
+
+
+def control_limits(series: pd.Series) -> tuple[float, float, float] | str:
+    """(CL, UCL, LCL) of an individuals chart on its first BASELINE_DAYS points: x̄ ± 3·MR̄/d2,
+    d2 = 1.128 for moving ranges of 2 (NIST/SEMATECH 6.3.2); else why there are none."""
+    base = series.iloc[:BASELINE_DAYS]
+    if len(base) < 20:
+        return f"only {len(base)} days to estimate them from (20 at least)"
+    mr = float(base.diff().abs().mean())
+    if mr == 0:
+        return "no variation from day to day in the first days (a stuck instrument?)"
+    cl = float(base.mean())
+    return cl, cl + 3 * mr / 1.128, cl - 3 * mr / 1.128
 
 
 def _lead_and_last(order: pd.Series) -> str:
