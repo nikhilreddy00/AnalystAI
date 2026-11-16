@@ -1,4 +1,4 @@
-"""The prose judge (5.7b-3, ADR-0009): a binary Haiku call for free text that states a cause or a
+"""The prose judge (5.7b-3, ADR-0009): a binary judge call (v3: the primary model) for free text that states a cause or a
 benchmark verdict, calibrated on a frozen labelled set and reported on a held-out one."""
 import hashlib
 from pathlib import Path
@@ -54,7 +54,7 @@ def test_the_judge_reads_one_verdict_per_sentence_by_its_number():
                     'Here: {"0": "cause", "1": "neither", "2": "verdict"} (done)')
     assert got == {0, 1, 3}
     (call,) = llm.calls
-    assert call["model"] == settings.llm_fast_model and call["system"].endswith(UNTRUSTED_NOTE)
+    assert call["model"] == settings.llm_model and call["system"].endswith(UNTRUSTED_NOTE)
     sent = call["messages"][0]["content"]
     assert sent.startswith("<untrusted_data>") and "best-in-class" not in sent and "2. The rate" in sent
     assert _run(["A world-class score."])[0] == {0}   # no call: nothing left to ask

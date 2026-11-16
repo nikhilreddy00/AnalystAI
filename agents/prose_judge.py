@@ -14,7 +14,10 @@ from api.config import settings
 from guardrails import UNTRUSTED_NOTE, delimit_untrusted, mask_pii
 from llm.client import LLMClient, trace_verdict
 
-PROMPT_VERSION = "v2"   # v1 asked for the flagged numbers only: Haiku skimmed (tuning TPR 0.52)
+PROMPT_VERSION = "v3"   # v1 asked for the flagged numbers only: Haiku skimmed (tuning TPR 0.52);
+# v2 flagged 16% of real report sentences, ~13% of them overreach (parts, ranks, action aims).
+# v3 runs on the pinned primary model: on Haiku its tuning TNR stayed ~0.85 (one false flag in
+# every report of ~12 sentences); on Sonnet 0.97 at ~$0.01 a call.
 _SYSTEM = (Path(__file__).parent.parent / "prompts" / "prose_judge" / f"{PROMPT_VERSION}.md"
            ).read_text() + "\n" + UNTRUSTED_NOTE
 # Phrases that only ever grade against an outside norm, in any domain: flagged at $0 (no call).
@@ -37,10 +40,11 @@ async def flagged(sentences: list[str], llm: LLMClient) -> set[int] | None:
     body = "\n".join(f"{n}. {mask_pii(sentences[i])}" for n, i in enumerate(ask))
     try:
         result = await llm.complete(agent="prose_judge", prompt_version=PROMPT_VERSION,
-                                    model=settings.llm_fast_model, max_tokens=1000, system=_SYSTEM,
+                                    model=settings.llm_model, max_tokens=1000, system=_SYSTEM,
                                     messages=[{"role": "user", "content": delimit_untrusted(body)}])
         # the first JSON object (the model may explain after it): a verdict per sentence, by number
         says = json.loads(re.search(r"\{[^{}]*\}", result.text).group())
+        says = {k: v.split(":")[0].strip() for k, v in says.items()}   # "cause: <factor> -> <measure>"
         if set(says) != {str(n) for n in range(len(ask))} \
                 or not set(says.values()) <= {"cause", "verdict", "neither"}:   # unjudged, or an unknown label
             raise ValueError

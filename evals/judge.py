@@ -124,7 +124,7 @@ async def calibrate(path: Path) -> dict:
 PROSE = EVALS_DIR / "cases" / "prose_judge"
 PROSE_LOG = PROSE / "held_out_log.json"   # one entry per held-out run, appended, never edited
 _PROSE_BATCH = 25                          # sentences per call: about one report's free text
-_PROSE_USD_PER_CALL = 0.003                # Haiku 4.5: ~1.6k tokens in, ~50 out, plus margin
+_PROSE_USD_PER_CALL = 0.015                # Sonnet 4.6 (v3): ~1.8k tokens in, ~400 out, plus margin
 
 
 def wilson(k: int, n: int, z: float = 1.96) -> tuple[float, float]:
@@ -142,7 +142,7 @@ def prose_shas() -> dict:
     from agents import prose_judge
     sha = lambda b: __import__("hashlib").sha256(b).hexdigest()   # noqa: E731
     return {"prompt_version": prose_judge.PROMPT_VERSION, "prompt_sha": sha(prose_judge._SYSTEM.encode()),
-            "set_sha": sha((PROSE / "held_out.yaml").read_bytes()), "model": settings.llm_fast_model}
+            "set_sha": sha((PROSE / "held_out.yaml").read_bytes()), "model": settings.llm_model}
 
 
 def prose_rates(rows: list[dict]) -> dict:
