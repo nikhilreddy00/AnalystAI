@@ -1,0 +1,38 @@
+# Golden case: the stored insight report (source) with seeded defects; every claim not
+# listed under defects/natural was hand-labelled supported against the evidence.
+id: q-51-iot-shift-overview
+insight_case: ins-51-iot-shift-overview
+category: straightforward
+source:
+  report: insight-20261116T220202Z.json
+  run: 0
+seeded: true
+defects:
+- op: replace
+  i: 1
+  kind: number
+  label: contradicted
+  text: The dataset covers 3 months of manufacturing shifts across four lines, with OEE at 69.5% (the average of
+    the shift OEEs), availability at 84.1% and performance at 86.6%.
+- op: replace
+  i: 4
+  kind: certainty
+  label: overstated
+  text: At 70.8%, OEE sits well below the world-class 85% benchmark for discrete manufacturing.
+- op: replace
+  i: 6
+  kind: semantic
+  label: overstated
+  text: Line B fails every 22 hours, so its maintenance should come every 20 hours to get ahead of breakdowns.
+- op: replace
+  i: 8
+  kind: causal
+  label: unsupported
+  text: Night shifts produce fewer good units because operators are less alert at night.
+natural:
+- i: 5
+  label: unclear   # "the Swing shift close to Day at 503,086": the number reads as Day's
+
+label_note: 'Domain 7, seeded over the MES shift report overview: OEE as a mean of shift OEEs (69.5% for the
+  pooled 70.8%), a world-class benchmark verdict, MTBF read as a schedule (the pack''s never_say) and a cause
+  from a by-shift difference.'

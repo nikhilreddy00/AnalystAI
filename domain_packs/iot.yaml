@@ -114,7 +114,7 @@ overview_groups: [production_line, asset, shift, work_type]
 overview_kpis: [oee, availability, good_count, mtbf, mttr, corrective_wos, assets, alarms]
 protected_roles: [operator]
 role_caveats:
-  operator: "Operators are people: figures by operator describe the work, never rank the people, and groups of fewer than 11 shifts are not shown."
+  operator: "Operators are people: figures by operator describe the work, never rank the people, and groups of fewer than 11 operators are not shown."
   temperature: "A reading is a level: it is averaged over the period (each reading counts once; not time-weighted), never summed."
 row_labels: {sale: counted rows, cancel: cancelled work orders}
 row_flags:
@@ -216,7 +216,7 @@ never_say:
   - {pattern: '\bout of (?:spec|specification|tolerance)\b',
      reason: "calls a control-chart signal out of spec: control limits come from the process, specification limits from the design"}
 
-small_cell_nouns: [operators, operator, shifts, shift]
+small_cell_nouns: [operators, operator, technicians, technician]
 
 first_questions:
   - {q: "What is OEE by line, and which of availability, performance or quality loses the most?", needs: [oee, production_line]}

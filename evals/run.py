@@ -786,16 +786,23 @@ def _insight_case(cid: str) -> dict:
 
 QUALITY_CHECKS_ONLY = {"on": False}   # --checks-only: the deterministic half, at $0
 # The paid quality report whose prose-judge replies --checks-only replays (ADR-0009, 5.7b-3):
-# the judge is a review's first call, so its reply is each run's first. Set after a paid run.
-QUALITY_JUDGE_REPORT: str | None = "quality-20261116T041831Z.json"   # judge v3 (--replay of the k=1 run)
+# the judge is a review's first call, so its reply is each run's first. Set after a paid run; a
+# case added later replays from the first report in this order that ran it (Domain 7: q-51, q-52).
+QUALITY_JUDGE_REPORT: str | tuple[str, ...] | None = (
+    "quality-20261116T041831Z.json",   # judge v3 (--replay of the k=1 run)
+    "quality-20261116T233816Z.json", "quality-20261116T233730Z.json")   # Domain 7's live runs
 
 
 def judge_replay(case: dict):
     """The paid run's replies for this case in a RecordedClient: the $0 suite runs the prose judge
-    on the production path. A case that run didn't cover, or covered with no replies, fails loudly
-    (KeyError, ValueError), never passes."""
+    on the production path. A case no listed run covered, or covered with no replies, fails
+    loudly (KeyError, ValueError), never passes."""
     from llm.client import RecordedClient
-    runs = json.loads((EVALS_DIR / "reports" / QUALITY_JUDGE_REPORT).read_text())["runs"][case["id"]]
+    names = (QUALITY_JUDGE_REPORT,) if isinstance(QUALITY_JUDGE_REPORT, str) else QUALITY_JUDGE_REPORT
+    reports = [json.loads((EVALS_DIR / "reports" / n).read_text())["runs"] for n in names]
+    runs = next((r[case["id"]] for r in reports if case["id"] in r), None)
+    if runs is None:
+        raise KeyError(case["id"])
     if not (replies := runs[0]["replies"]):
         raise ValueError(f"{case['id']}: the paid run stored no replies")
     return RecordedClient([r["text"] for r in replies])
