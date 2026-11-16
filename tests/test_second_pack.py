@@ -136,6 +136,78 @@ def test_a_value_its_own_flag_marks_invalid_is_blanked_and_said_never_averaged()
         Pack.model_validate(__import__("yaml").safe_load(GAUGE.replace("blanks: [amount]", "blanks: [nope]")))
 
 
+THERMO = BANK.replace("  quantity:", """  temp: {kind: number, additive: false, headers: [temp]}
+  temp_unit: {kind: category, headers: [temp_unit]}
+  quantity:""") + """units:
+  temp: {unit_role: temp_unit, to: "°C", convert: {"°F": [0.5555555555555556, -17.77777777777778],
+                                                   degf: [0.5555555555555556, -17.77777777777778],
+                                                   "deg F": [0.5555555555555556, -17.77777777777778]}}
+"""
+
+
+def test_a_measure_in_another_unit_is_converted_by_its_unit_column_and_said():
+    """F7 (Domain 7, the user's call U1): a site's sensors report °F beside °C ones; averaged
+    together the mean was ~20 degrees off. Cleaning converts by each row's unit column (exact,
+    logged), never by guessing from the values (C7): without a unit column nothing changes."""
+    from agents.cleaning_agent import CleanContext, clean
+    pack = Pack.model_validate(__import__("yaml").safe_load(THERMO))
+    df = pd.DataFrame({"account_id": list("ABCD"), "amount": [1.0] * 4,
+                       "temp": [70.0, 158.0, 212.0, 71.0], "temp_unit": ["°C", "°F", "DegF ", "°C"]})
+    roles = {c: c for c in df.columns}
+    out, audit = clean(CleanContext(df=df, ids={"account_id"}, dates=set(), targets=set(),
+                                    drop_high_null=False, pack=pack, roles=roles))
+    assert out["temp"].round(6).tolist() == [70.0, 70.0, 100.0, 71.0]
+    assert out["temp_unit"].tolist() == ["°C"] * 4
+    said = [d.reason for d in audit.decisions if d.column == "temp" and "converted to °C" in d.reason]
+    assert len(said) == 2 and "in °F" in said[0] and "in degf" in said[1]   # one per unit code
+    out, _ = clean(CleanContext(df=df.drop(columns="temp_unit"), ids={"account_id"}, dates=set(),
+                                targets=set(), drop_high_null=False, pack=pack,
+                                roles={c: c for c in df.columns if c != "temp_unit"}))
+    assert out["temp"].tolist() == [70.0, 158.0, 212.0, 71.0]
+    with pytest.raises(ValueError, match="units"):
+        Pack.model_validate(__import__("yaml").safe_load(THERMO.replace("unit_role: temp_unit", "unit_role: nope")))
+
+
+SERIES = THERMO + "series_key: account_id\nstuck_hours: {temp: 24}\n"
+
+
+def _series_frame() -> pd.DataFrame:
+    t = list(pd.date_range("2026-10-20", periods=96, freq="h"))
+    rows = [{"account_id": "S1", "txn_date": x, "amount": 1.0, "temp": 70.0 + (i % 5) * 0.1,
+             "temp_unit": "°C"} for i, x in enumerate(t)]
+    rows += [{"account_id": "S2", "txn_date": x, "amount": 1.0, "temp": 68.4 if 10 <= i < 40 else 70.0 + (i % 3) * 0.2,
+              "temp_unit": "°C"} for i, x in enumerate(t) if not 60 <= i < 80]   # stuck 30 h, a 20 h gap
+    df = pd.DataFrame(rows)
+    copy, clash = df.iloc[[5, 6]], df.iloc[[7]].assign(temp=99.0)
+    return pd.concat([df, copy, clash], ignore_index=True)
+
+
+def test_a_series_double_write_goes_and_its_gaps_clashes_and_stuck_runs_are_said():
+    """F4 (Domain 7): a historian writes a row twice (an exact copy: dropped and said); a time
+    with two different values, a 20 h silence and a value stuck for 30 h are flagged, kept, and
+    reach the report's alerts. Read per series, never across them."""
+    from agents.cleaning_agent import CleanContext, clean
+    from agents.insight_agent import _alerts
+    from orchestrator.state import AnalysisSession
+    pack = Pack.model_validate(__import__("yaml").safe_load(SERIES))
+    df = _series_frame()
+    roles = {c: c for c in df.columns}
+    out, audit = clean(CleanContext(df=df, ids={"account_id"}, dates={"txn_date"}, targets=set(),
+                                    drop_high_null=False, pack=pack, roles=roles))
+    assert len(out) == len(df) - 2
+    flags = {d.strategy: d.reason for d in audit.decisions if d.operation == "flag"}
+    assert "1 time" in flags["series_clash"] and "S1" in flags["series_clash"]
+    assert "S2" in flags["series_gap"] and "(21 h)" in flags["series_gap"]   # 20 hourly rows missing
+    assert "S2" in flags["series_stuck"] and "68.4" in flags["series_stuck"] and "for 29 h" in flags["series_stuck"]
+    assert "S1" not in flags["series_stuck"] + flags["series_gap"]
+    alerts = " ".join(a.description for a in _alerts(AnalysisSession(session_id="t", cleaning_audit=audit))[0])
+    assert all(flags[k] in alerts for k in ("series_clash", "series_gap", "series_stuck"))
+    out, audit = clean(CleanContext(df=df, ids={"account_id"}, dates={"txn_date"}, targets=set(),
+                                    drop_high_null=False, pack=Pack.model_validate(
+                                        __import__("yaml").safe_load(THERMO)), roles=roles))
+    assert len(out) == len(df) and not any(d.strategy.startswith("series_") for d in audit.decisions)
+
+
 PER_UNIT = BANK.replace("kpis:\n", """kpis:
   - {name: per_unit, label: Amount per unit, unit: number, num: [[{sum: amount}]],
      den: [[{sum: quantity}]], zero_words: "none counted against {num}"}

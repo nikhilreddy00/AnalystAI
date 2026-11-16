@@ -95,6 +95,18 @@ sentinels: {temperature: [-9999, 9999, 32767], vibration: [-9999, 9999, 32767],
 invalid_when:
   reading_quality: {values: [bad, "0", bad data], doubtful: [uncertain, questionable, substituted],
                     blanks: [temperature, vibration, pressure]}
+# A site's sensors in °F beside °C ones (PI carries a unit on every value): one unit, by the row's
+# own unit column, never guessed from the values.
+units:
+  temperature: {unit_role: temp_unit, to: "°C",
+                convert: {"°F": [0.5555555555555556, -17.77777777777778],
+                          degf: [0.5555555555555556, -17.77777777777778],
+                          F: [0.5555555555555556, -17.77777777777778],
+                          fahrenheit: [0.5555555555555556, -17.77777777777778]}}
+# A reading belongs to its asset's series: double writes, repeated times, gaps and stuck values
+# are read per asset (a historian's on-change logging makes a gap; it never fills one).
+series_key: asset
+stuck_hours: {temperature: 24, pressure: 24}
 ranges: {repair_hours: {gt: 0}}
 derived: {repair_hours: [actual_finish, hours, actual_start]}
 

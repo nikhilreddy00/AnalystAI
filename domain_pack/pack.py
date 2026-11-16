@@ -97,6 +97,15 @@ class Invalid(_Strict):
     blanks: list[str]
 
 
+class Units(_Strict):
+    """A measure written in more than one unit, each row's unit in `unit_role`: Cleaning
+    converts every row to `to` by its code (matched as text, any case or spacing):
+    value × scale + offset (°F → °C: × 5/9 − 160/9). Only the unit column decides (C7)."""
+    unit_role: str
+    to: str
+    convert: dict[str, tuple[float, float]]
+
+
 class Cond(_Strict):
     """One condition on a role's value: words (`in` / `not_in`, case, spaces, dashes and
     underscores ignored) or a number (`gt` … `le`)."""
@@ -384,6 +393,13 @@ class Pack(_Strict):
     # flag role → the values marking its row's measures as no measurement (a historian's Bad):
     # Cleaning blanks those measures like a sentinel; `doubtful` values are kept and counted
     invalid_when: dict[str, Invalid] = Field(default_factory=dict)
+    # measure role → its unit column and the conversions to one unit (a site reporting °F)
+    units: dict[str, Units] = Field(default_factory=dict)
+    # The role naming whose time series a row is (a sensor): an exact copy of one series' row at
+    # one time is a double write (dropped); a repeated time with other values, a gap and a value
+    # stuck for `stuck_hours` (a continuous measure's run of one value) are flagged and kept.
+    series_key: str | None = None
+    stuck_hours: dict[str, float] = Field(default_factory=dict)
     # role → its sign from an indicator: Cleaning signs the values once (every consumer reads them)
     signed_by: dict[str, SignRule] = Field(default_factory=dict)
     ranges: dict[str, dict[Literal["gt", "ge", "lt", "le"], float]] = Field(default_factory=dict)
@@ -524,6 +540,11 @@ class Pack(_Strict):
                 seen.setdefault(h, role)
         errors += [f"invalid_when {f}: unknown role {r}" for f, rule in self.invalid_when.items()
                    for r in [f, *rule.blanks] if r not in self.roles]
+        errors += [f"units {m}: unknown role {r}" for m, u in self.units.items()
+                   for r in (m, u.unit_role) if r not in self.roles]
+        errors += [f"series_key: unknown role {r}" for r in [self.series_key] if r and r not in self.roles]
+        errors += [f"stuck_hours {r}: {'unknown role' if r not in self.roles else 'needs a series_key'}"
+                   for r in self.stuck_hours if r not in self.roles or not self.series_key]
         refs = [*self.order_fields, *self.sentinels, *self.ranges, *self.credit_prefix, *self.non_product,
                 *self.test_roles, *self.negative_is_return, *self.item_roles, *self.cost_roles, *self.overview_groups,
                 *(r for r in (self.order_key, self.location_role, self.snapshot_key,

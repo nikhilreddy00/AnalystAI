@@ -164,6 +164,76 @@ def _code_like(s: pd.Series) -> bool:
     return len(v) > 0 and v.str.match(_LEADING_ZERO_RE).mean() >= 0.1
 
 
+def _series_columns(ctx: CleanContext) -> tuple[str, str] | None:
+    """(series, time) columns when the pack names a series key and the data has it, a time and
+    a continuous measure (a stuck_hours role): readings, never a shift report or an event log,
+    whose rows per asset and day are many by design."""
+    pack = ctx.pack
+    key = ctx.roles.get(pack.series_key) if pack and pack.series_key else None
+    time = ctx.roles.get(pack.date_role) if pack else None
+    measured = pack is not None and any(r in ctx.roles for r in pack.stuck_hours)
+    return (key, time) if measured and key and time and key in ctx.df.columns \
+        and time in ctx.df.columns else None
+
+
+def _hours(td) -> str:
+    return f"{td / pd.Timedelta(hours=1):,.0f} h"
+
+
+def _series_flags(df: pd.DataFrame, ctx: CleanContext, key: str, time: str) -> list[tuple[str, str, int]]:
+    """(strategy, reason, rows) for each per-series finding, examples named (3 at most). A gap
+    is more than 3× the series' usual interval (20 rows at least); a stuck run is one value
+    unchanged for the pack's stuck_hours (a continuous measure only)."""
+    t = pd.to_datetime(df[time], errors="coerce")
+    d = df.assign(_t=t).dropna(subset=["_t"]).sort_values([key, "_t"], kind="stable")
+    out = []
+    clash = d.duplicated([key, "_t"], keep=False)
+    # a clock change repeats one local hour for EVERY series at once (local times written
+    # without their offset); a double write hits one series: shared by half of them (2+) = a fold
+    pairs = d.loc[clash, [key, "_t"]].drop_duplicates()
+    per_time = pairs.groupby("_t")[key].nunique()
+    folds = per_time.index[(per_time >= 2) & (per_time >= d[key].nunique() / 2)]
+    own = pairs[~pairs["_t"].isin(folds)]
+    if n := len(own):
+        named = ", ".join(f"{k} at {v:%Y-%m-%d %H:%M}" for k, v in own.head(3).itertuples(index=False))
+        out.append(("series_clash", f"{n} time{'s' if n != 1 else ''} of one {key} with two different "
+                    f"rows ({named}): both kept, check them at the source.", n))
+    if len(folds):
+        named = ", ".join(f"{v:%Y-%m-%d %H:%M}" for v in folds[:3])
+        out.append(("series_clock_change", f"{len(folds)} local time{'s' if len(folds) != 1 else ''} "
+                    f"({named}) repeat for every {key}: the hour a clock change repeats, its offset "
+                    "dropped. Both readings are kept; durations across it can be an hour off.",
+                    int(pairs['_t'].isin(folds).sum())))
+    gaps, stuck = [], []
+    for k, g in d.groupby(key, sort=True):
+        step = g["_t"].diff()
+        usual = step[step > pd.Timedelta(0)].median()
+        if len(g) >= 20 and pd.notna(usual):
+            for i in step.index[step > 3 * usual]:
+                gaps.append(f"{k} {g.at[i, '_t'] - step[i]:%Y-%m-%d %H:%M} to {g.at[i, '_t']:%Y-%m-%d %H:%M} "
+                            f"({_hours(step[i])})")
+        for role, h in ctx.pack.stuck_hours.items():
+            col = ctx.roles.get(role)
+            if col not in g.columns:
+                continue
+            v = g[col]
+            run = (v != v.shift()).cumsum()
+            for _, r in g[v.notna()].groupby(run[v.notna()]):
+                span = r["_t"].iloc[-1] - r["_t"].iloc[0]
+                if span >= pd.Timedelta(hours=h):
+                    stuck.append(f"{k} {role.replace('_', ' ')} at {r[col].iloc[0]:g} for {_hours(span)} "
+                                 f"from {r['_t'].iloc[0]:%Y-%m-%d %H:%M}")
+    if gaps:
+        out.append(("series_gap", f"{len(gaps)} silence{'s' if len(gaps) != 1 else ''} longer than 3× "
+                    f"the usual interval ({'; '.join(gaps[:3])}): a dropout, or a source that writes "
+                    "only on change. Nothing is filled in.", len(gaps)))
+    if stuck:
+        out.append(("series_stuck", f"{len(stuck)} value{'s' if len(stuck) != 1 else ''} unchanged for "
+                    f"hours ({'; '.join(stuck[:3])}): a stuck sensor reads as a steady process. Kept.",
+                    len(stuck)))
+    return out
+
+
 def _whole_orders(flat: pd.DataFrame, dup: pd.Series, order: str) -> set:
     """The orders with exact duplicate rows that are repeated whole (each of their lines the
     same number of times, at least twice): an export overlap, not a second scan of one item.
@@ -328,6 +398,26 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
             if n := int(said.isin([v.lower() for v in rule.doubtful]).sum()):
                 log(fcol, "flag", "doubtful_flag", f"{n} rows marked {', '.join(rule.doubtful)}: "
                     "kept and counted.", n)
+        for role, rule in ctx.pack.units.items():   # one unit per measure, by each row's unit
+            col, ucol = ctx.roles.get(role), ctx.roles.get(rule.unit_role)
+            if col is None or ucol is None or not pd.api.types.is_numeric_dtype(df[col]):
+                continue
+            code = df[ucol].astype("string").str.replace(r"\s+", "", regex=True).str.lower()
+            done = pd.Series(False, index=df.index)   # a row is converted once ('deg F', 'degF')
+            for unit, (scale, offset) in rule.convert.items():
+                hit = code.eq(re.sub(r"\s+", "", unit).lower()).fillna(False) & df[col].notna() & ~done
+                done |= hit
+                if n := int(hit.sum()):
+                    pct = _null_pct(df[col])
+                    df[col] = df[col].mask(hit, df[col] * scale + offset)
+                    upct = _null_pct(df[ucol])
+                    df[ucol] = df[ucol].mask(hit, rule.to)
+                    log(col, "type_coerce", "unit_converted",
+                        f"{n} {role.replace('_', ' ')} values in {unit} (their {ucol}) converted to "
+                        f"{rule.to}: × {scale:g} {'+' if offset >= 0 else '−'} {abs(offset):g}.",
+                        n, pct, _null_pct(df[col]))
+                    log(ucol, "type_coerce", "unit_converted",
+                        f"{n} rows' unit changed from {unit} to {rule.to} with their values.", n, upct, upct)
         for role, rule in ctx.pack.signed_by.items():   # an unsigned amount and its Dr/Cr
             col, ind = ctx.roles.get(role), ctx.roles.get(rule.indicator)
             if col is None or ind is None or not pd.api.types.is_numeric_dtype(df[col]) \
@@ -399,7 +489,12 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
             log("*", "flag", "repeated_rows", f"{n_dup} rows repeat another row exactly; kept, as "
                 "a second scan of an item is a real sale.", n_dup)
             n_dup = 0
-    if n_dup and keys and not ctx.deidentified:
+    series = _series_columns(ctx)
+    if n_dup and series and not ctx.deidentified:   # one series' reading written twice: a copy
+        df = df[~dup]
+        log("*", "drop_duplicates", "exact", f"Removed {n_dup} exact double writes (the same "
+            f"{series[0]}, {series[1]} and every value).", n_dup, removed=n_dup)
+    elif n_dup and keys and not ctx.deidentified:
         df = df[~dup]
         log("*", "drop_duplicates", "exact", f"Removed {n_dup} exact duplicate rows "
             f"(same {keys[0]} and every other value).", n_dup, removed=n_dup)
@@ -409,6 +504,12 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
                "there is no ID column to tell a copy from a repeated record")
         log("*", "flag", "repeated_rows", f"{n_dup} rows repeat another row exactly; kept, as "
             f"{why}.", n_dup)
+
+    # 5a. One series at a time (a sensor's readings): a time with two values, a silence, a value
+    #     stuck for hours. Flagged and kept: which value is right is the source's call.
+    if series and not ctx.deidentified:
+        for strategy, reason, n in _series_flags(df, ctx, *series):
+            log(series[0], "flag", strategy, reason, n)
 
     # 5b. Order-level fields on an order's first line only (the layout, seen in the data, not
     #     guessed from the domain): carried down the order.
