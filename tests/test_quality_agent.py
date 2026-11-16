@@ -316,3 +316,62 @@ def test_one_sentence_rule_and_one_not_asserted_set_for_every_claim_check():
     assert insight_agent._SENTENCE_RE is guardrails._SENTENCE_RE is quality_agent._SENTENCE_RE
     assert guardrails.claim_profit_without_cost("Margins fell before the holiday.", False)
     assert guardrails.claim_profit_without_cost("Margin cannot be computed: there is no cost.", False) is None
+
+
+# ── Typed claims and the prose judge (5.7b-3, ADR-0009) ────────────────────────
+
+CAUSE_FLAG = ("causal", "overstated", "states a cause or grades a result against a norm, "
+              "which this data can't show")
+
+
+def _typed_session():
+    """A typed cause written in the report's own names ('ad budget', not 'marketing spend'),
+    and the same sentence over a cause its evidence doesn't name: only the second is stale."""
+    from agents import insight_agent
+    from agents.claims import render
+    from orchestrator.state import TypedClaim
+    s = _session([])
+    s.narrative.column_display_names["marketing_spend"] = "ad budget"
+    t = TypedClaim(kind="causal", cause="marketing_spend", effect="revenue",
+                   evidence_id="corr:revenue__marketing_spend")
+    text = render(t, s.analysis_findings, lambda c: insight_agent._name(c, s.narrative))
+    assert text.startswith("Ad budget and revenue move together")
+    s.insight_report.executive_view.findings = [
+        Claim(text=text, evidence_ids=[t.evidence_id], typed=t),
+        Claim(text=text, evidence_ids=[t.evidence_id], typed=t.model_copy(update={"cause": "price"}))]
+    return s
+
+
+def test_a_typed_claim_is_rechecked_in_the_reports_names_and_never_sent_to_the_judge():
+    s = _typed_session()
+    assert [c.get("typed") is not None for c in report_claims(s.insight_report)] == [False, True, True]
+    flags = check_claims(s, s.insight_report)
+    assert [(f.index, f.kind, f.label, f.reason) for f in flags] == [
+        (2, "causal", "overstated", "its typed claim no longer holds (names_not_in_evidence)")]
+    llm = RecordedClient([_sound(s)])
+    review = asyncio.run(run_quality_check(s, llm, critic=False, judge=True))
+    assert review.flags == flags
+    asked = llm.calls[0]["messages"][0]["content"]
+    assert "Revenue fell 2.8%" in asked and "move together" not in asked   # typed: code's sentence
+
+
+def test_a_sentence_the_judge_flags_is_a_cause_and_the_judge_runs_on_its_own_switch():
+    s = _session([GOOD])
+    flags = check_claims(s, s.insight_report, overreach={GOOD[0]})
+    assert [(f.index, f.kind, f.label, f.reason) for f in flags] == [(1, *CAUSE_FLAG)]
+    llm = RecordedClient([json.dumps({"0": "neither", "1": "cause"})])
+    review = asyncio.run(run_quality_check(s, llm, critic=False, judge=True))
+    assert [(f.index, f.kind, f.label, f.reason) for f in review.flags] == [(1, *CAUSE_FLAG)]
+    assert review.review_summary == "2 claims checked against the evidence; 1 flagged (1 overstated)."
+    llm = RecordedClient([])
+    review = asyncio.run(run_quality_check(s, llm, critic=False, judge=False))
+    assert llm.calls == [] and review.review_summary == "2 claims checked against the evidence; none flagged."
+
+
+def test_a_failed_judge_and_a_failed_critic_each_say_so():
+    s = _session([GOOD])
+    review = asyncio.run(run_quality_check(s, RecordedClient(["nope", "not json", "still not json"])))
+    assert review.flags == [] and review.review_summary == (
+        "2 claims checked against the evidence; none flagged. The wording check could not run: "
+        "causes and grades were not checked. The written review could not be generated this time; "
+        "the flags come from the automatic checks.")
