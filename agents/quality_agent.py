@@ -424,7 +424,7 @@ async def run_quality_check(session: AnalysisSession, llm: LLMClient, critic: bo
     if critic if judge is None else judge:
         said = list(dict.fromkeys(s for c in claims if not c.get("typed")
                                   for s in _SENTENCE_RE.split(c["text"]) if s.strip()))
-        got = await prose_judge.flagged(said, llm) if said else set()
+        got = await prose_judge.flagged(said, llm)
         overreach = None if got is None else {said[i] for i in got}
         if got is None:
             note = " The wording check could not run: causes and grades were not checked."

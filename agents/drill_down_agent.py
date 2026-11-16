@@ -165,7 +165,7 @@ Answer in JSON as specified.
     # a cause or a benchmark verdict in the answer (ADR-0009), judged where the checks run
     said = [s for s in _SENTENCE_RE.split(text) if s.strip()] \
         if contract is not None and pack_for(contract.domain) else []
-    got = await prose_judge.flagged(said, get_client()) if said else set()
+    got = await prose_judge.flagged(said, get_client())
     answer = checked_answer(text, session,
                             [report.executive_summary, report.technical_findings,
                              json.dumps(findings.eda_summary, default=str) if findings else "",

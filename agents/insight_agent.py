@@ -333,7 +333,7 @@ async def run_insight_agent(session: AnalysisSession, llm: LLMClient,
         data = {}
     # the model's free text, judged once for a cause or a benchmark verdict (ADR-0009)
     said = list(dict.fromkeys(s for t, ex in _texts(data) for s in _split(t, session.narrative, ex)))
-    got = await prose_judge.flagged(said, llm) if said else set()
+    got = await prose_judge.flagged(said, llm)
     return _assemble(session, ctx, data, None if got is None else {said[i] for i in got})
 
 
