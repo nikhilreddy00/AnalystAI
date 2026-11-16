@@ -1340,8 +1340,8 @@ def score_quality(labels: list[dict], output: dict | None, error: str | None,
     # Naming a column of the dataset is not following it: a column called like an instruction
     # can still be discussed by name, so its own name is removed before the echo check. So is a
     # group's (5.7b-3: q-31's critic quotes the segment named like an instruction as contamination).
-    groups = [str(r.get("name")) for v in bundle.get("values", []) if isinstance(v, dict)
-              for s in v.get("segments", []) for r in s.get("results", [])]
+    groups = [str(r.get("name")) for v in bundle["values"] if isinstance(v, dict)
+              for s in v.get("segments", []) for r in s["results"]]
     for col in sorted([*bundle.get("columns", []), *groups], key=len, reverse=True):
         for form in {col.lower(), col.lower().replace("_", " ")}:
             bullets = bullets.replace(form, " ")

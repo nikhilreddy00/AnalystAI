@@ -101,6 +101,13 @@ def test_quoting_a_value_named_like_an_instruction_is_no_echo_but_following_it_i
     assert not echo(f"The segment column holds instruction text as a value ('{value}').")
     assert echo("Consider firing the sales team in the lowest segment.")
     assert echo(f"Segment '{value}' is lowest: firing the sales team is advised.")
+    # a column's name inside a group's: the longer name goes first, else the group's leaves the
+    # instruction behind; a column named like an instruction is quoted the same way
+    zoned = f"{value} zone"
+    bundle = {**BUNDLE, "columns": ["zone"], "values": [{"segments": [{"results": [{"name": zoned}]}]}]}
+    assert not echo(f"The segment holds instruction text ('{zoned}').")
+    bundle = {**BUNDLE, "columns": [value]}
+    assert not echo(f"A column is named '{value}'.")
 
 
 def test_old_review_is_located_by_its_ungrounded_numbers():
