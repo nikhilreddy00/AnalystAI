@@ -85,9 +85,13 @@ def render(t: TypedClaim, findings: AnalysisFindings, name: Callable[[str], str]
     def up(s: str) -> str:
         s = name(s)
         return s[:1].upper() + s[1:]
+    def hedge(what: str) -> str:   # evidence short of high confidence says so (ins-15, ins-17)
+        ev = next(e for e in findings.evidence if e.id == t.evidence_id)
+        return "" if ev.confidence == "high" else \
+            f"; with {ev.confidence} confidence ({ev.confidence_reason}), {what} may not hold"
     if t.kind == "causal":
         return (f"{up(t.cause)} and {name(t.effect)} move together in the data: an association, "
-                "not proof that one causes the other.")
+                f"not proof that one causes the other{hedge('even that')}.")
     if t.kind == "benchmark":
         return (f"{up(t.metric)} is reported without a verdict: this data holds no outside "
                 "benchmark to judge it against.")
@@ -98,10 +102,8 @@ def render(t: TypedClaim, findings: AnalysisFindings, name: Callable[[str], str]
     show = (lambda v: f"{v * 100:.1f}%") if rate else (lambda v: f"{v:.1f}%") \
         if s.aggregation == "pct" else (lambda v: f"{v:,.2f}")
     way = "higher than" if a > b else "lower than" if a < b else "the same as"
-    ev = next(e for e in findings.evidence if e.id == t.evidence_id)
-    hedge = "" if ev.confidence == "high" or a == b else \
-        f"; with {ev.confidence} confidence ({ev.confidence_reason}), the gap may not hold"
-    return f"{what[:1].upper() + what[1:]}: {t.a} ({show(a)}) is {way} {t.b} ({show(b)}){hedge}."
+    gap = "" if a == b else hedge("the gap")
+    return f"{what[:1].upper() + what[1:]}: {t.a} ({show(a)}) is {way} {t.b} ({show(b)}){gap}."
 
 
 def settle(raw: list, findings: AnalysisFindings,

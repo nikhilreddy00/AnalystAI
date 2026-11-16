@@ -177,6 +177,15 @@ def test_a_comparison_on_evidence_short_of_high_confidence_says_the_gap_may_not_
                     "confidence (only 24 rows), the gap may not hold.") and _HEDGE.search(text)
     assert render(up.model_copy(update={"a": "East"}), low).endswith("is the same as South (94.03).")
     assert "may not hold" not in render(up, FINDINGS)
+    # ins-17: a cause on a low-n correlation, the same
+    corr = FINDINGS.model_copy(update={"evidence": [
+        e.model_copy(update={"confidence": "low", "confidence_reason": "only 24 rows"})
+        if e.kind == "correlation" else e for e in FINDINGS.evidence]})
+    cause = TypedClaim(kind="causal", cause="marketing spend", effect="revenue",
+                       evidence_id="corr:marketing_spend__revenue")
+    text = render(cause, corr)
+    assert text.endswith("not proof that one causes the other; with low confidence (only 24 rows), "
+                         "even that may not hold.") and _HEDGE.search(text)
 
 
 def test_a_name_of_exactly_the_limit_is_still_a_name():
