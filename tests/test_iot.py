@@ -91,6 +91,20 @@ def test_how_a_kpi_was_computed_names_derived_columns_and_unit_steps_in_words():
     assert "cycle × good ÷ 60" in how.lower(), how   # seconds × units → minutes, said
 
 
+def test_a_flow_kpi_asked_without_a_period_leads_with_its_overall_value():
+    """Smoke run, e2e-85: 'What is our MTTR?' came back as intent time_series with no frequency,
+    and the answer gave only the latest month (2.99 h), never the MTTR (3.97 h). A ratio or flow
+    asked with no grain and no period leads with its value over the data; the latest period
+    follows. A state (a balance, MRR at the as-of) keeps its latest value as the answer."""
+    from tests.test_oracle import answer
+    from evals import datagen
+    truth = datagen.make("work_orders", 1)[1]
+    text, _ = answer("work_orders", "time_series", "What is our MTTR?", kpi="mttr")
+    assert f"{truth['mttr_hours']:.2f} hours" in text.split("latest")[0], text
+    text, _ = answer("work_orders", "time_series", "MTTR by month", kpi="mttr", frequency="M")
+    assert text.startswith("MTTR by period"), text   # a grain asked: the series, as before
+
+
 def test_mttr_reads_finished_corrective_orders_in_exact_hours():
     """T3/T4/T19, S-c: a PM is no repair, an open order has no finish yet, a cancelled one is no
     work; a repair across the 25 Oct 2026 clock change is 2.75 h in UTC. (2.75 + 1) / 2."""

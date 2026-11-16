@@ -1423,6 +1423,14 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
             # a spell series has its own periods: never '(12 months to …)' above a series of years
             answer = f"{kpi.label}{unit} by {'week' if freq == 'W' else 'period'}{'' if spelled else where}{by_month}: latest " \
                      f"{name(latest)} {fmt(series.iloc[-1])}"
+            if not params.frequency and not (state or spelled):
+                # "What is our MTTR?": a flow or ratio asked with no grain and no period is its
+                # value over the data first, then its latest period (Domain 7 smoke run)
+                over = measure(df, roles, pack, kpi.name, full=all_rows, window=win, cut=cut)
+                if isinstance(over, Measured):
+                    t = pd.to_datetime(frame[date], errors="coerce").dropna() if date else None
+                    span = f" ({t.min():%d %b %Y} to {t.max():%d %b %Y})" if t is not None and len(t) else ""
+                    answer = f"{kpi.label}{where}{span}: {fmt(over.value)}. " + answer
             def base(v) -> bool:   # a value to compare against (0% is one; $0 or less: no % change)
                 return v is not None and not pd.isna(v) and (kind == "percent" or pct_change(1.0, v) is not None)
 
