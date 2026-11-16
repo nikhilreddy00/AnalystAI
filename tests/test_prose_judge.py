@@ -67,6 +67,29 @@ def test_a_reply_that_skips_a_sentence_or_isnt_the_json_fails_closed(reply):
     assert _run(["Spend drove sales."])[0] is None   # no reply at all (an outage)
 
 
+def test_the_judges_call_is_its_exact_request_and_a_failure_is_traced(monkeypatch):
+    """The request as sent (no test double in between): its label and prompt version, its token
+    budget, one user message of numbered lines; a failed judge traces its own rule label."""
+    import asyncio
+
+    import agents.prose_judge as pj
+    from guardrails import delimit_untrusted
+    from llm.client import LLMResult
+    seen, traced = [], []
+
+    class Spy:
+        async def complete(self, **kw):
+            seen.append(kw)
+            return LLMResult(text="no json")
+    monkeypatch.setattr(pj, "trace_verdict", lambda *a: traced.append(a))
+    assert asyncio.run(pj.flagged(["Spend drove sales.", "Sales rose 4%."], Spy())) is None
+    (kw,) = seen
+    assert (kw["agent"], kw["prompt_version"], kw["max_tokens"]) == ("prose_judge", pj.PROMPT_VERSION, 1000)
+    assert kw["messages"] == [{"role": "user", "content": delimit_untrusted(
+        "0. Spend drove sales.\n1. Sales rose 4%.")}]
+    assert traced == [("prose_judge", pj.PROMPT_VERSION, "judge_failed")]
+
+
 def test_the_judges_prompt_and_phrases_say_no_domains_words():
     """D1-05 (C9): the shared judge reads every domain, so its prompt and phrase list name no
     pack's terms: no KPI label, no acronym from one (MRR, NPL, ALOS), no spell's nouns (built from

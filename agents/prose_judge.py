@@ -42,7 +42,7 @@ async def flagged(sentences: list[str], llm: LLMClient) -> set[int] | None:
         # the first JSON object (the model may explain after it): a verdict per sentence, by number
         says = json.loads(re.search(r"\{[^{}]*\}", result.text).group())
         if set(says) != {str(n) for n in range(len(ask))}:   # a skipped sentence is unjudged
-            raise ValueError("one verdict per sentence")
+            raise ValueError
         return hits | {i for n, i in enumerate(ask) if says[str(n)] in ("cause", "verdict")}
     except (AgentError, AttributeError, json.JSONDecodeError, KeyError, TypeError, ValueError):
         trace_verdict("prose_judge", PROMPT_VERSION, "judge_failed")

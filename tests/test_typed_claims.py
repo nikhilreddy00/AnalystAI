@@ -1,5 +1,6 @@
 """Typed claims (5.7b-3, ADR-0009, D1-09): a cause, a benchmark verdict or a comparison is data the
 model gives; code checks it against the evidence it cites and writes its sentence."""
+from agents.analysis_agent import segment_id
 from agents.claims import check, recheck, render, settle, typed
 from orchestrator.state import AnalysisFindings, Claim, Evidence, SegmentResult, TypedClaim
 
@@ -86,3 +87,67 @@ def test_a_typed_claim_whose_sentence_was_edited_is_no_longer_its_claim():
     edited = claim.model_copy(update={"text": "Mean revenue: North (113.32) is lower than South (94.03)."})
     assert recheck(edited, FINDINGS) == "sentence_not_its_claim"
     assert recheck(Claim(text="Free text."), FINDINGS) is None
+
+
+def _with(*segs):
+    """FINDINGS plus a breakdown of metric 'm' per (segment column, aggregation, {group: value})."""
+    s = [SegmentResult(segment_column=c, metric_column="m", aggregation=agg,
+                       results=[{"name": k, "value": v} for k, v in rows.items()]) for c, agg, rows in segs]
+    ev = [_ev(segment_id(c, "m", agg), "segment", f"m by {c}") for c, agg, _ in segs]
+    return FINDINGS.model_copy(update={"segments": s, "evidence": FINDINGS.evidence + ev})
+
+
+def _cmp(f, ev, a, b):
+    return render(TypedClaim(kind="comparison", metric="m", a=a, b=b, evidence_id=ev), f)
+
+
+def test_a_comparison_is_a_percent_only_for_a_ratio_whose_every_value_is_0_to_1():
+    """Its ends included: a 0 and a 1 are rates; a mean in 0-1 or a ratio above 1 is not."""
+    f = _with(("a", "ratio", {"A": 0.0, "B": 1.0}), ("c", "mean", {"C": 0.25, "D": 0.5}),
+              ("e", "ratio", {"E": 1.5, "F": 0.5}))
+    assert _cmp(f, "seg:a/m:ratio", "A", "B") == "M: A (0.0%) is lower than B (100.0%)."
+    assert _cmp(f, "seg:c/m", "C", "D") == "M: C (0.25) is lower than D (0.50)."
+    assert _cmp(f, "seg:e/m:ratio", "E", "F") == "M: E (1.50) is higher than F (0.50)."
+
+
+def test_a_comparison_never_names_an_unrankable_group_and_reads_names_loosely():
+    """'Unknown' (blanks) is no group to compare; a name matches its group whatever its case or
+    surrounding space, but two distinct words that only upper-case alike stay two groups."""
+    f = _with(("g", "mean", {"North": 2.0, "Unknown": 1.0, "Maße": 3.0, "Masse": 4.0}))
+    t = TypedClaim(kind="comparison", metric="m", a="Unknown", b="North", evidence_id="seg:g/m")
+    assert check(t, f) == "groups_not_in_evidence"
+    assert check(t.model_copy(update={"a": " north ", "b": "maße"}), f) is None
+    assert check(t.model_copy(update={"a": "Maße", "b": "Masse"}), f) is None
+
+
+def test_a_causal_name_may_come_from_its_evidences_claim_or_its_id():
+    t = TypedClaim(kind="causal", cause="region", effect="mean revenue", evidence_id="seg:region/revenue")
+    assert check(t, FINDINGS) is None   # 'mean revenue': the claim's words only
+    t = TypedClaim(kind="causal", cause="plan", effect="churned",
+                   evidence_id="seg:plan/churned:ratio:churn_rate")
+    assert check(t, FINDINGS) is None   # 'churned': the id's only
+
+
+def test_a_benchmark_needs_a_metric_and_is_said_in_one_sentence():
+    bench = TypedClaim(kind="benchmark", metric="net revenue retention", verdict="healthy")
+    assert render(bench, FINDINGS) == ("Net revenue retention is reported without a verdict: this "
+                                       "data holds no outside benchmark to judge it against.")
+    assert check(bench.model_copy(update={"metric": ""}), FINDINGS) == "no_metric"
+
+
+def test_a_name_of_exactly_the_limit_is_still_a_name():
+    assert typed({"kind": "causal", "cause": "x" * 60, "effect": "revenue"}) is not None
+
+
+def test_settle_and_recheck_write_with_the_reports_display_names():
+    """A display name reaches every sentence code writes, and a stored claim re-renders with it;
+    a stored claim whose evidence is gone no longer holds, its sentence unchanged or not."""
+    raw = [{"kind": "causal", "cause": "marketing spend", "effect": "revenue",
+            "evidence_id": "corr:marketing_spend__revenue"},
+           {"kind": "benchmark", "metric": "revenue", "verdict": "strong"}]
+    claims, caveats, _ = settle(raw, FINDINGS, str.upper)
+    assert claims[0].text.startswith("MARKETING SPEND and REVENUE move together")
+    assert caveats[0].startswith("REVENUE is reported without a verdict")
+    assert recheck(claims[0], FINDINGS, str.upper) is None
+    gone = FINDINGS.model_copy(update={"evidence": FINDINGS.evidence[1:]})
+    assert recheck(claims[0], gone, str.upper) == "unknown_evidence"
