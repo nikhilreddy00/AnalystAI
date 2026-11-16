@@ -886,6 +886,51 @@ def test_a_drill_down_answer_keeps_only_what_the_analysis_supports():
     assert "2 sentence(s)" in out
     assert checked_answer("It was $999,999.", s, shown).startswith("I couldn't answer")
     assert checked_answer("", s, shown) == ""
+    # a failed judge: what passes the number checks stays, and the answer says it went unjudged
+    assert checked_answer("Net sales were $310,635.46.", s, shown, None) == (
+        "Net sales were $310,635.46. (Its wording could not be checked for causes the data "
+        "can't show.)")
+    # the data has dates: a bare year is a date, never an ungrounded number
+    assert checked_answer("In 2026 net sales were $310,635.46.", s, shown) == \
+        "In 2026 net sales were $310,635.46."
+
+
+def test_the_drill_down_handler_judges_its_answer_where_a_pack_matches(recorded_llm):
+    """run_drill_down_agent: on pack data the judge reads each sentence and a flagged one goes
+    (no note); a failed judge keeps the rest with the note; the row count is shown to the checks;
+    no pack (or no contract): no judge call, the answer as given; an empty answer: the fixed reply."""
+    import asyncio
+    import json
+    from agents.drill_down_agent import run_drill_down_agent
+    from orchestrator.state import InsightReport
+
+    def ask(session):   # sync: _audited runs its own event loop
+        return asyncio.run(run_drill_down_agent(session, None))
+    report = InsightReport(executive_summary="s", technical_findings=[], recommended_actions=[],
+                           anomaly_alerts=[], proactive_questions=[], methodology_notes="")
+    s = _audited("retail_lines")
+    s.insight_report = report
+    rows = s.data_contract.row_count
+    said = f"The file has {rows:,} rows. The discount drove that."
+    reply = json.dumps({"answer_text": said})
+    recorded_llm.responses += [reply, '{"0": "neither", "1": "cause"}']
+    r = ask(s)
+    assert r.answer_text == f"The file has {rows:,} rows. (1 sentence(s) that the analysis can't " \
+                            "support were removed.)"
+    recorded_llm.responses += [reply, "not json"]   # the judge failed: nothing it flagged goes
+    r = ask(s)
+    assert r.answer_text == f"{said} (Its wording could not be checked for causes the data can't show.)"
+    recorded_llm.responses += [json.dumps({"answer_text": ""})]
+    assert ask(s).answer_text == \
+        "I couldn't formulate a direct answer to that."
+    plain = AnalysisSession(session_id="t", data_contract=_contract(
+        pd.DataFrame({"x": ["a", "b"], "y": [1.0, 2.0]})), insight_report=report)
+    none = AnalysisSession(session_id="t", insight_report=report)
+    for other in (plain, none):
+        n = len(recorded_llm.calls)
+        recorded_llm.responses += [json.dumps({"answer_text": "It was 99,999."})]
+        assert ask(other).answer_text == "It was 99,999."
+        assert len(recorded_llm.calls) == n + 1   # no judge call
 
 
 async def test_first_questions_are_the_domains_when_the_model_fails(recorded_llm):

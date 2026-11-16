@@ -622,6 +622,56 @@ def test_one_month_of_moves_is_unknown_never_zero():
     assert dp.compute_kpi(one, roles, pack, "new_mrr") is None
 
 
+def test_the_story_bridge_line_signs_each_move_and_has_no_transfers_in_the_whole():
+    df, _, pack, roles, _ = _setup("saas_mrr_snapshots")
+    line = next(ln for ln in dp.spell_story(pack, df, roles) if ln.startswith("MRR bridge"))
+    assert line == ("MRR bridge, 12 months to 31 Oct 2026: $412,929.08 on 31 Oct 2025 + new MRR "
+                    "$176,207.56 + expansion MRR $89,367.79 + reactivation MRR $6,462.68 − contraction "
+                    "MRR $36,744.52 − churned MRR $85,613.74 = $562,608.85.")
+
+
+def test_the_bridge_reads_its_window_and_the_money_stock(monkeypatch):
+    """bridge(**at): opening and closing are measured on the window asked, as the moves are; the
+    stock is the money one even when a count tile comes first; any unavailable step: no bridge."""
+    from domain_pack import story
+    df, _, pack, roles, _ = _setup("saas_mrr_snapshots")
+    at = {"full": df, "window": ("2026-01-01", "2026-06-30")}
+    b, whole = dp.bridge(pack, df, roles, dp.MOVES, **at), dp.bridge(pack, df, roles, dp.MOVES)
+    assert b.start == pytest.approx(dp.measure(df, roles, pack, "opening_mrr", **at).value) != whole.start
+    assert b.now == pytest.approx(dp.measure(df, roles, pack, "mrr", **at).value) != whole.now
+    heads_first = pack.model_copy(update={"kpis": sorted(pack.kpis, key=lambda k: k.name != "paying_customers")})
+    assert dp.bridge(heads_first, df, roles, dp.MOVES).stock.name == "mrr"
+    fact = story._fact
+    for gone in ("opening_mrr", "mrr", "new_mrr"):
+        monkeypatch.setattr(story, "_fact", lambda d, r, p, name, **kw: None if name == gone
+                            else fact(d, r, p, name, **kw))
+        assert story.bridge(pack, df, roles, dp.MOVES) is None, gone
+
+
+def test_the_story_line_says_a_rest_only_when_unsplit_and_needs_a_month_of_moves(monkeypatch):
+    """_ledger_story: a split bridge never shows a rest; an unsplit one shows it from half a cent;
+    no span, or moves that start at the as-of: no bridge line."""
+    from domain_pack import story
+    df, _, pack, roles, _ = _setup("saas_mrr_snapshots")
+    real = dp.bridge(pack, df, roles, dp.MOVES)
+    unsplit = pack.spell.words.unsplit
+    w = dp.window(pack, df, roles)
+
+    def line(b, frame=df, win=w):
+        monkeypatch.setattr(story, "bridge", lambda *a, **k: b)
+        return next((ln for ln in story._ledger_story(pack, frame, roles, win)
+                     if ln.startswith("MRR bridge")), None)
+    assert unsplit not in line(real._replace(now=real.now + 1))   # split: every change is a move
+    moves = {m: (real.moves[m][0], 0.0) for m in ("new", "churn")}
+    assert unsplit in line(real._replace(start=0.0, now=0.005, moves=moves))   # rest 0.005
+    monkeypatch.setattr(story, "window_words", lambda *a, **k: "")
+    assert line(real) is None
+    monkeypatch.setattr(story, "window_words", lambda *a, **k: "1 month")
+    one = df[pd.to_datetime(df["month"]) == pd.to_datetime(df["month"]).max()]
+    w1 = dp.window(pack, one, roles)
+    assert w1.moves_from == w1.as_of and line(real, one, w1) is None
+
+
 def test_a_partial_first_month_is_no_year_over_year_base():
     """Live run (JSON invoices): '+109% year over year' compared Sep 2026 with the 5 days of Sep
     2025 the data covers. The built-in leaves a partial first month out of every comparison."""
