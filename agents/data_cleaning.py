@@ -22,6 +22,8 @@ import re
 
 import pandas as pd
 
+from connectors.base import parse_text_dates
+
 # ── Layer 1 patterns ──────────────────────────────────────────────────────────
 _URL_RE = re.compile(r"(?i)https?://|www\.")
 _IMAGE_EXT_RE = re.compile(
@@ -190,6 +192,10 @@ def detect_dates_aggressive(series: pd.Series) -> pd.Series | None:
     if not pd.api.types.is_string_dtype(s):
         return None
 
+    # The load's rule first (F2): it owns UTC offsets (a daylight-saving pair → local wall time,
+    # several places → UTC); the loop below only adds the forms it doesn't read (21-Jun-2026).
+    if (loaded := parse_text_dates(series, 0.8)) is not None:
+        return loaded
     sample = s.astype(str).str.strip()
     # A date needs a year: "Jan", "Monday" or "12:30" would parse with an invented year or today.
     if sample.head(200).str.contains(_HAS_YEAR_RE, regex=True).mean() < 0.8:

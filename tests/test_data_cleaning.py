@@ -196,6 +196,22 @@ def test_dates_rejects_mostly_garbage():
     assert detect_dates_aggressive(s) is None
 
 
+def test_dates_with_utc_offsets_follow_the_loads_one_offset_rule():
+    """F2 (Domain 7): with one junk value the load leaves a timestamp column to Cleaning, whose
+    fallback crashed on mixed offsets (pandas 3) and kept the column as text. Offsets now follow
+    the load's one rule: a daylight-saving pair is local wall time, several places are UTC."""
+    dst = pd.Series(["2026-10-25 01:30+02:00", "2026-10-25 02:30+02:00", "2026-10-25 02:30+01:00",
+                     "2026-10-25 03:30+01:00", "sensor offline"] * 4)
+    out = detect_dates_aggressive(dst)
+    assert out is not None and out.dt.tz is None
+    assert [str(t) for t in out.head(4)] == ["2026-10-25 01:30:00", "2026-10-25 02:30:00",
+                                             "2026-10-25 02:30:00", "2026-10-25 03:30:00"]
+    places = pd.Series(["2026-10-25T01:30:00Z", "2026-10-25 03:30-05:00", "2026-10-25 04:00+01:00",
+                        "2026-10-26 00:00Z", "n/a"] * 4)
+    out = detect_dates_aggressive(places)
+    assert out is not None and str(out.iloc[1]) == "2026-10-25 08:30:00+00:00"
+
+
 def test_dates_all_null():
     s = pd.Series([None, None, None], dtype=object)
     assert detect_dates_aggressive(s) is None

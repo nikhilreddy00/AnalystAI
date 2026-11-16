@@ -664,7 +664,8 @@ def _column(df: pd.DataFrame, roles: dict[str, str], expr: str | list[str]) -> p
 
 
 def _day(s: pd.Series) -> pd.Series:
-    return pd.to_datetime(s, format="mixed", errors="coerce").dt.normalize()
+    from connectors.base import as_times
+    return as_times(s).dt.normalize()
 
 
 def snapshot_role(pack: Pack) -> str | None:

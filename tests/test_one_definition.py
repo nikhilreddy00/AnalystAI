@@ -510,6 +510,23 @@ def test_a_kpi_value_refuses_what_it_can_not_mean():
     assert m.values["a"] == 1.0 and dp.Measured(0.0).value == 0
 
 
+def test_the_pack_reads_times_through_the_loads_one_rule():
+    """F2 (Domain 7): the pack parsed dates three ways of its own (`_day`, detection's span, the
+    story's dates), each raising on mixed UTC offsets that the load reads. Every pack reader goes
+    through `connectors.base.as_times`, the load's rule (a daylight-saving pair → local wall time,
+    several places → UTC)."""
+    rx = re.compile(r"\bto_datetime\(")
+    own = [f"{p.relative_to(ROOT)}:{i}" for p in PACKAGE
+           for i, line in enumerate(p.read_text().splitlines(), 1)
+           if rx.search(line) and not line.lstrip().startswith("#")]
+    assert own == [], own
+    from connectors.base import as_times
+    dst = pd.Series(["2026-10-25 01:30+02:00", "2026-10-25 02:30+01:00", None])
+    assert [str(t) for t in as_times(dst)] == ["2026-10-25 01:30:00", "2026-10-25 02:30:00", "NaT"]
+    parsed = pd.Series(pd.to_datetime(["2026-10-25"]))
+    assert as_times(parsed) is parsed
+
+
 def test_no_reader_rebuilds_the_window_from_its_span():
     """5.7b-2 (C2, PR1-02): the window's start was rebuilt outside spell.py: the ledger's cohort
     starts by period and its moves' start, the story's year-earlier window, the targeted

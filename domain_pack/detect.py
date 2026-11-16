@@ -55,7 +55,8 @@ def one_series(df: pd.DataFrame, pack: Pack, roles: dict[str, str], level: str) 
     if not (rb and level in rb.levels and flows and date) or pack.snapshot_key in roles:
         return False
     from agents.utils import _in_time_order
-    t = pd.to_datetime(df[date], format="mixed", errors="coerce")
+    from connectors.base import as_times
+    t = as_times(df[date])
     d = _in_time_order(df.loc[t.notna()].assign(_t=t[t.notna()]))
     num = lambda r: pd.to_numeric(d[roles[r]], errors="coerce").fillna(0)   # noqa: E731
     move = sum(num(r) for r in rb.plus if r in roles) - sum(num(r).abs() for r in rb.minus if r in roles)

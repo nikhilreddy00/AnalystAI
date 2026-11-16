@@ -630,7 +630,8 @@ def first_questions(pack: Pack, roles: dict[str, str], df: pd.DataFrame | None =
         if n == "year":   # 13 complete months, by the one coverage rule answers use
             from agents.utils import _local, cut_partial
             date = roles.get(pack.date_role)
-            t = _local(pd.to_datetime(df[date], errors="coerce")).dropna() if date else None
+            from connectors.base import as_times
+            t = _local(as_times(df[date])).dropna() if date else None
             if t is None or t.empty:
                 return False
             months = t.groupby(t.dt.to_period("M")).size().sort_index()
