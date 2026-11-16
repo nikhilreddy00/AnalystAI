@@ -230,6 +230,12 @@ class Spell(_Strict):
     snapshot_every: Literal["month"] | None = None
 
 
+# A two-role expression's operators: a product, a difference, whole days or exact hours from
+# the second role's time to the first's.
+TERM_OPS = ("*", "-", "days", "hours")
+DURATION_OPS = ("days", "hours")
+
+
 class Term(_Strict):
     """One summand: sum / sum_abs of a role or a 2-role product or difference, nunique of a
     role, or another KPI; over the given row kinds (default: the KPI's). `spell` (the pack's
@@ -277,8 +283,8 @@ class Term(_Strict):
                                          self.within)) != 1:
             raise ValueError("a term needs exactly one of sum, sum_abs, nunique, kpi, within, spell")
         expr = self.sum if self.sum is not None else self.sum_abs
-        if isinstance(expr, list) and (len(expr) != 3 or expr[1] not in ("*", "-", "days")):
-            raise ValueError(f"a term's expression is [role, '*', '-' or 'days', role], not {expr}")
+        if isinstance(expr, list) and (len(expr) != 3 or expr[1] not in TERM_OPS):
+            raise ValueError(f"a term's expression is [role, {' | '.join(TERM_OPS)}, role], not {expr}")
         return self
 
     def roles(self) -> list[str]:
@@ -525,9 +531,9 @@ class Pack(_Strict):
                 *self.strong_panel]
         errors += [f"unknown role {r}" for r in refs if r not in self.roles]
         for r, expr in self.derived.items():
-            if r not in self.roles or len(expr) != 3 or expr[1] not in ("*", "-", "days") \
+            if r not in self.roles or len(expr) != 3 or expr[1] not in TERM_OPS \
                     or expr[0] not in self.roles or expr[2] not in self.roles:
-                errors.append(f"derived {r}: a role and [role, '*', '-' or 'days', role]")
+                errors.append(f"derived {r}: a role and [role, {' | '.join(TERM_OPS)}, role]")
         for r, f in self.columns.items():
             errors += [f"columns {r}: unknown role {x}" for x in
                        [r, *f.times, *f.over, *([f.net_of] if f.net_of else []), *f.optional]
@@ -658,6 +664,10 @@ def _column(df: pd.DataFrame, roles: dict[str, str], expr: str | list[str]) -> p
     if expr[1] == "days":   # whole days from b to a (a stay: discharge − admit; same day = 0)
         d = (_day(df[roles[expr[0]]]) - _day(df[roles[expr[2]]])).dt.days
         return d.where(d >= 0).astype(float)
+    if expr[1] == "hours":   # exact hours from b to a (a repair: finish − start), never negative
+        from connectors.base import as_times
+        h = (as_times(df[roles[expr[0]]]) - as_times(df[roles[expr[2]]])).dt.total_seconds() / 3600
+        return h.where(h >= 0).astype(float)
     a, op, b = (pd.to_numeric(df[roles[expr[0]]], errors="coerce"), expr[1],
                 pd.to_numeric(df[roles[expr[2]]], errors="coerce"))
     return a * b if op == "*" else a - b

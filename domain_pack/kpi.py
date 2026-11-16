@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from .pack import (KPI, KPIValue, Measured, MeasuredBy, Pack, Term, Unavailable, Within,
+from .pack import (KPI, KPIValue, TERM_OPS, Measured, MeasuredBy, Pack, Term, Unavailable, Within,
                    _column, _day, _meets, _snapshot_column, and_list, normalize_header, pack_for,
                    snapshot_role, spell_terms)
 from .detect import main_currency, row_kinds
@@ -643,7 +643,7 @@ def kpi_measures(pack: Pack, name: str) -> set[str]:
     for t in (t for alt in [*kpi.num, *(kpi.den or [])] for t in alt):
         expr = t.sum if t.sum is not None else t.sum_abs
         out |= {t.nunique} if t.nunique else set(expr if isinstance(expr, list) else [expr]) - {
-            None, "*", "-", "days"} if expr is not None else set()
+            None, *TERM_OPS} if expr is not None else set()
         out |= {t.within.entity} if t.within else set()
         out |= {pack.spell.entity} if t.spell and pack.spell else set()
         out |= kpi_measures(pack, t.kpi) if t.kpi else set()

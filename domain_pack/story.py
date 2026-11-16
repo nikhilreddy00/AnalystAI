@@ -7,7 +7,7 @@ from typing import NamedTuple
 
 import pandas as pd
 
-from .pack import (CONDITIONS, Cond, KPI, Maturity, Measured, MeasuredBy, Pack, ROW_KINDS,
+from .pack import (CONDITIONS, Cond, DURATION_OPS, KPI, Maturity, Measured, MeasuredBy, Pack, ROW_KINDS,
                    ROW_KIND_COLUMN, Term, _column,
                    _day, _snapshot_column, and_list, defaults_pack, expand_header, normalize_header,
                    ordinal, roles_of, span_words, spell_terms)
@@ -310,7 +310,7 @@ def describe_kpi(pack: Pack, name: str, roles: dict[str, str],
                 f" where {where(t.where)}" if t.where else "")
         expr = t.sum if t.sum is not None else t.sum_abs
         cols = roles[expr] if isinstance(expr, str) else (
-            f"days from {roles[expr[2]]} to {roles[expr[0]]}" if expr[1] == "days" else
+            f"{expr[1]} from {roles[expr[2]]} to {roles[expr[0]]}" if expr[1] in DURATION_OPS else
             f"{roles[expr[0]]} {'×' if expr[1] == '*' else '−'} {roles[expr[2]]}")
         once = " (once per order)" if isinstance(expr, str) and pack.roles[expr].level == "order" \
             and pack.order_key in roles else ""
@@ -507,6 +507,7 @@ def pack_brief(pack: Pack, roles: dict[str, str], concepts: list[str], grain: st
     for r, expr in pack.derived.items():   # with_derived adds these to the frame code reads
         if r not in roles and expr[0] in roles and expr[2] in roles:
             how = (f"days from {named[expr[2]]} to {named[expr[0]]} (same day = 0)" if expr[1] == "days"
+                   else f"exact hours from {named[expr[2]]} to {named[expr[0]]}" if expr[1] == "hours"
                    else f"{named[expr[0]]} {'×' if expr[1] == '*' else '−'} {named[expr[2]]}")
             lines.append(f"Column {pack.roles[r].headers[0]} is in the data for you: {how}. Use it; "
                          "never compute your own, and never report a KPI as if it were a column.")

@@ -104,3 +104,25 @@ def test_two_strong_matches_are_no_match_and_traced(two_packs, monkeypatch):
 def test_the_validator_needs_nothing_retail():
     Pack.model_validate(__import__("yaml").safe_load(BANK))
     assert Path(domain_pack.PACKS / "retail.yaml").exists()
+
+
+SETTLE = BANK.replace("  quantity:", """  settled_at: {kind: date, headers: [settled_at]}
+  quantity:""").replace("kpis:\n", """kpis:
+  - {name: settle_hours, label: Hours to settle, unit: number, unit_word: hours,
+     num: [[{sum: [settled_at, hours, txn_date]}]], den: [[{nunique: account_id}]]}
+""")
+
+
+def test_a_duration_in_hours_reads_the_load_times_and_never_a_negative():
+    """F3 (Domain 7): a sub-day duration, `[end, hours, start]` beside `days` (an IoT repair's
+    start to finish): exact hours through the load's time rule (UTC offsets included), a negative
+    span (finish before start) is no duration."""
+    assert Pack.model_validate(__import__("yaml").safe_load(SETTLE)).kpi("settle_hours")
+    df = pd.DataFrame({"account_id": ["A", "B", "C"], "amount": [1.0, 2.0, 3.0],
+                       "txn_date": ["2026-10-24T22:00:00Z", "2026-10-25T00:30:00Z", "2026-10-25T09:00:00Z"],
+                       "settled_at": ["2026-10-25T01:30:00Z", "2026-10-25T02:00:00Z", "2026-10-25T08:00:00Z"]})
+    roles = {c: c for c in df.columns}
+    hours = domain_pack.pack._column(df, roles, ["settled_at", "hours", "txn_date"])
+    assert hours.tolist()[:2] == [3.5, 1.5] and pd.isna(hours.iloc[2])
+    with pytest.raises(ValueError, match="hours"):
+        Pack.model_validate(__import__("yaml").safe_load(SETTLE.replace("hours, txn_date", "minutes, txn_date")))
