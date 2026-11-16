@@ -163,6 +163,19 @@ def test_a_group_with_a_zero_base_is_said_never_dropped_or_ranked():
     assert only_zero.reason == "zero_denominator"
 
 
+def test_a_small_protected_group_with_a_zero_base_is_hidden_not_said():
+    """F9 review: the zero-base groups skipped the small-cell rule, so a protected group of 2
+    people with no base had its numerator said. Every group is checked first."""
+    from domain_pack.kpi import measure
+    pack = Pack.model_validate(__import__("yaml").safe_load(
+        PER_UNIT + "protected_roles: [status]\nperson_key: account_id\n"))
+    people = [f"P{i}" for i in range(14)]
+    df = pd.DataFrame({"account_id": people, "amount": [10.0] * 14,
+                       "quantity": [1] * 12 + [0, 0], "status": ["posted"] * 12 + ["held"] * 2})
+    got = measure(df, {c: c for c in df.columns}, pack, "per_unit", by="status")
+    assert "held" in got.hidden and got.zero == ()
+
+
 SETTLE = BANK.replace("  quantity:", """  settled_at: {kind: date, headers: [settled_at]}
   quantity:""").replace("kpis:\n", """kpis:
   - {name: settle_hours, label: Hours to settle, unit: number, unit_word: hours,

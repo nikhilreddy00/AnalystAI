@@ -418,8 +418,10 @@ def measure(df: pd.DataFrame, roles: dict[str, str], pack: Pack, name: str,
     if isinstance(value, Unavailable):
         return value
     if by:   # a group with no values is no group (a NaN would break the answer's JSON)
-        hidden = small_groups(df, roles, pack, name, by, kinds.attrs["frame"], value.index, window, cut)
-        zero = tuple((k, v) for k, v in value.attrs.get("zero", {}).items() if k not in hidden)
+        based = value.attrs.get("zero", {})   # a zero-base group is a small cell like any other
+        hidden = small_groups(df, roles, pack, name, by, kinds.attrs["frame"],
+                              value.index.append(pd.Index(list(based))), window, cut)
+        zero = tuple((k, v) for k, v in based.items() if k not in hidden)
         value = value.drop(hidden, errors="ignore").dropna()
         if len(value):   # hidden: 'Not shown: …'; zero: 'no failure in …'
             return MeasuredBy(value.astype(float), tuple(hidden), zero)
