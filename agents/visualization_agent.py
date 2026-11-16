@@ -3121,6 +3121,10 @@ def filtered_dashboard(df: pd.DataFrame, contract: DataContract | None, charts: 
     # the labels the numbers were made for (a date range: "as of 30 Jun 2026", never the
     # report's "31 Oct"): the server's words, as the numbers are
     titles = {c.id: fresh[k].title for c in charts if (k := _chart_key(c)) in fresh}
+    # and the rows each rebuilt chart read (its footer: never the whole data's count beside the
+    # part's numbers; retro 5.7b-3, K6)
+    counts = {c.id: fresh[k].rationale.n_rows for c in charts
+              if (k := _chart_key(c)) in fresh and fresh[k].rationale}
     made = generate_smart_kpis(part, ctx.roles, query, narrative, contract, full=df, window=window, cut=cut)
     return {"charts": out, "tiles": {k.label: k.value for k in made}, "rows": n, "suppressed": False,
-            "contexts": {k.label: k.context or "" for k in made}, "titles": titles}
+            "contexts": {k.label: k.context or "" for k in made}, "titles": titles, "counts": counts}

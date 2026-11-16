@@ -297,6 +297,8 @@ def test_every_filter_partitions_and_matches_the_group_answer(name):
             assert not o["suppressed"] or (o["rows"] is None and not o["tiles"] and not o["charts"]), v
         if not any(o["suppressed"] for o in outs.values()):
             assert sum(o["rows"] for o in outs.values()) == whole["rows"], (name, col, "rows")
+        for v, o in outs.items():   # each rebuilt chart carries the rows it read (its footer: K6)
+            assert set(o["charts"]) == set(o.get("counts", {})), (name, col, v, "counts")
         for v, o in outs.items():   # the strip keeps its tiles: an unavailable one is said (C5)
             if not o["suppressed"]:
                 assert list(o["tiles"]) == list(whole["tiles"]), (name, col, v)

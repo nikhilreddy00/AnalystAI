@@ -52,6 +52,13 @@ test("a suppressed small cell shows no tile value", () => {
   assert.equal(tileView("Discharges", true, { ...server, suppressed: true }), null);
 });
 
+test("a rebuilt chart's footer counts the rows the server read for the filters (K6)", () => {
+  const counted = { ...server, counts: { c1: 1056 } };
+  assert.equal(chartView(kpiChart, true, counted).nRows, 1056);
+  assert.equal(chartView(kpiChart, false, counted).nRows, undefined);   // no filters: as built
+  assert.equal(chartView(kpiChart, true, undefined).nRows, undefined);  // updating: as built
+});
+
 test("a date range relabels its numbers: the server's tile context and chart title", () => {
   const dated = { ...server, contexts: { Discharges: "as of 30 Jun 2026" }, titles: { c1: "Rate (as of 30 Jun 2026)" } };
   assert.equal(tileContextView("Discharges", true, dated), "as of 30 Jun 2026");

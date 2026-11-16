@@ -404,7 +404,8 @@ function ChartGrid({
       charts.map((c) => {
         const view = chartView(c, hasActiveFilters, server, failed);
         return { ...c, title: view.title || c.title, renderedData: view.data, showUnfilteredPill: view.unfiltered,
-                 updating: view.updating };
+                 updating: view.updating,
+                 rationale: c.rationale && view.nRows != null ? { ...c.rationale, n_rows: view.nRows } : c.rationale };
       }),
     [charts, hasActiveFilters, server, failed],
   );

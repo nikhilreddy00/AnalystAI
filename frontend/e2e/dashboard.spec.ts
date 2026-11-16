@@ -30,6 +30,8 @@ test("a filter changes a tile and redraws a chart with the server's numbers (144
   const ticks = hist.locator(".recharts-cartesian-axis-tick-value");
   await expect(ticks.first()).toBeVisible();
   const before = await ticks.allTextContents();
+  const footer = hist.locator("figcaption p").first();   // "3,025 rows": the rows the chart read
+  await expect(footer).toContainText("3,025 rows");
   const tile = page.getByText("Total Orders", { exact: true }).locator("xpath=..");
   await expect(tile.getByText(/overall$/)).toHaveCount(0);
 
@@ -40,6 +42,8 @@ test("a filter changes a tile and redraws a chart with the server's numbers (144
   await expect(page.getByText(/^Showing [\d,]+ of [\d,]+ records$/)).toBeVisible();
   // the histogram: rebuilt by the server for segment B (fewer rows per bin)
   await expect.poll(() => ticks.allTextContents(), { timeout: 10_000 }).not.toEqual(before);
+  // its footer: the rows the server read for segment B, never the whole data's (K6)
+  await expect(footer).toContainText("1,056 rows");
   const histCard = hist.locator("xpath=..");
   await expect(histCard.getByText("shows unfiltered data")).toHaveCount(0);
   await expect(histCard.getByText("Updating for the filters…")).toHaveCount(0);
