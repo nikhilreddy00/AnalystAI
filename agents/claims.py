@@ -98,7 +98,10 @@ def render(t: TypedClaim, findings: AnalysisFindings, name: Callable[[str], str]
     show = (lambda v: f"{v * 100:.1f}%") if rate else (lambda v: f"{v:.1f}%") \
         if s.aggregation == "pct" else (lambda v: f"{v:,.2f}")
     way = "higher than" if a > b else "lower than" if a < b else "the same as"
-    return f"{what[:1].upper() + what[1:]}: {t.a} ({show(a)}) is {way} {t.b} ({show(b)})."
+    ev = next(e for e in findings.evidence if e.id == t.evidence_id)
+    hedge = "" if ev.confidence == "high" or a == b else \
+        f"; with {ev.confidence} confidence ({ev.confidence_reason}), the gap may not hold"
+    return f"{what[:1].upper() + what[1:]}: {t.a} ({show(a)}) is {way} {t.b} ({show(b)}){hedge}."
 
 
 def settle(raw: list, findings: AnalysisFindings,

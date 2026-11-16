@@ -162,6 +162,23 @@ def test_a_metric_is_one_the_analysis_measured_and_a_cause_is_two_names_of_an_as
                                           "evidence_id": "trend:revenue"}), f) == "not_an_association"
 
 
+def test_a_comparison_on_evidence_short_of_high_confidence_says_the_gap_may_not_hold():
+    """ins-15 smoke (5.7b-3): a 20% gap on 24 rows, its test p = 0.065, was written as a plain
+    'North is higher than South'. Code writes the evidence's own confidence into the sentence
+    (the scorer's hedge words read it), and a tie needs none."""
+    from evals.scoring import _HEDGE
+    low = FINDINGS.model_copy(update={"evidence": [
+        e.model_copy(update={"confidence": "low", "confidence_reason": "only 24 rows"})
+        if e.id == "seg:region/revenue" else e for e in FINDINGS.evidence]})
+    up = TypedClaim(kind="comparison", metric="revenue", a="North", b="South",
+                    evidence_id="seg:region/revenue")
+    text = render(up, low)
+    assert text == ("Average revenue: North (113.32) is higher than South (94.03); with low "
+                    "confidence (only 24 rows), the gap may not hold.") and _HEDGE.search(text)
+    assert render(up.model_copy(update={"a": "East"}), low).endswith("is the same as South (94.03).")
+    assert "may not hold" not in render(up, FINDINGS)
+
+
 def test_a_name_of_exactly_the_limit_is_still_a_name():
     assert typed({"kind": "causal", "cause": "x" * 60, "effect": "revenue"}) is not None
 
