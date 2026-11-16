@@ -397,7 +397,8 @@ def _assemble(session: AnalysisSession, ctx: InsightContext, data: dict,
         removed["sentences"] += bool(bad)
         misranked = not bad and claim_rank_conflict(sentence, groups) is not None
         removed["ranks"] += misranked
-        judged = not bad and not misranked and overreach is not None and sentence in overreach
+        judged = not bad and not misranked and (prose_judge.phrase_hit(sentence) or (
+            overreach is not None and sentence in overreach))   # the phrases hold if the judge fails
         removed["overreach"] += judged
         return not bad and not misranked and not judged
 

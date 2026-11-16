@@ -93,3 +93,30 @@ def test_old_review_is_located_by_its_ungrounded_numbers():
     out["review"]["ungrounded"] = ["2.8%"]
     checks, _ = score_quality(labs, out, None)
     assert all(not c["ok"] if c["kind"] == "false_alarm" else c["ok"] for c in checks)
+
+
+def test_the_judge_replay_fails_loudly_never_passes_unjudged(tmp_path, monkeypatch):
+    """5.7b-3 audit (PR7-04): the $0 quality run replays the paid run's judge replies; a case with
+    none, or a reply the judge can't read (its sentences changed), is a failed case, never a
+    review that silently skipped the wording check."""
+    import asyncio
+    import json
+
+    import pytest
+
+    from evals import run
+    from llm.client import RecordedClient
+    (tmp_path / "reports").mkdir()
+    (tmp_path / "reports" / "q.json").write_text(json.dumps({"runs": {
+        "q-02-segment-b-month": [{"replies": []}]}}))
+    monkeypatch.setattr(run, "EVALS_DIR", tmp_path)
+    monkeypatch.setattr(run, "QUALITY_JUDGE_REPORT", "q.json")
+    with pytest.raises(ValueError):
+        run.judge_replay(BY_ID["q-02-segment-b-month"])
+    with pytest.raises(KeyError):
+        run.judge_replay(BY_ID["q-03-top-segment"])
+    monkeypatch.setattr(run, "EVALS_DIR", EVALS_DIR)
+    monkeypatch.setattr(run, "judge_replay", lambda case: RecordedClient(["not the json"]))
+    monkeypatch.setitem(run.QUALITY_CHECKS_ONLY, "on", True)
+    got = asyncio.run(run.run_quality_case(BY_ID["q-01-sales-overview"]))
+    assert "the replayed judge failed" in json.dumps(got)

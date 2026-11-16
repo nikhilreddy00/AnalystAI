@@ -142,8 +142,11 @@ def test_a_sentence_the_judge_flags_is_removed_and_said_and_a_failed_judge_is_sa
     assert report.executive_view.findings[0].text == "Segment B revenue fell 12.6% in Oct 2026 vs Sep 2026."
     assert ("Own: 1 cut." if pack == "own words" else FREE_TEXT_REMOVED) in report.analyst_view.caveats
     assert ("insight", insight_agent.PROMPT_VERSION, "overreach_removed") in traced
+    grade = "Segment B revenue sits below the industry average."   # the $0 phrases hold regardless
+    good["findings"][0]["text"] += f" {grade}"
     report, _ = _run(None, responses=[json.dumps(good), "not the json"])
     assert cause in report.executive_view.findings[0].text
+    assert grade not in report.executive_view.findings[0].text
     assert ("The written summary could not be checked for causes or grades the data can't show; "
             "read its wording with care.") in report.analyst_view.caveats
 
@@ -174,17 +177,21 @@ def test_typed_claims_are_written_by_code_and_a_verdict_is_said_without_one(monk
 
 def test_typed_claims_are_the_first_two_in_display_names_under_the_executive_rules():
     """At most 2 typed claims and 1 benchmark caveat; a name is the report's display name, and a
-    written sentence still meets the executive rules (no jargon)."""
+    comparison is said under its breakdown's measure, never the label the model wrote (5.7b-3
+    audit: 'units' over revenue's values)."""
     seg = "seg:segment/revenue"
     good = _good(claims=[
         {"kind": "comparison", "metric": "units", "a": "B", "b": "A", "evidence_id": seg},
-        {"kind": "comparison", "metric": "revenue regression", "a": "B", "b": "A", "evidence_id": seg},
-        {"kind": "causal", "cause": "discount", "effect": "revenue", "evidence_id": "corr:revenue__discount"},
+        {"kind": "causal", "cause": "marketing_spend", "effect": "revenue",
+         "evidence_id": "corr:revenue__marketing_spend"},
+        {"kind": "comparison", "metric": "revenue", "a": "A", "b": "B", "evidence_id": seg},
         {"kind": "benchmark", "metric": "revenue", "verdict": "excellent", "source": "peers"},
-        {"kind": "benchmark", "metric": "units", "verdict": "poor", "source": "peers"}])
-    report, _ = _run(good, _named(units="units sold"))
+        {"kind": "benchmark", "metric": "marketing spend", "verdict": "poor", "source": "peers"}])
+    report, _ = _run(good, _named(revenue="sales revenue"))
     assert [c.text for c in report.executive_view.findings if c.typed] == [
-        "Units sold: B (98.06) is lower than A (121.29)."]
+        "Average sales revenue: B (98.06) is lower than A (121.29).",
+        "Marketing spend and sales revenue move together in the data: an association, not proof "
+        "that one causes the other."]
     assert sum("no outside benchmark" in c for c in report.analyst_view.caveats) == 1
 
 

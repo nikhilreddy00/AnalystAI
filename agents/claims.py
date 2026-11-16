@@ -46,18 +46,36 @@ def _pair(t: TypedClaim, findings: AnalysisFindings) -> tuple[float, float, bool
     return a, b, s.aggregation == "ratio" and all(0 <= v <= 1 for v in by.values())
 
 
+def _named(name: str, ev) -> bool:
+    """`name` is whole words of the evidence's claim or id (a metric under another's label, or a
+    one-letter name inside a word, is not)."""
+    n = _norm(name)
+    said = _norm(ev.claim) + " " + _norm(ev.id)
+    return bool(n) and re.search(rf"(?<![^\W_]){re.escape(n)}(?![^\W_])", said) is not None
+
+
+_AGG = {"mean": "average", "sum": "total"}   # a breakdown's aggregation, said
+
+# what an association can cite: a computed co-movement or group difference (never a trend line,
+# an outlier or a profile)
+_ASSOCIATED = ("correlation", "segment", "test")
+
+
 def check(t: TypedClaim, findings: AnalysisFindings) -> str | None:
     """None when the claim holds against its evidence, else why it is refused (a rule label)."""
-    if t.kind == "benchmark":
-        return None if t.metric else "no_metric"
+    if t.kind == "benchmark":   # its metric is one the analysis measured
+        if not t.metric:
+            return "no_metric"
+        return None if any(_named(t.metric, e) for e in findings.evidence) else "metric_not_in_evidence"
     ev = next((e for e in findings.evidence if e.id == t.evidence_id), None)
     if ev is None:
         return "unknown_evidence"
-    if t.kind == "causal":   # both names are the cited evidence's own
-        said = _norm(ev.claim) + " " + _norm(ev.id)
-        return None if t.cause and t.effect and _norm(t.cause) in said and _norm(t.effect) in said \
-            else "names_not_in_evidence"
-    return None if t.metric and _pair(t, findings) else "groups_not_in_evidence"
+    if t.kind == "causal":   # two different names, both the cited association's own
+        if ev.kind not in _ASSOCIATED:
+            return "not_an_association"
+        return None if _named(t.cause, ev) and _named(t.effect, ev) \
+            and _norm(t.cause) != _norm(t.effect) else "names_not_in_evidence"
+    return None if _pair(t, findings) else "groups_not_in_evidence"
 
 
 def render(t: TypedClaim, findings: AnalysisFindings, name: Callable[[str], str] = str) -> str:
@@ -73,9 +91,12 @@ def render(t: TypedClaim, findings: AnalysisFindings, name: Callable[[str], str]
         return (f"{up(t.metric)} is reported without a verdict: this data holds no outside "
                 "benchmark to judge it against.")
     a, b, rate = _pair(t, findings)
+    s = findings_by_id(findings)[t.evidence_id]   # the breakdown's own measure, never the model's label
+    what = (name(s.label) if s.label else
+            f"{_AGG.get(s.aggregation, s.aggregation)} {name(s.metric_column)}").replace("_", " ")
     show = (lambda v: f"{v * 100:.1f}%") if rate else (lambda v: f"{v:,.2f}")
     way = "higher than" if a > b else "lower than" if a < b else "the same as"
-    return f"{up(t.metric)}: {t.a} ({show(a)}) is {way} {t.b} ({show(b)})."
+    return f"{what[:1].upper() + what[1:]}: {t.a} ({show(a)}) is {way} {t.b} ({show(b)})."
 
 
 def settle(raw: list, findings: AnalysisFindings,

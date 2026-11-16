@@ -45,9 +45,9 @@ def test_a_benchmark_verdict_is_never_said_and_a_comparison_reads_its_direction_
     assert "healthy" not in render(bench, FINDINGS) and "no outside benchmark" in render(bench, FINDINGS)
     up = TypedClaim(kind="comparison", metric="mean revenue", a="South", b="North",
                     evidence_id="seg:region/revenue")
-    assert render(up, FINDINGS) == "Mean revenue: South (94.03) is lower than North (113.32)."
+    assert render(up, FINDINGS) == "Average revenue: South (94.03) is lower than North (113.32)."
     tie = up.model_copy(update={"a": "east", "b": "South"})
-    assert render(tie, FINDINGS) == "Mean revenue: east (94.03) is the same as South (94.03)."
+    assert render(tie, FINDINGS) == "Average revenue: east (94.03) is the same as South (94.03)."
     rate = TypedClaim(kind="comparison", metric="churn rate", a="Basic", b="Pro",
                       evidence_id="seg:plan/churned:ratio:churn_rate")
     assert render(rate, FINDINGS) == "Churn rate: Basic (21.0%) is higher than Pro (5.0%)."
@@ -105,9 +105,9 @@ def test_a_comparison_is_a_percent_only_for_a_ratio_whose_every_value_is_0_to_1(
     """Its ends included: a 0 and a 1 are rates; a mean in 0-1 or a ratio above 1 is not."""
     f = _with(("a", "ratio", {"A": 0.0, "B": 1.0}), ("c", "mean", {"C": 0.25, "D": 0.5}),
               ("e", "ratio", {"E": 1.5, "F": 0.5}))
-    assert _cmp(f, "seg:a/m:ratio", "A", "B") == "M: A (0.0%) is lower than B (100.0%)."
-    assert _cmp(f, "seg:c/m", "C", "D") == "M: C (0.25) is lower than D (0.50)."
-    assert _cmp(f, "seg:e/m:ratio", "E", "F") == "M: E (1.50) is higher than F (0.50)."
+    assert _cmp(f, "seg:a/m:ratio", "A", "B") == "Ratio m: A (0.0%) is lower than B (100.0%)."
+    assert _cmp(f, "seg:c/m", "C", "D") == "Average m: C (0.25) is lower than D (0.50)."
+    assert _cmp(f, "seg:e/m:ratio", "E", "F") == "Ratio m: E (1.50) is higher than F (0.50)."
 
 
 def test_a_comparison_never_names_an_unrankable_group_and_reads_names_loosely():
@@ -133,6 +133,27 @@ def test_a_benchmark_needs_a_metric_and_is_said_in_one_sentence():
     assert render(bench, FINDINGS) == ("Net revenue retention is reported without a verdict: this "
                                        "data holds no outside benchmark to judge it against.")
     assert check(bench.model_copy(update={"metric": ""}), FINDINGS) == "no_metric"
+
+
+def test_a_metric_is_one_the_analysis_measured_and_a_cause_is_two_names_of_an_association():
+    """5.7b-3 audit (D1-09): a comparison is said under its breakdown's own measure (never revenue's
+    values under a churn label the model wrote), a benchmark's metric is a measured one (never a
+    verdict or a number), and a cause needs two whole names of a correlation, breakdown or test."""
+    up = TypedClaim(kind="comparison", metric="churn rate", a="South", b="North",
+                    evidence_id="seg:region/revenue")
+    assert render(up, FINDINGS) == "Average revenue: South (94.03) is lower than North (113.32)."
+    assert render(up.model_copy(update={"metric": "world class 99%"}), FINDINGS) == render(up, FINDINGS)
+    bench = TypedClaim(kind="benchmark", metric="Churn is 99% above norm", verdict="weak")
+    assert check(bench, FINDINGS) == "metric_not_in_evidence"
+    assert check(bench.model_copy(update={"metric": "churn rate"}), FINDINGS) is None
+    cause = TypedClaim(kind="causal", cause="a", effect="e", evidence_id="corr:marketing_spend__revenue")
+    assert check(cause, FINDINGS) == "names_not_in_evidence"
+    assert check(cause.model_copy(update={"cause": "revenue", "effect": "revenue"}),
+                 FINDINGS) == "names_not_in_evidence"
+    trend = _ev("trend:revenue", "trend", "revenue rose with month")
+    f = FINDINGS.model_copy(update={"evidence": [*FINDINGS.evidence, trend]})
+    assert check(cause.model_copy(update={"cause": "month", "effect": "revenue",
+                                          "evidence_id": "trend:revenue"}), f) == "not_an_association"
 
 
 def test_a_name_of_exactly_the_limit_is_still_a_name():

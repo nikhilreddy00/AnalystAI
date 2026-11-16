@@ -94,6 +94,7 @@ QUALITY_CARD = AgentCard(
 _PROMPTS = Path(__file__).parent.parent / "prompts" / "quality"
 _SYSTEM = (QUALITY_CARD.render() + "\n\n" + (_PROMPTS / f"{PROMPT_VERSION}.md").read_text()
            + "\n" + UNTRUSTED_NOTE)
+JUDGE_FAILED = " The wording check could not run: causes and grades were not checked."
 _VERIFY_VERSION = "verify_v2"   # v2: the critic's definition of contradicted
 _VERIFY_SYSTEM = (_PROMPTS / f"{_VERIFY_VERSION}.md").read_text() + "\n" + UNTRUSTED_NOTE
 _LABELS = ("unsupported", "contradicted", "overstated")
@@ -427,7 +428,7 @@ async def run_quality_check(session: AnalysisSession, llm: LLMClient, critic: bo
         got = await prose_judge.flagged(said, llm)
         overreach = None if got is None else {said[i] for i in got}
         if got is None:
-            note = " The wording check could not run: causes and grades were not checked."
+            note = JUDGE_FAILED
     flags = check_claims(session, report, ctx, overreach)
     gaps: list[str] = []
     concerns: list[str] = []

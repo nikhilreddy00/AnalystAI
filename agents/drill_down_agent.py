@@ -163,8 +163,7 @@ Answer in JSON as specified.
 
     text = str(payload.get("answer_text") or "").strip()
     # a cause or a benchmark verdict in the answer (ADR-0009), judged where the checks run
-    said = [s for s in _SENTENCE_RE.split(text) if s.strip()] \
-        if contract is not None and pack_for(contract.domain) else []
+    said = [s for s in _SENTENCE_RE.split(text) if s.strip()]
     got = await prose_judge.flagged(said, get_client())
     answer = checked_answer(text, session,
                             [report.executive_summary, report.technical_findings,
@@ -228,16 +227,14 @@ def checked_answer(answer: str, session: AnalysisSession, shown: list,
     read, and the answer says so), is removed and counted. Nothing left: a fixed reply, never an
     unchecked one."""
     contract = session.data_contract
-    # any pack match: a weak one only hedges defaults, but an ungrounded number or a cause the
-    # data can't show is wrong whatever the confidence. No pack: answers as before.
-    pack = pack_for(contract.domain) if contract is not None else None
-    if pack is None:
-        return answer
+    # a cause or a grade the data can't show is wrong on any data (5.7b-3 audit); the number check
+    # runs on any pack match (a weak one only hedges defaults). No pack: numbers as before.
+    numbers = contract is not None and pack_for(contract.domain) is not None
     has_dates = bool(contract and contract.date_columns)
     kept, dropped = [], 0
     for s in (x for x in _SENTENCE_RE.split(answer) if x.strip()):
-        if ungrounded_numbers(without_dates(s, has_dates), shown) or prose_judge.phrase_hit(s) \
-                or (overreach is not None and s in overreach):
+        if (numbers and ungrounded_numbers(without_dates(s, has_dates), shown)) \
+                or prose_judge.phrase_hit(s) or (overreach is not None and s in overreach):
             dropped += 1
         else:
             kept.append(s)

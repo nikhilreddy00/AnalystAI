@@ -41,7 +41,8 @@ async def flagged(sentences: list[str], llm: LLMClient) -> set[int] | None:
                                     messages=[{"role": "user", "content": delimit_untrusted(body)}])
         # the first JSON object (the model may explain after it): a verdict per sentence, by number
         says = json.loads(re.search(r"\{[^{}]*\}", result.text).group())
-        if set(says) != {str(n) for n in range(len(ask))}:   # a skipped sentence is unjudged
+        if set(says) != {str(n) for n in range(len(ask))} \
+                or not set(says.values()) <= {"cause", "verdict", "neither"}:   # unjudged, or an unknown label
             raise ValueError
         return hits | {i for n, i in enumerate(ask) if says[str(n)] in ("cause", "verdict")}
     except (AgentError, AttributeError, json.JSONDecodeError, KeyError, TypeError, ValueError):

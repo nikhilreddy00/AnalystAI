@@ -898,7 +898,8 @@ def test_a_drill_down_answer_keeps_only_what_the_analysis_supports():
 def test_the_drill_down_handler_judges_its_answer_where_a_pack_matches(recorded_llm):
     """run_drill_down_agent: on pack data the judge reads each sentence and a flagged one goes
     (no note); a failed judge keeps the rest with the note; the row count is shown to the checks;
-    no pack (or no contract): no judge call, the answer as given; an empty answer: the fixed reply."""
+    no pack (or no contract): still judged (5.7b-3 audit: a cause is wrong on any data), its numbers
+    unchecked as before; an empty answer: the fixed reply."""
     import asyncio
     import json
     from agents.drill_down_agent import run_drill_down_agent
@@ -928,9 +929,11 @@ def test_the_drill_down_handler_judges_its_answer_where_a_pack_matches(recorded_
     none = AnalysisSession(session_id="t", insight_report=report)
     for other in (plain, none):
         n = len(recorded_llm.calls)
-        recorded_llm.responses += [json.dumps({"answer_text": "It was 99,999."})]
-        assert ask(other).answer_text == "It was 99,999."
-        assert len(recorded_llm.calls) == n + 1   # no judge call
+        recorded_llm.responses += [json.dumps({"answer_text": "It was 99,999. Price drove it."}),
+                                   '{"0": "neither", "1": "cause"}']
+        assert ask(other).answer_text == \
+            "It was 99,999. (1 sentence(s) that the analysis can't support were removed.)"
+        assert recorded_llm.calls[n + 1]["agent"] == "prose_judge"
 
 
 async def test_first_questions_are_the_domains_when_the_model_fails(recorded_llm):

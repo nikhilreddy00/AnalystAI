@@ -791,14 +791,17 @@ QUALITY_JUDGE_REPORT: str | None = None
 
 def judge_replay(case: dict):
     """The paid run's replies for this case in a RecordedClient: the $0 suite runs the prose judge
-    on the production path. A case that run didn't cover fails loudly (KeyError), never passes."""
+    on the production path. A case that run didn't cover, or covered with no replies, fails loudly
+    (KeyError, ValueError), never passes."""
     from llm.client import RecordedClient
     runs = json.loads((EVALS_DIR / "reports" / QUALITY_JUDGE_REPORT).read_text())["runs"][case["id"]]
-    return RecordedClient([r["text"] for r in runs[0].get("replies", [])])
+    if not (replies := runs[0]["replies"]):
+        raise ValueError(f"{case['id']}: the paid run stored no replies")
+    return RecordedClient([r["text"] for r in replies])
 
 
 async def run_quality_case(case: dict) -> dict:
-    from agents.quality_agent import report_claims, run_quality_check
+    from agents.quality_agent import JUDGE_FAILED, report_claims, run_quality_check
     from orchestrator.state import InsightReport
     report, _ = quality_report(case)
     session, past, bundle = await insight_bundle(_insight_case(case["insight_case"]))
@@ -813,6 +816,8 @@ async def run_quality_case(case: dict) -> dict:
         review = (await run_quality_check(session, llm, critic=not checks_only, past=past or None,
                                           judge=not checks_only or bool(QUALITY_JUDGE_REPORT))
                   ).model_dump(mode="json")
+        if checks_only and QUALITY_JUDGE_REPORT and JUDGE_FAILED in review["review_summary"]:
+            raise ValueError(f"{case['id']}: the replayed judge failed (its sentences changed?)")
     except Exception as exc:   # a loud failure is a failed case, not a crashed run
         error = f"{type(exc).__name__}: {exc}"
     output = {"review": review, "claims": insight_claims(report), "bundle": bundle,

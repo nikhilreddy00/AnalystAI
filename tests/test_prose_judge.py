@@ -59,7 +59,8 @@ def test_the_judge_reads_one_verdict_per_sentence_by_its_number():
 
 
 @pytest.mark.parametrize("reply", ['{"0": "cause"}', '{"0": "cause", "1": "neither", "2": "x"}',
-                                   "no json", '{"yes": [0]}'])
+                                   "no json", '{"yes": [0]}',
+                                   '{"0": "causal", "1": "neither"}'])   # an unknown label (audit)
 def test_a_reply_that_skips_a_sentence_or_isnt_the_json_fails_closed(reply):
     """G3: a sentence with no verdict is unjudged, never passed as sound: the judge returns None
     and its caller says so."""
@@ -133,9 +134,9 @@ def test_with_a_judge_that_flags_nothing_every_overreach_sentence_passes_untouch
     assert len(said) >= 15
     for s in said:
         hit = phrase_hit(s)
-        # insight's phrase hits come through the judge's own result (flagged), here: nothing
+        # insight reads the phrases itself too, so they hold when the judge fails
         report = _assemble(session, ctx, {"headline": {"text": s, "evidence": [ev]}}, set())
-        assert report.executive_view.headline == s, s
+        assert (report.executive_view.headline == s) is not hit, s
         session.insight_report = InsightReport(
             executive_summary=s, technical_findings=[], recommended_actions=[], anomaly_alerts=[],
             proactive_questions=[], methodology_notes="",

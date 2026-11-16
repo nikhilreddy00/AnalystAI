@@ -1038,6 +1038,20 @@ def test_an_unavailable_move_draws_no_bridge_and_a_spell_without_moves_none():
     assert _bridge("hr_snapshots")[2] is None
 
 
+def test_the_bridge_is_drawn_without_a_group_and_its_rationale_names_the_rest_bar():
+    """5.7b-3 audit: data with no overview group still gets its bridge (it came only before a group
+    chart), and a rest bar, the one bar no tile measures, is named so in the rationale."""
+    from agents.visualization_agent import build_context, pack_overview_charts
+    clean, contract, chart, *_ = _bridge("saas_subscriptions")
+    assert "but the last" in chart.rationale.reason
+    assert "but the last" not in _bridge("saas_mrr_snapshots")[2].rationale.reason
+    groups = set(dp.pack_for("saas").overview_groups)
+    bare = contract.model_copy(update={"roles": {r: c for r, c in contract.roles.items()
+                                                 if r not in groups}})
+    rules = [c.rationale.rule for c in pack_overview_charts(clean, build_context(clean, contract=bare))]
+    assert "pack:bridge→bars" in rules
+
+
 def test_the_ledger_charts_lint_clean_and_keep_their_colours_under_a_filter():
     """finalize_charts keeps both (a rationale, no lint objection); each bridge step keeps its
     colour whatever a filter does to the values (colours are by position in the frontend)."""
