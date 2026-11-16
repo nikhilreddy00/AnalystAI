@@ -108,6 +108,12 @@ def test_a_comparison_is_a_percent_only_for_a_ratio_whose_every_value_is_0_to_1(
     assert _cmp(f, "seg:a/m:ratio", "A", "B") == "Ratio m: A (0.0%) is lower than B (100.0%)."
     assert _cmp(f, "seg:c/m", "C", "D") == "Average m: C (0.25) is lower than D (0.50)."
     assert _cmp(f, "seg:e/m:ratio", "E", "F") == "Ratio m: E (1.50) is higher than F (0.50)."
+    # audit pass 2: each aggregation said, a pct (0-100) as a percent
+    f = _with(("p", "pct", {"P": 40.0, "Q": 60.0}), ("n", "count", {"N": 3, "O": 3}),
+              ("s", "sum", {"S": 1200.5, "T": 10.0}))
+    assert _cmp(f, "seg:p/m:pct", "P", "Q") == "Percent of m: P (40.0%) is lower than Q (60.0%)."
+    assert _cmp(f, "seg:n/m:count", "N", "O") == "Count of m: N (3.00) is the same as O (3.00)."
+    assert _cmp(f, "seg:s/m:sum", "S", "T") == "Total m: S (1,200.50) is higher than T (10.00)."
 
 
 def test_a_comparison_never_names_an_unrankable_group_and_reads_names_loosely():

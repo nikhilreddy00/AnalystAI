@@ -2786,7 +2786,8 @@ def pack_overview_charts(df: pd.DataFrame, ctx: VizContext) -> list[ChartConfig]
     """A strong-matched domain's overview opens with its headline KPI (the pack's first money
     tile) by month and by its first `overview_groups` role present: the charts its analyst reads
     first. Built by the KPI answers' code (handle_kpi), so a chart and an answer are one number.
-    No pack, or a KPI the data can't compute: none."""
+    No pack, or a KPI the data can't compute: none for it. A ledger's bridge follows the lines,
+    whatever comes after (bridge_chart: None without one)."""
     from agents.targeted_analysis_agent import handle_kpi   # it imports this module
 
     pack = defaults_pack(ctx.contract)

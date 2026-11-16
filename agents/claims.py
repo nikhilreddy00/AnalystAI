@@ -54,7 +54,8 @@ def _named(name: str, ev) -> bool:
     return bool(n) and re.search(rf"(?<![^\W_]){re.escape(n)}(?![^\W_])", said) is not None
 
 
-_AGG = {"mean": "average", "sum": "total"}   # a breakdown's aggregation, said
+# a breakdown's aggregation, said (SegmentResult: sum | mean | count | pct | ratio)
+_AGG = {"mean": "average", "sum": "total", "count": "count of", "pct": "percent of"}
 
 # what an association can cite: a computed co-movement or group difference (never a trend line,
 # an outlier or a profile)
@@ -94,7 +95,8 @@ def render(t: TypedClaim, findings: AnalysisFindings, name: Callable[[str], str]
     s = findings_by_id(findings)[t.evidence_id]   # the breakdown's own measure, never the model's label
     what = (name(s.label) if s.label else
             f"{_AGG.get(s.aggregation, s.aggregation)} {name(s.metric_column)}").replace("_", " ")
-    show = (lambda v: f"{v * 100:.1f}%") if rate else (lambda v: f"{v:,.2f}")
+    show = (lambda v: f"{v * 100:.1f}%") if rate else (lambda v: f"{v:.1f}%") \
+        if s.aggregation == "pct" else (lambda v: f"{v:,.2f}")
     way = "higher than" if a > b else "lower than" if a < b else "the same as"
     return f"{what[:1].upper() + what[1:]}: {t.a} ({show(a)}) is {way} {t.b} ({show(b)})."
 
