@@ -26,8 +26,9 @@ uploads/
 # Session data (per-session artifacts and parquet cache)
 session_data/
 
-# Local agent-tooling state
+# Local agent-tooling state (.claude/: local settings, hooks and worktrees, never committed)
 .claude-flow/
+.claude/
 
 # LLM call traces (Phase 1)
 traces/
