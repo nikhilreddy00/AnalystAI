@@ -45,7 +45,9 @@ test("the MRR bridge and NRR by month-end follow a segment filter (1440 px)", as
   const line = await shapes(nrr, ".recharts-line-curve");
 
   await page.locator("#dashboard-filters").getByText("SMB", { exact: true }).first().click();
-  await expect(page.getByText(/^Showing [\d,]+ of [\d,]+ records$/)).toBeVisible({ timeout: 10_000 });
+  // the server rebuilds the ledger for the part: ~4 s on a laptop, 2-3x that on a CI runner, plus
+  // the mock's first import of the agents
+  await expect(page.getByText(/^Showing [\d,]+ of [\d,]+ records$/)).toBeVisible({ timeout: 45_000 });
   await expect.poll(() => shapes(bridge, ".recharts-rectangle"), { timeout: 10_000 })
     .not.toEqual(bars);
   await expect.poll(() => shapes(nrr, ".recharts-line-curve"), { timeout: 10_000 }).not.toEqual(line);
