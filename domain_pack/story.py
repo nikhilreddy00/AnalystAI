@@ -270,11 +270,19 @@ def describe_kpi(pack: Pack, name: str, roles: dict[str, str],
     also says how each part was counted (an answer's 'How': the 12 month-ends, exits as events,
     who is out), never just 'separations ÷ headcount'."""
     kpi = pack.kpi(name)
+    # a derived role (measure adds it) is named by what it is: 'hours from start to finish'
+    roles = {**{r: f"{e[1]} from {roles[e[2]]} to {roles[e[0]]}" for r, e in pack.derived.items()
+                if e[1] in DURATION_OPS and e[0] in roles and e[2] in roles}, **roles}
+
+    def scaled(text: str, times: float) -> str:   # ÷ 60 (minutes to hours), never '0.0166667 ×'
+        n = round(1 / times) if times else 0
+        return text if times == 1 else f"{text} ÷ {n}" if n > 1 and abs(n * times - 1) < 1e-9 \
+            else f"{times:g} × {text}"
 
     def term(t: Term) -> str:
         if t.kpi:
             how = describe_kpi(pack, t.kpi, roles, present).rstrip(".")
-            return (f"{t.times:g} × " if t.times != 1 else "") + pack.kpi(t.kpi).phrase + (
+            return scaled(pack.kpi(t.kpi).phrase, t.times) + (
                 f" ({how[:1].lower() + how[1:]})" if parts and kpi.den is not None
                 and spell_terms(pack, t.kpi) else "")
         if t.nunique:
@@ -314,8 +322,8 @@ def describe_kpi(pack: Pack, name: str, roles: dict[str, str],
             f"{roles[expr[0]]} {'×' if expr[1] == '*' else '−'} {roles[expr[2]]}")
         once = " (once per order)" if isinstance(expr, str) and pack.roles[expr].level == "order" \
             and pack.order_key in roles else ""
-        return f"{'sum of |' + cols + '|' if t.sum_abs is not None else 'sum of ' + cols}{once}" + (
-            f" where {where(t.where)}" if t.where else "")
+        return scaled(f"{'sum of |' + cols + '|' if t.sum_abs is not None else 'sum of ' + cols}{once}",
+                      t.times) + (f" where {where(t.where)}" if t.where else "")
 
     def where(groups: list[list[Cond]]) -> str:
         def cond(c: Cond) -> str:

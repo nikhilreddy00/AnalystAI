@@ -79,6 +79,18 @@ def test_one_sensors_reading_over_time_is_a_control_chart_with_its_limits_said()
     assert not r.chart_configs[0].reference_lines and "no variation" in r.answer_text
 
 
+def test_how_a_kpi_was_computed_names_derived_columns_and_unit_steps_in_words():
+    """$0 answer rehearsal: MTTR's 'How' was ', divided by .' (the derived repair hours had no
+    words) and MTBF's read '0.0166667 × run time' (minutes to hours)."""
+    how = dp.describe_kpi(IOT, "mttr", WO_ROLES)
+    assert "hours from actstart to actfinish" in how and "divided by distinct wonum" in how, how
+    shifts = {"planned_minutes": "Planned", "unplanned_downtime": "Down", "failures": "Failures"}
+    how = dp.describe_kpi(IOT, "mtbf", shifts)
+    assert "run time ÷ 60" in how.lower() and "0.0166" not in how, how
+    how = dp.describe_kpi(IOT, "oee", {**shifts, "ideal_cycle_s": "Cycle", "good_count": "Good"})
+    assert "cycle × good ÷ 60" in how.lower(), how   # seconds × units → minutes, said
+
+
 def test_mttr_reads_finished_corrective_orders_in_exact_hours():
     """T3/T4/T19, S-c: a PM is no repair, an open order has no finish yet, a cancelled one is no
     work; a repair across the 25 Oct 2026 clock change is 2.75 h in UTC. (2.75 + 1) / 2."""

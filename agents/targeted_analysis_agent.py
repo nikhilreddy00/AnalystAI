@@ -1051,6 +1051,8 @@ def _missing(pack, kpi: str, roles: dict) -> str:
             if f := pack.columns.get(n):   # a column the product builds: what it builds it from
                 inputs = [x for x in [*f.times, *f.over] if x not in f.optional]
                 return f"{n.replace('_', ' ')} (or " + " and ".join(x.replace("_", " ") for x in inputs) + ")"
+            if n not in pack.roles and (sub := pack.kpi(n)):   # a KPI it builds on: its label
+                return sub.phrase
             return n.replace("_", " ")
         return sorted(said(n) for n in need)
 

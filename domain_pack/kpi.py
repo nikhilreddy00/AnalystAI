@@ -328,11 +328,11 @@ def _kpi_value(df, kinds, roles, pack, kpi: KPI, by):
 def zero_note(kpi: KPI, zero: tuple, fmt) -> str:
     """THE sentence for a ratio's groups whose base is 0, in the KPI's words ('S07: no failure
     in 1,240 h'), else generic ones; '' when there are none."""
-    if not zero:
-        return ""
-    if kpi.zero_words:
-        return " " + "; ".join(f"{g}: {kpi.zero_words.format(num=fmt(n))}" for g, n in zero) + "."
-    return " Not measurable, its base is 0: " + ", ".join(str(g) for g, _ in zero) + "."
+    said = [(g, n) for g, n in zero if kpi.zero_words and n]   # nothing either side: not measurable
+    rest = [g for g, n in zero if (g, n) not in said]
+    return ("".join([" " + "; ".join(f"{g}: {kpi.zero_words.format(num=fmt(n))}" for g, n in said) + "."]
+                    if said else [])
+            + (" Not measurable, its base is 0: " + ", ".join(str(g) for g in rest) + "." if rest else ""))
 
 
 def unavailable_words(u: Unavailable, pack: Pack) -> str:

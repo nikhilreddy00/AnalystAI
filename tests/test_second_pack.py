@@ -227,7 +227,9 @@ def test_a_group_with_a_zero_base_is_said_never_dropped_or_ranked():
     roles = {c: c for c in df.columns}
     got = measure(df, roles, pack, "per_unit", by="account_id")
     assert got.values.to_dict() == {"A": 10.0} and dict(got.zero) == {"B": 50.0, "C": 0.0}
-    assert zero_note(pack.kpi("per_unit"), got.zero, str) == " B: none counted against 50.0; C: none counted against 0.0."
+    # C has nothing on either side (a machine never run): not measurable, never "none in 0"
+    assert zero_note(pack.kpi("per_unit"), got.zero, str) == \
+        " B: none counted against 50.0. Not measurable, its base is 0: C."
     plain = measure(df, roles, pack, "per_unit_plain", by="account_id")
     assert zero_note(pack.kpi("per_unit_plain"), plain.zero, str) == \
         " Not measurable, its base is 0: B, C."
