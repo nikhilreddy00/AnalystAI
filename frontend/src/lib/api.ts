@@ -263,6 +263,8 @@ export interface FilteredDashboard {
    * 30 Jun 2026", never the report's date): the server's words, as its numbers are. */
   contexts?: Record<string, string>;
   titles?: Record<string, string>;
+  /** The rows each rebuilt chart read (its footer), never the whole data's count. */
+  counts?: Record<string, number>;
   rows: number | null;   // null: a small cell on patient data (its count is not shown either)
   /** Patient data filtered below 11 records: no number is shown (a small cell). */
   suppressed?: boolean;

@@ -49,7 +49,7 @@ One row per audit, gate, browser or retro finding, so recurrences per class can 
 | D1-30 | C0 | D1, D2 | A tile's value (D1) or context (D2) cut off | Ellipsis and wrap | `frontend/e2e/units.spec.ts` | 1 |
 | D1-31 | C0 | D1, D2 | The overview lacked the domain's first charts: net sales by month and product (D1), NPL by product (D2) | `pack_overview_charts`, `overview_groups` | `tests/test_retail_pack.py::test_a_domain_overview_opens_with_its_headline_kpi_by_month_and_by_group`; `tests/test_healthcare_pack.py::test_overview_kpis_choose_the_headline_and_the_rates_by_group` | 1 |
 | D1-32 | C0 | D1 | A period follow-up left the report panel empty (no chart) | Two-period bars; a chartless answer shows its text | unenforced | 0 |
-| D1-33 | C1 | D1, D3, D4, D5 | Filtered dashboard numbers were wrong or absent: pack tiles not recomputed (D1), filters changed nothing (D3), browser copies of the count rules (D4), the KPI-over-time line ignored filters (D5) | The server computes every filtered number; the browser never computes | `tests/test_dashboard_filters.py::test_every_filter_partitions_and_matches_the_group_answer`; `tests/test_dashboard_filters.py::test_a_filter_reaches_the_kpi_over_time_and_every_donut`; `frontend/src/lib/filteredView.test.ts`; `frontend/e2e/dashboard.spec.ts` | 3 |
+| D1-33 | C1 | D1, D3, D4, D5, PR16 | Filtered dashboard numbers were wrong or absent: pack tiles not recomputed (D1), filters changed nothing (D3), browser copies of the count rules (D4), the KPI-over-time line ignored filters (D5); PR16 (pre-Domain-7 browser check): a rebuilt chart's footer kept the whole data's row count beside the part's numbers ("3,025 rows" on segment B's 1,056) | The server computes every filtered number; the browser never computes; PR16: the server returns each rebuilt chart's count (`counts`) | `tests/test_dashboard_filters.py::test_every_filter_partitions_and_matches_the_group_answer`; `tests/test_dashboard_filters.py::test_a_filter_reaches_the_kpi_over_time_and_every_donut`; `frontend/src/lib/filteredView.test.ts`; `frontend/e2e/dashboard.spec.ts` | 4 |
 | D1-34 | C1 | D1, D2 | A balance summed on a mean question or across dates (left for banking, fixed in D2) | A level is added across accounts at one date only | `tests/test_banking_pack.py::test_a_balance_on_a_comparison_question_is_never_summed_across_dates`; `tests/test_banking_pack.py::test_a_weak_banking_match_still_never_sums_a_balance` | 0 |
 | D1-35 | C0 | D1, D2 | Drill-down grounding ran only on strong matches | Checks run on weak matches | `tests/test_banking_pack.py::test_a_drill_down_on_a_weak_match_is_checked_and_one_with_no_pack_is_not` | 0 |
 | D1-36 | C0 | D1, D2 | `evals/run.py` exempted retail E2E cases from hard rules | Hard rules apply to retail; last 3 reports rescored | unenforced | 0 |
@@ -274,7 +274,7 @@ One row per audit, gate, browser or retro finding, so recurrences per class can 
 | class | rows | unenforced | recurrences |
 |---|---|---|---|
 | C0 | 95 | 40 | 19 |
-| C1 | 30 | 8 | 18 |
+| C1 | 30 | 8 | 19 |
 | C2 | 31 | 6 | 4 |
 | C3 | 3 | 0 | 0 |
 | C4 | 2 | 0 | 1 |

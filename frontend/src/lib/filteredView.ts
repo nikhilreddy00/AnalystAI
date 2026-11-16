@@ -5,6 +5,9 @@ export interface ChartView {
   data: Record<string, unknown>[];
   /** The server's title for the filtered numbers, when it rebuilt the chart. */
   title?: string;
+  /** The rows the server read for the filtered numbers (the footer's count), when it rebuilt
+   * the chart: never the whole data's count beside the part's numbers. */
+  nRows?: number;
   /** The chart could not be recomputed for the filters (built from the model's own findings,
    * a suppressed small cell, or the request failed): it shows the whole data, and says so. */
   unfiltered: boolean;
@@ -23,7 +26,8 @@ export function chartView(chart: ChartConfig, active: boolean, server: FilteredD
   if (!active) return { data: chart.data, unfiltered: false, updating: false };
   if (!server) return { data: chart.data, unfiltered: failed, updating: !failed };
   const fresh = server.suppressed ? undefined : server.charts[chart.id];
-  return fresh ? { data: fresh, title: server.titles?.[chart.id], unfiltered: false, updating: false }
+  return fresh ? { data: fresh, title: server.titles?.[chart.id], nRows: server.counts?.[chart.id],
+                   unfiltered: false, updating: false }
     : { data: chart.data, unfiltered: true, updating: false };
 }
 
