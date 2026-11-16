@@ -163,7 +163,8 @@ async def prose(which: str, max_usd: float) -> dict:
     """The prose judge on its tuning set (any number of times) or its held-out set (once per
     prompt: the log refuses a second run of the same prompt, set and model)."""
     from agents.prose_judge import flagged
-    items = yaml.safe_load((PROSE / ("tuning.yaml" if which == "tune" else "held_out.yaml")).read_text())
+    sets = ("tuning.yaml", "tuning_reports.yaml") if which == "tune" else ("held_out.yaml",)
+    items = [x for s in sets for x in yaml.safe_load((PROSE / s).read_text())]
     shas = prose_shas()
     log = json.loads(PROSE_LOG.read_text()) if PROSE_LOG.exists() else []
     if which == "held-out" and any({k: e.get(k) for k in shas} == shas for e in log):

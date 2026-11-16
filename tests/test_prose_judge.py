@@ -13,6 +13,8 @@ FROZEN = {
     "guide.md": "c19db456f5b2fb1fe19fd288c4571fbf8968c4feef065aad373ec976de46ff2e",
     "tuning.yaml": "5d23c819a44e36cf6482d2b89086c1432d313c71e2ebe456ba167e6c36029027",
     "held_out.yaml": "1c772f34adbfacf159f6ce765d5cabdad77de2947a9737a37b429c7ca8e6c9ea",
+    # 2026-11-16, before any v3 run: real report sentences judge v2 over-flagged (paid quality run)
+    "tuning_reports.yaml": "a5d1917c0eb435c9d63969fd9ab9eac57eda1782712737f6ab518733517e8f35",
 }
 
 
@@ -147,7 +149,7 @@ def test_with_a_judge_that_flags_nothing_every_overreach_sentence_passes_untouch
 
 
 def test_the_held_out_set_is_balanced_and_shares_no_sentence_with_tuning():
-    tune = yaml.safe_load((SETS / "tuning.yaml").read_text())
+    tune = [x for f in ("tuning.yaml", "tuning_reports.yaml") for x in yaml.safe_load((SETS / f).read_text())]
     held = yaml.safe_load((SETS / "held_out.yaml").read_text())
     assert sum(x["label"] for x in held) == sum(not x["label"] for x in held) == 50
     assert not {x["text"] for x in tune} & {x["text"] for x in held}
