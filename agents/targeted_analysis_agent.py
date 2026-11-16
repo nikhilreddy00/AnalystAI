@@ -87,6 +87,7 @@ from domain_pack import (
     computable,
     Unavailable,
     unavailable_words,
+    zero_note,
     defaults_pack,
     describe_kpi,
     main_currency,
@@ -1234,7 +1235,7 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
         else:
             answer = (f"{kpi.label} by {group}{where}: {lead} {'lowest' if asc else 'leads'} at "
                       f"{fmt(named.iloc[0])}" + (f", {tail} at {fmt(named.iloc[-1])}." if len(named) > 1 else "."))
-        answer += hidden_note(hidden, bool(protected_by))
+        answer += hidden_note(hidden, bool(protected_by)) + zero_note(kpi, got.zero, fmt)
         said = pack.spell.words.moved if spelled else ""
         if said and kpi.unit == "money" and any(t.move in MOVES for t in spell_terms(pack, kpi.name)):
             # a customer who changed group moved between the groups' bridges (GLOSSARY Move)

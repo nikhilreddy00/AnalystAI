@@ -136,6 +136,33 @@ def test_a_value_its_own_flag_marks_invalid_is_blanked_and_said_never_averaged()
         Pack.model_validate(__import__("yaml").safe_load(GAUGE.replace("blanks: [amount]", "blanks: [nope]")))
 
 
+PER_UNIT = BANK.replace("kpis:\n", """kpis:
+  - {name: per_unit, label: Amount per unit, unit: number, num: [[{sum: amount}]],
+     den: [[{sum: quantity}]], zero_words: "none counted against {num}"}
+  - {name: per_unit_plain, label: Amount per unit, unit: number, num: [[{sum: amount}]],
+     den: [[{sum: quantity}]]}
+""")
+
+
+def test_a_group_with_a_zero_base_is_said_never_dropped_or_ranked():
+    """F9 (Domain 7, C5): a ratio by group dropped every group whose base is 0 without a word (a
+    machine with run time and no failures vanished from 'MTBF by machine'). It is kept apart
+    from the ranked values with its numerator and said in the KPI's words, else generic ones."""
+    from domain_pack.kpi import measure, zero_note
+    pack = Pack.model_validate(__import__("yaml").safe_load(PER_UNIT))
+    df = pd.DataFrame({"account_id": ["A", "A", "B", "C"], "amount": [10.0, 20.0, 50.0, 0.0],
+                       "quantity": [1, 2, 0, 0]})
+    roles = {c: c for c in df.columns}
+    got = measure(df, roles, pack, "per_unit", by="account_id")
+    assert got.values.to_dict() == {"A": 10.0} and dict(got.zero) == {"B": 50.0, "C": 0.0}
+    assert zero_note(pack.kpi("per_unit"), got.zero, str) == " B: none counted against 50.0; C: none counted against 0.0."
+    plain = measure(df, roles, pack, "per_unit_plain", by="account_id")
+    assert zero_note(pack.kpi("per_unit_plain"), plain.zero, str) == \
+        " Not measurable, its base is 0: B, C."
+    only_zero = measure(df[df.account_id != "A"], roles, pack, "per_unit", by="account_id")
+    assert only_zero.reason == "zero_denominator"
+
+
 SETTLE = BANK.replace("  quantity:", """  settled_at: {kind: date, headers: [settled_at]}
   quantity:""").replace("kpis:\n", """kpis:
   - {name: settle_hours, label: Hours to settle, unit: number, unit_word: hours,

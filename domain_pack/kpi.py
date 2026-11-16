@@ -313,9 +313,22 @@ def _kpi_value(df, kinds, roles, pack, kpi: KPI, by):
     if isinstance(den, Unavailable):
         return den
     if by:
-        den = den.where(den != 0)
-        return (num / den).dropna()
+        base = den.reindex(num.index)
+        zero = num[(base == 0) & num.notna()]   # said apart, never a 0 or a missing bar (F9)
+        out = (num / den.where(den != 0)).dropna()
+        out.attrs["zero"] = {k: float(v) for k, v in zero.items()}
+        return out
     return Unavailable("zero_denominator") if not den or pd.isna(den) else num / den
+
+
+def zero_note(kpi: KPI, zero: tuple, fmt) -> str:
+    """THE sentence for a ratio's groups whose base is 0, in the KPI's words ('S07: no failure
+    in 1,240 h'), else generic ones; '' when there are none."""
+    if not zero:
+        return ""
+    if kpi.zero_words:
+        return " " + "; ".join(f"{g}: {kpi.zero_words.format(num=fmt(n))}" for g, n in zero) + "."
+    return " Not measurable, its base is 0: " + ", ".join(str(g) for g, _ in zero) + "."
 
 
 def unavailable_words(u: Unavailable, pack: Pack) -> str:
@@ -406,9 +419,10 @@ def measure(df: pd.DataFrame, roles: dict[str, str], pack: Pack, name: str,
         return value
     if by:   # a group with no values is no group (a NaN would break the answer's JSON)
         hidden = small_groups(df, roles, pack, name, by, kinds.attrs["frame"], value.index, window, cut)
+        zero = tuple((k, v) for k, v in value.attrs.get("zero", {}).items() if k not in hidden)
         value = value.drop(hidden, errors="ignore").dropna()
-        if len(value):
-            return MeasuredBy(value.astype(float), tuple(hidden))   # hidden: 'Not shown: …'
+        if len(value):   # hidden: 'Not shown: …'; zero: 'no failure in …'
+            return MeasuredBy(value.astype(float), tuple(hidden), zero)
         return Unavailable("small_cell" if hidden else
                            "zero_denominator" if kpi.den is not None else "no_rows")
     if full is not None and protected_value(df, full, roles, pack, name, window, cut):

@@ -316,6 +316,8 @@ class KPI(_Strict):
     rows: list[Literal["sale", "return", "refunded", "cancel", "test", "non_product"]] = ["sale"]
     unit: Literal["money", "percent", "count", "number"] = "number"
     unit_word: str | None = None  # a number's unit, written after it ("3.72 days")
+    # a ratio's words for a group whose base is 0, {num} its numerator ("no failure in {num} h")
+    zero_words: str | None = None
     tile: bool = False            # one of the domain's KPI tiles (when computable)
     # "latest": a state at a date (outstanding balance, accounts, NPL): each snapshot_key's latest
     # row in the period, of any kind, THEN the kind / currency / where filters (a loan charged off
@@ -726,9 +728,11 @@ class Measured:
 class MeasuredBy:
     """A figure per group or period: a non-empty Series of finite numbers (a group or period the
     data can't support is left out, never NaN). `hidden`: the groups left out as small cells,
-    said in the answer. Shallow-frozen: the Series is copied in, never shared."""
+    said in the answer. `zero`: (group, numerator) of the groups whose base is 0 (GLOSSARY:
+    Zero-event group), said, never ranked. Shallow-frozen: the Series is copied in, never shared."""
     values: pd.Series
     hidden: tuple[Hashable, ...] = ()
+    zero: tuple[tuple[Hashable, float], ...] = ()
 
     def __post_init__(self):
         v = self.values
