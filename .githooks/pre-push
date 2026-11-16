@@ -61,6 +61,8 @@ if [ "${PREPUSH_E2E:-0}" = 1 ]; then
     fi
   done
   uv run python scripts/ui_check/make_fixture.py scripts/ui_check/fixtures --dashboard-only > /dev/null
+  uv run python scripts/ui_check/make_fixture.py scripts/ui_check/fixtures/saas_mrr_snapshots \
+    --dataset saas_mrr_snapshots > /dev/null
   (cd frontend && npx playwright test)
 fi
 if [ "$(tree)" != "$start" ]; then

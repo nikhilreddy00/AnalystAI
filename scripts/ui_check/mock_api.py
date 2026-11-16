@@ -64,7 +64,8 @@ reset()
 
 
 def scenario() -> str:
-    return open(SCEN).read().strip()
+    """The scenario a test set; none set yet (a fresh checkout: the file is git-ignored) is full."""
+    return open(SCEN).read().strip() if os.path.exists(SCEN) else "full"
 
 
 def dash() -> str:

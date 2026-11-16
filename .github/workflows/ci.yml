@@ -113,6 +113,9 @@ jobs:
           python-version: "3.11"
       - run: uv run python scripts/ui_check/make_fixture.py scripts/ui_check/fixtures --dashboard-only
         working-directory: .
+      # 5.7b-3: the ledger charts spec's scenario folder
+      - run: uv run python scripts/ui_check/make_fixture.py scripts/ui_check/fixtures/saas_mrr_snapshots --dataset saas_mrr_snapshots
+        working-directory: .
       - run: npx playwright test
 
   evals:
