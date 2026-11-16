@@ -120,7 +120,7 @@ is properties, the mutation gate and the ledger checks green.
 | Judge v2 over-flagged real reports; a typed sentence dropped its evidence's low confidence (ins-15, ins-17) | D1-09 | `tests/test_prose_judge.py::test_the_held_out_run_matches_the_current_prompt_set_and_model`; `tests/test_typed_claims.py::test_a_comparison_on_evidence_short_of_high_confidence_says_the_gap_may_not_hold` |
 | The fixture recorder crashed without an eval key and overwrote the fixture | D3-10 (4) | `tests/test_record_run_fixture.py::test_the_recorder_sets_the_eval_key_and_never_writes_a_failed_run` |
 | q-31: the critic quoting a contaminated group name failed the echo rule | PR14-02 | `tests/test_quality_eval.py::test_quoting_a_value_named_like_an_instruction_is_no_echo_but_following_it_is` |
-| e2e-82: "31 Oct 2026 … in the data" was read as a one-month scope claim | PR14-03 | `tests/test_guardrails.py::test_dates_outside_the_range_and_one_month_scope` |
+| e2e-82: "31 Oct 2026 … in the data" was read as a one-month scope claim. Replaying the stored runs, 5 HR and SaaS overview runs now keep a sound "covers … at 31 Oct 2026" sentence the guard had removed (`tests/test_replay.py` CHANGED); none fails a check it passed | PR14-03 | `tests/test_guardrails.py::test_dates_outside_the_range_and_one_month_scope` |
 
 Known limits, still prose (D1-38, D1-39): the audit's judgement of "a fix judged on its own example"
 and "a check fires late" decides nothing in code.
