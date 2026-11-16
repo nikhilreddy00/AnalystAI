@@ -1,4 +1,8 @@
 {
+ "agents/claims.py::_named": {
+  "equivalents": [],
+  "hash": "485d439f20902ec4"
+ },
  "agents/claims.py::_norm": {
   "equivalents": [],
   "hash": "25374bd642adecfd"
@@ -16,7 +20,7 @@
     "reason": "the joiner matters only for a name running from the claim's end into the id, and an evidence id starts with a kind prefix (corr:, seg:, trend:) that no metric or group name holds"
    }
   ],
-  "hash": "2281d996e6b8e0d5"
+  "hash": "c8387fa8743782f5"
  },
  "agents/claims.py::recheck": {
   "equivalents": [],
@@ -24,7 +28,7 @@
  },
  "agents/claims.py::render": {
   "equivalents": [],
-  "hash": "5b7467eebd8ec1ac"
+  "hash": "316ec01bb304b222"
  },
  "agents/claims.py::settle": {
   "equivalents": [
