@@ -172,3 +172,20 @@ async def test_stored_replies_reproduce_their_stored_output(suite, report, cid, 
         assert again["passed"], f"{report} {cid}: changed, yet still failing: {again['checks']}"
         return
     assert _same(again["output"], run["output"]), f"{report} {cid}: a post-model step changed"
+
+
+async def test_replay_mode_replays_the_models_and_calls_only_the_judge():
+    """evals.run --replay (5.7b-3): a stored run's model replies come back in order, its stored
+    judge replies are dropped, and only the prose judge reaches the live client."""
+    stored = {"runs": {"c1": [{"replies": [{"text": '{"answer": 1}'}, {"text": '```json\n{"0": "cause"}'},
+                                           {"text": '{"answer": 2}'}]}]}}
+    live = RecordedClient(['{"0": "neither"}'])
+    client = harness.ReplayClient(live, stored)
+    harness.REPLAY_CASE.set("c1")
+    ask = {"messages": [{"role": "user", "content": "q"}], "max_tokens": 9, "prompt_version": "v"}
+    assert (await client.complete(agent="insight", **ask)).text == '{"answer": 1}'
+    assert (await client.complete(agent="prose_judge", **ask)).text == '{"0": "neither"}'
+    assert (await client.complete(agent="quality", **ask)).text == '{"answer": 2}'
+    assert [c["agent"] for c in live.calls] == ["prose_judge"]
+    with pytest.raises(Exception):
+        await client.complete(agent="quality", **ask)

@@ -899,6 +899,29 @@ LLM_SENT: ContextVar[list | None] = ContextVar("llm_sent", default=None)
 # can run every deterministic step after the model again at $0.
 LLM_REPLIES: ContextVar[list | None] = ContextVar("llm_replies", default=None)
 E2B_UPLOADS: ContextVar[list | None] = ContextVar("e2b_uploads", default=None)
+REPLAY_CASE: ContextVar[str | None] = ContextVar("replay_case", default=None)
+_JUDGE_REPLY = re.compile(r'\s*(```(json)?\s*)?\{\s*"0"\s*:\s*"(cause|verdict|neither)')
+
+
+class ReplayClient:
+    """--replay: each case's stored model replies, in order; only the prose judge is live, so a
+    judge prompt is re-measured on the reports it reads without paying for them again (5.7b-3)."""
+
+    def __init__(self, inner, report: dict):
+        self.inner = inner
+        self.queues = {cid: [r["text"] for r in runs[0].get("replies", []) if not _JUDGE_REPLY.match(r["text"])]
+                       for cid, runs in report["runs"].items()}
+
+    async def complete(self, **kw):
+        if kw["agent"] == "prose_judge":
+            return await self.inner.complete(**kw)
+        from agents.errors import LLMError
+        from llm.client import LLMResult, _check, _restore_result
+        q = self.queues[REPLAY_CASE.get()]
+        if not q:
+            raise LLMError(kw["agent"], "replay: no stored reply left")
+        _, mapping = pseudonymize(kw["messages"])   # as RecordedClient: unmetered, PII restored
+        return _check(_restore_result(LLMResult(text=q.pop(0)), mapping), kw["agent"])
 
 
 def record_e2b_uploads() -> None:
@@ -1351,6 +1374,7 @@ async def run_once(suite: str, case: dict, sem: asyncio.Semaphore) -> dict | Non
         trace_meter.set(meter)   # each asyncio task has its own context copy
         replies: list[dict] = []
         LLM_REPLIES.set(replies)
+        REPLAY_CASE.set(case["id"])
         start = time.perf_counter()
         runner = {"analysis": run_analysis_case, "e2e": run_e2e_case, "sql": run_sql_case,
                   "intake": run_intake_case, "visualization": run_visualization_case,
@@ -1936,6 +1960,8 @@ async def main() -> None:
     ap.add_argument("--max-usd", type=float, default=2.0,
                     help="refuse to start if the estimate exceeds this; stop starting runs once "
                          "spend reaches it (default $2 — raise it on purpose for a final k=3 run)")
+    ap.add_argument("--replay", help="insight/quality: a stored report whose model replies are "
+                                     "replayed (k=1); only the prose judge is called")
     ap.add_argument("--fail-under", type=float,
                     help="exit 1 if the pass rate is below this or any hard rule broke (CI gate)")
     args = ap.parse_args()
@@ -1944,8 +1970,15 @@ async def main() -> None:
     if args.suite in ("analysis", "e2e") and (bad := {c["id"]: p for c in cases if (p := lint_case(c))}):
         raise SystemExit(f"cases that can't measure their claim: {bad}")
     QUALITY_CHECKS_ONLY["on"] = args.checks_only
-    estimate = 0.0 if args.checks_only else estimate_usd(
-        args.suite, len(cases) * args.k, Path(args.out), [c["id"] for c in cases], args.k)
+    replayed = None
+    if args.replay:
+        if args.suite not in ("insight", "quality") or args.k != 1:
+            raise SystemExit("--replay: insight or quality, --k 1")
+        replayed = json.loads((Path(args.out) / args.replay).read_text())
+        cases = [c for c in cases if c["id"] in replayed["runs"]]
+    from evals.judge import _PROSE_USD_PER_CALL
+    estimate = 0.0 if args.checks_only else round(len(cases) * _PROSE_USD_PER_CALL, 3) if replayed \
+        else estimate_usd(args.suite, len(cases) * args.k, Path(args.out), [c["id"] for c in cases], args.k)
     print(f"estimated cost ≈ ${estimate} (cap ${args.max_usd})", flush=True)
     if estimate:   # the guesses in the estimate: a case no report has run yet
         seen = {c for p in Path(args.out).glob(f"{args.suite}-*.json")
@@ -1959,7 +1992,7 @@ async def main() -> None:
     if args.suite == "sql":
         _sql_setup()
     # every suite: replies kept for the $0 replay; ingestion/e2e/analysis: the PII canary too
-    set_client(RecordingClient(get_client()))
+    set_client(RecordingClient(ReplayClient(get_client(), replayed) if replayed else get_client()))
     if args.suite in ("e2e", "analysis"):   # …and every frame uploaded to E2B
         record_e2b_uploads()
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
@@ -1984,7 +2017,8 @@ async def main() -> None:
         "meta": {"suite": args.suite, "report": name, "k": args.k, "model": settings.llm_model,
                  "git_sha": sha, "started_at": stamp, "only": args.only, "exclude": args.exclude,
                  "skipped_over_budget": skipped,
-                 **({"checks_only": True} if args.checks_only else {})},
+                 **({"checks_only": True} if args.checks_only else {}),
+                 **({"replay": args.replay} if args.replay else {})},
         "summary": summarize(runs),
         "runs": runs,
     }
