@@ -12,7 +12,7 @@ from .spell import (SPELL_PERIODS, _ended, _in_force, _spell_events, _started, h
                     spell_view, term_rows)
 from .spell import window as spell_window_of
 from .ledger import _ledger_term
-from .columns import rate_values, scale_of
+from .columns import derived_roles, rate_values, scale_of
 
 
 def follow_up_complete(pack: Pack, name: str, df: pd.DataFrame, roles: dict[str, str]):
@@ -307,9 +307,13 @@ def _kpi_value(df, kinds, roles, pack, kpi: KPI, by):
         if present is not None:
             kinds.attrs["present"] = present
     num = _side(df, kinds, roles, pack, kpi, kpi.num, by)
-    if isinstance(num, Unavailable) or kpi.den is None:
+    if kpi.den is None:
         return num
     den = _side(df, kinds, roles, pack, kpi, kpi.den, by)
+    if isinstance(num, Unavailable):   # a column the data lacks outranks rows it lacks (P4)
+        structural = ("role_missing", "end_date_missing")
+        return den if isinstance(den, Unavailable) and den.reason in structural \
+            and num.reason not in structural else num
     if isinstance(den, Unavailable):
         return den
     if by:
@@ -390,6 +394,10 @@ def measure(df: pd.DataFrame, roles: dict[str, str], pack: Pack, name: str,
         raise KeyError(f"{pack.domain} has no KPI {name!r}")
     if df.empty:
         return Unavailable("no_rows")
+    if pack.derived:   # the analysis frame's derived columns, read the same way here
+        df, now = derived_roles(df, roles, pack)
+        full = None if full is None else derived_roles(full, roles, pack)[0]
+        roles = now
     if mixes(df, roles, kpi, by):   # car-years and house-years never add up
         return Unavailable("mixed_units")
     keep, _, _ = main_currency(df, roles)
@@ -627,8 +635,9 @@ def used_terms(pack: Pack, kpi: KPI, roles: dict[str, str], side: str = "num") -
 
 def computable(pack: Pack, name: str, roles: dict[str, str]) -> bool:
     """The data has what this KPI needs, through every KPI it refers to (AOV needs orders, which
-    needs an order id)."""
+    needs an order id). A derived role is there when its expression's roles are (measure adds it)."""
     kpi = pack.kpi(name)
+    roles = {**{r: r for r, e in pack.derived.items() if e[0] in roles and e[2] in roles}, **roles}
 
     def has(t: Term) -> bool:
         return all(r in roles for r in t.roles()) and (not t.kpi or computable(pack, t.kpi, roles)) \
@@ -671,17 +680,19 @@ def kpi_measures(pack: Pack, name: str) -> set[str]:
 
 def kpi_roles(pack: Pack, name: str) -> set[str]:
     """Every role a KPI can read, through the KPIs it refers to; a spell term reads its whole
-    spell (start, end, the date it pays from, the as-of, the status that ends it undated)."""
+    spell (start, end, the date it pays from, the as-of, the status that ends it undated); every
+    term reads the status that decides its rows' kind (a cancelled work order counts nothing)."""
     kpi = pack.kpi(name)
     s = pack.spell
-    out: set[str] = set()
+    out: set[str] = {"status"} if pack.status_values else set()
     for alt in [*kpi.num, *(kpi.den or [])]:
         for t in alt:
             out |= set(t.roles()) | (kpi_roles(pack, t.kpi) if t.kpi else set())
             if t.spell:
                 out |= {r for r in (s.start, s.end, s.paid_from, s.as_of, snapshot_role(pack),
                                     "status") if r}
-    return out
+    # a derived role reads the roles it is made of (repair hours: the actual start and finish)
+    return out | {r for d, e in pack.derived.items() if d in out for r in (e[0], e[2])}
 
 
 def counted(pack: Pack, role: str) -> bool:

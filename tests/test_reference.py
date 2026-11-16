@@ -12,6 +12,7 @@ from evals.reference_kpis import reference
 NAIVE = "naive twin (a trap's wrong answer)"
 FILE = "file fact, not a spell or ledger KPI"
 PAY = "pay, tenure or correlation: not a spell or ledger KPI"
+BY_GROUP = "a by-group reading: the product's groups are checked by the D and P2r properties"
 
 LEDGER = {"as_of": "as_of", "cohort_date": "window_start", "new_mrr": "new_mrr",
           "expansion_mrr": "expansion_mrr", "contraction_mrr": "contraction_mrr",
@@ -108,6 +109,25 @@ CASES = {
                       "attrition_12m_by_dept": "attrition_rate_by_department"}, {
         "row_count": FILE, "pii_columns": FILE, "null_pairs": FILE, "corr_salary_left": PAY,
         "attrition_by_dept": "share of the file who ever left (a column mean), over no period"}),
+    # Domain 7: the reference sums every part before dividing (iot.yaml, research §2)
+    "shift_production": (1, {"oee": "oee", "availability": "availability",
+                             "performance": "performance", "quality": "quality_rate",
+                             "scrap_rate": "scrap_rate", "good_count": "good_count",
+                             "failures": "failures", "mtbf_hours": "mtbf",
+                             "unplanned_downtime_min": "unplanned_downtime"}, {
+        "row_count": FILE, "pii_columns": FILE, "stops": "stops are no KPI: never failures",
+        "over_100_performance_rows": FILE, "run_hours": "run_minutes / 60 (checked as MTBF's numerator)",
+        **{k: BY_GROUP for k in ("oee_by_line", "availability_by_shift", "oee_by_shift",
+                                 "mtbf_by_machine", "zero_failure_run_hours", "good_by_day")},
+        **{k: NAIVE for k in ("naive_mean_shift_oee", "naive_good_by_end_day",
+                              "naive_mtbf_with_stops")}}),
+    "work_orders": (1, {"mttr_hours": "mttr", "corrective_wos": "corrective_wos",
+                        "open_wos": "open_wos", "pm_share": "pm_share"}, {
+        "row_count": FILE, "pii_columns": FILE, "cancelled_wos": FILE,
+        "finished_corrective_wos": "MTTR's denominator", "zero_hour_repairs": FILE,
+        "dst_repair_hours": "one order's span, not a KPI",
+        **{k: BY_GROUP for k in ("mttr_by_asset", "mttr_by_worktype")},
+        **{k: NAIVE for k in ("naive_mttr_every_type", "naive_corrective_with_cancelled")}}),
 }
 
 
@@ -169,6 +189,11 @@ def test_the_references_word_lists_are_the_packs():
         set(cond(hr, "retirements", 1).in_))
     assert set(R.SAAS_OUT) == set(cond(saas, "mrr").not_in)
     assert R.TEST_MARKER.pattern == saas.test_marker
+    iot = dp.pack_for("iot")
+    assert (R.WO_CORRECTIVE, R.WO_PREVENTIVE, R.WO_OPEN) == (
+        set(cond(iot, "corrective_wos").in_), set(cond(iot, "pm_share").in_),
+        set(cond(iot, "open_wos").in_))
+    assert R.WO_CANCELLED == set(iot.status_values["cancel"])
 
 
 # ── 5.7b-2b: the readings the scorer takes from the reference, checked against truth first ──

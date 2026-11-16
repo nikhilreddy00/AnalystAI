@@ -112,7 +112,8 @@ def test_the_retail_datasets_are_retail_with_every_role(name, roles):
 
 @pytest.mark.parametrize("name", ["simpson", "subscriptions", "bank_balances", "encounters",
                                   "claims", "employees", "saas_accounts", "sensor_readings",
-                                  "shipments"])
+                                  "shipments", "shift_production", "work_orders",
+                                  "machine_readings"])
 def test_no_other_domains_dataset_is_retail(name):
     c = _contract(_gen(name))   # bank_balances is banking (Domain 2); never retail
     assert c.domain != "retail" and (c.domain or name == "bank_balances" or c.roles == {})

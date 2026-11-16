@@ -270,6 +270,7 @@ DATASETS_BY_PACK = {
     "hr": ["hr_roster", "hr_roster_onerow", "hr_snapshots", "employees"],
     "saas": ["saas_subscriptions", "saas_mrr_snapshots", "saas_invoices", "subscriptions",
              "saas_accounts"],
+    "iot": ["shift_production", "work_orders", "machine_readings", "sensor_readings"],
 }
 PACK_DATASETS = [n for names in DATASETS_BY_PACK.values() for n in names]
 
@@ -306,6 +307,8 @@ def test_every_filter_partitions_and_matches_the_group_answer(name):
                     assert text != UNAVAILABLE or o["contexts"][label], (name, col, v, label)
         for label, kpi in tiles.items():
             by = domain_pack.compute_kpi(clean, roles, pack, kpi.name, by=col, full=clean)
+            if by is not None:   # groups named as the filter names them (20.0 is '20': as_text)
+                by.index = domain_pack.as_text(pd.Series(by.index)).tolist()
             for v, o in outs.items():   # a group the KPI supports is a number, never a '—'
                 if by is not None and v in by.index.astype(str) and not o["suppressed"]:
                     assert o["tiles"][label] != UNAVAILABLE, (name, col, label, v)

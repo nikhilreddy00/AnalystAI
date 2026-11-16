@@ -186,11 +186,18 @@ def with_derived(df: pd.DataFrame, contract) -> tuple[pd.DataFrame, list[str]]:
     if pack is None:
         return df, []
     roles = {r: c for r, c in contract.roles.items() if c in df.columns}
-    added = []
+    out, now = derived_roles(df, roles, pack)
+    return out, [now[r] for r in now.keys() - roles.keys()]
+
+
+def derived_roles(df: pd.DataFrame, roles: dict[str, str], pack: Pack) -> tuple[pd.DataFrame, dict[str, str]]:
+    """THE derived roles (Pack.derived) the data lacks, added as columns named after each role's
+    first header, and the roles with them: the analysis frame and every KPI read the same
+    column (a repair's hours = actual finish − actual start). Never replaces a column."""
     for r, expr in pack.derived.items():
         name = pack.roles[r].headers[0]
         if r in roles or name in df.columns or expr[0] not in roles or expr[2] not in roles:
             continue
         df = df.assign(**{name: _column(df, roles, expr)})
-        added.append(name)
-    return df, added
+        roles = {**roles, r: name}
+    return df, roles

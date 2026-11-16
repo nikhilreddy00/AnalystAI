@@ -1,0 +1,216 @@
+# IoT / manufacturing (Phase 5.7, domain 7): sensor readings (a historian dump: one row per
+# asset × timestamp), MES shift reports (one row per machine × shift: planned time, downtime,
+# counts, the ideal cycle) and CMMS work orders (one row per work order).
+# Headers are normalized (domain_pack.normalize_header): lower case, "_" for spaces, units dropped.
+# Cited definitions and traps: docs/research/2026-11-16-iot.md.
+domain: iot
+
+# Strong: a reading (an asset and a measure at a time), a shift report (a shift, its output and
+# its planned time) or a work order (its number and its work type). Each pairs a word no other
+# domain uses here with a second, independent signal.
+strong:
+  - {asset: [asset], reading: [temperature, vibration, pressure], when: [date]}
+  - {shift: [shift], output: [good_count, total_count], time: [planned_minutes, unplanned_downtime]}
+  - {wo: [work_order], type: [work_type], asset: [asset]}
+signals:
+  - {asset: [asset], reading: [temperature, vibration, pressure]}
+  - {output: [good_count, total_count], time: [planned_minutes, unplanned_downtime]}
+  - {wo: [work_order], type: [work_type]}
+# Another domain's headers (all words in ONE header): retail, banking, healthcare, insurance, HR,
+# SaaS, logistics.
+exclude_headers: [[sku], [order, id], [lineitem], [balance], [loan], [dpd], [policy, id],
+                  [policyholder], [premium], [claim, id], [patient], [diagnosis], [drg],
+                  [employee, id], [payroll], [salary], [mrr], [arr], [subscription], [seats],
+                  [shipment], [tracking], [carrier]]
+abbreviations: {temp: temperature, vib: vibration, prod: production, qty: quantity,
+                wo: work_order, min: minutes, mins: minutes, tstamp: timestamp, dt: date}
+
+roles:
+  # The time role first: a shift report's production date (a night shift belongs to the day it
+  # starts), else a reading's timestamp, else a work order's report date. Never a shift's end.
+  date:          {kind: date, headers: [production_date, production_day, shift_date,
+                                        timestamp, reading_time, time_stamp, t_stamp, datetime,
+                                        date_time, time, reportdate, report_date, reported_date,
+                                        created_date, shift_start, shift_start_time, date]}
+  shift_end:     {kind: date, headers: [shift_end, shift_end_time, end_time]}
+  actual_start:  {kind: date, headers: [actstart, actual_start, actual_start_date, work_start]}
+  actual_finish: {kind: date, headers: [actfinish, actual_finish, actual_finish_date, work_finish,
+                                        finish_date, completion_date, completed_date]}
+  asset:         {kind: id, headers: [asset_id, assetnum, asset, asset_number, machine_id, machine,
+                                      equipment_id, equipment, sensor_id, sensor, device_id, tag,
+                                      tagpath, tag_name, asset_name, machine_name, equipment_name]}
+  production_line: {kind: category, headers: [line, production_line, line_id, line_name,
+                                              work_center, workcenter, cell]}
+  shift:         {kind: category, headers: [shift, shift_name, shift_code]}
+  operator:      {kind: text, headers: [operator, operator_name, operator_id, badge, badge_id]}
+  reported_by:   {kind: text, headers: [reportedby, reported_by, requested_by]}
+  work_order:    {kind: id, headers: [wonum, work_order, work_order_id, work_order_number,
+                                      workorder, workorder_id]}
+  work_type:     {kind: category, headers: [worktype, work_type, work_order_type, maintenance_type]}
+  failure_code:  {kind: category, headers: [failurecode, failure_code, problemcode, problem_code,
+                                            failure_class]}
+  status:        {kind: status, headers: [status, work_order_status]}
+  # A reading is a level: averaged, never summed (kind number).
+  temperature:   {kind: number, additive: false, headers: [temperature, temperature_c,
+                                                           temperature_degc, process_temperature]}
+  temp_unit:     {kind: category, headers: [temperature_unit, temperature_uom, unit, units, uom,
+                                            unitsabbreviation, eng_units, engineering_units]}
+  vibration:     {kind: number, additive: false, headers: [vibration, vibration_rms, velocity_rms,
+                                                           vibration_velocity]}
+  pressure:      {kind: number, additive: false, headers: [pressure, discharge_pressure,
+                                                           line_pressure]}
+  reading_quality: {kind: category, headers: [quality, quality_flag, data_quality, dataintegrity,
+                                              data_integrity, quality_code]}
+  alarm:         {kind: count, headers: [alarm, alarm_active, in_alarm, alarm_flag, alarm_state]}
+  # A failure is a loss of function; a stop, a micro-stop or a starved line is not (no `stops`).
+  failures:      {kind: count, headers: [failures, failure, failure_count, breakdowns,
+                                         breakdown_count]}
+  planned_minutes: {kind: count, headers: [planned_minutes, planned_production_time,
+                                           planned_production_minutes, planned_time,
+                                           scheduled_minutes]}
+  unplanned_downtime: {kind: count, headers: [unplanned_downtime, unplanned_downtime_minutes,
+                                              breakdown_minutes, downtime, downtime_minutes]}
+  changeover:    {kind: count, headers: [changeover, changeover_minutes,
+                                         setup_minutes, setup_time]}
+  total_count:   {kind: count, headers: [total_count, total_parts, total_pieces, total_produced,
+                                         units_produced, parts_produced, total_output,
+                                         quantity_produced]}
+  good_count:    {kind: count, headers: [good_count, good_parts, good_pieces, good_quantity,
+                                         good_units]}
+  scrap_count:   {kind: count, headers: [scrap_count, scrap, rejects, reject_count, scrapped,
+                                         scrap_quantity]}
+  # Seconds per unit at the ideal rate ("Ideal Cycle Time (s)": the bracket is dropped).
+  ideal_cycle_s: {kind: number, additive: false, headers: [ideal_cycle_time, ideal_cycle_time_s,
+                                                           ideal_cycle_s, ideal_ct,
+                                                           standard_cycle_time, ideal_cycle]}
+  repair_hours:  {kind: number, additive: false, headers: [repair_hours, time_to_repair_hours]}
+
+# Work-order states, compared as words. A cancelled work order is no work: left out of everything.
+status_values:
+  ok: [comp, complete, completed, close, closed, inprg, in progress, wappr, waiting on approval,
+       appr, approved, wmatl, waiting on material, wsched, waiting to be scheduled, open, hold]
+  cancel: [can, cancelled, canceled, void]
+sentinels: {temperature: [-9999, 9999, 32767], vibration: [-9999, 9999, 32767],
+            pressure: [-9999, 9999, 32767]}
+invalid_when:
+  reading_quality: {values: [bad, "0", bad data], doubtful: [uncertain, questionable, substituted],
+                    blanks: [temperature, vibration, pressure]}
+ranges: {repair_hours: {gt: 0}}
+derived: {repair_hours: [actual_finish, hours, actual_start]}
+
+overview_groups: [production_line, asset, shift, work_type]
+overview_kpis: [oee, availability, good_count, mtbf, mttr, corrective_wos, assets, alarms]
+protected_roles: [operator]
+role_caveats:
+  operator: "Operators are people: figures by operator describe the work, never rank the people, and groups of fewer than 11 shifts are not shown."
+  temperature: "A reading is a level: it is averaged over the period (each reading counts once; not time-weighted), never summed."
+row_labels: {sale: counted rows, cancel: cancelled work orders}
+row_flags:
+  cancel: "cancelled work orders: left out of every count and of MTTR"
+text:
+  rows_brief: "Readings are levels: average them, never sum them; a reading its quality flag marks Bad is already blank. A shift report's ratios pool their parts: availability = run ÷ planned minutes, OEE = (ideal cycle × good) ÷ planned minutes, summed over the shifts first, never a mean of shift ratios; run = planned − unplanned downtime − changeover. A shift belongs to its production date (a night shift to the day it starts). Work orders: cancelled ones are left out (kind 'cancelled'); MTTR = actual start to actual finish of finished corrective (CM/EM) work orders; preventive (PM) and open ones are not repairs."
+  grain_line: "One row is one asset's reading, one machine's shift or one work order: count assets or work orders as distinct {key}, never rows."
+  unsupported_alternatives: "I can answer with what the data has: OEE, availability, performance and quality by line, machine or shift; MTBF; MTTR and corrective work orders by asset; or readings by sensor and line. Which would help?"
+  kpis_default: its shift, work-order or reading columns
+  cancel_rule: cancelled (left out)
+kpis:
+  - {name: run_minutes, label: Run time, unit: number, unit_word: minutes,
+     num: [[{sum: planned_minutes}, {sum: unplanned_downtime, sign: -1},
+            {sum: changeover, sign: -1, optional: true}]]}
+  - {name: planned_time, label: Planned production time, unit: number, unit_word: minutes,
+     num: [[{sum: planned_minutes}]]}
+  - {name: oee, label: OEE, unit: percent, tile: true,
+     num: [[{sum: [ideal_cycle_s, "*", good_count], times: 0.016666666666666666}]],
+     den: [[{sum: planned_minutes}]]}
+  - {name: availability, label: Availability, unit: percent, tile: true,
+     num: [[{kpi: run_minutes}]], den: [[{sum: planned_minutes}]]}
+  - {name: performance, label: Performance, unit: percent, tile: true,
+     num: [[{sum: [ideal_cycle_s, "*", total_count], times: 0.016666666666666666}]],
+     den: [[{kpi: run_minutes}]]}
+  - {name: quality_rate, label: Quality (first-pass yield), unit: percent, tile: true,
+     num: [[{sum: good_count}]], den: [[{sum: total_count}]]}
+  # The tile strip shows the first five a file supports, in this order: a shift report's OEE,
+  # its three factors and MTBF; a work-order log's MTTR and counts; readings' assets and alarms.
+  - {name: mtbf, label: MTBF, unit: number, unit_word: hours, tile: true,
+     zero_words: "no failure in {num} of run time",
+     num: [[{kpi: run_minutes, times: 0.016666666666666666}]], den: [[{sum: failures}]]}
+  - {name: mttr, label: MTTR, unit: number, unit_word: hours, tile: true,
+     num: [[{sum: repair_hours, where: [[{role: work_type, in: [cm, em, corrective, emergency, breakdown]},
+                                         {role: repair_hours, ge: 0}]]}]],
+     den: [[{nunique: work_order, where: [[{role: work_type, in: [cm, em, corrective, emergency, breakdown]},
+                                           {role: repair_hours, ge: 0}]]}]]}
+  - {name: corrective_wos, label: Corrective work orders, unit: count, tile: true,
+     num: [[{nunique: work_order, where: [[{role: work_type, in: [cm, em, corrective, emergency,
+                                                                  breakdown]}]]}]]}
+  - {name: open_wos, label: Open work orders, unit: count, tile: true,
+     num: [[{nunique: work_order, where: [[{role: status, in: [inprg, in progress, wappr,
+                                                               waiting on approval, appr, approved,
+                                                               wmatl, waiting on material, wsched,
+                                                               waiting to be scheduled, open,
+                                                               hold]}]]}]]}
+  - {name: good_count, label: Good count, unit: count, tile: true, num: [[{sum: good_count}]]}
+  - {name: failures, label: Failures, unit: count, tile: true, num: [[{sum: failures}]]}
+  - {name: scrap_rate, label: Scrap rate, unit: percent,
+     num: [[{sum: scrap_count}], [{sum: total_count}, {sum: good_count, sign: -1}]],
+     den: [[{sum: total_count}]]}
+  - {name: unplanned_downtime, label: Unplanned downtime, unit: number, unit_word: minutes,
+     num: [[{sum: unplanned_downtime}]]}
+  - {name: pm_share, label: Preventive share of work orders, unit: percent,
+     num: [[{nunique: work_order, where: [[{role: work_type, in: [pm, preventive, planned]}]]}]],
+     den: [[{nunique: work_order}]]}
+  - {name: assets, label: Assets reporting, unit: count, tile: true, num: [[{nunique: asset}]]}
+  - {name: alarms, label: Alarms, unit: count, tile: true, num: [[{sum: alarm}]]}
+
+glossary:
+  oee: [oee, overall equipment effectiveness, equipment effectiveness]
+  availability: [availability, uptime, up time, machine availability, availability rate]
+  performance: [performance, performance rate, speed loss, speed]
+  quality_rate: [quality, quality rate, first pass yield, first-pass yield, fpy, yield]
+  scrap_rate: [scrap rate, reject rate, scrap, rejects, defect rate]
+  good_count: [good count, good parts, good output, good units, output, production volume]
+  unplanned_downtime: [downtime, unplanned downtime, breakdown time, lost time]
+  failures: [failures, breakdowns, failure count, number of failures]
+  mtbf: [mtbf, mean time between failures, time between failures]
+  mttr: [mttr, mean time to repair, repair time, time to repair, average repair time]
+  corrective_wos: [corrective work orders, corrective maintenance, breakdown work orders,
+                   repair work orders, repairs]
+  open_wos: [open work orders, maintenance backlog, backlog, open orders]
+  pm_share: [pm share, preventive share, preventive maintenance share, planned maintenance share]
+  assets: [assets, sensors reporting, machines reporting, assets reporting, number of sensors]
+  alarms: [alarms, alarm count, number of alarms]
+  capability: [cpk, ppk, process capability, capability index]
+  remaining_life: [remaining useful life, rul, predict failure, predict failures, when will it fail,
+                   failure prediction]
+  time_to_restore: [mean time to restore, time to restore, mttr including waiting]
+  yoy: [year over year, yoy, same period last year, vs last year, versus last year]
+definitions:
+  yoy: "Year over year compares a period with the same calendar period one year earlier (full periods only); with less than 13 months of data there is none."
+unsupported:
+  capability: "specification limits and a stable process: capability (Cpk/Ppk) compares spread with the spec, which this data doesn't give"
+  remaining_life: "a validated failure model (survival analysis on run-to-failure histories); this data only describes past failures"
+  time_to_restore: "the time from the report to the finish, which includes the wait before work starts; MTTR here is actual start to actual finish"
+
+caveats:
+  read_as_domain: "Read as manufacturing data ({kpis}). Ratios pool their parts (OEE and availability over planned production time, summed over shifts and machines before dividing), so a line's figure pools its machines' time; MTBF is run time per failure and assumes a constant failure rate; MTTR runs from actual start to actual finish of finished repairs. Readings are averaged, not time-weighted."
+  read_as_domain_weak: "Read as manufacturing data because it has {roles} columns; if these are not machine readings, shift reports or work orders, the manufacturing figures here don't apply."
+  repeated_rows_kept: "{n} rows repeat another row exactly and were kept."
+  partial_last_period: "{label} is partial (data through the {through}) and is left out of period comparisons."
+  cancelled_excluded: "{n} cancelled work orders are left out of every count and of MTTR."
+  months_lt_13: "The data covers {months} months, so month-over-month changes may be seasonal; there is no same month last year to compare with."
+
+never_say:
+  - {pattern: '\b(?:fails?|breaks? down)\s+(?:about\s+|roughly\s+|once\s+)?every\s+\d',
+     reason: "reads MTBF as a schedule: it is an average under a constant-rate assumption, and a machine can fail twice in a day"}
+  - {pattern: '\bout of (?:spec|specification|tolerance)\b',
+     reason: "calls a control-chart signal out of spec: control limits come from the process, specification limits from the design"}
+
+small_cell_nouns: [operators, operator, shifts, shift]
+
+first_questions:
+  - {q: "What is OEE by line, and which of availability, performance or quality loses the most?", needs: [oee, production_line]}
+  - {q: "How has availability moved by week?", needs: [availability]}
+  - {q: "Which machines have the lowest MTBF?", needs: [mtbf, asset]}
+  - {q: "What is MTTR by asset for corrective work orders?", needs: [mttr, asset]}
+  - {q: "How many corrective work orders did we have each month?", needs: [corrective_wos]}
+  - {q: "Which sensors read the highest average temperature?", needs: [asset, temperature]}
+  - {q: "How does good output compare by shift?", needs: [good_count, shift]}
