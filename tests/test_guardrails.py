@@ -69,6 +69,29 @@ def test_pii_column_names(col, pii):
     assert g.is_pii_column(col) is pii
 
 
+@pytest.mark.parametrize("col, values, pii", [
+    # Domain 7: a machine, asset or line is a thing, never a person's name (fail-closed `*_name`)
+    ("machine_name", ["Press 4", "Lathe Two"], None), ("asset_name", ["Pump A"], None),
+    ("equipment_name", ["Boiler"], None), ("line_name", ["Line B"], None),
+    ("sensor_name", ["Temp North"], None), ("tag_name", ["FIC101.PV"], None),
+    ("station_name", ["Weld 3"], None), ("work_center_name", ["Paint Shop"], None),
+    ("plant_name", ["Lyon Works"], None), ("site_name", ["North Plant"], None),
+    # the people on a shop floor or a work order, by their names, their logins or their badges
+    ("operator", ["Ana Lopez", "Raj Patel"], "name"), ("supervisor", ["Kim Lee"], "name"),
+    ("reportedby", ["JSMITH", "ALOPEZ", "RPATEL"], "name"),
+    ("reported_by", ["Smith, John", "Lopez, Ana"], "name"),
+    ("changeby", ["MAXADMIN", "KLEE"], "name"), ("technician", ["JSMITH", "KLEE"], "name"),
+    ("badge_id", [10423, 10424], "name"), ("badge", ["B-0193"], "name"),
+    # negatives from other domains: carriers, retail rep codes, a crew/team and a count stay data
+    ("operator", ["Vodafone", "Orange", "AT&T"], None), ("sales_rep", ["R12", "R07"], None),
+    ("crew", ["Crew A", "Crew B"], None), ("badges_issued", [3, 5], None),
+    ("product_name", ["Widget Pro"], None), ("line", ["Auto", "Home"], None),
+])
+def test_shop_floor_people_are_personal_data_and_machines_are_not(col, values, pii):
+    got = g.pii_kind(col, values)
+    assert (got[0] if got else None) == pii
+
+
 def test_pii_masking():
     assert g.is_pii_column("customer_email") and g.is_pii_column("customer_name")
     assert not g.is_pii_column("region") and not g.is_pii_column("units")

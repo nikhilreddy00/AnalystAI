@@ -906,7 +906,9 @@ _THING_NAME_RE = re.compile(
     r"(?:^|_)(?:product|company|file|brand|category|item|sku|host|table|column|field|sheet|"
     r"store|shop|city|country|state|region|department|dept|team|project|campaign|vendor|"
     r"supplier|merchant|plan|model|event|job|app|domain|org|organization|channel|segment|"
-    r"lineitem|line_item)_names?$", re.I)
+    r"lineitem|line_item|"
+    # Domain 7: plant-floor things (a machine, an asset, a historian tag)
+    r"machine|asset|equipment|line|sensor|tag|station|work_?center|plant|site)_names?$", re.I)
 # A column named for a person's role (`sales_rep`, `contact_owner`, `assigned_to`): PII only when
 # its values read as people (pii_kind checks), so `new_customer` (Yes/No) keeps its breakdowns.
 _ROLE_NOUNS = {"rep", "representative", "owner", "assignee", "assigned_to", "agent", "salesperson",
@@ -916,7 +918,14 @@ _ROLE_NOUNS = {"rep", "representative", "owner", "assignee", "assigned_to", "age
                "reviewer", "approver", "requester", "submitter",
                # insurance and health plans (Phase 5.5): people, named by their role
                "policyholder", "insured", "beneficiary", "subscriber", "guarantor", "claimant",
-               "dependent", "caregiver", "guardian"}
+               "dependent", "caregiver", "guardian",
+               # the shop floor and a CMMS work order (Domain 7)
+               "operator", "supervisor", "reportedby", "reported_by", "changeby", "changed_by"}
+# A CMMS login (Maximo's REPORTEDBY "JSMITH"): one capitalised token of letters, 4+ long, so a
+# rep code ("R12") stays data. Read only in a column named for a person's role.
+_LOGIN_RE = re.compile(r"^[A-Z]{4,12}$")
+# An employee badge (a door-access or clock-in id) identifies one person: named, never valued.
+_BADGE_COL_RE = re.compile(r"(?:^|_)badge(?:_?(?:id|no|number|num))?$", re.I)
 # Department / unit names read like people ("Critical Care"): these words mark a thing, not a person.
 _PLACE_WORDS = re.compile(r"\b(?:medicine|care|surgery|surgical|unit|clinic|center|centre|department|"
                           r"service|services|therapy|health|practice|ward|room|lab|laboratory|imaging|"
@@ -1187,8 +1196,11 @@ def pii_kind(name: str, values: Iterable[Any]) -> tuple[str, str] | None:
         return "dob", f"'{name}' holds dates of death"   # `deceased` = 2021-03-04, not a flag
     text = [v.strip() for v in vals if isinstance(v, str)]
     last = norm.lower().split("_")[-1] if norm else ""
+    if _BADGE_COL_RE.search(norm):
+        return "name", f"the column name '{name}' marks an employee badge"
     if (last in _ROLE_NOUNS or norm.lower() in _ROLE_NOUNS) and text \
-            and sum(bool(_PERSON_RE.match(t)) and not _ORG_RE.search(t) for t in text) \
+            and sum((bool(_PERSON_RE.match(t)) or bool(_LAST_FIRST_RE.match(t))
+                     or bool(_LOGIN_RE.match(t))) and not _ORG_RE.search(t) for t in text) \
             >= 0.5 * len(vals):
         return "name", f"'{name}' names a person's role and its values read as people's names"
     hits: dict[str, int] = {}
