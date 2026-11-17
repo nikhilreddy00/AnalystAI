@@ -61,7 +61,10 @@ SOURCE_GUARDS = {"tests/test_one_definition.py"}   # grep the sources: mutmut re
 # typed claims and the bridge (story's `bridge`, read by the story and the chart)
 GATED = ("domain_pack/spell.py", "domain_pack/ledger.py", "domain_pack/columns.py",
          "domain_pack/kpi.py", "domain_pack/rows.py", "evals/scoring.py", "agents/claims.py",
-         "domain_pack/story.py")
+         "domain_pack/story.py",
+         # retro Domain 7: the review's 7 recurrences all lived outside the gate (the time and
+         # epoch rules, the PII check, the targeted answers), so "checks green" never read them
+         "connectors/base.py", "guardrails.py", "agents/targeted_analysis_agent.py")
 GATE = "docs/mutation/gate.json"
 
 
@@ -168,6 +171,14 @@ def check(ref: str, root: Path = ROOT) -> list[str]:
     problems += [f"{k}: in {GATE}, but no such function (renamed or deleted)"
                  for k in gate if k not in exist]
     return problems
+
+
+def rerun(problems: list[str], ref: str) -> str | None:
+    """The run that clears check's refusals: only the refused functions, never --changed-since
+    (it mutates every changed function, gated or not); None when only orphans are left."""
+    names = [p.split("::", 1)[1].split(":", 1)[0] for p in problems if "no clean mutation" in p]
+    return (f"run: uv run python scripts/mutation.py {' '.join(names)} --lines {ref} --record "
+            "--tests <each function's callers' test files>") if names else None
 
 
 def unnamed(entry: dict, mutants: list[tuple[str, str, str]]) -> list[tuple[str, str, str]]:
@@ -435,9 +446,8 @@ def main() -> int:
     if args.check:
         for p in (problems := check(args.check)):
             print(f"pre-push: {p}", file=sys.stderr)
-        if problems:
-            print("run: uv run python scripts/mutation.py --changed-since main --lines main "
-                  "--record --tests <each function's callers' test files>", file=sys.stderr)
+        if hint := rerun(problems, args.check):
+            print(hint, file=sys.stderr)
         return 1 if problems else 0
     if args.record and not args.lines:
         ap.error("--record needs --lines REF (it records a gate on changed lines)")

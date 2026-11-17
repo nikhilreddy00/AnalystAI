@@ -1,5 +1,8 @@
 # Phase 5.7 — Domain 7: IoT / manufacturing (2026-11-16/17)
 
+Wall clock: 20.4 h (first commit 2026-11-16 14:34 → merge 2026-11-17 10:59; plan mode before),
+plus the post-merge review 4.7 h (→ merge 15:43). Domain 6: ~7.5 h.
+
 Plan: `~/.claude/plans/pasted-content-id-d1f9-start-phase-tender-raccoon.md` (v2). It checks off
 every plan-mode step of the ROADMAP 5.7 contract by name:
 - **brainstorming:** one `iot` pack, three grains (historian readings, MES shift report, CMMS
