@@ -366,6 +366,25 @@ def test_a_work_orders_actual_dates_are_blank_by_its_status_never_missing():
                                 f"are blank by design; {pct:g}% of those rows have no value. Kept as it is."), got
 
 
+@pytest.mark.xfail(strict=True, reason="D7-19 (Open): the generic count charts read every row; the "
+                   "rows to leave out differ by kind and domain (a cancelled order out, an "
+                   "other-currency deposit still an account), a reviewed rule per kind, not one filter")
+def test_the_generic_charts_count_the_rows_the_tiles_count():
+    """Review browser read (D7-19's class, product side): 'Worktype Breakdown — PM Leads at 48%'
+    counted all 640 work orders, cancelled ones too (CM + EM = 333, the planted naive count);
+    the tiles say 311 corrective orders."""
+    from agents.visualization_agent import build_context, classify_columns, generate_dashboard_charts
+    from tests.test_oracle import _built
+    _, df, contract, truth = _built("work_orders")
+    ctx = build_context(df, contract=contract)
+    charts = generate_dashboard_charts(df, classify_columns(df), ctx=ctx)
+    counts = [c for c in charts if c.x_key == "WORKTYPE" or (c.data and "name" in c.data[0])]
+    assert counts, [c.title for c in charts]
+    for c in counts:
+        got = {str(r.get("WORKTYPE", r.get("name"))): r.get("count", r.get("value")) for r in c.data}
+        assert got["CM"] + got["EM"] == truth["corrective_wos"], (c.title, got)
+
+
 def test_a_blank_failure_code_is_no_failure_never_missing():
     """Live check (D1-04): a preventive order has no failure code by design; the high-null gate
     asked about it, an alert called it 48% missing and an action said to back-fill it."""
