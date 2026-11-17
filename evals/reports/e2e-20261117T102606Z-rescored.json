@@ -14,8 +14,8 @@
  "summary": {
   "cases": 11,
   "runs": 11,
-  "pass_rate": 0.8182,
-  "case_majority_pass_rate": 0.8182,
+  "pass_rate": 0.7273,
+  "case_majority_pass_rate": 0.7273,
   "flip_rate": 0.0,
   "hard_rule_violations": 0,
   "hard_rules_na": 12,
@@ -32,8 +32,8 @@
     "cases": 10,
     "k_min": 1,
     "k_max": 1,
-    "cases_passed_all_runs": 8,
-    "pass_rate": 0.8,
+    "cases_passed_all_runs": 7,
+    "pass_rate": 0.7,
     "hard_rule_violations": 0,
     "hard_rules_na": 10,
     "builtin_only_cases": [],
@@ -6987,6 +6987,26 @@
       "kind": "must_not_number",
       "ok": true,
       "detail": "ok"
+     },
+     {
+      "kind": "number_in_answer",
+      "ok": true,
+      "detail": "turn 2: want \u22483.222e+05 [(1.0, None)] in answer; saw [322230.94, 60819.02, 0.0, 322230.94, 179558.89, 60819.02]"
+     },
+     {
+      "kind": "turn",
+      "ok": true,
+      "detail": "turn 2: answered"
+     },
+     {
+      "kind": "must_not_match",
+      "ok": true,
+      "detail": "turn 3: ok"
+     },
+     {
+      "kind": "turn",
+      "ok": true,
+      "detail": "turn 3: answered"
      }
     ],
     "hard": [
@@ -10152,6 +10172,26 @@
       "kind": "must_not_number",
       "ok": true,
       "detail": "ok"
+     },
+     {
+      "kind": "number_in_answer",
+      "ok": true,
+      "detail": "turn 2: want \u22480.6873 [(1.0, None), (100.0, '%')] in answer; saw [72.2, 68.7, 0.0, 60.0, 72.2, 71.4, 68.7]"
+     },
+     {
+      "kind": "turn",
+      "ok": true,
+      "detail": "turn 2: answered"
+     },
+     {
+      "kind": "number_in_answer",
+      "ok": false,
+      "detail": "turn 3: want \u22480.7073 [(1.0, None), (100.0, '%')] in answer; saw [72.2, 68.7, 0.0, 60.0, 72.2, 71.4, 68.7]"
+     },
+     {
+      "kind": "turn",
+      "ok": true,
+      "detail": "turn 3: answered"
      }
     ],
     "hard": [
@@ -20169,7 +20209,7 @@
       "tool_calls": []
      }
     ],
-    "passed": true
+    "passed": false
    }
   ],
   "e2e-84": [
