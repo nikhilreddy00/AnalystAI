@@ -285,7 +285,7 @@
  },
  "domain_pack/columns.py::derived_roles": {
   "equivalents": [],
-  "hash": "10fc55e3d221d2ad"
+  "hash": "5d50a720548bb313"
  },
  "domain_pack/columns.py::pack_columns": {
   "equivalents": [],
@@ -332,7 +332,7 @@
     "reason": "num and den are built over the same groups (_term reindexes both to the KPI's groups), so their indexes are equal"
    }
   ],
-  "hash": "b7cf798130850853"
+  "hash": "151fa0cb63df31c3"
  },
  "domain_pack/kpi.py::_term": {
   "equivalents": [
@@ -373,7 +373,11 @@
     "reason": "astype(None) gives float64 as astype(float) does (checked)"
    }
   ],
-  "hash": "22536a36f754c37e"
+  "hash": "94d59547f0f51c12"
+ },
+ "domain_pack/kpi.py::unavailable_words": {
+  "equivalents": [],
+  "hash": "65da1bcee7cf1137"
  },
  "domain_pack/kpi.py::zero_note": {
   "equivalents": [
