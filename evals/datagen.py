@@ -751,8 +751,10 @@ def _machine_readings_truth(df: pd.DataFrame) -> dict:
         "repeated_wall_hours": int((wall[d["Sensor"] == "S01"] == pd.Timestamp("2026-10-25 02:00")).sum() - 1),
         # naive twins
         "naive_mean_temp": float(df.loc[df["Temperature"] != -9999.0, "Temperature"].mean()),
+        "naive_temp_sum_by_line": c.groupby(d.loc[ok, "Line"]).sum().to_dict(),
     }
     assert t["naive_mean_temp"] - t["mean_temp_c"] > 5                                          # 1
+    assert min(t["naive_temp_sum_by_line"].values()) > 100 * max(t["mean_temp_c_by_line"].values())   # 9
     assert abs(t["s07_drift_c_per_day"] - 0.05) < 0.01                                         # 8
     assert t["repeated_wall_hours"] == 1                                                        # 6
     return t

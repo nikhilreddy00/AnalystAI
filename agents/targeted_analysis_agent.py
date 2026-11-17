@@ -138,6 +138,8 @@ def run_targeted_analysis(session: AnalysisSession) -> TargetedResponse:
     handler = _HANDLERS.get(intent)
     pack = pack_for(contract.domain)
     conventions = defaults_pack(contract)   # strong match: the domain's defaults apply
+    if averaged := _never_summed(params, contract, df):
+        params = params.model_copy(update={"aggregation": "mean"})
     params = _asked_agg(params, contract, session.task_plan.raw_query)
     ids = {c for r, c in contract.roles.items() if conventions and conventions.roles[r].kind == "id"}
     # a pack id (Shopify's order number in 'Name') names no one, whatever the header rule says
@@ -209,6 +211,8 @@ def run_targeted_analysis(session: AnalysisSession) -> TargetedResponse:
         response.answer_text += _also_named(full, params, contract, pack, session.task_plan.raw_query)
     if period and handler is not handle_kpi:
         response.answer_text += f" Period: {period}."
+    if averaged and response.answer_text and not response.unanswerable_reason:
+        response.answer_text += f" {params.metric_column} is a measured level: averaged, never summed."
     response.chart_configs = finalize_charts(response.chart_configs, ctx)
     return response
 
@@ -258,6 +262,20 @@ _AVERAGE_WORDS = re.compile(r"\b(?:average|avg|mean|typical|per (?:order|line|ro
                             r"transaction|unit|item))\b", re.I)
 _MEANING = re.compile(r"\b(?:do|does|did) (?:that|this|it|you|they|these) mean\b|\bmean(?:s)? that\b|"
                       r"\bi mean\b|\bwhat i mean\b", re.I)   # "what does that mean", "I mean": no average
+
+
+def _never_summed(params: TargetedParams | None, contract: DataContract, df: pd.DataFrame) -> bool:
+    """A sum asked of a pack's number role (a temperature, a rating, an interest rate: Role.kind
+    'number', additive False) is its mean, even when the question says "total" (review
+    2026-11-17, T18: 'Line B leads at 468,696.77'); a 0/1 flag's sum is a count and stays."""
+    pack = defaults_pack(contract)
+    col = params.metric_column if params else None
+    role = next((r for r, c in contract.roles.items() if c == col), None)
+    spec = pack.roles[role] if pack and role else None
+    if not (spec and spec.kind == "number" and not spec.additive and col in df.columns
+            and (params.aggregation or "").lower() == "sum"):
+        return False
+    return not pd.to_numeric(df[col], errors="coerce").dropna().isin([0, 1]).all()
 
 
 def _asked_agg(params: TargetedParams | None, contract: DataContract, question: str):

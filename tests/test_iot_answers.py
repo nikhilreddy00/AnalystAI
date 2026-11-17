@@ -312,6 +312,23 @@ def test_each_of_a_few_groups_is_named_with_its_value():
     assert "'Line B' leads at 71.99; 'Line C' at 71.14; 'Line A' is lowest at 69.96." in text, text
 
 
+@pytest.mark.parametrize("intent, question, params", [
+    ("time_series", "monthly sum of temperature", dict(aggregation="sum", frequency="M")),
+    ("segment_compare", "total temperature by line", dict(segment_column="Line", aggregation="sum")),
+    ("top_n", "top sensors by total temperature", dict(group_by="Sensor", aggregation="sum", n=3))])
+def test_a_reading_is_averaged_even_when_a_total_is_asked(intent, question, params):
+    """Review 2026-11-17 (T18; C6, D1-16): "total temperature by line" said 'Line B leads at
+    468,696.77'. A pack's number role is never summed (Role.kind 'number'); a 0/1 flag still
+    counts (HR's `left`). The answer says why."""
+    text, _ = answer("machine_readings", intent, question, metric_column="Temperature", **params)
+    assert "sum" not in text.lower().replace("summed", "") and "468,696" not in text, text
+    assert "averaged, never summed" in text, text
+    truth = _built("machine_readings")[3]
+    assert not any(f"{v:,.0f}"[:5] in text for v in truth["naive_temp_sum_by_line"].values()), text
+    if intent == "segment_compare":
+        assert f"{truth['mean_temp_c_by_line']['Line B']:.2f}" in text, text
+
+
 @pytest.mark.parametrize("n, said", [
     (5, "'a' leads at 5.00; 'b' at 4.00; 'c' at 3.00; 'd' at 2.00; 'e' is lowest at 1.00"),
     (6, "'a' leads at 6.00; 'f' is lowest at 1.00")])
