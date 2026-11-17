@@ -191,6 +191,12 @@ readings (8 assets, 264 alarms; Line C: 4,418 rows, °C). Charts rescale and foo
 filter; the breakdowns a filter can't recompute say "SHOWS UNFILTERED DATA". Not checked at $0:
 the chat report's narrative (needs the model; read live before the review, on 4 uploads).
 
+Review checks: re-measure of the changed contexts iot-4/5/6/8 12/12 (k=3), intake-iot-03 1/1
+($0.27; Domain 7 total $4.30 of $5); full suite green but one stored run's replay (named);
+Playwright 40/40; mutation gate on `kpi_measures` and `describe_kpi` 0 survivors, recorded,
+`--check main` clean. Below the gate (not gated, survivors left): `as_times` 0.68, `pii_kind`
+0.80, `_says` 0.73.
+
 ## Deviations
 
 - The analysis gate ran on 89bb51d, before the audit; the final re-measure on a23d8bd covers the
