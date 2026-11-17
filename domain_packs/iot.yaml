@@ -118,7 +118,7 @@ ranges: {repair_hours: {gt: 0}}
 derived: {repair_hours: [actual_finish, hours, actual_start]}
 
 overview_groups: [production_line, asset, shift, work_type]
-overview_kpis: [oee, availability, good_count, mtbf, mttr, corrective_wos, assets, alarms]
+overview_kpis: [oee, availability, good_count, mtbf, mttr, corrective_wos, pm_share, assets, alarms]
 # blank = no event: a preventive order has no failure code (it is no failure), never missing
 marker_fields: [failure_code]
 protected_roles: [operator, reported_by]
@@ -184,7 +184,7 @@ kpis:
      den: [[{sum: total_count}]]}
   - {name: unplanned_downtime, label: Unplanned downtime, unit: number, unit_word: minutes,
      num: [[{sum: unplanned_downtime}]]}
-  - {name: pm_share, label: Preventive share of work orders, unit: percent,
+  - {name: pm_share, label: Preventive share of work orders, unit: percent, tile: true,
      num: [[{nunique: work_order, where: [[{role: work_type, in: [
                pm, preventive, preventive maintenance, planned, planned maintenance, pdm, predictive,
                predictive maintenance, condition based, cbm, inspection, routine, calibration]}]]}]],

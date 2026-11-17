@@ -20,7 +20,7 @@ CHANGES: dict[str, dict[str, str]] = {
     # Domain 7 review (2026-11-17): the over-100% performance flag is filed under the ideal cycle
     # (was the first role alphabetically, changeover); MTBF / MTTR answers say their basis
     "deterministic": {f"shift_production-{s}": "review: the over-max flag's column; MTBF's basis"
-                      for s in (1, 2, 3)},
+                      for s in (1, 2, 3)} | {"work_orders-1": "review: the preventive share tile; MTTR's basis"},
     "analysis": {c: "review: the cleaning note names Ideal Cycle Time (s) for the over-100% shift"
                  for c in ("iot-4", "iot-6", "iot-8")},
 }

@@ -323,6 +323,15 @@ def test_each_of_a_few_groups_is_named_with_its_value():
     assert "'Line B' leads at 71.99; 'Line C' at 71.14; 'Line A' is lowest at 69.96." in text, text
 
 
+def test_the_work_order_tiles_carry_the_preventive_share_by_count():
+    """Review 2026-11-17: the plan's work-order tiles are corrective WOs, MTTR, PM share (by
+    count) and open WOs; PM share had no tile."""
+    from agents.visualization_agent import pack_kpis
+    _, clean, contract, truth = _built("work_orders")
+    tiles = {k.label: k.value for k in pack_kpis(clean, contract)}
+    assert tiles["Preventive share of work orders"] == f"{truth['pm_share']:.1%}", tiles
+
+
 def test_mtbf_and_mttr_say_their_basis_and_a_machine_that_never_failed_is_answered():
     """Review 2026-11-17 (spec must-say; C5 near D7-14): 'MTBF: 42.29 hours' gave no failure
     count and no assumption, MTTR never said its 40 open orders were left out, M08's MTBF was
