@@ -121,6 +121,10 @@ overview_groups: [production_line, asset, shift, work_type]
 overview_kpis: [oee, availability, good_count, mtbf, mttr, corrective_wos, pm_share, assets, alarms]
 # blank = no event: a preventive order has no failure code (it is no failure), never missing
 marker_fields: [failure_code]
+# a work order's actual dates are filled once work starts / finishes: a cancelled or waiting
+# order's blanks are the layout; a finished one's blank finish is missing (review, D1-03)
+conditional_fields: {actual_start: [inprg, in progress, comp, complete, completed, close, closed],
+                     actual_finish: [comp, complete, completed, close, closed]}
 protected_roles: [operator, reported_by]
 role_caveats:
   operator: "Operators are people: figures by operator describe the work, never rank the people, and groups of fewer than 11 operators are not shown."

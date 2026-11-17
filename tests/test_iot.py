@@ -349,6 +349,23 @@ def test_each_rows_ratio_over_its_max_is_flagged_and_a_ratio_at_the_max_is_not()
     assert flags([[100, 0, 60, None, 60]]) == []   # no ideal cycle: performance not computable
 
 
+def test_a_work_orders_actual_dates_are_blank_by_its_status_never_missing():
+    """Review 2026-11-17 (D1-03 back): 'ACTSTART 59 missing (9.2%) … left as missing' — every one
+    a cancelled or waiting order; of ACTFINISH's 82 blanks only the 3 finished orders' are
+    missing. Each is judged on the rows whose status needs it."""
+    from tests.test_oracle import _built
+    s, df, _, _ = _built("work_orders")
+    got = {d.column: (d.strategy, d.reason) for d in s.cleaning_audit.decisions
+           if d.column in ("ACTSTART", "ACTFINISH")}
+    done = df["STATUS"].isin(["COMP", "CLOSE"])
+    assert got["ACTSTART"][0] == "conditional" and "0% of those rows have no value" in got["ACTSTART"][1], got
+    from agents.cleaning_agent import _null_pct
+    pct = _null_pct(df.loc[done, "ACTFINISH"])   # 3 finished orders with no finish (T20)
+    assert df.loc[done, "ACTFINISH"].isna().sum() == 3
+    assert got["ACTFINISH"] == ("conditional", "Filled only for rows whose status needs it, so other rows "
+                                f"are blank by design; {pct:g}% of those rows have no value. Kept as it is."), got
+
+
 def test_a_blank_failure_code_is_no_failure_never_missing():
     """Live check (D1-04): a preventive order has no failure code by design; the high-null gate
     asked about it, an alert called it 48% missing and an action said to back-fill it."""
