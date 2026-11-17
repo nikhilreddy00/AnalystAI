@@ -15,6 +15,12 @@ export function formatMoney(n: number, currency?: string | null): string {
   return n.toLocaleString("en-US", { style: "currency", currency: code });
 }
 
+// A range filter's bound: at most 2 decimals, thousands grouped (a converted °F reading is
+// 66.04, never 66.04444444444445).
+export function formatBound(n: number): string {
+  return Number.isFinite(n) ? n.toLocaleString("en-US", { maximumFractionDigits: 2 }) : "—";
+}
+
 export function formatWithUnit(n: number, unit?: string | null): string {
   if (!Number.isFinite(n)) return "—";
   if (isCurrency(unit)) return formatMoney(n, unit);
