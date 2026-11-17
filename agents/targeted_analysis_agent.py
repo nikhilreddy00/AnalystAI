@@ -221,12 +221,12 @@ def _also_named(df: pd.DataFrame, params: TargetedParams, contract: DataContract
     one of two was given). domain_pack.named_kpis decides which, as intake does. A named value
     ('OEE and MTBF for M08') is that value's rows, as the answer's own KPI is (mutation gate)."""
     roles = {r: c for r, c in contract.roles.items() if c in df.columns}
-    out, cut = [], ()
+    out, cut, whole = [], (), df   # beside the whole data a small protected group stays hidden
     if named := _named_group(df, params):
         df, cut = df[df[params.segment_column].astype(str) == named], (params.segment_column,)
     group = params.group_by or params.segment_column
     if group and additive(pack, params.kpi) and _TOTAL_WORDS.search(question or "") and \
-            isinstance(v := measure(df, roles, pack, params.kpi, cut=cut), Measured):   # 'total billings, by type'
+            isinstance(v := measure(df, roles, pack, params.kpi, full=whole, cut=cut), Measured):   # 'total billings, by type'
         k = pack.kpi(params.kpi)
         _, currency, _ = main_currency(df, roles)
         kind = {"money": "currency", "percent": "percent", "count": "count"}.get(k.unit, "number")
@@ -237,7 +237,7 @@ def _also_named(df: pd.DataFrame, params: TargetedParams, contract: DataContract
         if name == params.kpi or not computable(pack, name, roles):
             continue
         k = pack.kpi(name)
-        v = measure(df, roles, pack, name, cut=cut)
+        v = measure(df, roles, pack, name, full=whole, cut=cut)
         if isinstance(v, Unavailable):   # asked for: said why, never left out (C5)
             out.append(f"{k.label}: unavailable, {unavailable_words(v, pack, k)}.")
             continue
