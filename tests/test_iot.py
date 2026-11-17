@@ -264,6 +264,13 @@ def test_a_machine_id_is_no_date_filter():
     assert "Machine" not in roles["datetime_cols"] and "Day" in roles["datetime_cols"]
 
 
+def test_a_kpi_reads_the_status_that_kinds_its_rows_and_its_derived_roles_sources():
+    """D7-04 (P4 on the work-order book): blanking STATUS changed corrective counts (a cancelled
+    order counted) and blanking ACTFINISH changed MTTR, though kpi_roles said neither is read."""
+    assert "status" in dp.kpi_roles(IOT, "corrective_wos")
+    assert {"actual_start", "actual_finish", "repair_hours"} <= dp.kpi_roles(IOT, "mttr")
+
+
 def test_mttr_reads_finished_corrective_orders_in_exact_hours():
     """T3/T4/T19, S-c: a PM is no repair, an open order has no finish yet, a cancelled one is no
     work; a repair across the 25 Oct 2026 clock change is 2.75 h in UTC. (2.75 + 1) / 2."""
