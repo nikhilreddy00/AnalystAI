@@ -1534,6 +1534,10 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
             return TargetedResponse(intent=intent, answer_text=answer + f" How: {how}",
                                     chart_configs=[chart])
     got = measure(df, roles, pack, kpi.name, full=all_rows, window=win, cut=cut)
+    if isinstance(got, Unavailable) and got.zero and kpi.zero_words:   # no failure in N hours: an
+        return TargetedResponse(intent=intent, answer_text=(   # answer, a lower bound (C5, review)
+            f"{kpi.label}{where}: {unavailable_words(got, pack, kpi)}."
+            + _says(pack, kpi, df, roles, full=all_rows, window=win, cut=cut) + f" How: {how}"))
     if isinstance(got, Unavailable):   # its own reason, never re-guessed (C5)
         hidden = got.reason == "small_cell"
         return _unanswerable(intent, (f"{kpi.phrase}{where} isn't shown: " if hidden else
@@ -1541,7 +1545,8 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
                              + unavailable_words(got, pack, kpi),
                              ["Ask about a larger group" if hidden else "Ask about a longer period"])
     value = got.value
-    answer = f"{kpi.label}{where}: {fmt(value)}." + carry + _arriving(contract, all_rows, date, params)
+    answer = f"{kpi.label}{where}: {fmt(value)}." + _says(pack, kpi, df, roles, full=all_rows, window=win,
+                                                         cut=cut) + carry + _arriving(contract, all_rows, date, params)
     if spelled:   # the same window a year earlier, when asked (never against rows of other dates)
         if params.compare == "yoy":
             prior, prior_period = year_before(None)
@@ -1588,6 +1593,22 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
             return TargetedResponse(intent=intent, answer_text=answer + f" How: {how}",
                                     chart_configs=[chart])
     return TargetedResponse(intent=intent, answer_text=answer + f" How: {how}")
+
+
+def _says(pack, kpi, df: pd.DataFrame, roles: dict[str, str], **kw) -> str:
+    """' <the KPI's says>' with each {<kpi>} measured over the same rows (MTBF's failure count,
+    MTTR's open orders); '' when it has none or a part can't be measured (review 2026-11-17)."""
+    if not kpi.says:
+        return ""
+    parts = {}
+    for name in re.findall(r"\{(\w+)\}", kpi.says):
+        got = measure(df, roles, pack, name, **kw)
+        if not isinstance(got, Measured):
+            return ""
+        other = pack.kpi(name)
+        parts[name] = other.written(_format_value(
+            got.value, {"percent": "percent", "count": "count"}.get(other.unit, "number"), None))
+    return " " + kpi.says.format(**parts)
 
 
 def _arriving(contract: DataContract, full: pd.DataFrame, date: str | None, params: TargetedParams) -> str:

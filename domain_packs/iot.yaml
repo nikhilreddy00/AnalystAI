@@ -155,9 +155,11 @@ kpis:
   # The tile strip shows the first five a file supports, in this order: a shift report's OEE,
   # its three factors and MTBF; a work-order log's MTTR and counts; readings' assets and alarms.
   - {name: mtbf, label: MTBF, unit: number, unit_word: hours, tile: true,
-     zero_words: "no failure in {num} of run time",
+     zero_words: "no failure in {num} of run time (a lower bound)",
+     says: "From {failures} failures; it assumes a constant failure rate, so it is no schedule.",
      num: [[{kpi: run_minutes, times: 0.016666666666666666}]], den: [[{sum: failures}]]}
   - {name: mttr, label: MTTR, unit: number, unit_word: hours, tile: true,
+     says: "Repair work from actual start to actual finish, pauses included (the wait before work starts isn't counted); {open_wos} open work orders are left out, so it can read low.",
      # corrective work: CMMS codes and the spellings exports write (research §6)
      num: [[{sum: repair_hours, where: [[{role: work_type, in: &corrective [
                cm, em, corrective, corrective maintenance, emergency, emergency maintenance,

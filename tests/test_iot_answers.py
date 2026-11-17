@@ -258,7 +258,8 @@ def test_one_machine_with_no_failures_says_its_run_time_never_a_zero_base():
     assert f"no failure in {run:,.0f} hours of run time" in text and "base is 0" not in text, text
     iot = pack_for("iot")
     got = measure(m08, contract.roles, iot, "mtbf", by="Machine")
-    assert unavailable_words(got, iot, iot.kpi("mtbf")) == f"no failure in {run:,.0f} hours of run time"
+    assert unavailable_words(got, iot, iot.kpi("mtbf")) == \
+        f"no failure in {run:,.0f} hours of run time (a lower bound)"
 
 
 def test_each_answer_path_says_a_zero_base_in_the_kpis_words():
@@ -268,7 +269,7 @@ def test_each_answer_path_says_a_zero_base_in_the_kpis_words():
     from agents.visualization_agent import pack_kpis
     _, clean, contract, _ = _built("shift_production")
     m08 = clean.query("Machine == 'M08'")
-    none = "no failure in 1,546 hours of run time"
+    none = "no failure in 1,546 hours of run time (a lower bound)"
     assert [(k.value, k.context) for k in pack_kpis(m08, contract, full=clean) if k.label == "MTBF"] == [
         ("—", none)]
     text, _ = answer("shift_production", "segment_compare", "OEE and MTBF for M08", kpi="oee",
@@ -281,7 +282,7 @@ def test_each_answer_path_says_a_zero_base_in_the_kpis_words():
         assert r.answer_text == f"I couldn't answer this — {said}: {none}", r.answer_text
     date = contract.roles["date"]
     two = pd.concat([m08.assign(**{date: m08[date] - pd.DateOffset(years=1)}), m08], ignore_index=True)
-    for params, said in (({}, "can't be computed from these rows: no failure in 3,091"),
+    for params, said in (({}, "MTBF: no failure in 3,091"),   # answered: a lower bound (review)
                          (dict(group_by="Machine"), "can't be shown by Machine: no failure in 3,091")):
         r = handle_kpi(two, TargetedParams(kpi="mtbf", compare="yoy", **params), contract,
                        intent=QuestionIntent.SEGMENT_COMPARE)
@@ -305,7 +306,7 @@ def test_groups_with_no_failures_and_groups_hidden_are_said():
     assert m08["Failures"].sum() == 0
     text, _ = answer("shift_production", "segment_compare", "MTBF by machine", kpi="mtbf",
                      segment_column="Machine")
-    assert f"M08: no failure in {run:,.2f} hours of run time." in text, text
+    assert f"M08: no failure in {run:,.2f} hours of run time (a lower bound)." in text, text
     text, _ = answer("hr_roster", "segment_compare", "average salary by department", kpi="avg_salary",
                      group_by="Department")
     assert "Not shown: Legal, Finance (a group of fewer than 11 people" in text, text
@@ -320,6 +321,20 @@ def test_each_of_a_few_groups_is_named_with_its_value():
     text, _ = answer("machine_readings", "segment_compare", "What is the average temperature on each line?",
                      metric_column="Temperature", segment_column="Line", aggregation="mean")
     assert "'Line B' leads at 71.99; 'Line C' at 71.14; 'Line A' is lowest at 69.96." in text, text
+
+
+def test_mtbf_and_mttr_say_their_basis_and_a_machine_that_never_failed_is_answered():
+    """Review 2026-11-17 (spec must-say; C5 near D7-14): 'MTBF: 42.29 hours' gave no failure
+    count and no assumption, MTTR never said its 40 open orders were left out, M08's MTBF was
+    'I couldn't answer this', and MTTR's How listed the 18 corrective spellings twice."""
+    text, _ = answer("shift_production", "segment_compare", "what is MTBF", kpi="mtbf")
+    assert text.startswith("MTBF: 42.29 hours. From 325 failures; it assumes a constant failure rate"), text
+    text, _ = answer("shift_production", "segment_compare", "MTBF for M08", kpi="mtbf",
+                     segment_column="Machine", segment_value="M08")
+    assert "couldn't answer" not in text and "(a lower bound)" in text, text
+    text, _ = answer("work_orders", "segment_compare", "what is our MTTR", kpi="mttr")
+    assert "3.97 hours" in text and "40 open work orders are left out, so it can read low" in text, text
+    assert text.count("emergency maintenance") == 1, text
 
 
 @pytest.mark.parametrize("intent, question, params", [
