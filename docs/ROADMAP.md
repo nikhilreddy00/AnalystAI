@@ -487,6 +487,21 @@ dataset should land in a workspace users can come back to. Expected size: 2 sess
      manufacturing. 8. Logistics. Optional after: marketing, finance (P&L), education.
 - **Budget:** **< $5 of eval spend per domain session** (estimate before every paid run,
   `--max-usd` per run, stop at $4.70 cumulative or a run > 30% over its estimate).
+- **Time budget (retro Domain 7, 2026-11-17):** ≤ 10 h from first commit to merge (Domain 6
+  ~7.5 h; Domain 7 20.4 h + a 4.7 h review). The hours are said at each phase gate and in the
+  note's "Wall clock:" line. **Breaker:** when the hours used pass 50% of the budget before the
+  paid smoke, or the projection passes 1.2× the budget, the session pauses building and:
+  1. names the top 3 time sinks from the session's own log (tool time by kind, idle waits,
+     reworked fixes, context size);
+  2. runs one background `mattpocock-skills:research` agent (≤ 30 min, $0 evals) on how
+     senior engineers and AI-coding practitioners get throughput on the same sinks: official
+     docs and engineering blogs first, then X, Reddit and YouTube talks as leads to verify
+     (e.g. test-impact selection, parallel worktree subagents on independent slices, cached
+     replays, scaffolding the repeated per-domain work, smaller context per session). Written
+     to `docs/research/<date>-throughput.md`;
+  3. proposes 2–3 changes, each with hours saved and what it risks (a gate cut is said, never
+     silent), and asks the user before applying any. Quality gates (hard rules 100%, CI green,
+     golden) are never what gets cut.
 - **Domain pack** (data, not code: adding domain 9 never edits an agent), one per domain, read by:
   - intake: a glossary of terms ("NPL", "loss ratio", "ALOS") and their column synonyms;
   - analysis + KPI tiles: KPI definitions with exact formulas, windows and exclusions;
