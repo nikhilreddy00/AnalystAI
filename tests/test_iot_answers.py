@@ -310,3 +310,12 @@ def test_each_of_a_few_groups_is_named_with_its_value():
     text, _ = answer("machine_readings", "segment_compare", "What is the average temperature on each line?",
                      metric_column="Temperature", segment_column="Line", aggregation="mean")
     assert "'Line B' leads at 71.99; 'Line C' at 71.14; 'Line A' is lowest at 69.96." in text, text
+
+
+@pytest.mark.parametrize("n, said", [
+    (5, "'a' leads at 5.00; 'b' at 4.00; 'c' at 3.00; 'd' at 2.00; 'e' is lowest at 1.00"),
+    (6, "'a' leads at 6.00; 'f' is lowest at 1.00")])
+def test_five_groups_are_each_named_and_six_only_their_ends(n, said):
+    from agents.targeted_analysis_agent import _lead_and_last
+    order = pd.Series(range(n, 0, -1), index=list("abcdef"[:n]), dtype=float)
+    assert _lead_and_last(order) == said
