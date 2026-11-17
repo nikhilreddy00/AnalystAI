@@ -245,7 +245,7 @@ def test_a_balance_chart_and_answer_count_the_rows_the_tile_counts(tape):
     df, c = tape
     r = handle_segment_compare(df, TargetedParams(metric_column="Outstanding Principal",
                                                   segment_column="Product", aggregation="sum"), c)
-    assert "'mortgage' leads at 2,000.00; 'card' is lowest at 480.00" in r.answer_text
+    assert "'mortgage' leads at 2,000.00; 'auto' at 1,340.00; 'card' is lowest at 480.00" in r.answer_text
     bars = group_bars(df, "Product", "Outstanding Principal", "last", build_context(df, contract=c))
     got = {row["Product"]: row["Outstanding Principal"] for row in bars.data}
     assert got == {"auto": 1340.0, "card": 480.0, "mortgage": 2000.0}   # the tile's numbers

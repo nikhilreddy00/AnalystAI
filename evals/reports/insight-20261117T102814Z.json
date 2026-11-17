@@ -1,0 +1,3106 @@
+{
+ "meta": {
+  "suite": "insight",
+  "report": "insight-20261117T102814Z",
+  "k": 1,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "a23d8bd",
+  "started_at": "20261117T102814Z",
+  "only": "ins-50,ins-51,ins-52,ins-53",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 4,
+  "runs": 4,
+  "pass_rate": 1.0,
+  "case_majority_pass_rate": 1.0,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "hard_rules_na": 0,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 2,
+  "runs_with_prose_rewritten": 2,
+  "runs_with_pii_guard_hit": 0,
+  "cost_per_question_usd": 0.0261,
+  "latency_p50_s": 26.32,
+  "latency_p95_s": 31.05,
+  "hard_insight_grounded": 1.0,
+  "hard_insight_dates_in_range": 1.0,
+  "hard_executive_no_jargon": 1.0,
+  "hard_claims_cite_evidence": 1.0,
+  "hard_no_injection_echo": 1.0,
+  "recall": 1.0,
+  "must_not": 1.0,
+  "contradictions_named": null,
+  "hedged": null,
+  "no_causal_overreach": 1.0,
+  "holdout_pass_rate": null,
+  "pass_rate_by_category": {
+   "adversarial": 1.0,
+   "data_quality": 1.0,
+   "straightforward": 1.0
+  },
+  "by_domain": {
+   "iot": {
+    "cases": 3,
+    "k_min": 1,
+    "k_max": 1,
+    "cases_passed_all_runs": 3,
+    "pass_rate": 1.0,
+    "hard_rule_violations": 0,
+    "hard_rules_na": 0,
+    "builtin_only_cases": [],
+    "model_dependent_passed": 0,
+    "model_dependent_cases": 0
+   },
+   "saas": {
+    "cases": 1,
+    "k_min": 1,
+    "k_max": 1,
+    "cases_passed_all_runs": 1,
+    "pass_rate": 1.0,
+    "hard_rule_violations": 0,
+    "hard_rules_na": 0,
+    "builtin_only_cases": [],
+    "model_dependent_passed": 0,
+    "model_dependent_cases": 0
+   }
+  }
+ },
+ "runs": {
+  "ins-50-saas-mrr-overview": [
+   {
+    "checks": [
+     {
+      "kind": "recall",
+      "ok": true,
+      "detail": "/retention/ found"
+     },
+     {
+      "kind": "recall",
+      "ok": true,
+      "detail": "/12 months|twelve months/ found"
+     },
+     {
+      "kind": "must_not",
+      "ok": true,
+      "detail": "/\\b(?:MRR|ARR)\\s+(?:revenue|in revenue)\\b|\\brevenue\\s*\\((?:MRR|ARR)\\)/ absent"
+     },
+     {
+      "kind": "must_not",
+      "ok": true,
+      "detail": "/\\bmonthly\\s+(?:logo\\s+|customer\\s+)?churn[^.]{0,60}(?:\u00d7|x|times)\\s*12\\b/ absent"
+     },
+     {
+      "kind": "must_not",
+      "ok": true,
+      "detail": "/(?:price|pricing|support|tickets|onboarding) (?:caused|drove|drives|led to)/ absent"
+     },
+     {
+      "kind": "must_not",
+      "ok": true,
+      "detail": "/\\b(?:healthy|best[- ]in[- ]class|world[- ]class|top[- ]quartile)\\b[^.]{0,40}\\b(?:NRR|churn|retention)\\b/ absent"
+     },
+     {
+      "kind": "must_not",
+      "ok": true,
+      "detail": "/net sales|order value|basket|\\bSKU|outstanding balance|\\bNPL\\b|readmission|loss ratio|headcount|attrition/ absent"
+     },
+     {
+      "kind": "causal",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "insight_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "insight_dates_in_range",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "executive_no_jargon",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "claims_cite_evidence",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "straightforward",
+    "holdout": false,
+    "output": {
+     "report": {
+      "executive_summary": "As of 31 Oct 2026, this SaaS dataset covers 694 customers across 24 months, with MRR of $562,608.85 and net revenue retention of 91.1% over the trailing 12 months. The business grew MRR from $412,929.08 to $562,608.85 over the 12 months to 31 Oct 2026, driven by new and expansion activity, with 539 customers active at the close. Gross revenue retention of 77.2% warrants attention alongside the logo churn of 20.1%, and a single Enterprise customer accounted for 88% of the largest churn month.",
+      "technical_findings": [
+       "sum mrr by segment (3 groups) (n = 10,117; high confidence: 10117 rows)",
+       "mrr: median 273.72, mean 1,013.19, range 35.82 to 40,000.00 (n = 10,117; high confidence: 10117 rows)"
+      ],
+      "recommended_actions": [
+       {
+        "priority": 1,
+        "action": "Investigate the single Enterprise customer id responsible for 88% of the March 2026 churn spike to understand whether the risk pattern recurs in the current book.",
+        "reasoning": "",
+        "metric_impact": null
+       },
+       {
+        "priority": 2,
+        "action": "Review the gap between net revenue retention (91.1%) and gross revenue retention (77.2%) to identify which segments or cohorts are contracting or churning before expansion can offset losses.",
+        "reasoning": "Closing that gap is the fastest lever to improve overall revenue retention.",
+        "metric_impact": "Closing that gap is the fastest lever to improve overall revenue retention."
+       }
+      ],
+      "anomaly_alerts": [
+       {
+        "title": "How these numbers are counted",
+        "severity": "low",
+        "description": "Read as SaaS subscription data (MRR, ARR, paying customers, new MRR, churned MRR, logo churn, net revenue retention, gross revenue retention). MRR is the monthly run-rate of the customers paying at the latest date (an annual plan \u00f7 12, net of discounts; trials, paused and unpaid subscriptions out, past due in), not revenue; movements and retention compare each customer's MRR at month-ends over the 12 months to that date, and annual churn is measured on the customers paying 12 months earlier, never a monthly rate \u00d7 12. A customer who starts and leaves inside one month appears in no month-end figure.",
+        "affected_metric": "",
+        "suggested_investigation": ""
+       }
+      ],
+      "proactive_questions": [
+       "What is the MRR and logo churn breakdown by segment (Enterprise, Mid, SMB) for the 12 months to 31 Oct 2026?",
+       "Which customer cohorts (by first active month) show the lowest gross revenue retention, and how does that vary by segment?",
+       "How has monthly new MRR trended across the 24-month window, and are new customer additions accelerating or slowing?"
+      ],
+      "methodology_notes": "Cleaning (cleaning rules-v1): Parsed numbers or dates in 1 column(s). Outliers flagged (kept) in: mrr. Final dataset: 10117 rows (started with 10117). Analysis (analysis v9) computed: eda, segment. Descriptive statistics use the non-missing values of each column.",
+      "executive_view": {
+       "headline": "As of 31 Oct 2026, this SaaS dataset covers 694 customers across 24 months, with MRR of $562,608.85 and net revenue retention of 91.1% over the trailing 12 months.",
+       "headline_evidence_ids": [
+        "clean:story"
+       ],
+       "paragraphs": [
+        {
+         "text": "The business grew MRR from $412,929.08 to $562,608.85 over the 12 months to 31 Oct 2026, driven by new and expansion activity, with 539 customers active at the close.",
+         "evidence_ids": [
+          "clean:story"
+         ],
+         "typed": null
+        },
+        {
+         "text": "Gross revenue retention of 77.2% warrants attention alongside the logo churn of 20.1%, and a single Enterprise customer accounted for 88% of the largest churn month.",
+         "evidence_ids": [
+          "clean:story"
+         ],
+         "typed": null
+        }
+       ],
+       "findings": [
+        {
+         "text": "The MRR bridge for the 12 months to 31 Oct 2026 shows new MRR of $176,207.56 and expansion MRR of $89,367.79 more than offsetting churned MRR of $85,613.74 and contraction MRR of $36,744.52, ending at $562,608.85.",
+         "evidence_ids": [
+          "clean:story"
+         ],
+         "typed": null
+        },
+        {
+         "text": "Enterprise accounts for the largest share of cumulative MRR in the dataset at $322,230.94, followed by Mid at $179,558.89 and SMB at $60,819.02.",
+         "evidence_ids": [
+          "seg:segment/mrr:sum"
+         ],
+         "typed": null
+        },
+        {
+         "text": "March 2026 was the largest single month of churned MRR at $45,479.75, far above a usual month of $3,863.14, with 88% of that month's churn tied to one Enterprise customer id.",
+         "evidence_ids": [
+          "clean:story"
+         ],
+         "typed": null
+        },
+        {
+         "text": "Individual customer MRR ranges from $35.82 to $40,000.00 with a median of $273.72 and a mean of $1,013.19, indicating a skewed distribution with a small number of high-value accounts.",
+         "evidence_ids": [
+          "eda:mrr"
+         ],
+         "typed": null
+        },
+        {
+         "text": "Total mrr: Enterprise (322,230.94) is higher than SMB (60,819.02).",
+         "evidence_ids": [
+          "seg:segment/mrr:sum"
+         ],
+         "typed": {
+          "kind": "comparison",
+          "evidence_id": "seg:segment/mrr:sum",
+          "cause": "",
+          "effect": "",
+          "metric": "cumulative MRR",
+          "verdict": "",
+          "source": "",
+          "a": "Enterprise",
+          "b": "SMB"
+         }
+        }
+       ],
+       "action_items": [
+        {
+         "action": "Investigate the single Enterprise customer id responsible for 88% of the March 2026 churn spike to understand whether the risk pattern recurs in the current book.",
+         "expected_impact": "",
+         "evidence_ids": [
+          "clean:story"
+         ]
+        },
+        {
+         "action": "Review the gap between net revenue retention (91.1%) and gross revenue retention (77.2%) to identify which segments or cohorts are contracting or churning before expansion can offset losses.",
+         "expected_impact": "Closing that gap is the fastest lever to improve overall revenue retention.",
+         "evidence_ids": [
+          "clean:story"
+         ]
+        }
+       ]
+      },
+      "analyst_view": {
+       "methodology": "Cleaning (cleaning rules-v1): Parsed numbers or dates in 1 column(s). Outliers flagged (kept) in: mrr. Final dataset: 10117 rows (started with 10117). Analysis (analysis v9) computed: eda, segment. Descriptive statistics use the non-missing values of each column.",
+       "statistical_notes": [
+        "sum mrr by segment (3 groups) (n = 10,117; high confidence: 10117 rows)",
+        "mrr: median 273.72, mean 1,013.19, range 35.82 to 40,000.00 (n = 10,117; high confidence: 10117 rows)"
+       ],
+       "caveats": [
+        "There is no full year-earlier window in the data, so the 12-month retention and churn figures are computed on the cohort present at 31 Oct 2025 and cannot be compared to a prior-year equivalent.",
+        "MRR values are flagged as containing outliers (kept); the wide range from $35.82 to $40,000.00 means segment or cohort averages may be heavily influenced by a small number of large accounts.",
+        "Cumulative MRR by segment sums all rows across 24 months and reflects customer-months, not a point-in-time balance; it should not be read as current MRR per segment.",
+        "1 sentence(s) stating a number, date or term not in the evidence and 0 uncited claim(s) were removed.",
+        "1 sentence(s) stating a cause or grading a result against a norm were removed: this data shows neither a controlled test nor an outside benchmark.",
+        "Read as SaaS subscription data (MRR, ARR, paying customers, new MRR, churned MRR, logo churn, net revenue retention, gross revenue retention). MRR is the monthly run-rate of the customers paying at the latest date (an annual plan \u00f7 12, net of discounts; trials, paused and unpaid subscriptions out, past due in), not revenue; movements and retention compare each customer's MRR at month-ends over the 12 months to that date, and annual churn is measured on the customers paying 12 months earlier, never a monthly rate \u00d7 12. A customer who starts and leaves inside one month appears in no month-end figure.",
+        "month: Parsed as dates."
+       ],
+       "code_references": [
+        "opening_mrr + new_mrr + expansion_mrr + reactivation_mrr + contraction_mrr + churned_mrr + transfer_in_mrr + transfer_out_mrr + mrr",
+        "# each customer_id's latest snapshot (newest period), then summed\nlatest_rows(df, 'mrr').groupby('segment')['mrr'].sum()"
+       ]
+      },
+      "additional_issues_note": "",
+      "generated_at": "2026-11-17T10:28:46.361227Z",
+      "memory_used": []
+     },
+     "bundle": {
+      "question": "Give me an overview of this dataset.",
+      "columns": [
+       "month",
+       "customer_id",
+       "mrr",
+       "plan",
+       "segment",
+       "country"
+      ],
+      "evidence_ids": [
+       "clean:audit",
+       "clean:story",
+       "seg:segment/mrr:sum",
+       "eda:mrr"
+      ],
+      "evidence": [
+       {
+        "id": "clean:audit",
+        "kind": "cleaning",
+        "claim": "Cleaning: 10117 \u2192 10117 rows, 1 logged changes",
+        "result_excerpt": "{\"rows_before\": 10117, \"rows_after\": 10117, \"decisions\": [[\"month\", \"type_coerce\", 10117, 0]]}",
+        "row_count": 10117,
+        "confidence": "high",
+        "confidence_reason": "rule-based; every change below is logged",
+        "assumptions": [
+         "month: Parsed as dates."
+        ]
+       },
+       {
+        "id": "clean:story",
+        "kind": "cleaning",
+        "claim": "The file's story in the product's own numbers: Logo churn (12-month cohort to 31 Oct 2026): 20.1%; no full year-earlier window in the data. Net revenue retention (12-month cohort to 31 Oct 2026): 91.1%; no full year-earlier window in the data. Gross revenue retention (12-month cohort to 31 Oct 2026): 77.2%; no full year-earlier window in the data. MRR bridge, 12 months to 31 Oct 2026: $412,929.08 on 31 Oct 2025 + new MRR $176,207.56 + expansion MRR $89,367.79 + reactivation MRR $6,462.68 \u2212 contraction MRR $36,744.52 \u2212 churned MRR $85,613.74 = $562,608.85. 131 customers left at a month-end in the window (churned customers); logo churn counts only the customers in force on 31 Oct 2025 who are not in force now, so the two differ: customers who joined in the window or came back are in the count only. The largest month of churned MRR: Mar 2026 with $45,479.75 (a usual month: $3,863.14), 88% of it one customer_id in Enterprise (segment). 10,117 rows are 694 customers (668 with more than one row); 539 in force at 31 Oct 2026.",
+        "result_excerpt": "[\"Logo churn (12-month cohort to 31 Oct 2026): 20.1%; no full year-earlier window in the data.\", \"Net revenue retention (12-month cohort to 31 Oct 2026): 91.1%; no full year-earlier window in the data.\", \"Gross revenue retention (12-month cohort to 31 Oct 2026): 77.2%; no full year-earlier window in the data.\", \"MRR bridge, 12 months to 31 Oct 2026: $412,929.08 on 31 Oct 2025 + new MRR $176,207.56",
+        "row_count": 10117,
+        "confidence": "high",
+        "confidence_reason": "computed by the product's spell rules, never by a model",
+        "assumptions": []
+       },
+       {
+        "id": "seg:segment/mrr:sum",
+        "kind": "segment",
+        "claim": "sum mrr by segment (3 groups)",
+        "result_excerpt": "{\"segment_column\": \"segment\", \"metric_column\": \"mrr\", \"aggregation\": \"sum\", \"results\": [{\"name\": \"Enterprise\", \"value\": 322230.94}, {\"name\": \"Mid\", \"value\": 179558.89}, {\"name\": \"SMB\", \"value\": 60819.02}]}",
+        "row_count": 10117,
+        "confidence": "high",
+        "confidence_reason": "10117 rows",
+        "assumptions": []
+       },
+       {
+        "id": "eda:mrr",
+        "kind": "eda",
+        "claim": "mrr: median 273.72, mean 1,013.19, range 35.82 to 40,000.00",
+        "result_excerpt": "{\"mean\": 1013.1915, \"std\": 2370.1159, \"min\": 35.82, \"max\": 40000.0, \"median\": 273.72, \"count\": 10117.0}",
+        "row_count": 10117,
+        "confidence": "high",
+        "confidence_reason": "10117 rows",
+        "assumptions": []
+       }
+      ],
+      "date_first": [
+       2024,
+       11
+      ],
+      "date_last": [
+       2026,
+       10
+      ],
+      "n_months": 24,
+      "audit_summary": "Parsed numbers or dates in 1 column(s). Outliers flagged (kept) in: mrr. Final dataset: 10117 rows (started with 10117).",
+      "chart_titles": [
+       "MRR over time",
+       "Net revenue retention over time",
+       "MRR bridge, 12 months to 31 Oct 2026: $412,929.08 \u2192 $562,608.85",
+       "MRR by segment (as of 31 Oct 2026)",
+       "Net revenue retention by segment (12-month cohort to 31 Oct 2026)",
+       "Logo churn by segment (12-month cohort to 31 Oct 2026)",
+       "New MRR by segment (12 months to 31 Oct 2026)",
+       "Churned MRR by segment (12 months to 31 Oct 2026)",
+       "Total mrr by segment: Enterprise highest (322,230.94), SMB lowest (60,819.02)"
+      ],
+      "past_insights": [],
+      "corr_pairs": [],
+      "values": [
+       {
+        "eda_summary": {
+         "mrr": {
+          "mean": 1013.1915,
+          "std": 2370.1159,
+          "min": 35.82,
+          "max": 40000.0,
+          "median": 273.72,
+          "count": 10117.0
+         }
+        },
+        "correlations": {},
+        "trends": [],
+        "segments": [
+         {
+          "segment_column": "segment",
+          "metric_column": "mrr",
+          "aggregation": "sum",
+          "results": [
+           {
+            "name": "Enterprise",
+            "value": 322230.94
+           },
+           {
+            "name": "Mid",
+            "value": 179558.89
+           },
+           {
+            "name": "SMB",
+            "value": 60819.02
+           }
+          ],
+          "label": null
+         }
+        ],
+        "anomalies": [],
+        "statistical_tests": [],
+        "forecast_points": [],
+        "dtypes_summary": {},
+        "missing_pct": {
+         "month": 0.0,
+         "customer_id": 0.0,
+         "mrr": 0.0,
+         "plan": 0.0,
+         "segment": 0.0,
+         "country": 0.0
+        },
+        "kpis": [
+         {
+          "label": "MRR",
+          "value": "$562,608.85",
+          "context": "as of 31 Oct 2026",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "mrr",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "currency",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Sum of mrr over the distinct customer_id in force at the date (each customer_id's latest month snapshot on or before the date, ended_at blank or after it) where mrr > 0; over records."
+         },
+         {
+          "label": "ARR",
+          "value": "$6,751,306.20",
+          "context": "as of 31 Oct 2026",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "arr",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "currency",
+           "currency": null,
+           "unit": null
+          },
+          "how": "12 \u00d7 MRR."
+         },
+         {
+          "label": "Paying customers",
+          "value": "539 customers",
+          "context": "as of 31 Oct 2026",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "paying_customers",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "count",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Distinct customer_id in force at the date (each customer_id's latest month snapshot on or before the date, ended_at blank or after it) where mrr > 0; over records."
+         },
+         {
+          "label": "New MRR",
+          "value": "$176,207.56",
+          "context": "12 months to 31 Oct 2026",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "new_mrr",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "currency",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Sum of mrr over the new moves: each customer_id whose value went from 0 (never in force before) to above 0 between consecutive month-ends in the period where mrr > 0; over records."
+         },
+         {
+          "label": "Churned MRR",
+          "value": "$85,613.74",
+          "context": "12 months to 31 Oct 2026",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "churned_mrr",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "currency",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Sum of mrr over the churn moves: each customer_id whose value went to 0 between consecutive month-ends in the period where mrr > 0; over records."
+         }
+        ],
+        "pre_cleaning_missing_pct": {},
+        "unique_counts": {},
+        "skewness": {},
+        "target_correlations": {},
+        "target_col": null,
+        "column_roles_summary": {},
+        "column_units": {}
+       },
+       [
+        {
+         "claim": "Cleaning: 10117 \u2192 10117 rows, 1 logged changes",
+         "result_excerpt": "{\"rows_before\": 10117, \"rows_after\": 10117, \"decisions\": [[\"month\", \"type_coerce\", 10117, 0]]}",
+         "row_count": 10117,
+         "assumptions": [
+          "month: Parsed as dates."
+         ],
+         "confidence_reason": "rule-based; every change below is logged"
+        },
+        {
+         "claim": "The file's story in the product's own numbers: Logo churn (12-month cohort to 31 Oct 2026): 20.1%; no full year-earlier window in the data. Net revenue retention (12-month cohort to 31 Oct 2026): 91.1%; no full year-earlier window in the data. Gross revenue retention (12-month cohort to 31 Oct 2026): 77.2%; no full year-earlier window in the data. MRR bridge, 12 months to 31 Oct 2026: $412,929.08 on 31 Oct 2025 + new MRR $176,207.56 + expansion MRR $89,367.79 + reactivation MRR $6,462.68 \u2212 contraction MRR $36,744.52 \u2212 churned MRR $85,613.74 = $562,608.85. 131 customers left at a month-end in the window (churned customers); logo churn counts only the customers in force on 31 Oct 2025 who are not in force now, so the two differ: customers who joined in the window or came back are in the count only. The largest month of churned MRR: Mar 2026 with $45,479.75 (a usual month: $3,863.14), 88% of it one customer_id in Enterprise (segment). 10,117 rows are 694 customers (668 with more than one row); 539 in force at 31 Oct 2026.",
+         "result_excerpt": "[\"Logo churn (12-month cohort to 31 Oct 2026): 20.1%; no full year-earlier window in the data.\", \"Net revenue retention (12-month cohort to 31 Oct 2026): 91.1%; no full year-earlier window in the data.\", \"Gross revenue retention (12-month cohort to 31 Oct 2026): 77.2%; no full year-earlier window in the data.\", \"MRR bridge, 12 months to 31 Oct 2026: $412,929.08 on 31 Oct 2025 + new MRR $176,207.56 + expansion MRR $89,367.79 + reactivation MRR $6,462.68 \\u2212 contraction MRR $36,744.52 \\u2212 churned MRR $85,613.74 = $562,608.85.\", \"131 customers left at a month-end in the window (churned customers); logo churn counts only the customers in force on 31 Oct 2025 who are not in force now, so the two differ: customers who joined in the window or came back are in the count only.\", \"The largest month of churned MRR: Mar 2026 with $45,479.75 (a usual month: $3,863.14), 88% of it one customer_id in Enterprise (segment).\", \"10,117 rows are 694 customers (668 with more than one row); 539 in force at 31 Oct 2026.\"]",
+         "row_count": 10117,
+         "assumptions": [],
+         "confidence_reason": "computed by the product's spell rules, never by a model"
+        },
+        {
+         "claim": "sum mrr by segment (3 groups)",
+         "result_excerpt": "{\"segment_column\": \"segment\", \"metric_column\": \"mrr\", \"aggregation\": \"sum\", \"results\": [{\"name\": \"Enterprise\", \"value\": 322230.94}, {\"name\": \"Mid\", \"value\": 179558.89}, {\"name\": \"SMB\", \"value\": 60819.02}]}",
+         "row_count": 10117,
+         "assumptions": [],
+         "confidence_reason": "10117 rows"
+        },
+        {
+         "claim": "mrr: median 273.72, mean 1,013.19, range 35.82 to 40,000.00",
+         "result_excerpt": "{\"mean\": 1013.1915, \"std\": 2370.1159, \"min\": 35.82, \"max\": 40000.0, \"median\": 273.72, \"count\": 10117.0}",
+         "row_count": 10117,
+         "assumptions": [],
+         "confidence_reason": "10117 rows"
+        }
+       ],
+       {
+        "decisions": [
+         {
+          "column": "month",
+          "operation": "type_coerce",
+          "strategy": "to_datetime",
+          "reason": "Parsed as dates.",
+          "rows_affected": 10117,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         }
+        ],
+        "rows_before": 10117,
+        "rows_after": 10117,
+        "columns_coerced": [
+         "month"
+        ],
+        "duplicates_removed": 0,
+        "outliers_flagged": [
+         "25 mild outliers in mrr (threshold: values outside [-0.209, 183,872]) \u2014 see analyst tab"
+        ],
+        "high_null_columns": [],
+        "summary": "Parsed numbers or dates in 1 column(s). Outliers flagged (kept) in: mrr. Final dataset: 10117 rows (started with 10117).",
+        "anomaly_report": {
+         "flags": [
+          {
+           "column": "mrr",
+           "extreme_count": 0,
+           "mild_count": 25,
+           "extreme_pct": 0.0,
+           "lower_bound": -0.20912882401332777,
+           "upper_bound": 183872.19858835085,
+           "mild_lower_bound": 10.16995240471764,
+           "mild_upper_bound": 13017.856977276078,
+           "used_log_transform": true,
+           "heavy_tailed": false,
+           "message": "25 mild outliers in mrr (threshold: values outside [-0.209, 183,872]) \u2014 see analyst tab"
+          }
+         ],
+         "methodology_note": "",
+         "eligible_columns": [
+          "mrr"
+         ],
+         "skipped_columns": {
+          "month": "datetime column",
+          "customer_id": "id column",
+          "plan": "non-numeric",
+          "segment": "non-numeric",
+          "country": "non-numeric"
+         }
+        },
+        "skipped_columns": [],
+        "date_ranges": {
+         "month": [
+          "2024-11-01",
+          "2026-10-31",
+          24
+         ]
+        },
+        "grain": "aggregate",
+        "partial_months": {},
+        "main_currency": null,
+        "spell_story": [
+         "Logo churn (12-month cohort to 31 Oct 2026): 20.1%; no full year-earlier window in the data.",
+         "Net revenue retention (12-month cohort to 31 Oct 2026): 91.1%; no full year-earlier window in the data.",
+         "Gross revenue retention (12-month cohort to 31 Oct 2026): 77.2%; no full year-earlier window in the data.",
+         "MRR bridge, 12 months to 31 Oct 2026: $412,929.08 on 31 Oct 2025 + new MRR $176,207.56 + expansion MRR $89,367.79 + reactivation MRR $6,462.68 \u2212 contraction MRR $36,744.52 \u2212 churned MRR $85,613.74 = $562,608.85.",
+         "131 customers left at a month-end in the window (churned customers); logo churn counts only the customers in force on 31 Oct 2025 who are not in force now, so the two differ: customers who joined in the window or came back are in the count only.",
+         "The largest month of churned MRR: Mar 2026 with $45,479.75 (a usual month: $3,863.14), 88% of it one customer_id in Enterprise (segment).",
+         "10,117 rows are 694 customers (668 with more than one row); 539 in force at 31 Oct 2026."
+        ],
+        "window_span": {
+         "window": "12 months",
+         "moves": "12 months",
+         "cohort": "12 months",
+         "window_adj": " 12-month"
+        }
+       },
+       [
+        "MRR over time",
+        "Net revenue retention over time",
+        "MRR bridge, 12 months to 31 Oct 2026: $412,929.08 \u2192 $562,608.85",
+        "MRR by segment (as of 31 Oct 2026)",
+        "Net revenue retention by segment (12-month cohort to 31 Oct 2026)",
+        "Logo churn by segment (12-month cohort to 31 Oct 2026)",
+        "New MRR by segment (12 months to 31 Oct 2026)",
+        "Churned MRR by segment (12 months to 31 Oct 2026)",
+        "Total mrr by segment: Enterprise highest (322,230.94), SMB lowest (60,819.02)"
+       ],
+       [
+        10117,
+        6,
+        24
+       ],
+       [
+        2024,
+        2025,
+        2026
+       ],
+       [
+        "Read as SaaS subscription data (MRR, ARR, paying customers, new MRR, churned MRR, logo churn, net revenue retention, gross revenue retention). MRR is the monthly run-rate of the customers paying at the latest date (an annual plan \u00f7 12, net of discounts; trials, paused and unpaid subscriptions out, past due in), not revenue; movements and retention compare each customer's MRR at month-ends over the 12 months to that date, and annual churn is measured on the customers paying 12 months earlier, never a monthly rate \u00d7 12. A customer who starts and leaves inside one month appears in no month-end figure."
+       ]
+      ]
+     }
+    },
+    "domain": "saas",
+    "latency_s": 31.72,
+    "cost_usd": 0.02841,
+    "llm_calls": 2,
+    "truncated_calls": 0,
+    "rejections": [
+     "grounding_rewritten",
+     "overreach_removed"
+    ],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"headline\": {\n    \"text\": \"As of 31 Oct 2026, this SaaS dataset covers 694 customers across 24 months, with MRR of $562,608.85 and net revenue retention of 91.1% over the trailing 12 months.\",\n    \"evidence\": [\"clean:story\"]\n  },\n  \"summary\": [\n    {\n      \"text\": \"The business grew MRR from $412,929.08 to $562,608.85 over the 12 months to 31 Oct 2026, driven by new and expansion activity, with 539 customers active at the close.\",\n      \"evidence\": [\"clean:story\"]\n    },\n    {\n      \"text\": \"Gross revenue retention of 77.2% warrants attention alongside the logo churn of 20.1%, and a single Enterprise customer accounted for 88% of the largest churn month.\",\n      \"evidence\": [\"clean:story\"]\n    }\n  ],\n  \"findings\": [\n    {\n      \"text\": \"The MRR bridge for the 12 months to 31 Oct 2026 shows new MRR of $176,207.56 and expansion MRR of $89,367.79 more than offsetting churned MRR of $85,613.74 and contraction MRR of $36,744.52, ending at $562,608.85.\",\n      \"evidence\": [\"clean:story\"]\n    },\n    {\n      \"text\": \"Enterprise accounts for the largest share of cumulative MRR in the dataset at $322,230.94, followed by Mid at $179,558.89 and SMB at $60,819.02.\",\n      \"evidence\": [\"seg:segment/mrr:sum\"]\n    },\n    {\n      \"text\": \"March 2026 was the largest single month of churned MRR at $45,479.75, far above a usual month of $3,863.14, with 88% of that month's churn tied to one Enterprise customer id.\",\n      \"evidence\": [\"clean:story\"]\n    },\n    {\n      \"text\": \"Individual customer MRR ranges from $35.82 to $40,000.00 with a median of $273.72 and a mean of $1,013.19, indicating a skewed distribution with a small number of high-value accounts.\",\n      \"evidence\": [\"eda:mrr\"]\n    }\n  ],\n  \"claims\": [\n    {\n      \"kind\": \"comparison\",\n      \"metric\": \"cumulative MRR\",\n      \"a\": \"Enterprise\",\n      \"b\": \"SMB\",\n      \"evidence_id\": \"seg:segment/mrr:sum\"\n    }\n  ],\n  \"actions\": [\n    {\n      \"action\": \"Investigate the single Enterprise customer id responsible for 88% of the March 2026 churn spike to understand whether the risk pattern recurs in the current book.\",\n      \"impact\": \"Concentration in one account created an outsized MRR loss event; identifying similar at-risk accounts limits future exposure.\",\n      \"evidence\": [\"clean:story\"]\n    },\n    {\n      \"action\": \"Review the gap between net revenue retention (91.1%) and gross revenue retention (77.2%) to identify which segments or cohorts are contracting or churning before expansion can offset losses.\",\n      \"impact\": \"Closing that gap is the fastest lever to improve overall revenue retention.\",\n      \"evidence\": [\"clean:story\"]\n    },\n    {\n      \"action\": \"Segment the 155 customers who were active at some point in the window but are not in force at 31 Oct 2026 by segment and MRR tier to prioritise win-back or exit analysis.\",\n      \"impact\": \"Understanding who left and why informs both retention and reactivation strategy.\",\n      \"evidence\": [\"clean:story\"]\n    }\n  ],\n  \"caveats\": [\n    \"There is no full year-earlier window in the data, so the 12-month retention and churn figures are computed on the cohort present at 31 Oct 2025 and cannot be compared to a prior-year equivalent.\",\n    \"MRR values are flagged as containing outliers (kept); the wide range from $35.82 to $40,000.00 means segment or cohort averages may be heavily influenced by a small number of large accounts.\",\n    \"Cumulative MRR by segment sums all rows across 24 months and reflects customer-months, not a point-in-time balance; it should not be read as current MRR per segment.\"\n  ],\n  \"questions\": [\n    \"What is the MRR and logo churn breakdown by segment (Enterprise, Mid, SMB) for the 12 months to 31 Oct 2026?\",\n    \"Which customer cohorts (by first active month) show the lowest gross revenue retention, and how does that vary by segment?\",\n    \"How has monthly new MRR trended across the 24-month window, and are new customer additions accelerating or slowing?\"\n  ]\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "```json\n{\"0\": \"neither\", \"1\": \"neither\", \"2\": \"neither\", \"3\": \"neither\", \"4\": \"neither\", \"5\": \"neither\", \"6\": \"neither\", \"7\": \"neither\", \"8\": \"cause: concentration in one account -> outsized MRR loss event\", \"9\": \"neither\", \"10\": \"neither\", \"11\": \"neither\", \"12\": \"neither\", \"13\": \"neither\", \"14\": \"neither\", \"15\": \"neither\", \"16\": \"neither\", \"17\": \"neither\", \"18\": \"neither\"}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "ins-51-iot-shift-overview": [
+   {
+    "checks": [
+     {
+      "kind": "recall",
+      "ok": true,
+      "detail": "/OEE/ found"
+     },
+     {
+      "kind": "recall",
+      "ok": true,
+      "detail": "/planned/ found"
+     },
+     {
+      "kind": "must_not",
+      "ok": true,
+      "detail": "/\\b(?:world[- ]class|best[- ]in[- ]class|industry (?:average|standard|benchmark))\\b/ absent"
+     },
+     {
+      "kind": "must_not",
+      "ok": true,
+      "detail": "/\\b(?:fails?|breaks? down)\\s+(?:about\\s+|roughly\\s+)?every\\s+\\d/ absent"
+     },
+     {
+      "kind": "must_not",
+      "ok": true,
+      "detail": "/\\baverage (?:of|across) (?:the )?(?:shift|daily) OEEs?\\b/ absent"
+     },
+     {
+      "kind": "must_not",
+      "ok": true,
+      "detail": "/net sales|order value|\\bMRR\\b|readmission|loss ratio|headcount|attrition|\\bNPL\\b/ absent"
+     },
+     {
+      "kind": "causal",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "insight_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "insight_dates_in_range",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "executive_no_jargon",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "claims_cite_evidence",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "straightforward",
+    "holdout": false,
+    "output": {
+     "report": {
+      "executive_summary": "Across 2,630 shifts from August through October 2026, the operation ran at 70.8% OEE with high first-pass yield and a notable concentration of unplanned downtime on Line B. Overall equipment effectiveness stood at 70.8%, supported by 84.1% availability, 86.6% performance rate, and 97.1% first-pass yield, with good count rising month-over-month into October 2026. Line B accounts for the largest share of unplanned downtime and warrants closer attention.",
+      "technical_findings": [
+       "Good Count MoM: +1.6% (n = 2,630; high confidence: 2630 rows)",
+       "sum Unplanned Downtime (min) by Line (4 groups) (n = 2,630; high confidence: 2630 rows)",
+       "sum Good Count by Shift (3 groups) (n = 2,630; high confidence: 2630 rows)",
+       "Good Count: median 554.50, mean 545.27, range 0 to 1,169.00 (n = 2,630; high confidence: 2630 rows)",
+       "Unplanned Downtime (min): median 50.00, mean 48.79, range 0 to 117.00 (n = 2,630; high confidence: 2630 rows)"
+      ],
+      "recommended_actions": [
+       {
+        "priority": 1,
+        "action": "Investigate the root causes of unplanned downtime on Line B and develop a targeted reduction plan.",
+        "reasoning": "Line B carries the highest unplanned downtime of all four lines.",
+        "metric_impact": "Line B carries the highest unplanned downtime of all four lines."
+       },
+       {
+        "priority": 2,
+        "action": "Review Night shift scheduling, staffing, and equipment allocation to understand the gap in good count versus Day and Swing shifts.",
+        "reasoning": "Night shift output trails the other two shifts and may represent recoverable production capacity.",
+        "metric_impact": "Night shift output trails the other two shifts and may represent recoverable production capacity."
+       },
+       {
+        "priority": 3,
+        "action": "Examine the flagged outliers in Scrap Count and Stops to determine whether they reflect genuine events or data recording issues.",
+        "reasoning": "Unresolved outliers can distort quality and reliability metrics used for planning.",
+        "metric_impact": "Unresolved outliers can distort quality and reliability metrics used for planning."
+       }
+      ],
+      "anomaly_alerts": [
+       {
+        "title": "How these numbers are counted",
+        "severity": "low",
+        "description": "Read as manufacturing data (OEE, availability, performance rate, quality (first-pass yield), MTBF, good count, failures, assets). Ratios pool their parts (OEE and availability over planned production time, summed over shifts and machines before dividing), so a line's figure pools its machines' time; MTBF is run time per failure and assumes a constant failure rate; MTTR runs from actual start to actual finish of finished repairs, so repairs still open are not in it and it can read low. Readings are averaged, not time-weighted. Times are read in the zone they are written in (a file mixing offsets is read in UTC). The data covers 3 months, so month-over-month changes may be seasonal; there is no same month last year to compare with. Operators are people: figures by operator describe the work, never rank the people, and groups of fewer than 11 operators are not shown.",
+        "affected_metric": "",
+        "suggested_investigation": ""
+       }
+      ],
+      "proactive_questions": [
+       "What types of failures are driving Line B's unplanned downtime, and do they cluster around specific machines or time periods?",
+       "Is the Night shift gap in good count consistent across all lines, or is it concentrated on one or two lines?",
+       "How do the flagged outliers in Scrap Count and Stops distribute across lines and shifts \u2014 are they isolated incidents or part of a pattern?"
+      ],
+      "methodology_notes": "Cleaning (cleaning rules-v1): Parsed numbers or dates in 3 column(s). Outliers flagged (kept) in: Scrap Count, Stops. Final dataset: 2630 rows (started with 2630). Analysis (analysis v9) computed: eda, segment, trend. Descriptive statistics use the non-missing values of each column. Month-over-month compares calendar-month totals (means for rates and 0-1 flags).",
+      "executive_view": {
+       "headline": "Across 2,630 shifts from August through October 2026, the operation ran at 70.8% OEE with high first-pass yield and a notable concentration of unplanned downtime on Line B.",
+       "headline_evidence_ids": [
+        "clean:audit",
+        "seg:Line/Unplanned Downtime (min):sum"
+       ],
+       "paragraphs": [
+        {
+         "text": "Overall equipment effectiveness stood at 70.8%, supported by 84.1% availability, 86.6% performance rate, and 97.1% first-pass yield, with good count rising month-over-month into October 2026.",
+         "evidence_ids": [
+          "trend:Good Count:MoM"
+         ],
+         "typed": null
+        },
+        {
+         "text": "Line B accounts for the largest share of unplanned downtime and warrants closer attention.",
+         "evidence_ids": [
+          "seg:Line/Unplanned Downtime (min):sum"
+         ],
+         "typed": null
+        }
+       ],
+       "findings": [
+        {
+         "text": "Line B recorded 51,371 minutes of unplanned downtime \u2014 the highest of the four lines \u2014 while Line D recorded none across the same period.",
+         "evidence_ids": [
+          "seg:Line/Unplanned Downtime (min):sum"
+         ],
+         "typed": null
+        },
+        {
+         "text": "Good count rose 1.6% in October 2026 compared with September 2026, though the data covers only 3 months so this movement may reflect seasonal patterns rather than a sustained trend.",
+         "evidence_ids": [
+          "trend:Good Count:MoM"
+         ],
+         "typed": null
+        },
+        {
+         "text": "The Day shift produced the highest total good count at 504,646 units, while the Night shift produced the lowest at 426,334 units.",
+         "evidence_ids": [
+          "seg:Shift/Good Count:sum"
+         ],
+         "typed": null
+        },
+        {
+         "text": "Per-shift good count ranged from 0 to 1,169 units with a median of 554.50, and unplanned downtime per shift ranged from 0 to 117 minutes with a median of 50 minutes; outliers were flagged in Scrap Count and Stops and kept in the dataset.",
+         "evidence_ids": [
+          "eda:Good Count",
+          "eda:Unplanned Downtime (min)"
+         ],
+         "typed": null
+        },
+        {
+         "text": "Total Good Count: Day (504,646.00) is higher than Night (426,334.00).",
+         "evidence_ids": [
+          "seg:Shift/Good Count:sum"
+         ],
+         "typed": {
+          "kind": "comparison",
+          "evidence_id": "seg:Shift/Good Count:sum",
+          "cause": "",
+          "effect": "",
+          "metric": "Total Good Count",
+          "verdict": "",
+          "source": "",
+          "a": "Day",
+          "b": "Night"
+         }
+        },
+        {
+         "text": "Total Unplanned Downtime (min): Line B (51,371.00) is higher than Line D (0.00).",
+         "evidence_ids": [
+          "seg:Line/Unplanned Downtime (min):sum"
+         ],
+         "typed": {
+          "kind": "comparison",
+          "evidence_id": "seg:Line/Unplanned Downtime (min):sum",
+          "cause": "",
+          "effect": "",
+          "metric": "Total Unplanned Downtime (min)",
+          "verdict": "",
+          "source": "",
+          "a": "Line B",
+          "b": "Line D"
+         }
+        }
+       ],
+       "action_items": [
+        {
+         "action": "Investigate the root causes of unplanned downtime on Line B and develop a targeted reduction plan.",
+         "expected_impact": "Line B carries the highest unplanned downtime of all four lines.",
+         "evidence_ids": [
+          "seg:Line/Unplanned Downtime (min):sum"
+         ]
+        },
+        {
+         "action": "Review Night shift scheduling, staffing, and equipment allocation to understand the gap in good count versus Day and Swing shifts.",
+         "expected_impact": "Night shift output trails the other two shifts and may represent recoverable production capacity.",
+         "evidence_ids": [
+          "seg:Shift/Good Count:sum"
+         ]
+        },
+        {
+         "action": "Examine the flagged outliers in Scrap Count and Stops to determine whether they reflect genuine events or data recording issues.",
+         "expected_impact": "Unresolved outliers can distort quality and reliability metrics used for planning.",
+         "evidence_ids": [
+          "eda:Good Count",
+          "eda:Unplanned Downtime (min)"
+         ]
+        }
+       ]
+      },
+      "analyst_view": {
+       "methodology": "Cleaning (cleaning rules-v1): Parsed numbers or dates in 3 column(s). Outliers flagged (kept) in: Scrap Count, Stops. Final dataset: 2630 rows (started with 2630). Analysis (analysis v9) computed: eda, segment, trend. Descriptive statistics use the non-missing values of each column. Month-over-month compares calendar-month totals (means for rates and 0-1 flags).",
+       "statistical_notes": [
+        "Good Count MoM: +1.6% (n = 2,630; high confidence: 2630 rows)",
+        "sum Unplanned Downtime (min) by Line (4 groups) (n = 2,630; high confidence: 2630 rows)",
+        "sum Good Count by Shift (3 groups) (n = 2,630; high confidence: 2630 rows)",
+        "Good Count: median 554.50, mean 545.27, range 0 to 1,169.00 (n = 2,630; high confidence: 2630 rows)",
+        "Unplanned Downtime (min): median 50.00, mean 48.79, range 0 to 117.00 (n = 2,630; high confidence: 2630 rows)"
+       ],
+       "caveats": [
+        "MTTR covers only completed repairs; open repairs at the time of export are excluded, so the mean time to repair figure may read lower than the true average.",
+        "OEE, availability, and performance rate pool all machines on a line before dividing, so a single high-performing machine can mask underperformance elsewhere on the same line.",
+        "The dataset spans only 3 months with no prior-year equivalent, so month-over-month changes cannot be distinguished from seasonal variation.",
+        "Read as manufacturing data (OEE, availability, performance rate, quality (first-pass yield), MTBF, good count, failures, assets). Ratios pool their parts (OEE and availability over planned production time, summed over shifts and machines before dividing), so a line's figure pools its machines' time; MTBF is run time per failure and assumes a constant failure rate; MTTR runs from actual start to actual finish of finished repairs, so repairs still open are not in it and it can read low. Readings are averaged, not time-weighted. Times are read in the zone they are written in (a file mixing offsets is read in UTC).",
+        "The data covers 3 months, so month-over-month changes may be seasonal; there is no same month last year to compare with.",
+        "Operators are people: figures by operator describe the work, never rank the people, and groups of fewer than 11 operators are not shown.",
+        "Production Date: Parsed as dates.",
+        "Shift Start: Parsed as dates.",
+        "Shift End: Parsed as dates.",
+        "Changeover (min): 1 row with Performance rate over 100%: the ideal cycle time is likely wrong (set too long); kept, never capped."
+       ],
+       "code_references": [
+        "df.groupby('Shift')['Good Count'].sum()",
+        "_period = pd.to_datetime(df['Production Date'], format='mixed').dt.to_period('M'); df.groupby(_period)['Good Count'].sum()",
+        "df.groupby('Line')['Unplanned Downtime (min)'].sum()"
+       ]
+      },
+      "additional_issues_note": "",
+      "generated_at": "2026-11-17T10:28:44.295670Z",
+      "memory_used": []
+     },
+     "bundle": {
+      "question": "Give me an overview of this dataset.",
+      "columns": [
+       "Production Date",
+       "Shift",
+       "Shift Start",
+       "Shift End",
+       "Line",
+       "Machine",
+       "Operator",
+       "Planned Minutes",
+       "Unplanned Downtime (min)",
+       "Changeover (min)",
+       "Total Count",
+       "Good Count",
+       "Scrap Count",
+       "Ideal Cycle Time (s)",
+       "Failures",
+       "Stops"
+      ],
+      "evidence_ids": [
+       "clean:audit",
+       "trend:Good Count:MoM",
+       "seg:Line/Unplanned Downtime (min):sum",
+       "seg:Shift/Good Count:sum",
+       "eda:Good Count",
+       "eda:Unplanned Downtime (min)"
+      ],
+      "evidence": [
+       {
+        "id": "clean:audit",
+        "kind": "cleaning",
+        "claim": "Cleaning: 2630 \u2192 2630 rows, 4 logged changes",
+        "result_excerpt": "{\"rows_before\": 2630, \"rows_after\": 2630, \"decisions\": [[\"Production Date\", \"type_coerce\", 2630, 0], [\"Shift Start\", \"type_coerce\", 2630, 0], [\"Shift End\", \"type_coerce\", 2630, 0], [\"Changeover (min)\", \"flag\", 1, 0]]}",
+        "row_count": 2630,
+        "confidence": "high",
+        "confidence_reason": "rule-based; every change below is logged",
+        "assumptions": [
+         "Production Date: Parsed as dates.",
+         "Shift Start: Parsed as dates.",
+         "Shift End: Parsed as dates.",
+         "Changeover (min): 1 row with Performance rate over 100%: the ideal cycle time is likely wrong (set too long); kept, never capped."
+        ]
+       },
+       {
+        "id": "trend:Good Count:MoM",
+        "kind": "trend",
+        "claim": "Good Count MoM: +1.6%",
+        "result_excerpt": "{\"column\": \"Good Count\", \"period\": \"MoM\", \"direction\": \"up\", \"pct_change\": 1.6, \"segment\": null}",
+        "row_count": 2630,
+        "confidence": "high",
+        "confidence_reason": "2630 rows",
+        "assumptions": []
+       },
+       {
+        "id": "seg:Line/Unplanned Downtime (min):sum",
+        "kind": "segment",
+        "claim": "sum Unplanned Downtime (min) by Line (4 groups)",
+        "result_excerpt": "{\"segment_column\": \"Line\", \"metric_column\": \"Unplanned Downtime (min)\", \"aggregation\": \"sum\", \"results\": [{\"name\": \"Line A\", \"value\": 37897.0}, {\"name\": \"Line B\", \"value\": 51371.0}, {\"name\": \"Line C\", \"value\": 39061.0}, {\"name\": \"Line D\", \"value\": 0.0}]}",
+        "row_count": 2630,
+        "confidence": "high",
+        "confidence_reason": "2630 rows",
+        "assumptions": []
+       },
+       {
+        "id": "seg:Shift/Good Count:sum",
+        "kind": "segment",
+        "claim": "sum Good Count by Shift (3 groups)",
+        "result_excerpt": "{\"segment_column\": \"Shift\", \"metric_column\": \"Good Count\", \"aggregation\": \"sum\", \"results\": [{\"name\": \"Day\", \"value\": 504646.0}, {\"name\": \"Night\", \"value\": 426334.0}, {\"name\": \"Swing\", \"value\": 503086.0}]}",
+        "row_count": 2630,
+        "confidence": "high",
+        "confidence_reason": "2630 rows",
+        "assumptions": []
+       },
+       {
+        "id": "eda:Good Count",
+        "kind": "eda",
+        "claim": "Good Count: median 554.50, mean 545.27, range 0 to 1,169.00",
+        "result_excerpt": "{\"mean\": 545.2722, \"std\": 308.8952, \"min\": 0.0, \"max\": 1169.0, \"median\": 554.5, \"count\": 2630.0}",
+        "row_count": 2630,
+        "confidence": "high",
+        "confidence_reason": "2630 rows",
+        "assumptions": []
+       },
+       {
+        "id": "eda:Unplanned Downtime (min)",
+        "kind": "eda",
+        "claim": "Unplanned Downtime (min): median 50.00, mean 48.79, range 0 to 117.00",
+        "result_excerpt": "{\"mean\": 48.7943, \"std\": 29.0201, \"min\": 0.0, \"max\": 117.0, \"median\": 50.0, \"count\": 2630.0}",
+        "row_count": 2630,
+        "confidence": "high",
+        "confidence_reason": "2630 rows",
+        "assumptions": []
+       }
+      ],
+      "date_first": [
+       2026,
+       8
+      ],
+      "date_last": [
+       2026,
+       11
+      ],
+      "n_months": 4,
+      "audit_summary": "Parsed numbers or dates in 3 column(s). Outliers flagged (kept) in: Scrap Count, Stops. Final dataset: 2630 rows (started with 2630).",
+      "chart_titles": [
+       "OEE over time",
+       "OEE by Line",
+       "Availability by Line",
+       "Good count by Line",
+       "MTBF by Line",
+       "Assets by Line",
+       "Total good count by shift: Day highest (504,646.00), Night lowest (426,334.00)",
+       "good count rose 1.6% in Oct 2026 vs Sep 2026",
+       "Total unplanned downtime (min) by line: Line B highest (51,371.00), Line D lowest (0.00)"
+      ],
+      "past_insights": [],
+      "corr_pairs": [],
+      "values": [
+       {
+        "eda_summary": {
+         "Good Count": {
+          "mean": 545.2722,
+          "std": 308.8952,
+          "min": 0.0,
+          "max": 1169.0,
+          "median": 554.5,
+          "count": 2630.0
+         },
+         "Unplanned Downtime (min)": {
+          "mean": 48.7943,
+          "std": 29.0201,
+          "min": 0.0,
+          "max": 117.0,
+          "median": 50.0,
+          "count": 2630.0
+         }
+        },
+        "correlations": {},
+        "trends": [
+         {
+          "column": "Good Count",
+          "period": "MoM",
+          "direction": "up",
+          "pct_change": 1.6,
+          "segment": null
+         }
+        ],
+        "segments": [
+         {
+          "segment_column": "Line",
+          "metric_column": "Unplanned Downtime (min)",
+          "aggregation": "sum",
+          "results": [
+           {
+            "name": "Line A",
+            "value": 37897.0
+           },
+           {
+            "name": "Line B",
+            "value": 51371.0
+           },
+           {
+            "name": "Line C",
+            "value": 39061.0
+           },
+           {
+            "name": "Line D",
+            "value": 0.0
+           }
+          ],
+          "label": null
+         },
+         {
+          "segment_column": "Shift",
+          "metric_column": "Good Count",
+          "aggregation": "sum",
+          "results": [
+           {
+            "name": "Day",
+            "value": 504646.0
+           },
+           {
+            "name": "Night",
+            "value": 426334.0
+           },
+           {
+            "name": "Swing",
+            "value": 503086.0
+           }
+          ],
+          "label": null
+         }
+        ],
+        "anomalies": [],
+        "statistical_tests": [],
+        "forecast_points": [],
+        "dtypes_summary": {},
+        "missing_pct": {
+         "Production Date": 0.0,
+         "Shift": 0.0,
+         "Shift Start": 0.0,
+         "Shift End": 0.0,
+         "Line": 0.0,
+         "Machine": 0.0,
+         "Operator": 0.0,
+         "Planned Minutes": 0.0,
+         "Unplanned Downtime (min)": 0.0,
+         "Changeover (min)": 0.0,
+         "Total Count": 0.0,
+         "Good Count": 0.0,
+         "Scrap Count": 0.0,
+         "Ideal Cycle Time (s)": 0.0,
+         "Failures": 0.0,
+         "Stops": 0.0
+        },
+        "kpis": [
+         {
+          "label": "OEE",
+          "value": "70.8%",
+          "context": "",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "oee",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "percent",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Sum of Ideal Cycle Time (s) \u00d7 Good Count \u00f7 60, divided by sum of Planned Minutes; over counted rows."
+         },
+         {
+          "label": "Availability",
+          "value": "84.1%",
+          "context": "",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "availability",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "percent",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Run time, divided by sum of Planned Minutes."
+         },
+         {
+          "label": "Performance rate",
+          "value": "86.6%",
+          "context": "",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "performance",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "percent",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Sum of Ideal Cycle Time (s) \u00d7 Total Count \u00f7 60, divided by run time; over counted rows."
+         },
+         {
+          "label": "Quality (first-pass yield)",
+          "value": "97.1%",
+          "context": "",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "quality_rate",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "percent",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Sum of Good Count, divided by sum of Total Count; over counted rows."
+         },
+         {
+          "label": "MTBF",
+          "value": "42.29 hours",
+          "context": "",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "mtbf",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "number",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Run time \u00f7 60, divided by sum of Failures."
+         }
+        ],
+        "pre_cleaning_missing_pct": {},
+        "unique_counts": {},
+        "skewness": {},
+        "target_correlations": {},
+        "target_col": null,
+        "column_roles_summary": {},
+        "column_units": {}
+       },
+       [
+        {
+         "claim": "Cleaning: 2630 \u2192 2630 rows, 4 logged changes",
+         "result_excerpt": "{\"rows_before\": 2630, \"rows_after\": 2630, \"decisions\": [[\"Production Date\", \"type_coerce\", 2630, 0], [\"Shift Start\", \"type_coerce\", 2630, 0], [\"Shift End\", \"type_coerce\", 2630, 0], [\"Changeover (min)\", \"flag\", 1, 0]]}",
+         "row_count": 2630,
+         "assumptions": [
+          "Production Date: Parsed as dates.",
+          "Shift Start: Parsed as dates.",
+          "Shift End: Parsed as dates.",
+          "Changeover (min): 1 row with Performance rate over 100%: the ideal cycle time is likely wrong (set too long); kept, never capped."
+         ],
+         "confidence_reason": "rule-based; every change below is logged"
+        },
+        {
+         "claim": "Good Count MoM: +1.6%",
+         "result_excerpt": "{\"column\": \"Good Count\", \"period\": \"MoM\", \"direction\": \"up\", \"pct_change\": 1.6, \"segment\": null}",
+         "row_count": 2630,
+         "assumptions": [],
+         "confidence_reason": "2630 rows"
+        },
+        {
+         "claim": "sum Unplanned Downtime (min) by Line (4 groups)",
+         "result_excerpt": "{\"segment_column\": \"Line\", \"metric_column\": \"Unplanned Downtime (min)\", \"aggregation\": \"sum\", \"results\": [{\"name\": \"Line A\", \"value\": 37897.0}, {\"name\": \"Line B\", \"value\": 51371.0}, {\"name\": \"Line C\", \"value\": 39061.0}, {\"name\": \"Line D\", \"value\": 0.0}]}",
+         "row_count": 2630,
+         "assumptions": [],
+         "confidence_reason": "2630 rows"
+        },
+        {
+         "claim": "sum Good Count by Shift (3 groups)",
+         "result_excerpt": "{\"segment_column\": \"Shift\", \"metric_column\": \"Good Count\", \"aggregation\": \"sum\", \"results\": [{\"name\": \"Day\", \"value\": 504646.0}, {\"name\": \"Night\", \"value\": 426334.0}, {\"name\": \"Swing\", \"value\": 503086.0}]}",
+         "row_count": 2630,
+         "assumptions": [],
+         "confidence_reason": "2630 rows"
+        },
+        {
+         "claim": "Good Count: median 554.50, mean 545.27, range 0 to 1,169.00",
+         "result_excerpt": "{\"mean\": 545.2722, \"std\": 308.8952, \"min\": 0.0, \"max\": 1169.0, \"median\": 554.5, \"count\": 2630.0}",
+         "row_count": 2630,
+         "assumptions": [],
+         "confidence_reason": "2630 rows"
+        },
+        {
+         "claim": "Unplanned Downtime (min): median 50.00, mean 48.79, range 0 to 117.00",
+         "result_excerpt": "{\"mean\": 48.7943, \"std\": 29.0201, \"min\": 0.0, \"max\": 117.0, \"median\": 50.0, \"count\": 2630.0}",
+         "row_count": 2630,
+         "assumptions": [],
+         "confidence_reason": "2630 rows"
+        }
+       ],
+       {
+        "decisions": [
+         {
+          "column": "Production Date",
+          "operation": "type_coerce",
+          "strategy": "to_datetime",
+          "reason": "Parsed as dates.",
+          "rows_affected": 2630,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "Shift Start",
+          "operation": "type_coerce",
+          "strategy": "to_datetime",
+          "reason": "Parsed as dates.",
+          "rows_affected": 2630,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "Shift End",
+          "operation": "type_coerce",
+          "strategy": "to_datetime",
+          "reason": "Parsed as dates.",
+          "rows_affected": 2630,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "Changeover (min)",
+          "operation": "flag",
+          "strategy": "kpi_over_max",
+          "reason": "1 row with Performance rate over 100%: the ideal cycle time is likely wrong (set too long); kept, never capped.",
+          "rows_affected": 1,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         }
+        ],
+        "rows_before": 2630,
+        "rows_after": 2630,
+        "columns_coerced": [
+         "Production Date",
+         "Shift Start",
+         "Shift End"
+        ],
+        "duplicates_removed": 0,
+        "outliers_flagged": [
+         "10 mild outliers in Scrap Count (threshold: values outside [-48.00, 78.00]) \u2014 see analyst tab",
+         "22 mild outliers in Stops (threshold: values outside [-7.00, 14.00]) \u2014 see analyst tab"
+        ],
+        "high_null_columns": [],
+        "summary": "Parsed numbers or dates in 3 column(s). Outliers flagged (kept) in: Scrap Count, Stops. Final dataset: 2630 rows (started with 2630).",
+        "anomaly_report": {
+         "flags": [
+          {
+           "column": "Scrap Count",
+           "extreme_count": 0,
+           "mild_count": 10,
+           "extreme_pct": 0.0,
+           "lower_bound": -48.0,
+           "upper_bound": 78.0,
+           "mild_lower_bound": -21.0,
+           "mild_upper_bound": 51.0,
+           "used_log_transform": false,
+           "heavy_tailed": false,
+           "message": "10 mild outliers in Scrap Count (threshold: values outside [-48.00, 78.00]) \u2014 see analyst tab"
+          },
+          {
+           "column": "Stops",
+           "extreme_count": 0,
+           "mild_count": 22,
+           "extreme_pct": 0.0,
+           "lower_bound": -7.0,
+           "upper_bound": 14.0,
+           "mild_lower_bound": -2.5,
+           "mild_upper_bound": 9.5,
+           "used_log_transform": false,
+           "heavy_tailed": false,
+           "message": "22 mild outliers in Stops (threshold: values outside [-7.00, 14.00]) \u2014 see analyst tab"
+          }
+         ],
+         "methodology_note": "",
+         "eligible_columns": [
+          "Unplanned Downtime (min)",
+          "Total Count",
+          "Good Count",
+          "Scrap Count",
+          "Ideal Cycle Time (s)",
+          "Stops"
+         ],
+         "skipped_columns": {
+          "Production Date": "datetime column",
+          "Shift": "non-numeric",
+          "Shift Start": "datetime column",
+          "Shift End": "datetime column",
+          "Line": "non-numeric",
+          "Machine": "non-numeric",
+          "Operator": "constant or unsupported",
+          "Planned Minutes": "ordinal (low-cardinality numeric, e.g. Likert/class)",
+          "Changeover (min)": "ordinal (low-cardinality numeric, e.g. Likert/class)",
+          "Failures": "ordinal (low-cardinality numeric, e.g. Likert/class)"
+         }
+        },
+        "skipped_columns": [],
+        "date_ranges": {
+         "Production Date": [
+          "2026-08-01",
+          "2026-10-31",
+          3
+         ],
+         "Shift Start": [
+          "2026-08-01",
+          "2026-10-31",
+          3
+         ],
+         "Shift End": [
+          "2026-08-01",
+          "2026-11-01",
+          4
+         ]
+        },
+        "grain": "aggregate",
+        "partial_months": {
+         "Shift End": [
+          "2026-11",
+          1
+         ]
+        },
+        "main_currency": null,
+        "spell_story": [],
+        "window_span": {}
+       },
+       [
+        "OEE over time",
+        "OEE by Line",
+        "Availability by Line",
+        "Good count by Line",
+        "MTBF by Line",
+        "Assets by Line",
+        "Total good count by shift: Day highest (504,646.00), Night lowest (426,334.00)",
+        "good count rose 1.6% in Oct 2026 vs Sep 2026",
+        "Total unplanned downtime (min) by line: Line B highest (51,371.00), Line D lowest (0.00)"
+       ],
+       [
+        2630,
+        16,
+        4
+       ],
+       [
+        2026
+       ],
+       [
+        "Read as manufacturing data (OEE, availability, performance rate, quality (first-pass yield), MTBF, good count, failures, assets). Ratios pool their parts (OEE and availability over planned production time, summed over shifts and machines before dividing), so a line's figure pools its machines' time; MTBF is run time per failure and assumes a constant failure rate; MTTR runs from actual start to actual finish of finished repairs, so repairs still open are not in it and it can read low. Readings are averaged, not time-weighted. Times are read in the zone they are written in (a file mixing offsets is read in UTC).",
+        "The data covers 3 months, so month-over-month changes may be seasonal; there is no same month last year to compare with.",
+        "Operators are people: figures by operator describe the work, never rank the people, and groups of fewer than 11 operators are not shown."
+       ]
+      ]
+     }
+    },
+    "domain": "iot",
+    "latency_s": 25.4,
+    "cost_usd": 0.02611,
+    "llm_calls": 2,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"headline\": {\n    \"text\": \"Across 2,630 shifts from August through October 2026, the operation ran at 70.8% OEE with high first-pass yield and a notable concentration of unplanned downtime on Line B.\",\n    \"evidence\": [\"clean:audit\", \"seg:Line/Unplanned Downtime (min):sum\"]\n  },\n  \"summary\": [\n    {\n      \"text\": \"Overall equipment effectiveness stood at 70.8%, supported by 84.1% availability, 86.6% performance rate, and 97.1% first-pass yield, with good count rising month-over-month into October 2026.\",\n      \"evidence\": [\"trend:Good Count:MoM\"]\n    },\n    {\n      \"text\": \"Line B accounts for the largest share of unplanned downtime and warrants closer attention.\",\n      \"evidence\": [\"seg:Line/Unplanned Downtime (min):sum\"]\n    }\n  ],\n  \"findings\": [\n    {\n      \"text\": \"Line B recorded 51,371 minutes of unplanned downtime \u2014 the highest of the four lines \u2014 while Line D recorded none across the same period.\",\n      \"evidence\": [\"seg:Line/Unplanned Downtime (min):sum\"]\n    },\n    {\n      \"text\": \"Good count rose 1.6% in October 2026 compared with September 2026, though the data covers only 3 months so this movement may reflect seasonal patterns rather than a sustained trend.\",\n      \"evidence\": [\"trend:Good Count:MoM\"]\n    },\n    {\n      \"text\": \"The Day shift produced the highest total good count at 504,646 units, while the Night shift produced the lowest at 426,334 units.\",\n      \"evidence\": [\"seg:Shift/Good Count:sum\"]\n    },\n    {\n      \"text\": \"Per-shift good count ranged from 0 to 1,169 units with a median of 554.50, and unplanned downtime per shift ranged from 0 to 117 minutes with a median of 50 minutes; outliers were flagged in Scrap Count and Stops and kept in the dataset.\",\n      \"evidence\": [\"eda:Good Count\", \"eda:Unplanned Downtime (min)\"]\n    }\n  ],\n  \"claims\": [\n    {\n      \"kind\": \"comparison\",\n      \"metric\": \"Total Good Count\",\n      \"a\": \"Day\",\n      \"b\": \"Night\",\n      \"evidence_id\": \"seg:Shift/Good Count:sum\"\n    },\n    {\n      \"kind\": \"comparison\",\n      \"metric\": \"Total Unplanned Downtime (min)\",\n      \"a\": \"Line B\",\n      \"b\": \"Line D\",\n      \"evidence_id\": \"seg:Line/Unplanned Downtime (min):sum\"\n    }\n  ],\n  \"actions\": [\n    {\n      \"action\": \"Investigate the root causes of unplanned downtime on Line B and develop a targeted reduction plan.\",\n      \"impact\": \"Line B carries the highest unplanned downtime of all four lines.\",\n      \"evidence\": [\"seg:Line/Unplanned Downtime (min):sum\"]\n    },\n    {\n      \"action\": \"Review Night shift scheduling, staffing, and equipment allocation to understand the gap in good count versus Day and Swing shifts.\",\n      \"impact\": \"Night shift output trails the other two shifts and may represent recoverable production capacity.\",\n      \"evidence\": [\"seg:Shift/Good Count:sum\"]\n    },\n    {\n      \"action\": \"Examine the flagged outliers in Scrap Count and Stops to determine whether they reflect genuine events or data recording issues.\",\n      \"impact\": \"Unresolved outliers can distort quality and reliability metrics used for planning.\",\n      \"evidence\": [\"eda:Good Count\", \"eda:Unplanned Downtime (min)\"]\n    }\n  ],\n  \"caveats\": [\n    \"MTTR covers only completed repairs; open repairs at the time of export are excluded, so the mean time to repair figure may read lower than the true average.\",\n    \"OEE, availability, and performance rate pool all machines on a line before dividing, so a single high-performing machine can mask underperformance elsewhere on the same line.\",\n    \"The dataset spans only 3 months with no prior-year equivalent, so month-over-month changes cannot be distinguished from seasonal variation.\"\n  ],\n  \"questions\": [\n    \"What types of failures are driving Line B's unplanned downtime, and do they cluster around specific machines or time periods?\",\n    \"Is the Night shift gap in good count consistent across all lines, or is it concentrated on one or two lines?\",\n    \"How do the flagged outliers in Scrap Count and Stops distribute across lines and shifts \u2014 are they isolated incidents or part of a pattern?\"\n  ]\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "{\"0\": \"neither\", \"1\": \"neither\", \"2\": \"neither\", \"3\": \"neither\", \"4\": \"neither\", \"5\": \"neither\", \"6\": \"neither\", \"7\": \"neither\", \"8\": \"neither\", \"9\": \"neither\", \"10\": \"neither\", \"11\": \"neither\", \"12\": \"neither\", \"13\": \"neither\", \"14\": \"neither\", \"15\": \"neither\", \"16\": \"neither\", \"17\": \"neither\", \"18\": \"neither\"}",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "ins-52-iot-readings-overview": [
+   {
+    "checks": [
+     {
+      "kind": "recall",
+      "ok": true,
+      "detail": "/Line C/ found"
+     },
+     {
+      "kind": "must_not",
+      "ok": true,
+      "detail": "/(?:^|[.!?]\\s+)(?:(?!\\b(?:not|no|never|cannot)\\b|n't\\b)[^.!?])*?\\bvibration\\b(?:(?!\\b(?:not|no|never)\\b)[^.!?]){0,40}?\\b(?:causes?|caused|drives?|leads? to|triggers?)\\b[^.!?]{0,30}\\balarms?\\b/ absent"
+     },
+     {
+      "kind": "must_not",
+      "ok": true,
+      "detail": "/\\b1[5-6]\\d(?:\\.\\d+)?\\s*(?:\u00b0|degrees)/ absent"
+     },
+     {
+      "kind": "must_not",
+      "ok": true,
+      "detail": "/\\b(?:sum|total) (?:of )?(?:the )?temperatures?\\b/ absent"
+     },
+     {
+      "kind": "must_not",
+      "ok": true,
+      "detail": "/net sales|order value|\\bMRR\\b|readmission|loss ratio|headcount|attrition|\\bNPL\\b/ absent"
+     },
+     {
+      "kind": "causal",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "insight_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "insight_dates_in_range",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "executive_no_jargon",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "claims_cite_evidence",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "data_quality",
+    "holdout": false,
+    "output": {
+     "report": {
+      "executive_summary": "Three months of sensor readings across 8 assets show 264 alarms, with vibration the clearest signal associated with alarm events. The dataset covers 17,630 cleaned readings from Aug\u2013Oct 2026, capturing temperature, pressure, vibration, and alarm status across 8 assets and 3 production lines. Sensors S04, S05, and S06 stand out with notably higher average vibration than the other five sensors, which warrants closer attention.",
+      "technical_findings": [
+       "Vibration (mm/s) and Alarm: r = 0.467 (n = 17,454; high confidence: 17454 rows)",
+       "mean Temperature by Line (3 groups) (n = 17,439; high confidence: 17439 rows)",
+       "mean Vibration (mm/s) by Sensor (8 groups) (n = 17,454; high confidence: 17454 rows)",
+       "Temperature: median 70.93, mean 71.01, range 66.04 to 77.18 (n = 17,439; high confidence: 17439 rows)",
+       "Vibration (mm/s): median 2.15, mean 2.43, range 0.093 to 16.18 (n = 17,454; high confidence: 17454 rows)",
+       "Alarm: median 0, mean 0.015, range 0 to 1.00 (n = 17,630; high confidence: 17630 rows)"
+      ],
+      "recommended_actions": [
+       {
+        "priority": 1,
+        "action": "Investigate sensors S04, S05, and S06 for mechanical or mounting issues driving elevated vibration readings.",
+        "reasoning": "",
+        "metric_impact": null
+       },
+       {
+        "priority": 2,
+        "action": "Review the export configuration to eliminate sentinel values (-9999 for temperature, 32767 for pressure) so missing readings are flagged at source rather than requiring post-hoc cleaning.",
+        "reasoning": "",
+        "metric_impact": null
+       },
+       {
+        "priority": 3,
+        "action": "Investigate Line B's operating conditions to understand whether its higher average temperature relative to Line A is expected or a sign of a developing issue.",
+        "reasoning": "Temperature differences across lines may affect product quality or equipment wear.",
+        "metric_impact": "Temperature differences across lines may affect product quality or equipment wear."
+       }
+      ],
+      "anomaly_alerts": [
+       {
+        "title": "Sensor: two values at one time",
+        "severity": "medium",
+        "description": "6 times of one Sensor with two different rows (S01 at 2026-08-07 04:00, S01 at 2026-10-06 11:00, S02 at 2026-10-21 12:00): both kept, check them at the source.",
+        "affected_metric": "Sensor",
+        "suggested_investigation": "Check which value the source meant to keep."
+       },
+       {
+        "title": "Sensor: a repeated hour",
+        "severity": "medium",
+        "description": "1 local time (2026-10-25 02:00) repeat for every Sensor: the hour a clock change repeats, its offset dropped. Both readings are kept; durations across it can be an hour off.",
+        "affected_metric": "Sensor",
+        "suggested_investigation": "Export times in UTC, or with their offset kept."
+       },
+       {
+        "title": "Sensor: gaps in the series",
+        "severity": "medium",
+        "description": "1 silence longer than 3\u00d7 the usual interval (S05 2026-09-10 07:00 to 2026-09-12 00:00 (41 h)): a dropout, or a source that writes only on change. Nothing is filled in.",
+        "affected_metric": "Sensor",
+        "suggested_investigation": "Check whether the source was down or writes only on change."
+       },
+       {
+        "title": "Sensor: values stuck for hours",
+        "severity": "medium",
+        "description": "1 value unchanged for hours (S03 temperature at 68.4 for 71 h from 2026-09-20 00:00): a stuck sensor reads as a steady process. Kept.",
+        "affected_metric": "Sensor",
+        "suggested_investigation": "Check the instrument before trusting a steady stretch."
+       },
+       {
+        "title": "Vibration (mm/s): 66 extreme values",
+        "severity": "medium",
+        "description": "66 Vibration (mm/s) values (0.4% of rows) are far outside the usual range. They were kept.",
+        "affected_metric": "Vibration (mm/s)",
+        "suggested_investigation": "Verify the largest Vibration (mm/s) values against the source records."
+       },
+       {
+        "title": "How these numbers are counted",
+        "severity": "low",
+        "description": "Read as manufacturing data (assets, alarms). Ratios pool their parts (OEE and availability over planned production time, summed over shifts and machines before dividing), so a line's figure pools its machines' time; MTBF is run time per failure and assumes a constant failure rate; MTTR runs from actual start to actual finish of finished repairs, so repairs still open are not in it and it can read low. Readings are averaged, not time-weighted. Times are read in the zone they are written in (a file mixing offsets is read in UTC). The data covers 3 months, so month-over-month changes may be seasonal; there is no same month last year to compare with. A reading is a level: it is averaged over the period (each reading counts once; not time-weighted), never summed.",
+        "affected_metric": "",
+        "suggested_investigation": ""
+       }
+      ],
+      "proactive_questions": [
+       "Do the alarms associated with high vibration cluster on S04, S05, and S06, or are they spread across all sensors?",
+       "Is the elevated vibration on S04\u2013S06 consistent across all three months, or did it emerge or worsen over the Aug\u2013Oct period?",
+       "What is the typical operating temperature range expected for each line, and does Line B's average fall within or outside that specification?"
+      ],
+      "methodology_notes": "Cleaning (cleaning rules-v1): Removed 20 duplicate rows. Parsed numbers or dates in 3 column(s). Left missing values as missing in 3 column(s); nothing was imputed. Outliers flagged (kept) in: Pressure (bar), Temperature, Vibration (mm/s). Final dataset: 17630 rows (started with 17650). Analysis (analysis v9) computed: correlation, eda, segment. Correlations are Pearson r: linear association only, never cause. Descriptive statistics use the non-missing values of each column.",
+      "executive_view": {
+       "headline": "Three months of sensor readings across 8 assets show 264 alarms, with vibration the clearest signal associated with alarm events.",
+       "headline_evidence_ids": [
+        "eda:Alarm",
+        "corr:Vibration (mm/s)__Alarm"
+       ],
+       "paragraphs": [
+        {
+         "text": "The dataset covers 17,630 cleaned readings from Aug\u2013Oct 2026, capturing temperature, pressure, vibration, and alarm status across 8 assets and 3 production lines.",
+         "evidence_ids": [
+          "clean:audit"
+         ],
+         "typed": null
+        },
+        {
+         "text": "Sensors S04, S05, and S06 stand out with notably higher average vibration than the other five sensors, which warrants closer attention.",
+         "evidence_ids": [
+          "seg:Sensor/Vibration (mm/s)"
+         ],
+         "typed": null
+        }
+       ],
+       "findings": [
+        {
+         "text": "Vibration (mm/s) and Alarm tend to move together.",
+         "evidence_ids": [
+          "corr:Vibration (mm/s)__Alarm"
+         ],
+         "typed": null
+        },
+        {
+         "text": "Sensors S04, S05, and S06 average vibration of 3.15, 3.21, and 3.19 mm/s respectively, while the remaining five sensors all average between 1.97 and 2.01 mm/s.",
+         "evidence_ids": [
+          "seg:Sensor/Vibration (mm/s)"
+         ],
+         "typed": null
+        },
+        {
+         "text": "Overall vibration ranges from 0.093 to 16.18 mm/s with a median of 2.15 mm/s, indicating that most readings are low but a tail of high readings exists.",
+         "evidence_ids": [
+          "eda:Vibration (mm/s)"
+         ],
+         "typed": null
+        },
+        {
+         "text": "Line B averages 71.99 \u00b0C and Line A averages 69.96 \u00b0C, with Line C at 71.14 \u00b0C, showing a modest spread in operating temperature across lines.",
+         "evidence_ids": [
+          "seg:Line/Temperature"
+         ],
+         "typed": null
+        },
+        {
+         "text": "Average Temperature: Line B (71.99) is higher than Line A (69.96).",
+         "evidence_ids": [
+          "seg:Line/Temperature"
+         ],
+         "typed": {
+          "kind": "comparison",
+          "evidence_id": "seg:Line/Temperature",
+          "cause": "",
+          "effect": "",
+          "metric": "Temperature",
+          "verdict": "",
+          "source": "",
+          "a": "Line B",
+          "b": "Line A"
+         }
+        }
+       ],
+       "action_items": [
+        {
+         "action": "Investigate sensors S04, S05, and S06 for mechanical or mounting issues driving elevated vibration readings.",
+         "expected_impact": "",
+         "evidence_ids": [
+          "seg:Sensor/Vibration (mm/s)",
+          "corr:Vibration (mm/s)__Alarm"
+         ]
+        },
+        {
+         "action": "Review the export configuration to eliminate sentinel values (-9999 for temperature, 32767 for pressure) so missing readings are flagged at source rather than requiring post-hoc cleaning.",
+         "expected_impact": "",
+         "evidence_ids": [
+          "clean:audit"
+         ]
+        },
+        {
+         "action": "Investigate Line B's operating conditions to understand whether its higher average temperature relative to Line A is expected or a sign of a developing issue.",
+         "expected_impact": "Temperature differences across lines may affect product quality or equipment wear.",
+         "evidence_ids": [
+          "seg:Line/Temperature"
+         ]
+        }
+       ]
+      },
+      "analyst_view": {
+       "methodology": "Cleaning (cleaning rules-v1): Removed 20 duplicate rows. Parsed numbers or dates in 3 column(s). Left missing values as missing in 3 column(s); nothing was imputed. Outliers flagged (kept) in: Pressure (bar), Temperature, Vibration (mm/s). Final dataset: 17630 rows (started with 17650). Analysis (analysis v9) computed: correlation, eda, segment. Correlations are Pearson r: linear association only, never cause. Descriptive statistics use the non-missing values of each column.",
+       "statistical_notes": [
+        "Vibration (mm/s) and Alarm: r = 0.467 (n = 17,454; high confidence: 17454 rows)",
+        "mean Temperature by Line (3 groups) (n = 17,439; high confidence: 17439 rows)",
+        "mean Vibration (mm/s) by Sensor (8 groups) (n = 17,454; high confidence: 17454 rows)",
+        "Temperature: median 70.93, mean 71.01, range 66.04 to 77.18 (n = 17,439; high confidence: 17439 rows)",
+        "Vibration (mm/s): median 2.15, mean 2.43, range 0.093 to 16.18 (n = 17,454; high confidence: 17454 rows)",
+        "Alarm: median 0, mean 0.015, range 0 to 1.00 (n = 17,630; high confidence: 17630 rows)"
+       ],
+       "caveats": [
+        "Readings are averaged, not time-weighted, so periods of high activity and low activity contribute equally to any mean shown here.",
+        "The dataset spans only 3 months with no prior-year equivalent, so month-over-month changes cannot be distinguished from seasonal patterns.",
+        "4 sentence(s) stating a number, date or term not in the evidence and 0 uncited claim(s) were removed.",
+        "Read as manufacturing data (assets, alarms). Ratios pool their parts (OEE and availability over planned production time, summed over shifts and machines before dividing), so a line's figure pools its machines' time; MTBF is run time per failure and assumes a constant failure rate; MTTR runs from actual start to actual finish of finished repairs, so repairs still open are not in it and it can read low. Readings are averaged, not time-weighted. Times are read in the zone they are written in (a file mixing offsets is read in UTC).",
+        "The data covers 3 months, so month-over-month changes may be seasonal; there is no same month last year to compare with.",
+        "A reading is a level: it is averaged over the period (each reading counts once; not time-weighted), never summed.",
+        "Timestamp: Parsed as dates.",
+        "Temperature: 15 values coded -9999 (the export's 'unknown', not a real temperature) read as missing.",
+        "Pressure (bar): 10 values coded 32767 (the export's 'unknown', not a real pressure) read as missing.",
+        "Temperature: 176 temperature values on 176 rows its Quality marks invalid (bad, 0, i/o timeout, shutdown, comm fail, no data, not connected) read as missing; the rows are kept.",
+        "Vibration (mm/s): 176 vibration values on 176 rows its Quality marks invalid (bad, 0, i/o timeout, shutdown, comm fail, no data, not connected) read as missing; the rows are kept.",
+        "Pressure (bar): 176 pressure values on 176 rows its Quality marks invalid (bad, 0, i/o timeout, shutdown, comm fail, no data, not connected) read as missing; the rows are kept."
+       ],
+       "code_references": [
+        "df.groupby('Line')['Temperature'].mean()",
+        "df[['Vibration (mm/s)', 'Alarm']].dropna().sample(min(n, 500), random_state=42)",
+        "df.groupby('Sensor')['Vibration (mm/s)'].mean()"
+       ]
+      },
+      "additional_issues_note": "1 additional minor issue detected \u2014 see analyst detail tab.",
+      "generated_at": "2026-11-17T10:28:46.378239Z",
+      "memory_used": []
+     },
+     "bundle": {
+      "question": "Give me an overview of this dataset.",
+      "columns": [
+       "Timestamp",
+       "Sensor",
+       "Line",
+       "Temperature",
+       "Temp Unit",
+       "Vibration (mm/s)",
+       "Pressure (bar)",
+       "Alarm",
+       "Quality"
+      ],
+      "evidence_ids": [
+       "clean:audit",
+       "corr:Vibration (mm/s)__Alarm",
+       "seg:Line/Temperature",
+       "seg:Sensor/Vibration (mm/s)",
+       "eda:Temperature",
+       "eda:Vibration (mm/s)",
+       "eda:Alarm"
+      ],
+      "evidence": [
+       {
+        "id": "clean:audit",
+        "kind": "cleaning",
+        "claim": "Cleaning: 17650 \u2192 17630 rows, 17 logged changes",
+        "result_excerpt": "{\"rows_before\": 17650, \"rows_after\": 17630, \"decisions\": [[\"Timestamp\", \"type_coerce\", 17650, 0], [\"Temperature\", \"sentinel_null\", 15, 0], [\"Pressure (bar)\", \"sentinel_null\", 10, 0], [\"Temperature\", \"sentinel_null\", 176, 0], [\"Vibration (mm/s)\", \"sentinel_null\", 176, 0], [\"Pressure (bar)\", \"sentinel_null\", 176, 0], [\"Quality\", \"flag\", 352, 0], [\"Temperature\", \"type_coerce\", 4373, 0], [\"Temp Unit\",",
+        "row_count": 17630,
+        "confidence": "high",
+        "confidence_reason": "rule-based; every change below is logged",
+        "assumptions": [
+         "Timestamp: Parsed as dates.",
+         "Temperature: 15 values coded -9999 (the export's 'unknown', not a real temperature) read as missing.",
+         "Pressure (bar): 10 values coded 32767 (the export's 'unknown', not a real pressure) read as missing.",
+         "Temperature: 176 temperature values on 176 rows its Quality marks invalid (bad, 0, i/o timeout, shutdown, comm fail, no data, not connected) read as missing; the rows are kept.",
+         "Vibration (mm/s): 176 vibration values on 176 rows its Quality marks invalid (bad, 0, i/o timeout, shutdown, comm fail, no data, not connected) read as missing; the rows are kept.",
+         "Pressure (bar): 176 pressure values on 176 rows its Quality marks invalid (bad, 0, i/o timeout, shutdown, comm fail, no data, not connected) read as missing; the rows are kept.",
+         "Quality: 352 rows marked uncertain, questionable, substituted: kept and counted.",
+         "Temperature: 4373 temperature values in \u00b0F (their Temp Unit) converted to \u00b0C: \u00d7 0.555556 \u2212 17.7778.",
+         "Temp Unit: 4421 rows' unit changed from \u00b0F to \u00b0C, with their values.",
+         "*: Removed 20 exact double writes (the same Sensor, Timestamp and every value).",
+         "Sensor: 6 times of one Sensor with two different rows (S01 at 2026-08-07 04:00, S01 at 2026-10-06 11:00, S02 at 2026-10-21 12:00): both kept, check them at the source.",
+         "Sensor: 1 local time (2026-10-25 02:00) repeat for every Sensor: the hour a clock change repeats, its offset dropped. Both readings are kept; durations across it can be an hour off.",
+         "Sensor: 1 silence longer than 3\u00d7 the usual interval (S05 2026-09-10 07:00 to 2026-09-12 00:00 (41 h)): a dropout, or a source that writes only on change. Nothing is filled in.",
+         "Sensor: 1 value unchanged for hours (S03 temperature at 68.4 for 71 h from 2026-09-20 00:00): a stuck sensor reads as a steady process. Kept.",
+         "Temperature: 191 missing (1.1%), metric of the question: left as missing; totals and averages use the 17439 known rows.",
+         "Vibration (mm/s): 176 missing (1%), metric of the question: left as missing; totals and averages use the 17454 known rows.",
+         "Pressure (bar): 186 missing (1.1%), number: left as missing; totals and averages use the 17444 known rows."
+        ]
+       },
+       {
+        "id": "corr:Vibration (mm/s)__Alarm",
+        "kind": "correlation",
+        "claim": "Vibration (mm/s) and Alarm: r = 0.467",
+        "result_excerpt": "{\"Vibration (mm/s)__Alarm\": 0.4666}",
+        "row_count": 17454,
+        "confidence": "high",
+        "confidence_reason": "17454 rows",
+        "assumptions": []
+       },
+       {
+        "id": "seg:Line/Temperature",
+        "kind": "segment",
+        "claim": "mean Temperature by Line (3 groups)",
+        "result_excerpt": "{\"segment_column\": \"Line\", \"metric_column\": \"Temperature\", \"aggregation\": \"mean\", \"results\": [{\"name\": \"Line A\", \"value\": 69.9631}, {\"name\": \"Line B\", \"value\": 71.9854}, {\"name\": \"Line C\", \"value\": 71.1391}]}",
+        "row_count": 17439,
+        "confidence": "high",
+        "confidence_reason": "17439 rows",
+        "assumptions": []
+       },
+       {
+        "id": "seg:Sensor/Vibration (mm/s)",
+        "kind": "segment",
+        "claim": "mean Vibration (mm/s) by Sensor (8 groups)",
+        "result_excerpt": "{\"segment_column\": \"Sensor\", \"metric_column\": \"Vibration (mm/s)\", \"aggregation\": \"mean\", \"results\": [{\"name\": \"S01\", \"value\": 1.9745}, {\"name\": \"S02\", \"value\": 2.0004}, {\"name\": \"S03\", \"value\": 1.987}, {\"name\": \"S04\", \"value\": 3.1507}, {\"name\": \"S05\", \"value\": 3.2108}, {\"name\": \"S06\", \"value\": 3.1904}, {\"name\": \"S07\", \"value\": 1.9678}, {\"name\": \"S08\", \"value\": 2.0078}]}",
+        "row_count": 17454,
+        "confidence": "high",
+        "confidence_reason": "17454 rows",
+        "assumptions": []
+       },
+       {
+        "id": "eda:Temperature",
+        "kind": "eda",
+        "claim": "Temperature: median 70.93, mean 71.01, range 66.04 to 77.18",
+        "result_excerpt": "{\"mean\": 71.0128, \"std\": 1.5324, \"min\": 66.0444, \"max\": 77.1778, \"median\": 70.93, \"count\": 17439.0}",
+        "row_count": 17439,
+        "confidence": "high",
+        "confidence_reason": "17439 rows",
+        "assumptions": []
+       },
+       {
+        "id": "eda:Vibration (mm/s)",
+        "kind": "eda",
+        "claim": "Vibration (mm/s): median 2.15, mean 2.43, range 0.093 to 16.18",
+        "result_excerpt": "{\"mean\": 2.4341, \"std\": 1.3818, \"min\": 0.093, \"max\": 16.185, \"median\": 2.1475, \"count\": 17454.0}",
+        "row_count": 17454,
+        "confidence": "high",
+        "confidence_reason": "17454 rows",
+        "assumptions": []
+       },
+       {
+        "id": "eda:Alarm",
+        "kind": "eda",
+        "claim": "Alarm: median 0, mean 0.015, range 0 to 1.00",
+        "result_excerpt": "{\"mean\": 0.015, \"std\": 0.1215, \"min\": 0.0, \"max\": 1.0, \"median\": 0.0, \"count\": 17630.0}",
+        "row_count": 17630,
+        "confidence": "high",
+        "confidence_reason": "17630 rows",
+        "assumptions": []
+       }
+      ],
+      "date_first": [
+       2026,
+       8
+      ],
+      "date_last": [
+       2026,
+       10
+      ],
+      "n_months": 3,
+      "audit_summary": "Removed 20 duplicate rows. Parsed numbers or dates in 3 column(s). Left missing values as missing in 3 column(s); nothing was imputed. Outliers flagged (kept) in: Pressure (bar), Temperature, Vibration (mm/s). Final dataset: 17630 rows (started with 17650).",
+      "chart_titles": [
+       "Assets over time",
+       "Assets by Line",
+       "Alarms by Line",
+       "Average temperature by line: Line B highest (71.99), Line A lowest (69.96)",
+       "alarm vs vibration (mm/s) (r = 0.47)",
+       "Average vibration (mm/s) by sensor: S05 highest (3.21), S07 lowest (1.97)"
+      ],
+      "past_insights": [],
+      "corr_pairs": [
+       [
+        "vibration (mm/s)",
+        "alarm"
+       ]
+      ],
+      "values": [
+       {
+        "eda_summary": {
+         "Temperature": {
+          "mean": 71.0128,
+          "std": 1.5324,
+          "min": 66.0444,
+          "max": 77.1778,
+          "median": 70.93,
+          "count": 17439.0
+         },
+         "Vibration (mm/s)": {
+          "mean": 2.4341,
+          "std": 1.3818,
+          "min": 0.093,
+          "max": 16.185,
+          "median": 2.1475,
+          "count": 17454.0
+         },
+         "Alarm": {
+          "mean": 0.015,
+          "std": 0.1215,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 0.0,
+          "count": 17630.0
+         }
+        },
+        "correlations": {
+         "Vibration (mm/s)__Alarm": 0.4666
+        },
+        "trends": [],
+        "segments": [
+         {
+          "segment_column": "Line",
+          "metric_column": "Temperature",
+          "aggregation": "mean",
+          "results": [
+           {
+            "name": "Line A",
+            "value": 69.9631
+           },
+           {
+            "name": "Line B",
+            "value": 71.9854
+           },
+           {
+            "name": "Line C",
+            "value": 71.1391
+           }
+          ],
+          "label": null
+         },
+         {
+          "segment_column": "Sensor",
+          "metric_column": "Vibration (mm/s)",
+          "aggregation": "mean",
+          "results": [
+           {
+            "name": "S01",
+            "value": 1.9745
+           },
+           {
+            "name": "S02",
+            "value": 2.0004
+           },
+           {
+            "name": "S03",
+            "value": 1.987
+           },
+           {
+            "name": "S04",
+            "value": 3.1507
+           },
+           {
+            "name": "S05",
+            "value": 3.2108
+           },
+           {
+            "name": "S06",
+            "value": 3.1904
+           },
+           {
+            "name": "S07",
+            "value": 1.9678
+           },
+           {
+            "name": "S08",
+            "value": 2.0078
+           }
+          ],
+          "label": null
+         }
+        ],
+        "anomalies": [],
+        "statistical_tests": [],
+        "forecast_points": [],
+        "dtypes_summary": {},
+        "missing_pct": {
+         "Timestamp": 0.0,
+         "Sensor": 0.0,
+         "Line": 0.0,
+         "Temperature": 1.08,
+         "Temp Unit": 0.0,
+         "Vibration (mm/s)": 1.0,
+         "Pressure (bar)": 1.06,
+         "Alarm": 0.0,
+         "Quality": 0.0
+        },
+        "kpis": [
+         {
+          "label": "Assets",
+          "value": "8",
+          "context": "",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "assets",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "count",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Distinct Sensor; over counted rows."
+         },
+         {
+          "label": "Alarms",
+          "value": "264",
+          "context": "",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "alarms",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "count",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Sum of Alarm; over counted rows."
+         }
+        ],
+        "pre_cleaning_missing_pct": {},
+        "unique_counts": {},
+        "skewness": {},
+        "target_correlations": {},
+        "target_col": null,
+        "column_roles_summary": {},
+        "column_units": {}
+       },
+       [
+        {
+         "claim": "Cleaning: 17650 \u2192 17630 rows, 17 logged changes",
+         "result_excerpt": "{\"rows_before\": 17650, \"rows_after\": 17630, \"decisions\": [[\"Timestamp\", \"type_coerce\", 17650, 0], [\"Temperature\", \"sentinel_null\", 15, 0], [\"Pressure (bar)\", \"sentinel_null\", 10, 0], [\"Temperature\", \"sentinel_null\", 176, 0], [\"Vibration (mm/s)\", \"sentinel_null\", 176, 0], [\"Pressure (bar)\", \"sentinel_null\", 176, 0], [\"Quality\", \"flag\", 352, 0], [\"Temperature\", \"type_coerce\", 4373, 0], [\"Temp Unit\", \"type_coerce\", 4421, 0], [\"*\", \"drop_duplicates\", 20, 20], [\"Sensor\", \"flag\", 6, 0], [\"Sensor\", \"fl",
+         "row_count": 17630,
+         "assumptions": [
+          "Timestamp: Parsed as dates.",
+          "Temperature: 15 values coded -9999 (the export's 'unknown', not a real temperature) read as missing.",
+          "Pressure (bar): 10 values coded 32767 (the export's 'unknown', not a real pressure) read as missing.",
+          "Temperature: 176 temperature values on 176 rows its Quality marks invalid (bad, 0, i/o timeout, shutdown, comm fail, no data, not connected) read as missing; the rows are kept.",
+          "Vibration (mm/s): 176 vibration values on 176 rows its Quality marks invalid (bad, 0, i/o timeout, shutdown, comm fail, no data, not connected) read as missing; the rows are kept.",
+          "Pressure (bar): 176 pressure values on 176 rows its Quality marks invalid (bad, 0, i/o timeout, shutdown, comm fail, no data, not connected) read as missing; the rows are kept.",
+          "Quality: 352 rows marked uncertain, questionable, substituted: kept and counted.",
+          "Temperature: 4373 temperature values in \u00b0F (their Temp Unit) converted to \u00b0C: \u00d7 0.555556 \u2212 17.7778.",
+          "Temp Unit: 4421 rows' unit changed from \u00b0F to \u00b0C, with their values.",
+          "*: Removed 20 exact double writes (the same Sensor, Timestamp and every value).",
+          "Sensor: 6 times of one Sensor with two different rows (S01 at 2026-08-07 04:00, S01 at 2026-10-06 11:00, S02 at 2026-10-21 12:00): both kept, check them at the source.",
+          "Sensor: 1 local time (2026-10-25 02:00) repeat for every Sensor: the hour a clock change repeats, its offset dropped. Both readings are kept; durations across it can be an hour off.",
+          "Sensor: 1 silence longer than 3\u00d7 the usual interval (S05 2026-09-10 07:00 to 2026-09-12 00:00 (41 h)): a dropout, or a source that writes only on change. Nothing is filled in.",
+          "Sensor: 1 value unchanged for hours (S03 temperature at 68.4 for 71 h from 2026-09-20 00:00): a stuck sensor reads as a steady process. Kept.",
+          "Temperature: 191 missing (1.1%), metric of the question: left as missing; totals and averages use the 17439 known rows.",
+          "Vibration (mm/s): 176 missing (1%), metric of the question: left as missing; totals and averages use the 17454 known rows.",
+          "Pressure (bar): 186 missing (1.1%), number: left as missing; totals and averages use the 17444 known rows."
+         ],
+         "confidence_reason": "rule-based; every change below is logged"
+        },
+        {
+         "claim": "Vibration (mm/s) and Alarm: r = 0.467",
+         "result_excerpt": "{\"Vibration (mm/s)__Alarm\": 0.4666}",
+         "row_count": 17454,
+         "assumptions": [],
+         "confidence_reason": "17454 rows"
+        },
+        {
+         "claim": "mean Temperature by Line (3 groups)",
+         "result_excerpt": "{\"segment_column\": \"Line\", \"metric_column\": \"Temperature\", \"aggregation\": \"mean\", \"results\": [{\"name\": \"Line A\", \"value\": 69.9631}, {\"name\": \"Line B\", \"value\": 71.9854}, {\"name\": \"Line C\", \"value\": 71.1391}]}",
+         "row_count": 17439,
+         "assumptions": [],
+         "confidence_reason": "17439 rows"
+        },
+        {
+         "claim": "mean Vibration (mm/s) by Sensor (8 groups)",
+         "result_excerpt": "{\"segment_column\": \"Sensor\", \"metric_column\": \"Vibration (mm/s)\", \"aggregation\": \"mean\", \"results\": [{\"name\": \"S01\", \"value\": 1.9745}, {\"name\": \"S02\", \"value\": 2.0004}, {\"name\": \"S03\", \"value\": 1.987}, {\"name\": \"S04\", \"value\": 3.1507}, {\"name\": \"S05\", \"value\": 3.2108}, {\"name\": \"S06\", \"value\": 3.1904}, {\"name\": \"S07\", \"value\": 1.9678}, {\"name\": \"S08\", \"value\": 2.0078}]}",
+         "row_count": 17454,
+         "assumptions": [],
+         "confidence_reason": "17454 rows"
+        },
+        {
+         "claim": "Temperature: median 70.93, mean 71.01, range 66.04 to 77.18",
+         "result_excerpt": "{\"mean\": 71.0128, \"std\": 1.5324, \"min\": 66.0444, \"max\": 77.1778, \"median\": 70.93, \"count\": 17439.0}",
+         "row_count": 17439,
+         "assumptions": [],
+         "confidence_reason": "17439 rows"
+        },
+        {
+         "claim": "Vibration (mm/s): median 2.15, mean 2.43, range 0.093 to 16.18",
+         "result_excerpt": "{\"mean\": 2.4341, \"std\": 1.3818, \"min\": 0.093, \"max\": 16.185, \"median\": 2.1475, \"count\": 17454.0}",
+         "row_count": 17454,
+         "assumptions": [],
+         "confidence_reason": "17454 rows"
+        },
+        {
+         "claim": "Alarm: median 0, mean 0.015, range 0 to 1.00",
+         "result_excerpt": "{\"mean\": 0.015, \"std\": 0.1215, \"min\": 0.0, \"max\": 1.0, \"median\": 0.0, \"count\": 17630.0}",
+         "row_count": 17630,
+         "assumptions": [],
+         "confidence_reason": "17630 rows"
+        }
+       ],
+       {
+        "decisions": [
+         {
+          "column": "Timestamp",
+          "operation": "type_coerce",
+          "strategy": "to_datetime",
+          "reason": "Parsed as dates.",
+          "rows_affected": 17650,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "Temperature",
+          "operation": "sentinel_null",
+          "strategy": "numeric_sentinel",
+          "reason": "15 values coded -9999 (the export's 'unknown', not a real temperature) read as missing.",
+          "rows_affected": 15,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.1,
+          "rows_removed": 0
+         },
+         {
+          "column": "Pressure (bar)",
+          "operation": "sentinel_null",
+          "strategy": "numeric_sentinel",
+          "reason": "10 values coded 32767 (the export's 'unknown', not a real pressure) read as missing.",
+          "rows_affected": 10,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.1,
+          "rows_removed": 0
+         },
+         {
+          "column": "Temperature",
+          "operation": "sentinel_null",
+          "strategy": "invalid_flag",
+          "reason": "176 temperature values on 176 rows its Quality marks invalid (bad, 0, i/o timeout, shutdown, comm fail, no data, not connected) read as missing; the rows are kept.",
+          "rows_affected": 176,
+          "before_null_pct": 0.1,
+          "after_null_pct": 1.1,
+          "rows_removed": 0
+         },
+         {
+          "column": "Vibration (mm/s)",
+          "operation": "sentinel_null",
+          "strategy": "invalid_flag",
+          "reason": "176 vibration values on 176 rows its Quality marks invalid (bad, 0, i/o timeout, shutdown, comm fail, no data, not connected) read as missing; the rows are kept.",
+          "rows_affected": 176,
+          "before_null_pct": 0.0,
+          "after_null_pct": 1.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "Pressure (bar)",
+          "operation": "sentinel_null",
+          "strategy": "invalid_flag",
+          "reason": "176 pressure values on 176 rows its Quality marks invalid (bad, 0, i/o timeout, shutdown, comm fail, no data, not connected) read as missing; the rows are kept.",
+          "rows_affected": 176,
+          "before_null_pct": 0.1,
+          "after_null_pct": 1.1,
+          "rows_removed": 0
+         },
+         {
+          "column": "Quality",
+          "operation": "flag",
+          "strategy": "doubtful_flag",
+          "reason": "352 rows marked uncertain, questionable, substituted: kept and counted.",
+          "rows_affected": 352,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "Temperature",
+          "operation": "type_coerce",
+          "strategy": "unit_converted",
+          "reason": "4373 temperature values in \u00b0F (their Temp Unit) converted to \u00b0C: \u00d7 0.555556 \u2212 17.7778.",
+          "rows_affected": 4373,
+          "before_null_pct": 1.1,
+          "after_null_pct": 1.1,
+          "rows_removed": 0
+         },
+         {
+          "column": "Temp Unit",
+          "operation": "type_coerce",
+          "strategy": "unit_converted",
+          "reason": "4421 rows' unit changed from \u00b0F to \u00b0C, with their values.",
+          "rows_affected": 4421,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "*",
+          "operation": "drop_duplicates",
+          "strategy": "exact",
+          "reason": "Removed 20 exact double writes (the same Sensor, Timestamp and every value).",
+          "rows_affected": 20,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 20
+         },
+         {
+          "column": "Sensor",
+          "operation": "flag",
+          "strategy": "series_clash",
+          "reason": "6 times of one Sensor with two different rows (S01 at 2026-08-07 04:00, S01 at 2026-10-06 11:00, S02 at 2026-10-21 12:00): both kept, check them at the source.",
+          "rows_affected": 6,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "Sensor",
+          "operation": "flag",
+          "strategy": "series_clock_change",
+          "reason": "1 local time (2026-10-25 02:00) repeat for every Sensor: the hour a clock change repeats, its offset dropped. Both readings are kept; durations across it can be an hour off.",
+          "rows_affected": 8,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "Sensor",
+          "operation": "flag",
+          "strategy": "series_gap",
+          "reason": "1 silence longer than 3\u00d7 the usual interval (S05 2026-09-10 07:00 to 2026-09-12 00:00 (41 h)): a dropout, or a source that writes only on change. Nothing is filled in.",
+          "rows_affected": 1,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "Sensor",
+          "operation": "flag",
+          "strategy": "series_stuck",
+          "reason": "1 value unchanged for hours (S03 temperature at 68.4 for 71 h from 2026-09-20 00:00): a stuck sensor reads as a steady process. Kept.",
+          "rows_affected": 1,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "Temperature",
+          "operation": "keep",
+          "strategy": "left_missing",
+          "reason": "191 missing (1.1%), metric of the question: left as missing; totals and averages use the 17439 known rows.",
+          "rows_affected": 0,
+          "before_null_pct": 1.1,
+          "after_null_pct": 1.1,
+          "rows_removed": 0
+         },
+         {
+          "column": "Vibration (mm/s)",
+          "operation": "keep",
+          "strategy": "left_missing",
+          "reason": "176 missing (1%), metric of the question: left as missing; totals and averages use the 17454 known rows.",
+          "rows_affected": 0,
+          "before_null_pct": 1.0,
+          "after_null_pct": 1.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "Pressure (bar)",
+          "operation": "keep",
+          "strategy": "left_missing",
+          "reason": "186 missing (1.1%), number: left as missing; totals and averages use the 17444 known rows.",
+          "rows_affected": 0,
+          "before_null_pct": 1.1,
+          "after_null_pct": 1.1,
+          "rows_removed": 0
+         }
+        ],
+        "rows_before": 17650,
+        "rows_after": 17630,
+        "columns_coerced": [
+         "Timestamp"
+        ],
+        "duplicates_removed": 20,
+        "outliers_flagged": [
+         "83 mild outliers in Temperature (threshold: values outside [63.34, 78.62]) \u2014 see analyst tab",
+         "66 extreme outliers in Vibration (mm/s) (0.4% of data, threshold: values > 8.12)",
+         "116 mild outliers in Pressure (bar) (threshold: values outside [5.29, 6.71]) \u2014 see analyst tab"
+        ],
+        "high_null_columns": [],
+        "summary": "Removed 20 duplicate rows. Parsed numbers or dates in 3 column(s). Left missing values as missing in 3 column(s); nothing was imputed. Outliers flagged (kept) in: Pressure (bar), Temperature, Vibration (mm/s). Final dataset: 17630 rows (started with 17650).",
+        "anomaly_report": {
+         "flags": [
+          {
+           "column": "Temperature",
+           "extreme_count": 0,
+           "mild_count": 83,
+           "extreme_pct": 0.0,
+           "lower_bound": 63.343333333333334,
+           "upper_bound": 78.61888888888889,
+           "mild_lower_bound": 66.61666666666667,
+           "mild_upper_bound": 75.34555555555556,
+           "used_log_transform": false,
+           "heavy_tailed": false,
+           "message": "83 mild outliers in Temperature (threshold: values outside [63.34, 78.62]) \u2014 see analyst tab"
+          },
+          {
+           "column": "Vibration (mm/s)",
+           "extreme_count": 66,
+           "mild_count": 483,
+           "extreme_pct": 0.37813681677552424,
+           "lower_bound": -3.5530000000000004,
+           "upper_bound": 8.123000000000001,
+           "mild_lower_bound": -1.0510000000000002,
+           "mild_upper_bound": 5.621,
+           "used_log_transform": false,
+           "heavy_tailed": false,
+           "message": "66 extreme outliers in Vibration (mm/s) (0.4% of data, threshold: values > 8.12)"
+          },
+          {
+           "column": "Pressure (bar)",
+           "extreme_count": 0,
+           "mild_count": 116,
+           "extreme_pct": 0.0,
+           "lower_bound": 5.293,
+           "upper_bound": 6.707,
+           "mild_lower_bound": 5.596,
+           "mild_upper_bound": 6.404,
+           "used_log_transform": false,
+           "heavy_tailed": false,
+           "message": "116 mild outliers in Pressure (bar) (threshold: values outside [5.29, 6.71]) \u2014 see analyst tab"
+          }
+         ],
+         "methodology_note": "",
+         "eligible_columns": [
+          "Temperature",
+          "Vibration (mm/s)",
+          "Pressure (bar)"
+         ],
+         "skipped_columns": {
+          "Timestamp": "datetime column",
+          "Sensor": "non-numeric",
+          "Line": "non-numeric",
+          "Temp Unit": "constant or unsupported",
+          "Alarm": "binary column (only 2 values)",
+          "Quality": "non-numeric"
+         }
+        },
+        "skipped_columns": [],
+        "date_ranges": {
+         "Timestamp": [
+          "2026-08-01",
+          "2026-10-31",
+          3
+         ]
+        },
+        "grain": "aggregate",
+        "partial_months": {},
+        "main_currency": null,
+        "spell_story": [],
+        "window_span": {}
+       },
+       [
+        "Assets over time",
+        "Assets by Line",
+        "Alarms by Line",
+        "Average temperature by line: Line B highest (71.99), Line A lowest (69.96)",
+        "alarm vs vibration (mm/s) (r = 0.47)",
+        "Average vibration (mm/s) by sensor: S05 highest (3.21), S07 lowest (1.97)"
+       ],
+       [
+        17650,
+        9,
+        3
+       ],
+       [
+        2026
+       ],
+       [
+        "Read as manufacturing data (assets, alarms). Ratios pool their parts (OEE and availability over planned production time, summed over shifts and machines before dividing), so a line's figure pools its machines' time; MTBF is run time per failure and assumes a constant failure rate; MTTR runs from actual start to actual finish of finished repairs, so repairs still open are not in it and it can read low. Readings are averaged, not time-weighted. Times are read in the zone they are written in (a file mixing offsets is read in UTC).",
+        "The data covers 3 months, so month-over-month changes may be seasonal; there is no same month last year to compare with.",
+        "A reading is a level: it is averaged over the period (each reading counts once; not time-weighted), never summed."
+       ]
+      ]
+     }
+    },
+    "domain": "iot",
+    "latency_s": 27.24,
+    "cost_usd": 0.02655,
+    "llm_calls": 2,
+    "truncated_calls": 0,
+    "rejections": [
+     "typed_refused",
+     "grounding_rewritten"
+    ],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"headline\": {\n    \"text\": \"Three months of sensor readings across 8 assets show 264 alarms, with vibration the clearest signal associated with alarm events.\",\n    \"evidence\": [\"eda:Alarm\", \"corr:Vibration (mm/s)__Alarm\"]\n  },\n  \"summary\": [\n    {\n      \"text\": \"The dataset covers 17,630 cleaned readings from Aug\u2013Oct 2026, capturing temperature, pressure, vibration, and alarm status across 8 assets and 3 production lines.\",\n      \"evidence\": [\"clean:audit\"]\n    },\n    {\n      \"text\": \"Sensors S04, S05, and S06 stand out with notably higher average vibration than the other five sensors, which warrants closer attention.\",\n      \"evidence\": [\"seg:Sensor/Vibration (mm/s)\"]\n    }\n  ],\n  \"findings\": [\n    {\n      \"text\": \"Vibration and alarm events move together across readings (r = 0.47), making vibration the strongest available indicator of alarm conditions in this dataset.\",\n      \"evidence\": [\"corr:Vibration (mm/s)__Alarm\"]\n    },\n    {\n      \"text\": \"Sensors S04, S05, and S06 average vibration of 3.15, 3.21, and 3.19 mm/s respectively, while the remaining five sensors all average between 1.97 and 2.01 mm/s.\",\n      \"evidence\": [\"seg:Sensor/Vibration (mm/s)\"]\n    },\n    {\n      \"text\": \"Overall vibration ranges from 0.093 to 16.18 mm/s with a median of 2.15 mm/s, indicating that most readings are low but a tail of high readings exists.\",\n      \"evidence\": [\"eda:Vibration (mm/s)\"]\n    },\n    {\n      \"text\": \"Line B averages 71.99 \u00b0C and Line A averages 69.96 \u00b0C, with Line C at 71.14 \u00b0C, showing a modest spread in operating temperature across lines.\",\n      \"evidence\": [\"seg:Line/Temperature\"]\n    }\n  ],\n  \"claims\": [\n    {\n      \"kind\": \"comparison\",\n      \"metric\": \"Vibration (mm/s)\",\n      \"a\": \"S04 / S05 / S06\",\n      \"b\": \"S01 / S02 / S03 / S07 / S08\",\n      \"evidence_id\": \"seg:Sensor/Vibration (mm/s)\"\n    },\n    {\n      \"kind\": \"comparison\",\n      \"metric\": \"Temperature\",\n      \"a\": \"Line B\",\n      \"b\": \"Line A\",\n      \"evidence_id\": \"seg:Line/Temperature\"\n    }\n  ],\n  \"actions\": [\n    {\n      \"action\": \"Investigate sensors S04, S05, and S06 for mechanical or mounting issues driving elevated vibration readings.\",\n      \"impact\": \"These three sensors consistently read roughly 1.2 mm/s above the other five, and vibration moves with alarms.\",\n      \"evidence\": [\"seg:Sensor/Vibration (mm/s)\", \"corr:Vibration (mm/s)__Alarm\"]\n    },\n    {\n      \"action\": \"Review the export configuration to eliminate sentinel values (-9999 for temperature, 32767 for pressure) so missing readings are flagged at source rather than requiring post-hoc cleaning.\",\n      \"impact\": \"25 readings were silently invalid and would have distorted any averages if not caught.\",\n      \"evidence\": [\"clean:audit\"]\n    },\n    {\n      \"action\": \"Investigate Line B's operating conditions to understand whether its higher average temperature relative to Line A is expected or a sign of a developing issue.\",\n      \"impact\": \"Temperature differences across lines may affect product quality or equipment wear.\",\n      \"evidence\": [\"seg:Line/Temperature\"]\n    }\n  ],\n  \"caveats\": [\n    \"Readings are averaged, not time-weighted, so periods of high activity and low activity contribute equally to any mean shown here.\",\n    \"The dataset spans only 3 months with no prior-year equivalent, so month-over-month changes cannot be distinguished from seasonal patterns.\",\n    \"25 values in Temperature and Pressure were sentinel codes for 'unknown' and were treated as missing; any analysis of those columns rests on slightly fewer rows.\"\n  ],\n  \"questions\": [\n    \"Do the alarms associated with high vibration cluster on S04, S05, and S06, or are they spread across all sensors?\",\n    \"Is the elevated vibration on S04\u2013S06 consistent across all three months, or did it emerge or worsen over the Aug\u2013Oct period?\",\n    \"What is the typical operating temperature range expected for each line, and does Line B's average fall within or outside that specification?\"\n  ]\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "{\"0\": \"neither\", \"1\": \"neither\", \"2\": \"neither\", \"3\": \"neither\", \"4\": \"neither\", \"5\": \"neither\", \"6\": \"neither\", \"7\": \"neither\", \"8\": \"neither\", \"9\": \"neither\", \"10\": \"neither\", \"11\": \"neither\", \"12\": \"neither\", \"13\": \"neither\", \"14\": \"neither\", \"15\": \"neither\", \"16\": \"neither\", \"17\": \"neither\", \"18\": \"neither\"}",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "ins-53-iot-sensor-drift": [
+   {
+    "checks": [
+     {
+      "kind": "recall",
+      "ok": true,
+      "detail": "/vibration/ found"
+     },
+     {
+      "kind": "must_not",
+      "ok": true,
+      "detail": "/(?:^|[.!?]\\s+)(?:(?!\\b(?:not|no|never|cannot)\\b|n't\\b)[^.!?])*?\\bvibration\\b(?:(?!\\b(?:not|no|never)\\b)[^.!?]){0,40}?\\b(?:causes?|caused|drives?|leads? to)\\b[^.!?]{0,30}\\bfailures?\\b/ absent"
+     },
+     {
+      "kind": "must_not",
+      "ok": true,
+      "detail": "/\\bS07\\b[^.]{0,40}\\bfail\\w*\\b[^.]{0,20}\\bbecause\\b/ absent"
+     },
+     {
+      "kind": "must_not",
+      "ok": true,
+      "detail": "/\\b(?:sum|total) (?:of )?(?:the )?temperatures?\\b/ absent"
+     },
+     {
+      "kind": "must_not",
+      "ok": true,
+      "detail": "/net sales|order value|\\bMRR\\b|readmission|loss ratio|headcount|attrition|\\bNPL\\b/ absent"
+     },
+     {
+      "kind": "causal",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "insight_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "insight_dates_in_range",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "executive_no_jargon",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "claims_cite_evidence",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "adversarial",
+    "holdout": false,
+    "output": {
+     "report": {
+      "executive_summary": "This manufacturing sensor dataset covers 6,624 readings across 12 assets from Aug 2026 to Oct 2026, with 155 failures recorded and sensor S07 running notably warmer than its peers. The dataset is clean and complete, with temperature and vibration readings spread across 12 sensors over 3 months. Sensor S07's average temperature stands apart from the other 11 sensors, and vibration shows a weak association with failures that warrants watching.",
+      "technical_findings": [
+       "vibration and failure: r = 0.204 (n = 6,624; medium confidence: weak association (|r| = 0.20))",
+       "temperature MoM: +3.5% (n = 6,624; high confidence: 6624 rows)",
+       "mean temperature by sensor_id (12 groups) (n = 6,624; high confidence: 6624 rows)",
+       "temperature: median 70.09, mean 70.18, range 65.39 to 77.09 (n = 6,624; high confidence: 6624 rows)",
+       "vibration: median 2.10, mean 2.38, range 0.102 to 10.73 (n = 6,624; high confidence: 6624 rows)",
+       "failure: median 0, mean 0.0234, range 0 to 1.00 (n = 6,624; high confidence: 6624 rows)"
+      ],
+      "recommended_actions": [
+       {
+        "priority": 1,
+        "action": "Investigate sensor S07 for calibration drift, abnormal operating conditions, or a cooling issue",
+        "reasoning": "Its average temperature is well above all other sensors, which may signal an early equipment problem",
+        "metric_impact": "Its average temperature is well above all other sensors, which may signal an early equipment problem"
+       },
+       {
+        "priority": 2,
+        "action": "Monitor vibration levels on assets approaching the upper end of the observed range (up to 10.73)",
+        "reasoning": "Vibration moves together with failures; catching high-vibration readings early may reduce unplanned downtime",
+        "metric_impact": "Vibration moves together with failures; catching high-vibration readings early may reduce unplanned downtime"
+       },
+       {
+        "priority": 3,
+        "action": "Collect a same-month-prior-year baseline before acting on the October temperature rise",
+        "reasoning": "Without a year-ago comparison, the 3.5% month-over-month increase cannot be distinguished from normal seasonal variation",
+        "metric_impact": "Without a year-ago comparison, the 3.5% month-over-month increase cannot be distinguished from normal seasonal variation"
+       }
+      ],
+      "anomaly_alerts": [
+       {
+        "title": "Temperature: 8 extreme values",
+        "severity": "medium",
+        "description": "8 temperature values (0.1% of rows) are far outside the usual range. They were kept.",
+        "affected_metric": "temperature",
+        "suggested_investigation": "Verify the largest temperature values against the source records."
+       },
+       {
+        "title": "Vibration: 46 extreme values",
+        "severity": "medium",
+        "description": "46 vibration values (0.7% of rows) are far outside the usual range. They were kept.",
+        "affected_metric": "vibration",
+        "suggested_investigation": "Verify the largest vibration values against the source records."
+       },
+       {
+        "title": "How these numbers are counted",
+        "severity": "low",
+        "description": "Read as manufacturing data (failures, assets). Ratios pool their parts (OEE and availability over planned production time, summed over shifts and machines before dividing), so a line's figure pools its machines' time; MTBF is run time per failure and assumes a constant failure rate; MTTR runs from actual start to actual finish of finished repairs, so repairs still open are not in it and it can read low. Readings are averaged, not time-weighted. Times are read in the zone they are written in (a file mixing offsets is read in UTC). The data covers 3 months, so month-over-month changes may be seasonal; there is no same month last year to compare with. A reading is a level: it is averaged over the period (each reading counts once; not time-weighted), never summed.",
+        "affected_metric": "",
+        "suggested_investigation": ""
+       }
+      ],
+      "proactive_questions": [
+       "Has sensor S07 been recently relocated, recalibrated, or assigned to a different machine that runs hotter?",
+       "Do the 155 failures concentrate on specific sensors or time windows, or are they spread evenly across the fleet?",
+       "Is the October temperature rise consistent across all 12 sensors, or is it driven primarily by S07?"
+      ],
+      "methodology_notes": "Cleaning (cleaning rules-v1): Parsed numbers or dates in 1 column(s). Outliers flagged (kept) in: temperature, vibration. Final dataset: 6624 rows (started with 6624). Analysis (analysis v9) computed: correlation, eda, segment, trend. Correlations are Pearson r: linear association only, never cause. Descriptive statistics use the non-missing values of each column. Month-over-month compares calendar-month totals (means for rates and 0-1 flags).",
+      "executive_view": {
+       "headline": "This manufacturing sensor dataset covers 6,624 readings across 12 assets from Aug 2026 to Oct 2026, with 155 failures recorded and sensor S07 running notably warmer than its peers.",
+       "headline_evidence_ids": [
+        "clean:audit",
+        "eda:failure",
+        "seg:sensor_id/temperature"
+       ],
+       "paragraphs": [
+        {
+         "text": "The dataset is clean and complete, with temperature and vibration readings spread across 12 sensors over 3 months.",
+         "evidence_ids": [
+          "clean:audit",
+          "eda:temperature",
+          "eda:vibration"
+         ],
+         "typed": null
+        },
+        {
+         "text": "Sensor S07's average temperature stands apart from the other 11 sensors, and vibration shows a weak association with failures that warrants watching.",
+         "evidence_ids": [
+          "seg:sensor_id/temperature",
+          "corr:vibration__failure"
+         ],
+         "typed": null
+        }
+       ],
+       "findings": [
+        {
+         "text": "Sensor S07 averages 72.30 \u00b0C, while the remaining 11 sensors cluster tightly between 69.88 \u00b0C and 70.10 \u00b0C.",
+         "evidence_ids": [
+          "seg:sensor_id/temperature"
+         ],
+         "typed": null
+        },
+        {
+         "text": "Vibration readings range from 0.102 to 10.73, and higher vibration moves together with failures, though the association is weak.",
+         "evidence_ids": [
+          "eda:vibration",
+          "corr:vibration__failure"
+         ],
+         "typed": null
+        },
+        {
+         "text": "Temperature rose 3.5% month-over-month from Sep 2026 to Oct 2026; because only 3 months of data are available, it is not possible to tell whether this is seasonal.",
+         "evidence_ids": [
+          "trend:temperature:MoM"
+         ],
+         "typed": null
+        },
+        {
+         "text": "Failures are rare events: the median reading shows no failure, and the mean across all 6,624 readings is 0.0234.",
+         "evidence_ids": [
+          "eda:failure"
+         ],
+         "typed": null
+        },
+        {
+         "text": "Average temperature: S07 (72.30) is higher than S12 (69.88).",
+         "evidence_ids": [
+          "seg:sensor_id/temperature"
+         ],
+         "typed": {
+          "kind": "comparison",
+          "evidence_id": "seg:sensor_id/temperature",
+          "cause": "",
+          "effect": "",
+          "metric": "mean temperature",
+          "verdict": "",
+          "source": "",
+          "a": "S07",
+          "b": "S12"
+         }
+        }
+       ],
+       "action_items": [
+        {
+         "action": "Investigate sensor S07 for calibration drift, abnormal operating conditions, or a cooling issue",
+         "expected_impact": "Its average temperature is well above all other sensors, which may signal an early equipment problem",
+         "evidence_ids": [
+          "seg:sensor_id/temperature"
+         ]
+        },
+        {
+         "action": "Monitor vibration levels on assets approaching the upper end of the observed range (up to 10.73)",
+         "expected_impact": "Vibration moves together with failures; catching high-vibration readings early may reduce unplanned downtime",
+         "evidence_ids": [
+          "eda:vibration",
+          "corr:vibration__failure"
+         ]
+        },
+        {
+         "action": "Collect a same-month-prior-year baseline before acting on the October temperature rise",
+         "expected_impact": "Without a year-ago comparison, the 3.5% month-over-month increase cannot be distinguished from normal seasonal variation",
+         "evidence_ids": [
+          "trend:temperature:MoM"
+         ]
+        }
+       ]
+      },
+      "analyst_view": {
+       "methodology": "Cleaning (cleaning rules-v1): Parsed numbers or dates in 1 column(s). Outliers flagged (kept) in: temperature, vibration. Final dataset: 6624 rows (started with 6624). Analysis (analysis v9) computed: correlation, eda, segment, trend. Correlations are Pearson r: linear association only, never cause. Descriptive statistics use the non-missing values of each column. Month-over-month compares calendar-month totals (means for rates and 0-1 flags).",
+       "statistical_notes": [
+        "vibration and failure: r = 0.204 (n = 6,624; medium confidence: weak association (|r| = 0.20))",
+        "temperature MoM: +3.5% (n = 6,624; high confidence: 6624 rows)",
+        "mean temperature by sensor_id (12 groups) (n = 6,624; high confidence: 6624 rows)",
+        "temperature: median 70.09, mean 70.18, range 65.39 to 77.09 (n = 6,624; high confidence: 6624 rows)",
+        "vibration: median 2.10, mean 2.38, range 0.102 to 10.73 (n = 6,624; high confidence: 6624 rows)",
+        "failure: median 0, mean 0.0234, range 0 to 1.00 (n = 6,624; high confidence: 6624 rows)"
+       ],
+       "caveats": [
+        "MTTR excludes repairs still in progress, so the repair-time figures in this dataset may read lower than actual.",
+        "Readings are averaged rather than time-weighted, so short high-intensity events may be understated in the means.",
+        "Only 3 months of history are available; month-over-month changes cannot be compared to the same period last year.",
+        "Read as manufacturing data (failures, assets). Ratios pool their parts (OEE and availability over planned production time, summed over shifts and machines before dividing), so a line's figure pools its machines' time; MTBF is run time per failure and assumes a constant failure rate; MTTR runs from actual start to actual finish of finished repairs, so repairs still open are not in it and it can read low. Readings are averaged, not time-weighted. Times are read in the zone they are written in (a file mixing offsets is read in UTC).",
+        "The data covers 3 months, so month-over-month changes may be seasonal; there is no same month last year to compare with.",
+        "A reading is a level: it is averaged over the period (each reading counts once; not time-weighted), never summed.",
+        "reading_time: Parsed as dates."
+       ],
+       "code_references": [
+        "_period = pd.to_datetime(df['reading_time'], format='mixed').dt.to_period('M'); df.groupby(_period)['temperature'].mean()",
+        "df[['vibration', 'failure']].dropna().sample(min(n, 500), random_state=42)",
+        "df.groupby('sensor_id')['temperature'].mean()"
+       ]
+      },
+      "additional_issues_note": "",
+      "generated_at": "2026-11-17T10:28:43.387475Z",
+      "memory_used": []
+     },
+     "bundle": {
+      "question": "Give me an overview of this dataset.",
+      "columns": [
+       "sensor_id",
+       "reading_time",
+       "line",
+       "temperature",
+       "vibration",
+       "failure"
+      ],
+      "evidence_ids": [
+       "clean:audit",
+       "corr:vibration__failure",
+       "trend:temperature:MoM",
+       "seg:sensor_id/temperature",
+       "eda:temperature",
+       "eda:vibration",
+       "eda:failure"
+      ],
+      "evidence": [
+       {
+        "id": "clean:audit",
+        "kind": "cleaning",
+        "claim": "Cleaning: 6624 \u2192 6624 rows, 1 logged changes",
+        "result_excerpt": "{\"rows_before\": 6624, \"rows_after\": 6624, \"decisions\": [[\"reading_time\", \"type_coerce\", 6624, 0]]}",
+        "row_count": 6624,
+        "confidence": "high",
+        "confidence_reason": "rule-based; every change below is logged",
+        "assumptions": [
+         "reading_time: Parsed as dates."
+        ]
+       },
+       {
+        "id": "corr:vibration__failure",
+        "kind": "correlation",
+        "claim": "vibration and failure: r = 0.204",
+        "result_excerpt": "{\"vibration__failure\": 0.2045}",
+        "row_count": 6624,
+        "confidence": "medium",
+        "confidence_reason": "weak association (|r| = 0.20)",
+        "assumptions": []
+       },
+       {
+        "id": "trend:temperature:MoM",
+        "kind": "trend",
+        "claim": "temperature MoM: +3.5%",
+        "result_excerpt": "{\"column\": \"temperature\", \"period\": \"MoM\", \"direction\": \"up\", \"pct_change\": 3.5, \"segment\": null}",
+        "row_count": 6624,
+        "confidence": "high",
+        "confidence_reason": "6624 rows",
+        "assumptions": []
+       },
+       {
+        "id": "seg:sensor_id/temperature",
+        "kind": "segment",
+        "claim": "mean temperature by sensor_id (12 groups)",
+        "result_excerpt": "{\"segment_column\": \"sensor_id\", \"metric_column\": \"temperature\", \"aggregation\": \"mean\", \"results\": [{\"name\": \"S01\", \"value\": 70.017}, {\"name\": \"S02\", \"value\": 70.0089}, {\"name\": \"S03\", \"value\": 69.978}, {\"name\": \"S04\", \"value\": 69.8828}, {\"name\": \"S05\", \"value\": 70.1028}, {\"name\": \"S06\", \"value\": 70.0469}, {\"name\": \"S07\", \"value\": 72.2964}, {\"name\": \"S08\", \"value\": 70.0202}, {\"name\": \"S09\", \"value\"",
+        "row_count": 6624,
+        "confidence": "high",
+        "confidence_reason": "6624 rows",
+        "assumptions": []
+       },
+       {
+        "id": "eda:temperature",
+        "kind": "eda",
+        "claim": "temperature: median 70.09, mean 70.18, range 65.39 to 77.09",
+        "result_excerpt": "{\"mean\": 70.1797, \"std\": 1.4142, \"min\": 65.39, \"max\": 77.09, \"median\": 70.09, \"count\": 6624.0}",
+        "row_count": 6624,
+        "confidence": "high",
+        "confidence_reason": "6624 rows",
+        "assumptions": []
+       },
+       {
+        "id": "eda:vibration",
+        "kind": "eda",
+        "claim": "vibration: median 2.10, mean 2.38, range 0.102 to 10.73",
+        "result_excerpt": "{\"mean\": 2.3825, \"std\": 1.3632, \"min\": 0.102, \"max\": 10.733, \"median\": 2.101, \"count\": 6624.0}",
+        "row_count": 6624,
+        "confidence": "high",
+        "confidence_reason": "6624 rows",
+        "assumptions": []
+       },
+       {
+        "id": "eda:failure",
+        "kind": "eda",
+        "claim": "failure: median 0, mean 0.0234, range 0 to 1.00",
+        "result_excerpt": "{\"mean\": 0.0234, \"std\": 0.1512, \"min\": 0.0, \"max\": 1.0, \"median\": 0.0, \"count\": 6624.0}",
+        "row_count": 6624,
+        "confidence": "high",
+        "confidence_reason": "6624 rows",
+        "assumptions": []
+       }
+      ],
+      "date_first": [
+       2026,
+       8
+      ],
+      "date_last": [
+       2026,
+       10
+      ],
+      "n_months": 3,
+      "audit_summary": "Parsed numbers or dates in 1 column(s). Outliers flagged (kept) in: temperature, vibration. Final dataset: 6624 rows (started with 6624).",
+      "chart_titles": [
+       "Assets over time",
+       "Assets by line",
+       "temperature rose 0.2% in Oct 2026 vs Sep 2026",
+       "failure vs vibration (r = 0.20)",
+       "Average temperature (\u00b0C) by sensor id: S07 highest (72.30), S12 lowest (69.88)"
+      ],
+      "past_insights": [],
+      "corr_pairs": [
+       [
+        "vibration",
+        "failure"
+       ]
+      ],
+      "values": [
+       {
+        "eda_summary": {
+         "temperature": {
+          "mean": 70.1797,
+          "std": 1.4142,
+          "min": 65.39,
+          "max": 77.09,
+          "median": 70.09,
+          "count": 6624.0
+         },
+         "vibration": {
+          "mean": 2.3825,
+          "std": 1.3632,
+          "min": 0.102,
+          "max": 10.733,
+          "median": 2.101,
+          "count": 6624.0
+         },
+         "failure": {
+          "mean": 0.0234,
+          "std": 0.1512,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 0.0,
+          "count": 6624.0
+         }
+        },
+        "correlations": {
+         "vibration__failure": 0.2045
+        },
+        "trends": [
+         {
+          "column": "temperature",
+          "period": "MoM",
+          "direction": "up",
+          "pct_change": 3.5,
+          "segment": null
+         }
+        ],
+        "segments": [
+         {
+          "segment_column": "sensor_id",
+          "metric_column": "temperature",
+          "aggregation": "mean",
+          "results": [
+           {
+            "name": "S01",
+            "value": 70.017
+           },
+           {
+            "name": "S02",
+            "value": 70.0089
+           },
+           {
+            "name": "S03",
+            "value": 69.978
+           },
+           {
+            "name": "S04",
+            "value": 69.8828
+           },
+           {
+            "name": "S05",
+            "value": 70.1028
+           },
+           {
+            "name": "S06",
+            "value": 70.0469
+           },
+           {
+            "name": "S07",
+            "value": 72.2964
+           },
+           {
+            "name": "S08",
+            "value": 70.0202
+           },
+           {
+            "name": "S09",
+            "value": 69.9834
+           },
+           {
+            "name": "S10",
+            "value": 69.9907
+           },
+           {
+            "name": "S11",
+            "value": 69.9501
+           },
+           {
+            "name": "S12",
+            "value": 69.8794
+           }
+          ],
+          "label": null
+         }
+        ],
+        "anomalies": [],
+        "statistical_tests": [],
+        "forecast_points": [],
+        "dtypes_summary": {},
+        "missing_pct": {
+         "sensor_id": 0.0,
+         "reading_time": 0.0,
+         "line": 0.0,
+         "temperature": 0.0,
+         "vibration": 0.0,
+         "failure": 0.0
+        },
+        "kpis": [
+         {
+          "label": "Failures",
+          "value": "155",
+          "context": "",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "failures",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "count",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Sum of failure; over counted rows."
+         },
+         {
+          "label": "Assets",
+          "value": "12",
+          "context": "",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "assets",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "count",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Distinct sensor_id; over counted rows."
+         }
+        ],
+        "pre_cleaning_missing_pct": {},
+        "unique_counts": {},
+        "skewness": {},
+        "target_correlations": {},
+        "target_col": null,
+        "column_roles_summary": {},
+        "column_units": {}
+       },
+       [
+        {
+         "claim": "Cleaning: 6624 \u2192 6624 rows, 1 logged changes",
+         "result_excerpt": "{\"rows_before\": 6624, \"rows_after\": 6624, \"decisions\": [[\"reading_time\", \"type_coerce\", 6624, 0]]}",
+         "row_count": 6624,
+         "assumptions": [
+          "reading_time: Parsed as dates."
+         ],
+         "confidence_reason": "rule-based; every change below is logged"
+        },
+        {
+         "claim": "vibration and failure: r = 0.204",
+         "result_excerpt": "{\"vibration__failure\": 0.2045}",
+         "row_count": 6624,
+         "assumptions": [],
+         "confidence_reason": "weak association (|r| = 0.20)"
+        },
+        {
+         "claim": "temperature MoM: +3.5%",
+         "result_excerpt": "{\"column\": \"temperature\", \"period\": \"MoM\", \"direction\": \"up\", \"pct_change\": 3.5, \"segment\": null}",
+         "row_count": 6624,
+         "assumptions": [],
+         "confidence_reason": "6624 rows"
+        },
+        {
+         "claim": "mean temperature by sensor_id (12 groups)",
+         "result_excerpt": "{\"segment_column\": \"sensor_id\", \"metric_column\": \"temperature\", \"aggregation\": \"mean\", \"results\": [{\"name\": \"S01\", \"value\": 70.017}, {\"name\": \"S02\", \"value\": 70.0089}, {\"name\": \"S03\", \"value\": 69.978}, {\"name\": \"S04\", \"value\": 69.8828}, {\"name\": \"S05\", \"value\": 70.1028}, {\"name\": \"S06\", \"value\": 70.0469}, {\"name\": \"S07\", \"value\": 72.2964}, {\"name\": \"S08\", \"value\": 70.0202}, {\"name\": \"S09\", \"value\": 69.9834}, {\"name\": \"S10\", \"value\": 69.9907}, {\"name\": \"S11\", \"value\": 69.9501}, {\"name\": \"S12\", \"v",
+         "row_count": 6624,
+         "assumptions": [],
+         "confidence_reason": "6624 rows"
+        },
+        {
+         "claim": "temperature: median 70.09, mean 70.18, range 65.39 to 77.09",
+         "result_excerpt": "{\"mean\": 70.1797, \"std\": 1.4142, \"min\": 65.39, \"max\": 77.09, \"median\": 70.09, \"count\": 6624.0}",
+         "row_count": 6624,
+         "assumptions": [],
+         "confidence_reason": "6624 rows"
+        },
+        {
+         "claim": "vibration: median 2.10, mean 2.38, range 0.102 to 10.73",
+         "result_excerpt": "{\"mean\": 2.3825, \"std\": 1.3632, \"min\": 0.102, \"max\": 10.733, \"median\": 2.101, \"count\": 6624.0}",
+         "row_count": 6624,
+         "assumptions": [],
+         "confidence_reason": "6624 rows"
+        },
+        {
+         "claim": "failure: median 0, mean 0.0234, range 0 to 1.00",
+         "result_excerpt": "{\"mean\": 0.0234, \"std\": 0.1512, \"min\": 0.0, \"max\": 1.0, \"median\": 0.0, \"count\": 6624.0}",
+         "row_count": 6624,
+         "assumptions": [],
+         "confidence_reason": "6624 rows"
+        }
+       ],
+       {
+        "decisions": [
+         {
+          "column": "reading_time",
+          "operation": "type_coerce",
+          "strategy": "to_datetime",
+          "reason": "Parsed as dates.",
+          "rows_affected": 6624,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         }
+        ],
+        "rows_before": 6624,
+        "rows_after": 6624,
+        "columns_coerced": [
+         "reading_time"
+        ],
+        "duplicates_removed": 0,
+        "outliers_flagged": [
+         "8 extreme outliers in temperature (0.1% of data, threshold: values > 76.06)",
+         "46 extreme outliers in vibration (0.7% of data, threshold: values > 7.74)"
+        ],
+        "high_null_columns": [],
+        "summary": "Parsed numbers or dates in 1 column(s). Outliers flagged (kept) in: temperature, vibration. Final dataset: 6624 rows (started with 6624).",
+        "anomaly_report": {
+         "flags": [
+          {
+           "column": "temperature",
+           "extreme_count": 8,
+           "mild_count": 169,
+           "extreme_pct": 0.12077294685990338,
+           "lower_bound": 64.16000000000004,
+           "upper_bound": 76.05999999999996,
+           "mild_lower_bound": 66.71000000000002,
+           "mild_upper_bound": 73.50999999999998,
+           "used_log_transform": false,
+           "heavy_tailed": false,
+           "message": "8 extreme outliers in temperature (0.1% of data, threshold: values > 76.06)"
+          },
+          {
+           "column": "vibration",
+           "extreme_count": 46,
+           "mild_count": 207,
+           "extreme_pct": 0.6944444444444444,
+           "lower_bound": -3.3327499999999994,
+           "upper_bound": 7.735999999999999,
+           "mild_lower_bound": -0.9608749999999997,
+           "mild_upper_bound": 5.364125,
+           "used_log_transform": false,
+           "heavy_tailed": false,
+           "message": "46 extreme outliers in vibration (0.7% of data, threshold: values > 7.74)"
+          }
+         ],
+         "methodology_note": "",
+         "eligible_columns": [
+          "temperature",
+          "vibration"
+         ],
+         "skipped_columns": {
+          "sensor_id": "id column",
+          "reading_time": "datetime column",
+          "line": "non-numeric",
+          "failure": "binary column (only 2 values)"
+         }
+        },
+        "skipped_columns": [],
+        "date_ranges": {
+         "reading_time": [
+          "2026-08-01",
+          "2026-10-31",
+          3
+         ]
+        },
+        "grain": "aggregate",
+        "partial_months": {},
+        "main_currency": null,
+        "spell_story": [],
+        "window_span": {}
+       },
+       [
+        "Assets over time",
+        "Assets by line",
+        "temperature rose 0.2% in Oct 2026 vs Sep 2026",
+        "failure vs vibration (r = 0.20)",
+        "Average temperature (\u00b0C) by sensor id: S07 highest (72.30), S12 lowest (69.88)"
+       ],
+       [
+        6624,
+        6,
+        3
+       ],
+       [
+        2026
+       ],
+       [
+        "Read as manufacturing data (failures, assets). Ratios pool their parts (OEE and availability over planned production time, summed over shifts and machines before dividing), so a line's figure pools its machines' time; MTBF is run time per failure and assumes a constant failure rate; MTTR runs from actual start to actual finish of finished repairs, so repairs still open are not in it and it can read low. Readings are averaged, not time-weighted. Times are read in the zone they are written in (a file mixing offsets is read in UTC).",
+        "The data covers 3 months, so month-over-month changes may be seasonal; there is no same month last year to compare with.",
+        "A reading is a level: it is averaged over the period (each reading counts once; not time-weighted), never summed."
+       ]
+      ]
+     }
+    },
+    "domain": "iot",
+    "latency_s": 21.06,
+    "cost_usd": 0.0234,
+    "llm_calls": 2,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"headline\": {\n    \"text\": \"This manufacturing sensor dataset covers 6,624 readings across 12 assets from Aug 2026 to Oct 2026, with 155 failures recorded and sensor S07 running notably warmer than its peers.\",\n    \"evidence\": [\"clean:audit\", \"eda:failure\", \"seg:sensor_id/temperature\"]\n  },\n  \"summary\": [\n    {\n      \"text\": \"The dataset is clean and complete, with temperature and vibration readings spread across 12 sensors over 3 months.\",\n      \"evidence\": [\"clean:audit\", \"eda:temperature\", \"eda:vibration\"]\n    },\n    {\n      \"text\": \"Sensor S07's average temperature stands apart from the other 11 sensors, and vibration shows a weak association with failures that warrants watching.\",\n      \"evidence\": [\"seg:sensor_id/temperature\", \"corr:vibration__failure\"]\n    }\n  ],\n  \"findings\": [\n    {\n      \"text\": \"Sensor S07 averages 72.30 \u00b0C, while the remaining 11 sensors cluster tightly between 69.88 \u00b0C and 70.10 \u00b0C.\",\n      \"evidence\": [\"seg:sensor_id/temperature\"]\n    },\n    {\n      \"text\": \"Vibration readings range from 0.102 to 10.73, and higher vibration moves together with failures, though the association is weak.\",\n      \"evidence\": [\"eda:vibration\", \"corr:vibration__failure\"]\n    },\n    {\n      \"text\": \"Temperature rose 3.5% month-over-month from Sep 2026 to Oct 2026; because only 3 months of data are available, it is not possible to tell whether this is seasonal.\",\n      \"evidence\": [\"trend:temperature:MoM\"]\n    },\n    {\n      \"text\": \"Failures are rare events: the median reading shows no failure, and the mean across all 6,624 readings is 0.0234.\",\n      \"evidence\": [\"eda:failure\"]\n    }\n  ],\n  \"claims\": [\n    {\n      \"kind\": \"comparison\",\n      \"metric\": \"mean temperature\",\n      \"a\": \"S07\",\n      \"b\": \"S12\",\n      \"evidence_id\": \"seg:sensor_id/temperature\"\n    }\n  ],\n  \"actions\": [\n    {\n      \"action\": \"Investigate sensor S07 for calibration drift, abnormal operating conditions, or a cooling issue\",\n      \"impact\": \"Its average temperature is well above all other sensors, which may signal an early equipment problem\",\n      \"evidence\": [\"seg:sensor_id/temperature\"]\n    },\n    {\n      \"action\": \"Monitor vibration levels on assets approaching the upper end of the observed range (up to 10.73)\",\n      \"impact\": \"Vibration moves together with failures; catching high-vibration readings early may reduce unplanned downtime\",\n      \"evidence\": [\"eda:vibration\", \"corr:vibration__failure\"]\n    },\n    {\n      \"action\": \"Collect a same-month-prior-year baseline before acting on the October temperature rise\",\n      \"impact\": \"Without a year-ago comparison, the 3.5% month-over-month increase cannot be distinguished from normal seasonal variation\",\n      \"evidence\": [\"trend:temperature:MoM\"]\n    }\n  ],\n  \"caveats\": [\n    \"MTTR excludes repairs still in progress, so the repair-time figures in this dataset may read lower than actual.\",\n    \"Readings are averaged rather than time-weighted, so short high-intensity events may be understated in the means.\",\n    \"Only 3 months of history are available; month-over-month changes cannot be compared to the same period last year.\"\n  ],\n  \"questions\": [\n    \"Has sensor S07 been recently relocated, recalibrated, or assigned to a different machine that runs hotter?\",\n    \"Do the 155 failures concentrate on specific sensors or time windows, or are they spread evenly across the fleet?\",\n    \"Is the October temperature rise consistent across all 12 sensors, or is it driven primarily by S07?\"\n  ]\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "{\"0\": \"neither\", \"1\": \"neither\", \"2\": \"neither\", \"3\": \"neither\", \"4\": \"neither\", \"5\": \"neither\", \"6\": \"neither\", \"7\": \"neither\", \"8\": \"neither\", \"9\": \"neither\", \"10\": \"neither\", \"11\": \"neither\", \"12\": \"neither\", \"13\": \"neither\", \"14\": \"neither\", \"15\": \"neither\", \"16\": \"neither\", \"17\": \"neither\", \"18\": \"neither\"}",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ]
+ }
+}

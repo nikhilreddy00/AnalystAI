@@ -785,8 +785,9 @@ def control_limits(series: pd.Series) -> tuple[float, float, float] | str:
 
 
 def _lead_and_last(order: pd.Series) -> str:
-    """The highest and the lowest group of a ranking, saying so when groups tie. The pooled
-    small-groups bucket is never named (guardrails.rankable)."""
+    """The highest and the lowest group of a ranking, saying so when groups tie; of 5 groups or
+    fewer, the ones between too ("each line?", e2e-86). The pooled small-groups bucket is never
+    named (guardrails.rankable)."""
     order = order[[rankable(k) for k in order.index]] if any(rankable(k) for k in order.index) else order
 
     def names(at) -> str:
@@ -799,6 +800,8 @@ def _lead_and_last(order: pd.Series) -> str:
         return f"all {len(order)} groups are at {_num(top)}"
     lead = names(top)
     lead += f" tie at {_num(top)}" if (order == top).sum() > 1 else f" leads at {_num(top)}"
+    if len(order) <= 5:
+        lead += "".join(f"; '{g}' at {_num(v)}" for g, v in order.items() if top != v != low)
     return f"{lead}; {names(low)} is lowest at {_num(low)}" if (order == low).sum() == 1 else \
         f"{lead}; {names(low)} are lowest at {_num(low)}"
 

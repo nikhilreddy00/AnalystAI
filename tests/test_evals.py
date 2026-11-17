@@ -289,6 +289,21 @@ def test_rescore_recomputes_checks_from_stored_outputs_for_free(tmp_path):
     assert out["meta"]["rescored_from"] == "analysis-x" and out["summary"]["pass_rate"] == 0.5
 
 
+def test_a_rescored_follow_up_keeps_its_stored_turn_checks(tmp_path):
+    """Domain 7 E2E gate: only the last turn's session is stored, so a rescore re-scored the first
+    question's checks and dropped the follow-ups'; e2e-83 (its turn 3 ignored the night filter)
+    passed on nothing. A turn check that can't be re-scored keeps its stored result."""
+    import json
+    import shutil
+
+    from evals.run import EVALS_DIR
+    path = tmp_path / "e2e-20261117T102606Z.json"
+    shutil.copy(EVALS_DIR / "reports/e2e-20261117T102606Z.json", path)
+    run = json.loads(rescore(path).read_text())["runs"]["e2e-83"][0]
+    turns = [c for c in run["checks"] if c["detail"].startswith("turn ")]
+    assert [c["ok"] for c in turns] == [True, True, False, True] and not run["passed"], run["checks"]
+
+
 # ── Intake (Phase 5) ───────────────────────────────────────────────────────────
 
 INTAKE = load_cases("intake", None)

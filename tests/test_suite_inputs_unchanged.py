@@ -20,7 +20,15 @@ CHANGES: dict[str, dict[str, str]] = {
     # Domain 7 (IoT, planned at B0 per lesson 33): sensor_readings now reads as the iot pack
     # (contract domain, roles, a failures tile, cleaning flags), so its outputs and every case on
     # it change. Re-measured at Domain 7's analysis and E2E gates.
-    "deterministic": {f"sensor_readings-{s}": "Domain 7: read as the iot pack" for s in (1, 2, 3)},
+    "deterministic": {f"sensor_readings-{s}": "Domain 7: read as the iot pack" for s in (1, 2, 3)} | {
+        # E2E gate e2e-86: a column's group answer of 5 groups or fewer names the ones between the
+        # leader and the lowest too (only those words added; domain_diff --show, 2026-11-17)
+        d: "Domain 7: a few groups each named" for d in (
+            "claims-1", "claims-2", "claims-3", "employees-1", "employees-2", "employees-3",
+            "health_claims-1", "hr_roster_onerow-1", "hr_roster-1", "loan_tape-1", "mixed_dates-1",
+            "mixed_dates-2", "saas_accounts-1", "saas_accounts-2", "saas_accounts-3",
+            "saas_mrr_snapshots-1", "saas_subscriptions-1", "sales-1", "sales-2", "sales-3", "sales-4",
+            "sales-5", "store_weeks-1")},
     "analysis": {c: "Domain 7: sensor_readings read as the iot pack" for c in ("iot-1", "iot-2", "iot-3")},
     "e2e": {c: "Domain 7: sensor_readings read as the iot pack" for c in ("e2e-31", "e2e-32")},
 }

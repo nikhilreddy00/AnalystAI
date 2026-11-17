@@ -302,3 +302,11 @@ def test_groups_with_no_failures_and_groups_hidden_are_said():
     text, _ = answer("hr_roster", "segment_compare", "headcount by gender in sales", kpi="headcount",
                      group_by="Gender", segment_column="Department", segment_value="Sales")
     assert "1 group not shown (fewer than 11 people)." in text and "Non-binary" not in text, text
+
+
+def test_each_of_a_few_groups_is_named_with_its_value():
+    """E2E gate e2e-86 ('average temperature on each line?'): the answer named the leader and the
+    lowest of 3 lines; line C, the one whose °F readings were converted, was never said."""
+    text, _ = answer("machine_readings", "segment_compare", "What is the average temperature on each line?",
+                     metric_column="Temperature", segment_column="Line", aggregation="mean")
+    assert "'Line B' leads at 71.99; 'Line C' at 71.14; 'Line A' is lowest at 69.96." in text, text

@@ -29,10 +29,10 @@ turns:
     scales: *pct
 - question: And on night shifts only?
   checks:
-  - kind: number_in_answer
-    truth_key: oee_by_shift.Night
-    rel_tol: 0.003
-    scales: *pct
+  # night OEE (70.73%) and every line's night OEE sit within 0.3% of their whole-data values, so a
+  # number can't tell the filter applied (E2E gate, 2026-11-17): the answer names it
+  - kind: must_match
+    pattern: OEE[^.]*\bNight\b
 hard_rules:
 - charts_lint_clean
 - charts_have_rationale
@@ -42,5 +42,5 @@ hard_rules:
 - executive_no_jargon
 - claims_cite_evidence
 label_note: 'Domain 7 MES shift report (T1): OEE 70.8% pools every shift (sum of ideal cycle x good / planned
-  minutes), never the 69.5% mean of shift OEEs. Multi-turn: "and on night shifts?" keeps OEE and filters the
-  shift (the follow-up asks the overall night figure).'
+  minutes), never the 69.5% mean of shift OEEs. Multi-turn: "and on night shifts?" keeps OEE and by Line and
+  filters the shift (segment_column + segment_value).'

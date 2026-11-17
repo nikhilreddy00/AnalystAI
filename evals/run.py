@@ -1441,8 +1441,11 @@ def rescore(path: Path) -> Path:
         for r in rs:
             if "output" not in r:
                 raise SystemExit(f"{path.name} predates stored outputs; it can't be rescored")
+            # only the last turn's session is stored: a follow-up's checks keep their stored result
+            turns = [c for c in r.get("checks", []) if c["detail"].startswith("turn ")]
             try:
                 r.update(RESCORERS[suite](cases[cid], r["output"], r["error"]))
+                r["checks"] += turns
             except Exception as exc:   # one unscoreable run, not a lost report
                 r.update({"checks": [{"kind": "harness", "ok": False,
                                       "detail": f"{type(exc).__name__}: {exc}"[:300]}], "hard": []})
