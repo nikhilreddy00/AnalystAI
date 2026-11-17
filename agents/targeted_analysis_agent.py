@@ -736,7 +736,7 @@ def handle_time_series(df: pd.DataFrame, params: TargetedParams, contract: DataC
             cl, ucl, lcl = limits
             chart.reference_lines = [{"value": round(v, 4), "label": k, "axis": "y"}
                                      for k, v in (("UCL", ucl), ("CL", cl), ("LCL", lcl))]
-            after = series[series.index >= _baseline_end(series)]
+            after = series[(series.index >= _baseline_end(series)) & ~_stuck_days(series)]
             above, below = after[after > ucl], after[after < lcl]
             answer += (f" Control limits (an individuals chart of daily means; centre and limits "
                        f"from the first {BASELINE_DAYS} days, x̄ ± 3·MR̄/1.128): CL {_num(cl)}, "
@@ -747,10 +747,10 @@ def handle_time_series(df: pd.DataFrame, params: TargetedParams, contract: DataC
                        "so points outside come more often than 3 sigma suggests.")
         # what the chart can't show: a stuck instrument reads as a steady process, a silent
         # day is no point (the moving range spans it)
-        same = series[series.diff().eq(0)]
+        same = series[_stuck_days(series)]
         if len(same):
-            answer += (f" {len(same)} day{'s repeat' if len(same) != 1 else ' repeats'} the day before's "
-                       f"identical daily mean (first {same.index[0].date()}): a stuck instrument?")
+            answer += (f" {len(same)} days are part of a run of one identical daily mean (first "
+                       f"{same.index[0].date()}): a stuck instrument? Never counted beyond the limits.")
         missing = len(pd.date_range(series.index.min(), series.index.max(), freq="D")) - len(series)
         if missing:
             answer += f" {missing} day{'s' if missing != 1 else ''} without readings."
@@ -782,6 +782,12 @@ def _one_series_measure(pack, contract: DataContract, params: TargetedParams, me
         return False
     return params.segment_column == contract.roles.get(pack.series_key) and metric in {
         contract.roles.get(r) for r in pack.stuck_hours}
+
+
+def _stuck_days(series: pd.Series) -> pd.Series:
+    """The days in a run of one identical daily mean, its first day included (review
+    2026-11-17: S03's stuck run, 68.40 from 20 Sep, was 3 of its 4 days below the lower limit)."""
+    return series.diff().eq(0) | series.diff(-1).eq(0)
 
 
 def control_limits(series: pd.Series) -> tuple[float, float, float] | str:

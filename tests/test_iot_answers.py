@@ -52,18 +52,28 @@ def test_a_worked_control_chart_states_its_limits_and_the_days_outside():
     assert "Latest period (2026-09-09) vs the one before: +2.00 (11.00 → 13.00)." in text
     assert ("CL 11.00, UCL 16.32, LCL 5.68; after them 2 days above the upper limit (first "
             "2026-08-31) and 1 below the lower one. " + ENDING) in text
-    # its 3 days that repeat the day before follow the limits (audit pass 1, minor 9)
-    assert text.endswith("3 days repeat the day before's identical daily mean (first 2026-09-02): "
-                         "a stuck instrument?") and "%" not in text
+    # its 2 runs of 11 (1–2 and 4–6 Sep) follow the limits (audit pass 1, minor 9; review 2026-11-17)
+    assert text.endswith("5 days are part of a run of one identical daily mean (first 2026-09-01): "
+                         "a stuck instrument? Never counted beyond the limits.") and "%" not in text
     assert r.chart_configs[0].reference_lines == [
         {"value": 16.3191, "label": "UCL", "axis": "y"},
         {"value": 11.0, "label": "CL", "axis": "y"},
         {"value": 5.6809, "label": "LCL", "axis": "y"}]
 
 
+def test_a_stuck_runs_days_are_never_points_beyond_the_limits():
+    """Review 2026-11-17 (D7-11 partly back): S03 stuck at 68.40 from 20 Sep (cleaning flags it)
+    gave '4 below the lower one'; 3 of them were the stuck run, its first day unnamed."""
+    text, _ = answer("machine_readings", "time_series", "Is S03's temperature in control?",
+                     metric_column="Temperature", segment_column="Sensor", segment_value="S03", frequency="D")
+    assert "and 1 below the lower one" in text, text
+    assert "3 days are part of a run of one identical daily mean (first 2026-09-20)" in text, text
+
+
 def test_one_repeated_day_and_the_days_without_readings_are_counted():
     v = [10, 12] * 15 + [12, 14, 10, 13, 11]   # 31 Aug repeats 30 Aug's 12
-    stuck = " 1 day repeats the day before's identical daily mean (first 2026-08-31): a stuck instrument?"
+    stuck = (" 2 days are part of a run of one identical daily mean (first 2026-08-30): a stuck "
+             "instrument? Never counted beyond the limits.")
     assert _series(v).answer_text.endswith(stuck)
     contract = _built("machine_readings")[2]
     for drop, said in (([32], " 1 day without readings."), ([32, 33], " 2 days without readings.")):
@@ -92,7 +102,7 @@ def test_a_flat_baseline_says_why_there_are_no_limits():
     r = _series([11.0] * 35)
     assert r.answer_text.startswith("Temperature for Sensor S07 trended flat"), r.answer_text
     assert (" No control limits: no variation from day to day in the first days (a stuck "
-            "instrument?). 34 days repeat the day before's identical daily mean") in r.answer_text
+            "instrument?). 35 days are part of a run of one identical daily mean") in r.answer_text
     # 30 days 10, 12, 12, 12, …: 14 repeat the day before, 16 left
     days = pd.date_range("2026-08-01", periods=30)
     assert control_limits(pd.Series(([10.0, 12.0, 12.0, 12.0] * 8)[:30], index=days)) == (
