@@ -330,6 +330,9 @@ class KPI(_Strict):
     # a ratio no row can exceed (performance ≤ 1): a row over it is flagged in cleaning, never capped
     max: float | None = None
     max_words: str | None = None   # what a row over `max` likely means, said with the flag
+    # what an answer with the KPI's value must also say (MTBF's failure count and assumption,
+    # MTTR's open orders left out); {<kpi>} is that KPI's value over the same rows
+    says: str | None = None
     tile: bool = False          # one of the domain's KPI tiles (when computable)
     # "latest": a state at a date (outstanding balance, accounts, NPL): each snapshot_key's latest
     # row in the period, of any kind, THEN the kind / currency / where filters (a loan charged off
@@ -616,6 +619,8 @@ class Pack(_Strict):
         errors += [f"glossary {c}: neither a KPI, a definition nor unsupported" for c in self.glossary
                    if c not in names and c not in self.definitions and c not in self.unsupported]
         errors += [f"duplicate kpi {n}" for n in {n for n in names if names.count(n) > 1}]
+        errors += [f"kpi {k.name} says {{{p}}}: no such KPI" for k in self.kpis if k.says
+                   for p in re.findall(r"\{(\w+)\}", k.says) if p not in names]
         if self.week_ends not in ("MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"):
             errors.append(f"week_ends {self.week_ends!r}: one of MON … SUN")
         errors += [f"first question {q!r}: needs a 'q'" for q in self.first_questions

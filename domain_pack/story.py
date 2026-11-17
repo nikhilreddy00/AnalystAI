@@ -340,7 +340,15 @@ def describe_kpi(pack: Pack, name: str, roles: dict[str, str],
             op, v = next((o, v) for o, v in (("> ", c.gt), ("≥ ", c.ge), ("< ", c.lt), ("≤ ", c.le))
                          if v is not None)
             return f"{roles[c.role]} {op}{v:g}"
-        return " or ".join(" and ".join(cond(c) for c in g) for g in groups)
+        text = " or ".join(" and ".join(cond(c) for c in g) for g in groups)
+        # an answer's How: a long list a denominator repeats from its numerator is said once
+        # (MTTR's 18 corrective spellings: review 2026-11-17); a brief or a tile keeps both
+        if parts and len(text) > 120 and text in said:
+            return "the same conditions hold"
+        said.add(text)
+        return text
+
+    said: set[str] = set()
 
     def side(name_: str) -> str:
         terms = used_terms(pack, kpi, roles, name_)

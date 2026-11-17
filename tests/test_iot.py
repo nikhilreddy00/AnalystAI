@@ -213,11 +213,12 @@ def test_epoch_seconds_are_their_dates_never_1970():
     assert [str(t)[:13] for t in as_times(secs)] == ["2026-02-28 21", "2026-02-28 22", "NaT", "2026-03-31 21"]
     assert as_times(secs.astype("Int64").astype(str).replace("<NA>", None)).iloc[0] == as_times(secs).iloc[0]
     assert as_times(pd.Series([3, 5, 7])).isna().all()   # small counts are no epoch
-    # epoch seconds are [1e9, 1e10) on 80% of the numbers at least; the rest are NaT
-    assert [str(t) for t in as_times(pd.Series([1e9] * 4 + [5.0]))] == ["2001-09-09 01:46:40"] * 4 + ["NaT"]
-    assert [str(t) for t in as_times(pd.Series([9999999999.0] * 4 + [1e10]))] == \
-        ["2286-11-20 17:46:39"] * 4 + ["NaT"]
-    assert as_times(pd.Series([1e10] + [9999999999.0] * 3 + [5.0])).isna().all()   # 3 of 5
+    # epoch seconds are [9e8, 2.2e9) on 80% of the numbers at least (ingestion's typing range,
+    # review 2026-11-17); the rest are NaT
+    assert [str(t) for t in as_times(pd.Series([9e8] * 4 + [5.0]))] == ["1998-07-09 16:00:00"] * 4 + ["NaT"]
+    assert [str(t) for t in as_times(pd.Series([2.2e9 - 1] * 4 + [2.2e9]))] == \
+        ["2039-09-18 23:06:39"] * 4 + ["NaT"]
+    assert as_times(pd.Series([2.2e9] + [2.2e9 - 1] * 3 + [5.0])).isna().all()   # 3 of 5
     from agents.targeted_analysis_agent import handle_time_series
     from connectors.csv_connector import CSVConnector
     from orchestrator.state import ConnectorConfig, ConnectorType, TargetedParams
@@ -323,11 +324,15 @@ def test_a_shift_over_100_percent_performance_is_flagged_never_capped():
 
 
 def test_each_rows_ratio_over_its_max_is_flagged_and_a_ratio_at_the_max_is_not():
-    """Worked by hand: 100 run minutes each; performance = ideal cycle s × total ÷ 60 ÷ 100."""
+    """Worked by hand: 100 run minutes each; performance = ideal cycle s × total ÷ 60 ÷ 100. Filed
+    under the numerator's column the words blame, never the first role alphabetically (review
+    2026-11-17: 'Changeover (min) kpi_over_max')."""
     from agents.cleaning_agent import CleanContext, clean
-    cols = ["planned_minutes", "unplanned_downtime", "total_count", "ideal_cycle_s", "good_count"]
+    cols = ["planned_minutes", "unplanned_downtime", "changeover", "total_count", "ideal_cycle_s",
+            "good_count"]
 
     def flags(rows, pack=IOT):
+        rows = [[r[0], r[1], 0, *r[2:]] for r in rows]   # no changeover
         _, audit = clean(CleanContext(df=pd.DataFrame(rows, columns=cols), ids=set(), dates=set(),
                                       targets=set(), drop_high_null=False, pack=pack,
                                       roles={c: c for c in cols}))
@@ -342,6 +347,42 @@ def test_each_rows_ratio_over_its_max_is_flagged_and_a_ratio_at_the_max_is_not()
     assert flags([[100, 0, 60, 120, 60]], plain) == [
         ("ideal_cycle_s", "flag", "1 row with Performance rate over 100%; kept, never capped.", 1)]
     assert flags([[100, 0, 60, None, 60]]) == []   # no ideal cycle: performance not computable
+
+
+def test_a_work_orders_actual_dates_are_blank_by_its_status_never_missing():
+    """Review 2026-11-17 (D1-03 back): 'ACTSTART 59 missing (9.2%) … left as missing' — every one
+    a cancelled or waiting order; of ACTFINISH's 82 blanks only the 3 finished orders' are
+    missing. Each is judged on the rows whose status needs it."""
+    from tests.test_oracle import _built
+    s, df, _, _ = _built("work_orders")
+    got = {d.column: (d.strategy, d.reason) for d in s.cleaning_audit.decisions
+           if d.column in ("ACTSTART", "ACTFINISH")}
+    done = df["STATUS"].isin(["COMP", "CLOSE"])
+    assert got["ACTSTART"][0] == "conditional" and "0% of those rows have no value" in got["ACTSTART"][1], got
+    from agents.cleaning_agent import _null_pct
+    pct = _null_pct(df.loc[done, "ACTFINISH"])   # 3 finished orders with no finish (T20)
+    assert df.loc[done, "ACTFINISH"].isna().sum() == 3
+    assert got["ACTFINISH"] == ("conditional", "Filled only for rows whose status needs it, so other rows "
+                                f"are blank by design; {pct:g}% of those rows have no value. Kept as it is."), got
+
+
+@pytest.mark.xfail(strict=True, reason="D7-19 (Open): the generic count charts read every row; the "
+                   "rows to leave out differ by kind and domain (a cancelled order out, an "
+                   "other-currency deposit still an account), a reviewed rule per kind, not one filter")
+def test_the_generic_charts_count_the_rows_the_tiles_count():
+    """Review browser read (D7-19's class, product side): 'Worktype Breakdown — PM Leads at 48%'
+    counted all 640 work orders, cancelled ones too (CM + EM = 333, the planted naive count);
+    the tiles say 311 corrective orders."""
+    from agents.visualization_agent import build_context, classify_columns, generate_dashboard_charts
+    from tests.test_oracle import _built
+    _, df, contract, truth = _built("work_orders")
+    ctx = build_context(df, contract=contract)
+    charts = generate_dashboard_charts(df, classify_columns(df), ctx=ctx)
+    counts = [c for c in charts if c.x_key == "WORKTYPE" or (c.data and "name" in c.data[0])]
+    assert counts, [c.title for c in charts]
+    for c in counts:
+        got = {str(r.get("WORKTYPE", r.get("name"))): r.get("count", r.get("value")) for r in c.data}
+        assert got["CM"] + got["EM"] == truth["corrective_wos"], (c.title, got)
 
 
 def test_a_blank_failure_code_is_no_failure_never_missing():

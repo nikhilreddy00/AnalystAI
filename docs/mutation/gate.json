@@ -358,7 +358,7 @@
     "reason": "with expr None the set is {None} minus a set holding None: empty, as set() is"
    }
   ],
-  "hash": "a57d457c84c21c0e"
+  "hash": "6b2acc7b74f6050a"
  },
  "domain_pack/kpi.py::kpi_roles": {
   "equivalents": [],
@@ -444,7 +444,7 @@
     "reason": "an exact 1e-9 error of 1/N in floating point does not occur: < and <= decide alike"
    }
   ],
-  "hash": "ac65192c6ae246e6"
+  "hash": "fb939fa88efba138"
  },
  "domain_pack/story.py::first_questions": {
   "equivalents": [],

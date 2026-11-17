@@ -1,5 +1,6 @@
 "use client";
 
+import { formatBound } from "@/lib/formatUnit";
 import { formatDay, parseDay } from "@/lib/localDate";
 import { useMemo, useState, type ReactNode } from "react";
 import type { FilterOption } from "@/types";
@@ -172,7 +173,7 @@ function RangeSliderControl({ option, filter, setFilter }: ControlProps) {
     <div className="space-y-1.5">
       <p className="text-xs font-medium text-foreground">{col}</p>
       <p className="text-[11px] text-muted-foreground">
-        {current[0]} – {current[1]}
+        {formatBound(current[0])} – {formatBound(current[1])}
       </p>
       <Slider
         label={col}

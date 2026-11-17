@@ -118,9 +118,13 @@ ranges: {repair_hours: {gt: 0}}
 derived: {repair_hours: [actual_finish, hours, actual_start]}
 
 overview_groups: [production_line, asset, shift, work_type]
-overview_kpis: [oee, availability, good_count, mtbf, mttr, corrective_wos, assets, alarms]
+overview_kpis: [oee, availability, good_count, mtbf, mttr, corrective_wos, pm_share, assets, alarms]
 # blank = no event: a preventive order has no failure code (it is no failure), never missing
 marker_fields: [failure_code]
+# a work order's actual dates are filled once work starts / finishes: a cancelled or waiting
+# order's blanks are the layout; a finished one's blank finish is missing (review, D1-03)
+conditional_fields: {actual_start: [inprg, in progress, comp, complete, completed, close, closed],
+                     actual_finish: [comp, complete, completed, close, closed]}
 protected_roles: [operator, reported_by]
 role_caveats:
   operator: "Operators are people: figures by operator describe the work, never rank the people, and groups of fewer than 11 operators are not shown."
@@ -155,9 +159,11 @@ kpis:
   # The tile strip shows the first five a file supports, in this order: a shift report's OEE,
   # its three factors and MTBF; a work-order log's MTTR and counts; readings' assets and alarms.
   - {name: mtbf, label: MTBF, unit: number, unit_word: hours, tile: true,
-     zero_words: "no failure in {num} of run time",
+     zero_words: "no failure in {num} of run time (a lower bound)",
+     says: "From {failures} failures; it assumes a constant failure rate, so it is no schedule.",
      num: [[{kpi: run_minutes, times: 0.016666666666666666}]], den: [[{sum: failures}]]}
   - {name: mttr, label: MTTR, unit: number, unit_word: hours, tile: true,
+     says: "Repair work from actual start to actual finish, pauses included (the wait before work starts isn't counted); {open_wos} open work orders are left out, so it can read low.",
      # corrective work: CMMS codes and the spellings exports write (research §6)
      num: [[{sum: repair_hours, where: [[{role: work_type, in: &corrective [
                cm, em, corrective, corrective maintenance, emergency, emergency maintenance,
@@ -182,7 +188,7 @@ kpis:
      den: [[{sum: total_count}]]}
   - {name: unplanned_downtime, label: Unplanned downtime, unit: number, unit_word: minutes,
      num: [[{sum: unplanned_downtime}]]}
-  - {name: pm_share, label: Preventive share of work orders, unit: percent,
+  - {name: pm_share, label: Preventive share of work orders, unit: percent, tile: true,
      num: [[{nunique: work_order, where: [[{role: work_type, in: [
                pm, preventive, preventive maintenance, planned, planned maintenance, pdm, predictive,
                predictive maintenance, condition based, cbm, inspection, routine, calibration]}]]}]],

@@ -138,6 +138,8 @@ def run_targeted_analysis(session: AnalysisSession) -> TargetedResponse:
     handler = _HANDLERS.get(intent)
     pack = pack_for(contract.domain)
     conventions = defaults_pack(contract)   # strong match: the domain's defaults apply
+    if averaged := _never_summed(params, contract, df):
+        params = params.model_copy(update={"aggregation": "mean"})
     params = _asked_agg(params, contract, session.task_plan.raw_query)
     ids = {c for r, c in contract.roles.items() if conventions and conventions.roles[r].kind == "id"}
     # a pack id (Shopify's order number in 'Name') names no one, whatever the header rule says
@@ -209,6 +211,8 @@ def run_targeted_analysis(session: AnalysisSession) -> TargetedResponse:
         response.answer_text += _also_named(full, params, contract, pack, session.task_plan.raw_query)
     if period and handler is not handle_kpi:
         response.answer_text += f" Period: {period}."
+    if averaged and response.answer_text and not response.unanswerable_reason:
+        response.answer_text += f" {params.metric_column} is a measured level: averaged, never summed."
     response.chart_configs = finalize_charts(response.chart_configs, ctx)
     return response
 
@@ -258,6 +262,20 @@ _AVERAGE_WORDS = re.compile(r"\b(?:average|avg|mean|typical|per (?:order|line|ro
                             r"transaction|unit|item))\b", re.I)
 _MEANING = re.compile(r"\b(?:do|does|did) (?:that|this|it|you|they|these) mean\b|\bmean(?:s)? that\b|"
                       r"\bi mean\b|\bwhat i mean\b", re.I)   # "what does that mean", "I mean": no average
+
+
+def _never_summed(params: TargetedParams | None, contract: DataContract, df: pd.DataFrame) -> bool:
+    """A sum asked of a pack's number role (a temperature, a rating, an interest rate: Role.kind
+    'number', additive False) is its mean, even when the question says "total" (review
+    2026-11-17, T18: 'Line B leads at 468,696.77'); a 0/1 flag's sum is a count and stays."""
+    pack = defaults_pack(contract)
+    col = params.metric_column if params else None
+    role = next((r for r, c in contract.roles.items() if c == col), None)
+    spec = pack.roles[role] if pack and role else None
+    if not (spec and spec.kind == "number" and not spec.additive and col in df.columns
+            and (params.aggregation or "").lower() == "sum"):
+        return False
+    return not pd.to_numeric(df[col], errors="coerce").dropna().isin([0, 1]).all()
 
 
 def _asked_agg(params: TargetedParams | None, contract: DataContract, question: str):
@@ -718,7 +736,7 @@ def handle_time_series(df: pd.DataFrame, params: TargetedParams, contract: DataC
             cl, ucl, lcl = limits
             chart.reference_lines = [{"value": round(v, 4), "label": k, "axis": "y"}
                                      for k, v in (("UCL", ucl), ("CL", cl), ("LCL", lcl))]
-            after = series[series.index >= _baseline_end(series)]
+            after = series[(series.index >= _baseline_end(series)) & ~_stuck_days(series)]
             above, below = after[after > ucl], after[after < lcl]
             answer += (f" Control limits (an individuals chart of daily means; centre and limits "
                        f"from the first {BASELINE_DAYS} days, x̄ ± 3·MR̄/1.128): CL {_num(cl)}, "
@@ -729,10 +747,10 @@ def handle_time_series(df: pd.DataFrame, params: TargetedParams, contract: DataC
                        "so points outside come more often than 3 sigma suggests.")
         # what the chart can't show: a stuck instrument reads as a steady process, a silent
         # day is no point (the moving range spans it)
-        same = series[series.diff().eq(0)]
+        same = series[_stuck_days(series)]
         if len(same):
-            answer += (f" {len(same)} day{'s repeat' if len(same) != 1 else ' repeats'} the day before's "
-                       f"identical daily mean (first {same.index[0].date()}): a stuck instrument?")
+            answer += (f" {len(same)} days are part of a run of one identical daily mean (first "
+                       f"{same.index[0].date()}): a stuck instrument? Never counted beyond the limits.")
         missing = len(pd.date_range(series.index.min(), series.index.max(), freq="D")) - len(series)
         if missing:
             answer += f" {missing} day{'s' if missing != 1 else ''} without readings."
@@ -764,6 +782,12 @@ def _one_series_measure(pack, contract: DataContract, params: TargetedParams, me
         return False
     return params.segment_column == contract.roles.get(pack.series_key) and metric in {
         contract.roles.get(r) for r in pack.stuck_hours}
+
+
+def _stuck_days(series: pd.Series) -> pd.Series:
+    """The days in a run of one identical daily mean, its first day included (review
+    2026-11-17: S03's stuck run, 68.40 from 20 Sep, was 3 of its 4 days below the lower limit)."""
+    return series.diff().eq(0) | series.diff(-1).eq(0)
 
 
 def control_limits(series: pd.Series) -> tuple[float, float, float] | str:
@@ -1510,6 +1534,10 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
             return TargetedResponse(intent=intent, answer_text=answer + f" How: {how}",
                                     chart_configs=[chart])
     got = measure(df, roles, pack, kpi.name, full=all_rows, window=win, cut=cut)
+    if isinstance(got, Unavailable) and got.zero and kpi.zero_words:   # no failure in N hours: an
+        return TargetedResponse(intent=intent, answer_text=(   # answer, a lower bound (C5, review)
+            f"{kpi.label}{where}: {unavailable_words(got, pack, kpi)}."
+            + _says(pack, kpi, df, roles, full=all_rows, window=win, cut=cut) + f" How: {how}"))
     if isinstance(got, Unavailable):   # its own reason, never re-guessed (C5)
         hidden = got.reason == "small_cell"
         return _unanswerable(intent, (f"{kpi.phrase}{where} isn't shown: " if hidden else
@@ -1517,7 +1545,8 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
                              + unavailable_words(got, pack, kpi),
                              ["Ask about a larger group" if hidden else "Ask about a longer period"])
     value = got.value
-    answer = f"{kpi.label}{where}: {fmt(value)}." + carry + _arriving(contract, all_rows, date, params)
+    answer = f"{kpi.label}{where}: {fmt(value)}." + _says(pack, kpi, df, roles, full=all_rows, window=win,
+                                                         cut=cut) + carry + _arriving(contract, all_rows, date, params)
     if spelled:   # the same window a year earlier, when asked (never against rows of other dates)
         if params.compare == "yoy":
             prior, prior_period = year_before(None)
@@ -1564,6 +1593,22 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
             return TargetedResponse(intent=intent, answer_text=answer + f" How: {how}",
                                     chart_configs=[chart])
     return TargetedResponse(intent=intent, answer_text=answer + f" How: {how}")
+
+
+def _says(pack, kpi, df: pd.DataFrame, roles: dict[str, str], **kw) -> str:
+    """' <the KPI's says>' with each {<kpi>} measured over the same rows (MTBF's failure count,
+    MTTR's open orders); '' when it has none or a part can't be measured (review 2026-11-17)."""
+    if not kpi.says:
+        return ""
+    parts = {}
+    for name in re.findall(r"\{(\w+)\}", kpi.says):
+        got = measure(df, roles, pack, name, **kw)
+        if not isinstance(got, Measured):
+            return ""
+        other = pack.kpi(name)
+        parts[name] = other.written(_format_value(
+            got.value, {"percent": "percent", "count": "count"}.get(other.unit, "number"), None))
+    return " " + kpi.says.format(**parts)
 
 
 def _arriving(contract: DataContract, full: pd.DataFrame, date: str | None, params: TargetedParams) -> str:

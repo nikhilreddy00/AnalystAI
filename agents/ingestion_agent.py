@@ -26,7 +26,7 @@ import pandas as pd
 from agents.data_cleaning import try_numeric_conversion
 from agents.errors import IngestionError
 from agents.utils import conversation_context, looks_like_sequential_id
-from connectors.base import _looks_like_dates, get_connector, parse_text_dates
+from connectors.base import _looks_like_dates, epoch_times, get_connector, parse_text_dates
 from domain_pack import detect as detect_domain
 from domain_pack import (PACK_COLUMN_NOTE, as_text, layout_columns, one_series, pack_columns,
                          pack_for, version_roles, words)
@@ -149,8 +149,7 @@ def infer_role(s: pd.Series, name: str) -> tuple[str, str]:
             return "category", "a postal code: a label, not a quantity"
         if whole and _YEAR.search(norm) and vals.between(1900, 2100).all():
             return "category", "years: a label, not a quantity"
-        if whole and _EPOCH.search(norm) and (vals.between(9e8, 2.2e9).all()
-                                              or vals.between(9e11, 2.2e12).all()):
+        if whole and _EPOCH.search(norm) and epoch_times(vals, share=1.0) is not None:
             return "date", "Unix timestamps"
         if whole and unique >= 0.98 and looks_like_sequential_id(vals, len(vals)):
             return "id", "consecutive whole numbers, one per row"

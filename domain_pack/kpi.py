@@ -670,13 +670,13 @@ def additive(pack: Pack, name: str) -> bool:
                                    for alt in kpi.num for t in alt)
 
 
-def kpi_measures(pack: Pack, name: str) -> set[str]:
+def kpi_measures(pack: Pack, name: str, num_only: bool = False) -> set[str]:
     """The roles a KPI measures (summed, counted, followed up), through the KPIs it refers to;
     never the roles its filters only name (Policies counts policies where a premium exists: it
-    doesn't measure premium)."""
+    doesn't measure premium). `num_only`: its numerator's."""
     kpi = pack.kpi(name)
     out: set[str] = set()
-    for t in (t for alt in [*kpi.num, *(kpi.den or [])] for t in alt):
+    for t in (t for alt in [*kpi.num, *([] if num_only else kpi.den or [])] for t in alt):
         expr = t.sum if t.sum is not None else t.sum_abs
         out |= {t.nunique} if t.nunique else set(expr if isinstance(expr, list) else [expr]) - {
             None, *TERM_OPS} if expr is not None else set()

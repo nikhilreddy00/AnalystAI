@@ -3,7 +3,15 @@
 // tests/test_semantic_hints.py): a unit shown here must read exactly as the backend writes it.
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { columnUnit, formatMoney, formatWithUnit, isCurrency } from "./formatUnit.ts";
+import { columnUnit, formatBound, formatMoney, formatWithUnit, isCurrency } from "./formatUnit.ts";
+
+test("a range filter's bounds read as numbers, never a float's every digit", () => {
+  // review browser read 2026-11-17: 'Temperature 66.04444444444445 – 77.17777777777778'
+  assert.equal(formatBound(66.04444444444445), "66.04");
+  assert.equal(formatBound(117), "117");
+  assert.equal(formatBound(1206), "1,206");
+  assert.equal(formatBound(0.093), "0.09");
+});
 
 const NB = " ";
 

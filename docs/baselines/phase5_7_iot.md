@@ -160,6 +160,43 @@ read as `iot` (K4: cases iot-1..3, e2e-31/32); "needs X and X" said once and "MR
 unavailable answers (claims, encounters, HR, inpatient, loss run, SaaS); a column's group answer
 of 5 groups or fewer names each group (e2e-86). No number moved.
 
+## Post-merge review (2026-11-17, `mattpocock-skills:code-review` on ec48735..main)
+
+Two fresh reviewers (Standards, Spec) and a $0 browser read of all three IoT dashboards at
+1440 px. **Recurrences of classes fixed before** (each row raised in the ledger):
+
+| row (class) | came back as | fix |
+|---|---|---|
+| D7-06 (C7) | `as_times` read 'M01' beside dates as 1 Jan of year 1 | a value with no year is NaT (one `HAS_YEAR_RE`) |
+| D7-08 (C2) | three epoch rules: ingestion typed ms as dates, cleaning / answers read seconds only; the per-series checks had their own `pd.to_datetime` | one `epoch_times` (s or ms) for all; guard over cleaning_agent |
+| D2-10 (C0) | the login pattern read upper-case categories as people (Operator VERIZON, Lead WARM, Login SUCCESS) | logins only in system-user columns, 3+ distinct |
+| D1-16 (C6) | "total temperature by line" summed a reading (Line B 468,696.77) | a number role is averaged whatever the words, said; T18's naive twin planted |
+| D7-11 (C0) | a stuck run's days counted beyond the control limits (S03: 3 of 4) | a run's every day is named, never a point beyond |
+| D1-03 (C0) | a work order's blank actual start / finish "left as missing" | `conditional_fields` by status; a finished order's blank finish still counted (3) |
+| D7-14 (C5) | MTBF for a machine that never failed: "I couldn't answer this" | answered, "(a lower bound)"; `KPI.says` gives MTBF's failure count and assumption, MTTR's open orders |
+| D7-19 (C1) | the generic breakdown charts count cancelled orders (CM + EM = 333) | **open**: a one-filter fix moved 10 finished datasets and would drop rows that still count; pinned xfail-strict |
+
+New, fixed: the over-100% flag filed under the ideal cycle (was changeover, alphabetically);
+preventive share is a work-order tile; MTTR's How says its corrective list once; a range
+filter's bounds read 66.04, never 66.04444444444445.
+
+Not fixed (judgement calls, follow-ups): "sensor" / "instrument" words in shared code (C9);
+the named-value filter written twice (`_also_named`, `handle_kpi`); the series strategy
+strings matched by string in insight.
+
+**Browser read, all at $0 against generator truth:** shift report (OEE 70.8%, availability
+84.1%, performance 86.6%, quality 97.1%, MTBF 42.29 h; Line B: 68.7%, 81.5%, 22.87 h, 789
+rows); work orders (MTTR 3.97 h, 311 corrective, 40 open, PM share 48.3%; CM: 3.52 h, 255, 17);
+readings (8 assets, 264 alarms; Line C: 4,418 rows, °C). Charts rescale and footers follow the
+filter; the breakdowns a filter can't recompute say "SHOWS UNFILTERED DATA". Not checked at $0:
+the chat report's narrative (needs the model; read live before the review, on 4 uploads).
+
+Review checks: re-measure of the changed contexts iot-4/5/6/8 12/12 (k=3), intake-iot-03 1/1
+($0.27; Domain 7 total $4.30 of $5); full suite green but one stored run's replay (named);
+Playwright 40/40; mutation gate on `kpi_measures` and `describe_kpi` 0 survivors, recorded,
+`--check main` clean. Below the gate (not gated, survivors left): `as_times` 0.68, `pii_kind`
+0.80, `_says` 0.73.
+
 ## Deviations
 
 - The analysis gate ran on 89bb51d, before the audit; the final re-measure on a23d8bd covers the

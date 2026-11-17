@@ -72,17 +72,39 @@ def parse_text_dates(s: pd.Series, share: float = 1.0) -> pd.Series | None:
     return parsed if parsed.notna().sum() >= share * s.notna().sum() else None
 
 
+# Unix-epoch seconds or milliseconds, 1998-07 .. 2039-09 (a historian's timeInSeconds, a JS
+# timestamp): THE epoch rule of ingestion's typing, cleaning and every reader
+_EPOCHS = (("s", 9e8, 2.2e9), ("ms", 9e11, 2.2e12))
+# a date needs a year: 'M01', 'Jan' or '12:30' parse with an invented one
+HAS_YEAR_RE = re.compile(r"\d{4}|\b\d{1,2}[/\-.]\d{1,2}[/\-.]\d{2}\b")
+
+
+def epoch_times(s: pd.Series, share: float = 0.8) -> pd.Series | None:
+    """Numbers as datetimes when `share` of them are epoch seconds or milliseconds (one unit for
+    the column; a value outside its range is NaT), else None."""
+    n = pd.to_numeric(s, errors="coerce")
+    if not n.notna().any():
+        return None
+    for unit, lo, hi in _EPOCHS:
+        inside = n.between(lo, hi, inclusive="left")
+        if inside[n.notna()].mean() >= share:
+            return pd.to_datetime(n.where(inside), unit=unit)
+    return None
+
+
 def as_times(s: pd.Series) -> pd.Series:
     """A column as datetimes by the load's one rule (offsets included); values that aren't
     dates are NaT. Already-parsed columns come back as they are."""
     if pd.api.types.is_datetime64_any_dtype(s):
         return s
-    n = pd.to_numeric(s, errors="coerce")
-    if n.notna().any() and n.between(1e9, 1e10, inclusive="left")[n.notna()].mean() >= 0.8:
-        # Unix-epoch seconds (2001-09-09 .. 2286: a historian's timeInSeconds), never nanoseconds
-        return pd.to_datetime(n.where(n.between(1e9, 1e10, inclusive="left")), unit="s")
+    if (epoch := epoch_times(s)) is not None:
+        return epoch
     parsed = parse_text_dates(s, 0.0)   # all blank: None (no value looks like a date)
-    return parsed if parsed is not None else pd.Series(pd.NaT, index=s.index, dtype="datetime64[ns]")
+    if parsed is None:
+        return pd.Series(pd.NaT, index=s.index, dtype="datetime64[ns]")
+    text = s.astype("string").str.strip()
+    dated = s.map(lambda v: isinstance(v, (datetime.date, pd.Timestamp))).astype(bool)
+    return parsed.where(dated | text.str.contains(HAS_YEAR_RE, regex=True).fillna(False))
 
 
 # A capped load names its cap: the source evidence carries this note and the report's alerts find

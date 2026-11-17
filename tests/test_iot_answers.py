@@ -52,18 +52,28 @@ def test_a_worked_control_chart_states_its_limits_and_the_days_outside():
     assert "Latest period (2026-09-09) vs the one before: +2.00 (11.00 → 13.00)." in text
     assert ("CL 11.00, UCL 16.32, LCL 5.68; after them 2 days above the upper limit (first "
             "2026-08-31) and 1 below the lower one. " + ENDING) in text
-    # its 3 days that repeat the day before follow the limits (audit pass 1, minor 9)
-    assert text.endswith("3 days repeat the day before's identical daily mean (first 2026-09-02): "
-                         "a stuck instrument?") and "%" not in text
+    # its 2 runs of 11 (1–2 and 4–6 Sep) follow the limits (audit pass 1, minor 9; review 2026-11-17)
+    assert text.endswith("5 days are part of a run of one identical daily mean (first 2026-09-01): "
+                         "a stuck instrument? Never counted beyond the limits.") and "%" not in text
     assert r.chart_configs[0].reference_lines == [
         {"value": 16.3191, "label": "UCL", "axis": "y"},
         {"value": 11.0, "label": "CL", "axis": "y"},
         {"value": 5.6809, "label": "LCL", "axis": "y"}]
 
 
+def test_a_stuck_runs_days_are_never_points_beyond_the_limits():
+    """Review 2026-11-17 (D7-11 partly back): S03 stuck at 68.40 from 20 Sep (cleaning flags it)
+    gave '4 below the lower one'; 3 of them were the stuck run, its first day unnamed."""
+    text, _ = answer("machine_readings", "time_series", "Is S03's temperature in control?",
+                     metric_column="Temperature", segment_column="Sensor", segment_value="S03", frequency="D")
+    assert "and 1 below the lower one" in text, text
+    assert "3 days are part of a run of one identical daily mean (first 2026-09-20)" in text, text
+
+
 def test_one_repeated_day_and_the_days_without_readings_are_counted():
     v = [10, 12] * 15 + [12, 14, 10, 13, 11]   # 31 Aug repeats 30 Aug's 12
-    stuck = " 1 day repeats the day before's identical daily mean (first 2026-08-31): a stuck instrument?"
+    stuck = (" 2 days are part of a run of one identical daily mean (first 2026-08-30): a stuck "
+             "instrument? Never counted beyond the limits.")
     assert _series(v).answer_text.endswith(stuck)
     contract = _built("machine_readings")[2]
     for drop, said in (([32], " 1 day without readings."), ([32, 33], " 2 days without readings.")):
@@ -92,7 +102,7 @@ def test_a_flat_baseline_says_why_there_are_no_limits():
     r = _series([11.0] * 35)
     assert r.answer_text.startswith("Temperature for Sensor S07 trended flat"), r.answer_text
     assert (" No control limits: no variation from day to day in the first days (a stuck "
-            "instrument?). 34 days repeat the day before's identical daily mean") in r.answer_text
+            "instrument?). 35 days are part of a run of one identical daily mean") in r.answer_text
     # 30 days 10, 12, 12, 12, …: 14 repeat the day before, 16 left
     days = pd.date_range("2026-08-01", periods=30)
     assert control_limits(pd.Series(([10.0, 12.0, 12.0, 12.0] * 8)[:30], index=days)) == (
@@ -248,7 +258,8 @@ def test_one_machine_with_no_failures_says_its_run_time_never_a_zero_base():
     assert f"no failure in {run:,.0f} hours of run time" in text and "base is 0" not in text, text
     iot = pack_for("iot")
     got = measure(m08, contract.roles, iot, "mtbf", by="Machine")
-    assert unavailable_words(got, iot, iot.kpi("mtbf")) == f"no failure in {run:,.0f} hours of run time"
+    assert unavailable_words(got, iot, iot.kpi("mtbf")) == \
+        f"no failure in {run:,.0f} hours of run time (a lower bound)"
 
 
 def test_each_answer_path_says_a_zero_base_in_the_kpis_words():
@@ -258,7 +269,7 @@ def test_each_answer_path_says_a_zero_base_in_the_kpis_words():
     from agents.visualization_agent import pack_kpis
     _, clean, contract, _ = _built("shift_production")
     m08 = clean.query("Machine == 'M08'")
-    none = "no failure in 1,546 hours of run time"
+    none = "no failure in 1,546 hours of run time (a lower bound)"
     assert [(k.value, k.context) for k in pack_kpis(m08, contract, full=clean) if k.label == "MTBF"] == [
         ("—", none)]
     text, _ = answer("shift_production", "segment_compare", "OEE and MTBF for M08", kpi="oee",
@@ -271,7 +282,7 @@ def test_each_answer_path_says_a_zero_base_in_the_kpis_words():
         assert r.answer_text == f"I couldn't answer this — {said}: {none}", r.answer_text
     date = contract.roles["date"]
     two = pd.concat([m08.assign(**{date: m08[date] - pd.DateOffset(years=1)}), m08], ignore_index=True)
-    for params, said in (({}, "can't be computed from these rows: no failure in 3,091"),
+    for params, said in (({}, "MTBF: no failure in 3,091"),   # answered: a lower bound (review)
                          (dict(group_by="Machine"), "can't be shown by Machine: no failure in 3,091")):
         r = handle_kpi(two, TargetedParams(kpi="mtbf", compare="yoy", **params), contract,
                        intent=QuestionIntent.SEGMENT_COMPARE)
@@ -295,7 +306,7 @@ def test_groups_with_no_failures_and_groups_hidden_are_said():
     assert m08["Failures"].sum() == 0
     text, _ = answer("shift_production", "segment_compare", "MTBF by machine", kpi="mtbf",
                      segment_column="Machine")
-    assert f"M08: no failure in {run:,.2f} hours of run time." in text, text
+    assert f"M08: no failure in {run:,.2f} hours of run time (a lower bound)." in text, text
     text, _ = answer("hr_roster", "segment_compare", "average salary by department", kpi="avg_salary",
                      group_by="Department")
     assert "Not shown: Legal, Finance (a group of fewer than 11 people" in text, text
@@ -310,6 +321,46 @@ def test_each_of_a_few_groups_is_named_with_its_value():
     text, _ = answer("machine_readings", "segment_compare", "What is the average temperature on each line?",
                      metric_column="Temperature", segment_column="Line", aggregation="mean")
     assert "'Line B' leads at 71.99; 'Line C' at 71.14; 'Line A' is lowest at 69.96." in text, text
+
+
+def test_the_work_order_tiles_carry_the_preventive_share_by_count():
+    """Review 2026-11-17: the plan's work-order tiles are corrective WOs, MTTR, PM share (by
+    count) and open WOs; PM share had no tile."""
+    from agents.visualization_agent import pack_kpis
+    _, clean, contract, truth = _built("work_orders")
+    tiles = {k.label: k.value for k in pack_kpis(clean, contract)}
+    assert tiles["Preventive share of work orders"] == f"{truth['pm_share']:.1%}", tiles
+
+
+def test_mtbf_and_mttr_say_their_basis_and_a_machine_that_never_failed_is_answered():
+    """Review 2026-11-17 (spec must-say; C5 near D7-14): 'MTBF: 42.29 hours' gave no failure
+    count and no assumption, MTTR never said its 40 open orders were left out, M08's MTBF was
+    'I couldn't answer this', and MTTR's How listed the 18 corrective spellings twice."""
+    text, _ = answer("shift_production", "segment_compare", "what is MTBF", kpi="mtbf")
+    assert text.startswith("MTBF: 42.29 hours. From 325 failures; it assumes a constant failure rate"), text
+    text, _ = answer("shift_production", "segment_compare", "MTBF for M08", kpi="mtbf",
+                     segment_column="Machine", segment_value="M08")
+    assert "couldn't answer" not in text and "(a lower bound)" in text, text
+    text, _ = answer("work_orders", "segment_compare", "what is our MTTR", kpi="mttr")
+    assert "3.97 hours" in text and "40 open work orders are left out, so it can read low" in text, text
+    assert text.count("emergency maintenance") == 1, text
+
+
+@pytest.mark.parametrize("intent, question, params", [
+    ("time_series", "monthly sum of temperature", dict(aggregation="sum", frequency="M")),
+    ("segment_compare", "total temperature by line", dict(segment_column="Line", aggregation="sum")),
+    ("top_n", "top sensors by total temperature", dict(group_by="Sensor", aggregation="sum", n=3))])
+def test_a_reading_is_averaged_even_when_a_total_is_asked(intent, question, params):
+    """Review 2026-11-17 (T18; C6, D1-16): "total temperature by line" said 'Line B leads at
+    468,696.77'. A pack's number role is never summed (Role.kind 'number'); a 0/1 flag still
+    counts (HR's `left`). The answer says why."""
+    text, _ = answer("machine_readings", intent, question, metric_column="Temperature", **params)
+    assert "sum" not in text.lower().replace("summed", "") and "468,696" not in text, text
+    assert "averaged, never summed" in text, text
+    truth = _built("machine_readings")[3]
+    assert not any(f"{v:,.0f}"[:5] in text for v in truth["naive_temp_sum_by_line"].values()), text
+    if intent == "segment_compare":
+        assert f"{truth['mean_temp_c_by_line']['Line B']:.2f}" in text, text
 
 
 @pytest.mark.parametrize("n, said", [

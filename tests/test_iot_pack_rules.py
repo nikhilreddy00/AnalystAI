@@ -83,6 +83,32 @@ def test_iot_ratios_name_their_derived_hours_and_unit_scale():
         f"Sum of hours from s to f where {cm}, divided by distinct wo where {cm};")
 
 
+@pytest.mark.parametrize("n, den", [
+    (96, "status is {a} or status is {b}"),        # 120 characters: short enough to say twice
+    (97, "the same conditions hold"),                # 121: an answer's How says it once
+])
+def test_an_answers_how_says_a_long_repeated_condition_once(n, den):
+    a, b = "a" * 40, "b" * (n - 40)
+    w = f"[[{{role: status, in: [{a}]}}], [{{role: status, in: [{b}]}}]]"
+    pack = Pack.model_validate(yaml.safe_load(BANK.replace("kpis:\n", (
+        f"kpis:\n  - {{name: r, label: R, num: [[{{sum: amount, where: {w}}}]], "
+        f"den: [[{{nunique: account_id, where: {w}}}]]}}\n"))))
+    num = f"status is {a} or status is {b}"
+    assert describe_kpi(pack, "r", BANK_ROLES, parts=True) == (
+        f"Sum of amount where {num}, divided by distinct account_id where {den.format(a=a, b=b)};"
+        + LEFT_OUT.replace("; ", " ", 1))
+    # a brief or a tile keeps both
+    assert describe_kpi(pack, "r", BANK_ROLES).count(num) == 2
+
+
+def test_mttrs_how_names_its_corrective_spellings_once():
+    iot = domain_pack.pack_for("iot")
+    how = describe_kpi(iot, "mttr", {"actual_start": "s", "actual_finish": "f", "work_type": "wt",
+                                     "work_order": "wo"}, parts=True)
+    assert " / failure and hours from s to f ≥ 0, divided by distinct wo where the same " \
+           "conditions hold;" in how
+
+
 def test_the_brief_says_how_each_derived_column_is_made():
     iot = domain_pack.pack_for("iot")
     assert pack_brief(iot, {"actual_start": "s", "actual_finish": "f"}, []) == [

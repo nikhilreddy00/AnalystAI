@@ -51,6 +51,7 @@ from agents.data_cleaning import (
 from agents.errors import GuardrailViolation
 from agents.utils import partial_last_month, pii_columns
 from agents.visualization_agent import classify_columns
+from connectors.base import as_times
 from domain_pack import (Pack, filled_statuses, layout_columns, main_currency, pack_for, row_kinds,
                          words)
 from domain_pack.columns import derived_roles
@@ -226,7 +227,7 @@ def _series_flags(df: pd.DataFrame, ctx: CleanContext, key: str, time: str) -> l
     """(strategy, reason, rows) for each per-series finding, examples named (3 at most). A gap
     is more than 3× the series' usual interval (20 rows at least); a stuck run is one value
     unchanged for the pack's stuck_hours (a continuous measure only)."""
-    t = pd.to_datetime(df[time], errors="coerce")
+    t = as_times(df[time])   # the load's one rule: epoch seconds are no nanoseconds
     d = df.assign(_t=t).dropna(subset=["_t"]).sort_values([key, "_t"], kind="stable")
     out = []
     # a row whose readings were all blanked (a Bad flag, a code) is no second value at its time
@@ -717,7 +718,9 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
             got = measure(df.reset_index(drop=True).assign(_row=range(len(df))), roles, ctx.pack,
                           k.name, by="_row")
             if isinstance(got, MeasuredBy) and (n := int((got.values > k.max).sum())):
-                col = next(roles[r] for r in sorted(kpi_measures(ctx.pack, k.name)) if r in roles)
+                # the numerator's column (the ideal cycle a performance over 100% blames)
+                col = next(roles[r] for r in sorted(kpi_measures(ctx.pack, k.name, num_only=True))
+                           if r in roles)
                 log(col, "flag", "kpi_over_max",
                     f"{n} row{'s' if n != 1 else ''} with {k.label} over {k.max:.0%}"
                     + (f": {k.max_words}" if k.max_words else "") + "; kept, never capped.", n)
