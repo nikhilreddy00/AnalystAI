@@ -79,9 +79,15 @@
    },
    {
     "n": 1,
-    "new": "clash = d.duplicated([key, \"_t\"], )",
-    "old": "clash = d.duplicated([key, \"_t\"], keep=False)",
+    "new": "clash = d_valid.duplicated([key, \"_t\"], ).reindex(d.index, fill_value=False)",
+    "old": "clash = d_valid.duplicated([key, \"_t\"], keep=False).reindex(d.index, fill_value=False)",
     "reason": "keep=False or 'first' marks the same (series, time) pairs, and only those pairs are counted and named"
+   },
+   {
+    "n": 1,
+    "new": "d_valid = d[d[measured].notna().any(axis=1)] if (measured) or True else d",
+    "old": "d_valid = d[d[measured].notna().any(axis=1)] if measured else d",
+    "reason": "_series_columns returns a series only when a stuck_hours role is mapped, so measured is never empty"
    },
    {
     "n": 1,
