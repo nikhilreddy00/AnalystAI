@@ -36,6 +36,7 @@ import io
 import json
 import logging
 import re
+import unicodedata
 from collections import Counter
 from dataclasses import dataclass, field
 
@@ -52,6 +53,7 @@ from agents.utils import partial_last_month, pii_columns
 from agents.visualization_agent import classify_columns
 from domain_pack import (Pack, filled_statuses, layout_columns, main_currency, pack_for, row_kinds,
                          words)
+from domain_pack.columns import derived_roles
 from guardrails import (
     UNKNOWN_LABEL,
     is_pii_column,
@@ -164,6 +166,45 @@ def _code_like(s: pd.Series) -> bool:
     return len(v) > 0 and v.str.match(_LEADING_ZERO_RE).mean() >= 0.1
 
 
+def _unit_code(unit: str) -> str:
+    """A unit as its letters: compatibility forms unfolded (℉ is °F), case, spaces and dots
+    ignored, a 'degrees' spelled out read as 'deg' ('degrees F' is degF)."""
+    s = re.sub(r"[\s.]+", "", unicodedata.normalize("NFKC", str(unit))).lower()
+    return re.sub(r"^degrees?", "deg", s)
+
+
+def _unlisted(df: pd.DataFrame, ctx: CleanContext) -> list[tuple[str, str, int]]:
+    """(column, reason, rows) for each role whose every value the pack's words should name (its
+    statuses, and the roles it declares `closed_words`: a work type is corrective or preventive)
+    whose values include words no list knows: a work type 'Reactive' falls out of every figure
+    that names work types, a status no list holds is read as live. Said, never silent (C6: an
+    exact vocabulary misses a spelling). A list that selects on purpose (contingent workers)
+    is no closed vocabulary: its other values are by design."""
+    pack = ctx.pack
+    lists: dict[str, set[str]] = {"status": {w for ws in pack.status_values.values() for w in ws}}
+    uses: dict[str, list[str]] = {}
+    for k in pack.kpis:
+        for c in (c for alt in [*k.num, *(k.den or [])] for t in alt for g in t.where for c in g):
+            if c.in_ is not None and c.role in pack.closed_words:
+                lists.setdefault(c.role, set()).update(c.in_)
+                uses.setdefault(c.role, []).append(k.phrase)
+    out = []
+    for role, known in lists.items():
+        col = ctx.roles.get(role)
+        if col is None or col not in df.columns or not known:
+            continue
+        said = words(df[col].dropna())
+        unknown = df.loc[said.index][~said.isin(set(words(pd.Series(sorted(known)))))][col]
+        if unknown.empty:
+            continue
+        top = ", ".join(f"{v} ({n})" for v, n in unknown.astype(str).value_counts().head(3).items())
+        what = (f"left out of {', '.join(dict.fromkeys(uses[role]))}" if role in uses
+                else "read as counted (no status list holds them)")
+        out.append((col, f"{len(unknown)} rows have a {role.replace('_', ' ')} no pack word names: "
+                    f"{top}: {what}.", len(unknown)))
+    return out
+
+
 def _series_columns(ctx: CleanContext) -> tuple[str, str] | None:
     """(series, time) columns when the pack names a series key and the data has it, a time and
     a continuous measure (a stuck_hours role): readings, never a shift report or an event log,
@@ -187,7 +228,10 @@ def _series_flags(df: pd.DataFrame, ctx: CleanContext, key: str, time: str) -> l
     t = pd.to_datetime(df[time], errors="coerce")
     d = df.assign(_t=t).dropna(subset=["_t"]).sort_values([key, "_t"], kind="stable")
     out = []
-    clash = d.duplicated([key, "_t"], keep=False)
+    # a row whose readings were all blanked (a Bad flag, a code) is no second value at its time
+    measured = [c for r in ctx.pack.stuck_hours if (c := ctx.roles.get(r)) in d.columns]
+    d_valid = d[d[measured].notna().any(axis=1)] if measured else d
+    clash = d_valid.duplicated([key, "_t"], keep=False).reindex(d.index, fill_value=False)
     # a clock change repeats one local hour for EVERY series at once (local times written
     # without their offset); a double write hits one series: shared by half of them (2+) = a fold
     pairs = d.loc[clash, [key, "_t"]].drop_duplicates()
@@ -382,8 +426,12 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
             fcol = ctx.roles.get(flag)
             if fcol is None:
                 continue
-            said = df[fcol].astype("string").str.strip().str.lower()
-            bad = said.isin([v.lower() for v in rule.values])
+            said = words(df[fcol])   # a flag by its first word: 'Bad - Sensor Failure' is bad
+
+            def first(listed: list[str]) -> pd.Series:
+                return pd.concat([said.eq(w) | said.str.startswith(w + " ")
+                                  for w in words(pd.Series(listed))], axis=1).any(axis=1)
+            bad = first(rule.values)
             for role in rule.blanks:
                 col = ctx.roles.get(role)
                 if col is None or not (hit := bad & df[col].notna()).any():
@@ -395,20 +443,20 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
                     f"{'s' if int(bad.sum()) != 1 else ''} its {fcol} marks invalid "
                     f"({', '.join(rule.values)}) read as missing; the rows are kept.", n, pct,
                     _null_pct(df[col]))
-            if n := int(said.isin([v.lower() for v in rule.doubtful]).sum()):
+            if rule.doubtful and (n := int(first(rule.doubtful).sum())):
                 log(fcol, "flag", "doubtful_flag", f"{n} rows marked {', '.join(rule.doubtful)}: "
                     "kept and counted.", n)
         for role, rule in ctx.pack.units.items():   # one unit per measure, by each row's unit
             col, ucol = ctx.roles.get(role), ctx.roles.get(rule.unit_role)
             if col is None or ucol is None or not pd.api.types.is_numeric_dtype(df[col]):
                 continue
-            code = df[ucol].astype("string").str.replace(r"\s+", "", regex=True).str.lower()
-            done = pd.Series(False, index=df.index)   # a row is converted once ('deg F', 'degF')
+            code = df[ucol].astype("string").map(_unit_code, na_action="ignore")
+            done = code.eq(_unit_code(rule.to)).fillna(False)   # a row is converted once
             for unit, (scale, offset) in rule.convert.items():
-                row = code.eq(re.sub(r"\s+", "", unit).lower()).fillna(False) & ~done
+                row = code.eq(_unit_code(unit)).fillna(False) & ~done
                 done |= row
                 hit = row & df[col].notna()   # a blank value (a Bad reading) keeps no old unit
-                if n := int(hit.sum()):
+                if (scale, offset) != (1, 0) and (n := int(hit.sum())):   # (1, 0): a name of `to`
                     pct = _null_pct(df[col])
                     df[col] = df[col].mask(hit, df[col] * scale + offset)
                     log(col, "type_coerce", "unit_converted",
@@ -420,6 +468,18 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
                     df[ucol] = df[ucol].mask(row, rule.to)
                     log(ucol, "type_coerce", "unit_converted",
                         f"{m} rows' unit changed from {unit} to {rule.to}, with their values.", m, upct, upct)
+            # a unit no conversion knows (°R): its values are never averaged with the others
+            odd = code.notna() & ~done & df[col].notna()
+            if n := int(odd.sum()):
+                pct = _null_pct(df[col])
+                top = ", ".join(f"{v} ({k})" for v, k in df.loc[odd, ucol].astype(str).value_counts().head(3).items())
+                df[col] = df[col].mask(odd)
+                log(col, "sentinel_null", "unknown_unit",
+                    f"{n} {role.replace('_', ' ')} values in a unit with no conversion to {rule.to} "
+                    f"({top}) read as missing, never averaged with the rest; the rows are kept.",
+                    n, pct, _null_pct(df[col]))
+        for col, reason, n in _unlisted(df, ctx):   # a value no pack word knows: said (C6)
+            log(col, "flag", "unlisted_values", reason, n)
         for role, rule in ctx.pack.signed_by.items():   # an unsigned amount and its Dr/Cr
             col, ind = ctx.roles.get(role), ctx.roles.get(rule.indicator)
             if col is None or ind is None or not pd.api.types.is_numeric_dtype(df[col]) \
@@ -633,11 +693,13 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
         if other:
             log(roles["currency"], "flag", "other_currency", f"{other} rows in other currencies "
                 f"than {currency}; kept, left out of money totals.", other)
+        # a derived role (repair hours) is checked on the same derivation every KPI reads
+        view, vroles = derived_roles(df, roles, ctx.pack)
         for role, bounds in ctx.pack.ranges.items():
-            col = roles.get(role)
-            if col is None or not pd.api.types.is_numeric_dtype(df[col]):
+            col = vroles.get(role)
+            if col is None or not pd.api.types.is_numeric_dtype(view[col]):
                 continue
-            s = df[col]
+            s = view[col]
             bad = pd.Series(False, index=df.index)
             for op, v in bounds.items():
                 bad |= {"gt": s <= v, "ge": s < v, "lt": s >= v, "le": s > v}[op]

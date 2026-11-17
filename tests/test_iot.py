@@ -147,6 +147,112 @@ def test_what_a_kpi_lacks_names_only_the_sides_that_lack_and_each_way_apart():
     assert _missing(IOT, "good_count", {"good_count": "g"}) == "other columns"
 
 
+def test_a_value_no_pack_word_list_knows_is_said_never_silently_dropped():
+    """Audit pass 1 (C6, D2-16): 'Corrective Maintenance' or 'Cancelled - duplicate' matched no
+    exact pack word and fell out of MTTR and every count, said nowhere. Every pack: a value of a
+    role its word lists read (a status, a KPI condition's list) that no list knows is counted
+    and said in the cleaning audit, with what it is left out of."""
+    from agents.cleaning_agent import CleanContext, clean
+    df = pd.DataFrame({
+        "wonum": [f"W{i}" for i in range(6)], "assetnum": ["P1"] * 6,
+        "worktype": ["CM", "Modification", "Modification", "PM", "Project", "Corrective Maintenance"],
+        "status": ["COMP", "COMP", "Cancel requested", "COMP", "COMP", "COMP"]})
+    roles = {"work_order": "wonum", "asset": "assetnum", "work_type": "worktype", "status": "status"}
+    _, audit = clean(CleanContext(df=df, ids={"wonum"}, dates=set(), targets=set(),
+                                  drop_high_null=False, pack=IOT, roles=roles))
+    said = {d.column: d for d in audit.decisions if d.strategy == "unlisted_values"}
+    assert said["worktype"].rows_affected == 3 and "Modification (2)" in said["worktype"].reason
+    assert "Project (1)" in said["worktype"].reason and "corrective work orders" in said["worktype"].reason
+    assert said["status"].rows_affected == 1 and "Cancel requested (1)" in said["status"].reason
+    known = df.assign(worktype=["CM", "Emergency Repair", "PM", "cm", "Inspection", "Reactive"],
+                      status="COMP")
+    _, audit = clean(CleanContext(df=known, ids={"wonum"}, dates=set(), targets=set(),
+                                  drop_high_null=False, pack=IOT, roles=roles))
+    assert not [d for d in audit.decisions if d.strategy == "unlisted_values"]
+
+
+def test_a_quality_flag_matches_by_its_first_word_and_an_unknown_unit_is_never_averaged():
+    """Audit pass 1 (C6, C5): 'Bad - Sensor Failure' / 'Bad_NoComm' kept their readings (exact
+    match on 'bad'); 'Uncertain - Last Usable' was not counted; ℉ / 'degrees F' / 'F.' stayed
+    unconverted and °R was averaged with °C. Quality flags match by their first word; unit codes
+    by their letters (NFKC: ℉ is °F); a unit the pack can't convert is left out and said."""
+    from agents.cleaning_agent import CleanContext, clean
+    q = ["Good", "Bad - Sensor Failure", "Bad_NoComm", "bad input", "Uncertain - Last Usable",
+         "Good", "Good", "Good", "Good"]
+    u = ["°C", "°C", "°C", "°C", "°C", "℉", "degrees F", "F.", "°R"]
+    df = pd.DataFrame({"sensor": ["S1"] * 9, "temperature": [70.0, 60, 61, 62, 63, 212, 212, 212, 500],
+                       "quality": q, "unit": u})
+    roles = {"asset": "sensor", "temperature": "temperature", "reading_quality": "quality", "temp_unit": "unit"}
+    out, audit = clean(CleanContext(df=df, ids={"sensor"}, dates=set(), targets=set(),
+                                    drop_high_null=False, pack=IOT, roles=roles))
+    assert out["temperature"].iloc[1:4].isna().all() and out["temperature"].iloc[4] == 63.0
+    assert out["temperature"].iloc[5:8].round(6).tolist() == [100.0, 100.0, 100.0]
+    assert pd.isna(out["temperature"].iloc[8])   # °R: no conversion known, never averaged
+    reasons = " ".join(d.reason for d in audit.decisions)
+    assert "1 rows marked" in reasons and "°R (1)" in reasons
+    assert out["temperature"].mean() == pytest.approx((70 + 63 + 300) / 5)
+
+
+def test_epoch_seconds_are_their_dates_never_1970():
+    """Audit pass 1 (C2): a historian's Unix-epoch timestamps (SiteWise timeInSeconds) were read
+    by the answers as nanoseconds: 'Temperature in 1970-01'. The one time rule reads epoch
+    seconds as dates; the answers read times through it."""
+    from connectors.base import as_times
+    from tests.test_oracle import answer
+    secs = pd.Series([1772312400, 1772316000, None, 1774990800])
+    assert [str(t)[:13] for t in as_times(secs)] == ["2026-02-28 21", "2026-02-28 22", "NaT", "2026-03-31 21"]
+    assert as_times(secs.astype("Int64").astype(str).replace("<NA>", None)).iloc[0] == as_times(secs).iloc[0]
+    assert as_times(pd.Series([3, 5, 7])).isna().all()   # small counts are no epoch
+    from agents.targeted_analysis_agent import handle_time_series
+    from connectors.csv_connector import CSVConnector
+    from orchestrator.state import ConnectorConfig, ConnectorType, TargetedParams
+    df = pd.DataFrame({"Timestamp": [1772312400 + 86400 * i for i in range(60)],
+                       "Temperature": [70.0 + i % 3 for i in range(60)]})
+    contract = CSVConnector(ConnectorConfig(type=ConnectorType.CSV)).build_data_contract(df)
+    text = handle_time_series(df, TargetedParams(metric_column="Temperature", date_column="Timestamp",
+                                                 frequency="M"), contract).answer_text
+    assert "1970" not in text and "2026" in text, text
+    assert answer   # imported for the dataset path above
+
+
+def test_a_derived_roles_range_is_checked_zero_and_negative_repairs_flagged():
+    """Audit pass 1 (C5, the planted trap 6): ranges: {repair_hours: {gt: 0}} never ran (repair
+    hours are derived after cleaning), so 0 h and finish-before-start repairs went unsaid."""
+    from tests.test_oracle import _built
+    flags = [d for d in _built("work_orders")[0].cleaning_audit.decisions if d.strategy == "out_of_range"]
+    assert len(flags) == 1 and flags[0].rows_affected == 2 and "kept" in flags[0].reason
+
+
+def test_a_blanked_reading_is_no_clash_and_the_control_chart_names_stuck_and_silent_days():
+    """Audit pass 1 (minor): a Bad row (its readings blanked) beside a Good one at the same time
+    was called a clash; S03's stuck days and S05's silent day went unsaid on their charts."""
+    from agents.cleaning_agent import CleanContext, clean
+    from agents.targeted_analysis_agent import handle_time_series
+    from orchestrator.state import TargetedParams
+    from tests.test_oracle import _built
+    t = pd.date_range("2026-10-01", periods=30, freq="h")
+    df = pd.DataFrame({"sensor": "S1", "ts": list(t) + [t[3]], "temperature": [70.0 + i % 4 for i in range(30)] + [5.0],
+                       "quality": ["Good"] * 30 + ["Bad"]})
+    roles = {"asset": "sensor", "date": "ts", "temperature": "temperature", "reading_quality": "quality"}
+    _, audit = clean(CleanContext(df=df, ids={"sensor"}, dates={"ts"}, targets=set(),
+                                  drop_high_null=False, pack=IOT, roles=roles))
+    assert not [d for d in audit.decisions if d.strategy == "series_clash"]
+    _, clean_df, contract, _ = _built("machine_readings")
+    for sensor, said in (("S03", "identical daily mean"), ("S05", "without readings")):
+        r = handle_time_series(clean_df, TargetedParams(metric_column="Temperature", segment_column="Sensor",
+                                                        segment_value=sensor), contract)
+        assert said in r.answer_text, (sensor, r.answer_text)
+
+
+@pytest.mark.xfail(strict=True, reason="D7-13 (Open): the load reads any two offsets an hour apart "
+                   "as one place across a clock change, so two sites on +01:00 and +02:00 become "
+                   "one wall-clock time (the Shopify -0500/-0400 rule, every domain since D1)")
+def test_two_fixed_offsets_an_hour_apart_in_june_are_two_instants():
+    from connectors.base import parse_text_dates
+    t = parse_text_dates(pd.Series(["2026-06-01 10:00:00+01:00", "2026-06-01 10:00:00+02:00"]))
+    assert t.iloc[0] != t.iloc[1]
+
+
 def test_a_machine_id_is_no_date_filter():
     """Browser read (mock stack): the dashboard offered 'Machine' as a date range; pandas reads
     'M01' as 00:00:01 on 1 Jan of year 1. Columns are dated by the load's one rule (F2)."""

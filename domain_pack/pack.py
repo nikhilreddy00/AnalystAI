@@ -400,6 +400,9 @@ class Pack(_Strict):
     # stuck for `stuck_hours` (a continuous measure's run of one value) are flagged and kept.
     series_key: str | None = None
     stuck_hours: dict[str, float] = Field(default_factory=dict)
+    # Roles whose every value the KPI conditions' word lists should name (a work type is
+    # corrective or preventive): a value none names is said by Cleaning, never silently dropped
+    closed_words: list[str] = Field(default_factory=list)
     # role → its sign from an indicator: Cleaning signs the values once (every consumer reads them)
     signed_by: dict[str, SignRule] = Field(default_factory=dict)
     ranges: dict[str, dict[Literal["gt", "ge", "lt", "le"], float]] = Field(default_factory=dict)
@@ -543,6 +546,7 @@ class Pack(_Strict):
         errors += [f"units {m}: unknown role {r}" for m, u in self.units.items()
                    for r in (m, u.unit_role) if r not in self.roles]
         errors += [f"series_key: unknown role {r}" for r in [self.series_key] if r and r not in self.roles]
+        errors += [f"closed_words: unknown role {r}" for r in self.closed_words if r not in self.roles]
         errors += [f"stuck_hours {r}: {'unknown role' if r not in self.roles else 'needs a series_key'}"
                    for r in self.stuck_hours if r not in self.roles or not self.series_key]
         refs = [*self.order_fields, *self.sentinels, *self.ranges, *self.credit_prefix, *self.non_product,

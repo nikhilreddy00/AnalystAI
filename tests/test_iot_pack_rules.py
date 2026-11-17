@@ -46,7 +46,8 @@ def test_iot_ratios_name_their_derived_hours_and_unit_scale():
     assert describe_kpi(iot, "oee", {"good_count": "good", "ideal_cycle_s": "ict",
                                      "planned_minutes": "pm"}).startswith(
         "Sum of ict × good ÷ 60, divided by sum of pm;")
-    cm = "wt is cm / em / corrective / emergency / breakdown and hours from s to f ≥ 0"
+    cm = ("wt is " + " / ".join(domain_pack.pack_for("iot").kpi("mttr").num[0][0].where[0][0].in_)
+          + " and hours from s to f ≥ 0")   # the pack's corrective spellings (audit pass 1)
     assert describe_kpi(iot, "mttr", {"actual_start": "s", "actual_finish": "f",
                                       "work_order": "wo", "work_type": "wt"}).startswith(
         f"Sum of hours from s to f where {cm}, divided by distinct wo where {cm};")

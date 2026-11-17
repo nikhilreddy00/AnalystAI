@@ -52,7 +52,9 @@ def test_a_worked_control_chart_states_its_limits_and_the_days_outside():
     assert "Latest period (2026-09-09) vs the one before: +2.00 (11.00 → 13.00)." in text
     assert ("CL 11.00, UCL 16.32, LCL 5.68; after them 2 days above the upper limit (first "
             "2026-08-31) and 1 below the lower one. " + ENDING) in text
-    assert text.endswith(ENDING) and "%" not in text
+    # its 3 days that repeat the day before follow the limits (audit pass 1, minor 9)
+    assert text.endswith("3 days repeat the day before's identical daily mean (first 2026-09-02): "
+                         "a stuck instrument?") and "%" not in text
     assert r.chart_configs[0].reference_lines == [
         {"value": 16.3191, "label": "UCL", "axis": "y"},
         {"value": 11.0, "label": "CL", "axis": "y"},
@@ -79,8 +81,8 @@ def test_twenty_days_are_enough_for_limits_and_nineteen_are_not():
 def test_a_flat_baseline_says_why_there_are_no_limits():
     r = _series([11.0] * 35)
     assert r.answer_text.startswith("Temperature for Sensor S07 trended flat"), r.answer_text
-    assert r.answer_text.endswith(" No control limits: no variation from day to day in the first "
-                                  "days (a stuck instrument?).")
+    assert (" No control limits: no variation from day to day in the first days (a stuck "
+            "instrument?). 34 days repeat the day before's identical daily mean") in r.answer_text
 
 
 def test_a_control_chart_reads_daily_means_whatever_aggregation_was_asked():

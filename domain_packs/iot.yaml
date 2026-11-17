@@ -89,20 +89,26 @@ roles:
 status_values:
   ok: [comp, complete, completed, close, closed, inprg, in progress, wappr, waiting on approval,
        appr, approved, wmatl, waiting on material, wsched, waiting to be scheduled, open, hold]
-  cancel: [can, cancelled, canceled, void]
+  cancel: [can, cancel, cancelled, canceled, void, voided, rejected]
+# A work type is corrective or preventive: one no list names is said (Cleaning), never dropped
+closed_words: [work_type]
 sentinels: {temperature: [-9999, 9999, 32767], vibration: [-9999, 9999, 32767],
             pressure: [-9999, 9999, 32767]}
-invalid_when:
-  reading_quality: {values: [bad, "0", bad data], doubtful: [uncertain, questionable, substituted],
-                    blanks: [temperature, vibration, pressure]}
 # A site's sensors in °F beside °C ones (PI carries a unit on every value): one unit, by the row's
 # own unit column, never guessed from the values.
 units:
   temperature: {unit_role: temp_unit, to: "°C",
+                # [1, 0]: another name of °C (relabelled, values kept); a unit none names is
+                # left out and said, never averaged with °C
                 convert: {"°F": [0.5555555555555556, -17.77777777777778],
                           degf: [0.5555555555555556, -17.77777777777778],
                           F: [0.5555555555555556, -17.77777777777778],
-                          fahrenheit: [0.5555555555555556, -17.77777777777778]}}
+                          fahrenheit: [0.5555555555555556, -17.77777777777778],
+                          degc: [1, 0], C: [1, 0], celsius: [1, 0]}}
+invalid_when:
+  reading_quality: {values: [bad, "0", i/o timeout, shutdown, comm fail, no data, not connected],
+                    doubtful: [uncertain, questionable, substituted],
+                    blanks: [temperature, vibration, pressure]}
 # A reading belongs to its asset's series: double writes, repeated times, gaps and stuck values
 # are read per asset (a historian's on-change logging makes a gap; it never fills one).
 series_key: asset
@@ -147,13 +153,17 @@ kpis:
      zero_words: "no failure in {num} of run time",
      num: [[{kpi: run_minutes, times: 0.016666666666666666}]], den: [[{sum: failures}]]}
   - {name: mttr, label: MTTR, unit: number, unit_word: hours, tile: true,
-     num: [[{sum: repair_hours, where: [[{role: work_type, in: [cm, em, corrective, emergency, breakdown]},
+     # corrective work: CMMS codes and the spellings exports write (research §6)
+     num: [[{sum: repair_hours, where: [[{role: work_type, in: &corrective [
+               cm, em, corrective, corrective maintenance, emergency, emergency maintenance,
+               emergency repair, breakdown, breakdown maintenance, breakdown repair, reactive,
+               reactive maintenance, unplanned, unplanned maintenance, unplanned breakdown, repair,
+               fault, failure]},
                                          {role: repair_hours, ge: 0}]]}]],
-     den: [[{nunique: work_order, where: [[{role: work_type, in: [cm, em, corrective, emergency, breakdown]},
+     den: [[{nunique: work_order, where: [[{role: work_type, in: *corrective},
                                            {role: repair_hours, ge: 0}]]}]]}
   - {name: corrective_wos, label: Corrective work orders, unit: count, tile: true,
-     num: [[{nunique: work_order, where: [[{role: work_type, in: [cm, em, corrective, emergency,
-                                                                  breakdown]}]]}]]}
+     num: [[{nunique: work_order, where: [[{role: work_type, in: *corrective}]]}]]}
   - {name: open_wos, label: Open work orders, unit: count, tile: true,
      num: [[{nunique: work_order, where: [[{role: status, in: [inprg, in progress, wappr,
                                                                waiting on approval, appr, approved,
@@ -168,7 +178,9 @@ kpis:
   - {name: unplanned_downtime, label: Unplanned downtime, unit: number, unit_word: minutes,
      num: [[{sum: unplanned_downtime}]]}
   - {name: pm_share, label: Preventive share of work orders, unit: percent,
-     num: [[{nunique: work_order, where: [[{role: work_type, in: [pm, preventive, planned]}]]}]],
+     num: [[{nunique: work_order, where: [[{role: work_type, in: [
+               pm, preventive, preventive maintenance, planned, planned maintenance, pdm, predictive,
+               predictive maintenance, condition based, cbm, inspection, routine, calibration]}]]}]],
      den: [[{nunique: work_order}]]}
   - {name: assets, label: Assets, unit: count, tile: true, num: [[{nunique: asset}]]}
   - {name: alarms, label: Alarms, unit: count, tile: true, num: [[{sum: alarm}]]}

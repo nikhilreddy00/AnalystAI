@@ -82,6 +82,12 @@ def test_pii_column_names(col, pii):
     ("reported_by", ["Smith, John", "Lopez, Ana"], "name"),
     ("changeby", ["MAXADMIN", "KLEE"], "name"), ("technician", ["JSMITH", "KLEE"], "name"),
     ("badge_id", [10423, 10424], "name"), ("badge", ["B-0193"], "name"),
+    # audit pass 1: more shop-floor people, by their names or logins
+    ("Completed By", ["Ann Lee", "Raj Patel"], "name"), ("Mechanic", ["Ann Lee"], "name"),
+    ("Planner", ["Kim Moss"], "name"), ("Inspector", ["JSMITH"], "name"),
+    ("Worker", ["Ann Lee"], "name"), ("Shift Lead", ["Kim Moss"], "name"),
+    ("Lead Hand", ["Raj Patel"], "name"), ("Login", ["ALOPEZ", "KPARK"], "name"),
+    ("Mechanic", ["Electrical", "Hydraulic"], None), ("worker_type", ["Employee", "Contractor"], None),
     # negatives from other domains: carriers, retail rep codes, a crew/team and a count stay data
     ("operator", ["Vodafone", "Orange", "AT&T"], None), ("sales_rep", ["R12", "R07"], None),
     ("crew", ["Crew A", "Crew B"], None), ("badges_issued", [3, 5], None),
@@ -237,6 +243,10 @@ def test_a_clock_time_is_no_number_claim(text):
     ("Step 13 and Land 27 read 47.6.", ["13", "27"]),  # words beside numbers stay numbers
     ("In Q3 2026 the plant read 47.6 on 24/7 running.", ["24"]),
     ("Version 12.30 shipped; it read 47.6.", ["12.30"]),
+    # audit pass 1: a duration written h:mm with its unit is a claim, after any cue word
+    ("Downtime rose by 4:30 hours to 47.6.", ["30"]),
+    ("MTTR fell from 3:15 to 2:45 hours; 47.6 overall.", ["15", "45"]),
+    ("We were march 47 units short of 47.6.", ["47"]),   # a lower-case month is prose
 ])
 def test_a_number_that_is_no_clock_time_is_still_checked(text, bad):
     assert g.ungrounded_numbers(g.without_dates(text, True), {"r": 47.6}) == bad

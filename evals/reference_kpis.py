@@ -529,11 +529,16 @@ def reference_by(name: str, df: pd.DataFrame, cols: list[str], metric: str, agg:
 
 # ── IoT / manufacturing (Domain 7; docs/research/2026-11-16-iot.md §2) ─────────────────────────
 # iot.yaml's words, copied (test_the_references_word_lists_are_the_packs checks them)
-WO_CORRECTIVE = {"cm", "em", "corrective", "emergency", "breakdown"}
-WO_PREVENTIVE = {"pm", "preventive", "planned"}
+WO_CORRECTIVE = {"cm", "em", "corrective", "corrective maintenance", "emergency",
+                 "emergency maintenance", "emergency repair", "breakdown", "breakdown maintenance",
+                 "breakdown repair", "reactive", "reactive maintenance", "unplanned",
+                 "unplanned maintenance", "unplanned breakdown", "repair", "fault", "failure"}
+WO_PREVENTIVE = {"pm", "preventive", "preventive maintenance", "planned", "planned maintenance",
+                 "pdm", "predictive", "predictive maintenance", "condition based", "cbm",
+                 "inspection", "routine", "calibration"}
 WO_OPEN = {"inprg", "in progress", "wappr", "waiting on approval", "appr", "approved", "wmatl",
            "waiting on material", "wsched", "waiting to be scheduled", "open", "hold"}
-WO_CANCELLED = {"can", "cancelled", "canceled", "void"}
+WO_CANCELLED = {"can", "cancel", "cancelled", "canceled", "void", "voided", "rejected"}
 
 
 def _w(v) -> str:

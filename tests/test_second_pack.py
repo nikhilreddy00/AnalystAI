@@ -208,6 +208,29 @@ def test_a_series_double_write_goes_and_its_gaps_clashes_and_stuck_runs_are_said
     assert len(out) == len(df) and not any(d.strategy.startswith("series_") for d in audit.decisions)
 
 
+def test_a_closed_vocabulary_says_its_unknown_values_and_a_selection_does_not():
+    """closed_words' second reader: a toy pack whose 'channel' every value should be named
+    (branch / online) says an unknown one; without the declaration the same list is a selection
+    (its other values by design) and says nothing."""
+    from agents.cleaning_agent import CleanContext, clean
+    toy = BANK.replace("  quantity:", "  channel: {kind: category, headers: [channel]}\n  quantity:").replace(
+        "kpis:\n", "kpis:\n  - {name: online, label: Online, num: [[{sum: amount, where: "
+        "[[{role: channel, in: [online, web]}]]}]]}\n  - {name: branch, label: Branch, num: "
+        "[[{sum: amount, where: [[{role: channel, in: [branch]}]]}]]}\n")
+    df = pd.DataFrame({"account_id": list("ABC"), "amount": [1.0, 2.0, 3.0],
+                       "channel": ["online", "branch", "phone"]})
+    roles = {c: c for c in df.columns}
+
+    def said(yaml_text):
+        _, audit = clean(CleanContext(df=df, ids={"account_id"}, dates=set(), targets=set(),
+                                      drop_high_null=False, roles=roles,
+                                      pack=Pack.model_validate(__import__("yaml").safe_load(yaml_text))))
+        return [d.reason for d in audit.decisions if d.strategy == "unlisted_values"]
+    assert said(toy) == []
+    assert said(toy + "closed_words: [channel]\n") == [
+        "1 rows have a channel no pack word names: phone (1): left out of online, branch."]
+
+
 PER_UNIT = BANK.replace("kpis:\n", """kpis:
   - {name: per_unit, label: Amount per unit, unit: number, num: [[{sum: amount}]],
      den: [[{sum: quantity}]], zero_words: "none counted against {num}"}

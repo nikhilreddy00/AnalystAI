@@ -88,9 +88,10 @@ def test_a_measure_is_converted_once_by_its_unit_code_and_a_row_without_a_unit_i
 
 
 def test_one_clash_and_a_double_write_of_one_series():
-    """C1 wrote 02:00 twice (the copy blank: a clash, both kept); C2's 03:00 row is an exact copy
-    (dropped). One series at a time has no clock change."""
-    rows = _rows("C1", range(6)) + _rows("C1", [2], [None]) + _rows("C2", range(6))
+    """C1 wrote 02:00 twice with another value (a clash, both kept); C2's 03:00 row is an exact
+    copy (dropped). One series at a time has no clock change. A blank copy is no second value
+    (audit pass 1): see test_iot.py's blanked-reading test."""
+    rows = _rows("C1", range(6)) + _rows("C1", [2], [99.0]) + _rows("C2", range(6))
     df = pd.DataFrame(rows + [rows[-3]])
     out, audit = _clean(df)
     assert len(out) == len(df) - 1

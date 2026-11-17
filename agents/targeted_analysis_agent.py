@@ -41,6 +41,7 @@ from agents.utils import (
     weekly_cadence,
     year_earlier,
 )
+from connectors.base import as_times
 from agents.visualization_agent import (
     VizContext,
     _format_value,
@@ -634,7 +635,7 @@ def handle_time_series(df: pd.DataFrame, params: TargetedParams, contract: DataC
         avg_week = ""
         rows, kept = rows_for(df, contract, metric)   # a domain's money: the rows its chart counts
         s = rows[[date, metric, *extra]].copy()
-        s[date] = _local(pd.to_datetime(s[date], errors="coerce"))
+        s[date] = _local(as_times(s[date]))
         s = s.dropna(subset=[date, metric])
         if s.empty:
             raise ValueError("no valid (date, metric) rows after coercion")
@@ -723,6 +724,15 @@ def handle_time_series(df: pd.DataFrame, params: TargetedParams, contract: DataC
                        + f" and {len(below)} below the lower one. These are control limits from the "
                        "process itself, not specification limits; readings close in time are alike, "
                        "so points outside come more often than 3 sigma suggests.")
+        # what the chart can't show: a stuck instrument reads as a steady process, a silent
+        # day is no point (the moving range spans it)
+        same = series[series.diff().eq(0)]
+        if len(same):
+            answer += (f" {len(same)} day{'s' if len(same) != 1 else ''} repeat the day before's "
+                       f"identical daily mean (first {same.index[0].date()}): a stuck instrument?")
+        missing = len(pd.date_range(series.index.min(), series.index.max(), freq="D")) - len(series)
+        if missing:
+            answer += f" {missing} day{'s' if missing != 1 else ''} without readings."
     code = _code(f"df.set_index(pd.to_datetime(df[{date!r}]))[{metric!r}].resample({freq!r})",
                  agg, metric, contract, over=f"pd.Grouper(key={date!r}, freq={freq!r})")
     if kept:
@@ -1034,7 +1044,7 @@ def _week_anchor(dates: pd.Series, contract: DataContract | None = None) -> str:
     week-ending date; daily data: the domain's calendar week (retail: Sun–Sat), else ISO weeks.
     Never the export's last weekday (a bucket that moved with every refresh)."""
     if weekly_cadence(dates):
-        last = pd.to_datetime(dates, errors="coerce").max()
+        last = as_times(pd.Series(dates)).max()
         return f"W-{['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'][last.weekday()]}"
     pack = pack_for(contract.domain) if contract is not None else None
     return f"W-{pack.week_ends if pack else 'SUN'}"
@@ -1095,12 +1105,12 @@ def stores_note(contract: DataContract, df: pd.DataFrame, date: str | None,
     store = contract.roles.get(pack.location_role) if pack and pack.location_role else None
     if not (store and date and store in df.columns and date in df.columns):
         return ""
-    t = _local(pd.to_datetime(df[date], errors="coerce"))
+    t = _local(as_times(df[date]))
     span = t.groupby(df[store]).agg(["min", "max"])
     lo, hi = t.min(), t.max()
     if compared:   # from the earlier window's start to the later one's end
-        lo = _local(pd.to_datetime(compared[0][date], errors="coerce")).min()
-        hi = _local(pd.to_datetime(compared[1][date], errors="coerce")).max()
+        lo = _local(as_times(compared[0][date])).min()
+        hi = _local(as_times(compared[1][date])).max()
     month = pd.Timedelta(days=28)
     active = span[(span["max"] >= lo) & (span["min"] <= hi)]   # stores trading in the span
     changed = int(((active["min"] > lo + month) | (active["max"] < hi - month)).sum())
@@ -1133,7 +1143,7 @@ def _percent_axis(chart: ChartConfig, kind: str, key: str) -> None:
 
 def _as_of(rows: pd.DataFrame, date: str) -> str:
     """'as of 31 Oct 2026': a state's date, the newest snapshot in these rows."""
-    t = _local(pd.to_datetime(rows[date], format="mixed", errors="coerce")).max()
+    t = _local(as_times(rows[date])).max()
     return f"as of {t:%-d %b %Y}" if pd.notna(t) else ""
 
 
@@ -1356,7 +1366,7 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
         # the whole data's buckets, so the period before and a year earlier exist for the window
         # a spell series has its own axis (month-ends from its first date): rows are not dated in it
         t = spell_covered(pack, all_rows, roles) if spelled else \
-            _local(pd.to_datetime(full[date], errors="coerce"))
+            _local(as_times(full[date]))
         rule = _week_anchor(t, contract) if freq == "W" else freq
         # a spell series reads the filtered part (Support's headcount, never the company's)
         frame = df.assign(_period=pd.Series(pd.NaT, index=df.index).astype(f"period[{rule}]")) \
@@ -1377,7 +1387,7 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
         # the data's edges are the whole file's (a named value's first row is not its start)
         # the data's edges are the whole file's; a spell's are its month-ends to the as-of
         covered = t if all_rows is full or spelled else \
-            _local(pd.to_datetime(all_rows[date], errors="coerce"))
+            _local(as_times(all_rows[date]))
         uncut = series
         whole, note = _cut_partial(series, covered, freq, rule if freq == "W" else None,
                                    runout_months(contract))
@@ -1434,7 +1444,7 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
                 # value over the data first, then its latest period (Domain 7 smoke run)
                 over = measure(df, roles, pack, kpi.name, full=all_rows, window=win, cut=cut)
                 if isinstance(over, Measured):
-                    t = pd.to_datetime(frame[date], errors="coerce").dropna() if date else None
+                    t = as_times(frame[date]).dropna() if date else None
                     span = f" ({t.min():%d %b %Y} to {t.max():%d %b %Y})" if t is not None and len(t) else ""
                     answer = f"{kpi.label}{where}{span}: {fmt(over.value)}. " + answer
             def base(v) -> bool:   # a value to compare against (0% is one; $0 or less: no % change)
@@ -1545,7 +1555,7 @@ def _arriving(contract: DataContract, full: pd.DataFrame, date: str | None, para
     months = runout_months(contract)
     if not months or not date or not (params.period_start or params.period_end):
         return ""
-    last = _local(pd.to_datetime(full[date], errors="coerce")).max()
+    last = _local(as_times(full[date])).max()
     since = last.to_period("M") - months + 1
     hi = period_window(full, date, params.period_start, params.period_end)[1]
     if pd.isna(last) or hi < since.start_time:

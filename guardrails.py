@@ -487,11 +487,17 @@ _TIME_CUE_RE = re.compile(r"(?:\d{4}-\d\d-\d\d[T ]?|\b(?:at|from|to|until|till|b
                           r"before|after|since|around)\s+)$", re.I)
 # Day-level forms the main pattern leaves: a slash date, a month and day with no year.
 _SLASH_DATE_RE = re.compile(r"\b(?:\d{1,2}/\d{1,2}/\d{2,4}|\d{4}/\d{1,2}/\d{1,2})\b")
+# (a month named with its capital: "march 47 units short" is prose, never a date)
 _MONTH_DAY_RE = re.compile(rf"\b(?:{_MONTH})\b\.?\s+\d{{1,2}}(?:st|nd|rd|th)?\b"
-                           r"(?![.,]\d|\s*(?:%|percent))", re.I)
+                           r"(?![.,]\d|\s*(?:%|percent))")
+# a duration written h:mm with its unit ("4:30 hours", "from 3:15 to 2:45 hours") is a claim
+_DURATION_AFTER_RE = re.compile(r"^(?:\s*(?:to|-|–)\s*\d{1,2}:\d{2})?\s*(?:h|hrs?|hours?|mins?|minutes)\b",
+                                re.I)
 
 
 def _clock(text: str, m: re.Match) -> bool:
+    if _DURATION_AFTER_RE.match(text[m.end():]):
+        return False
     return bool(m["s"] or m["z"] or int(m["h"]) >= 13 or _TIME_CUE_RE.search(text[:m.start()]))
 
 
@@ -920,7 +926,9 @@ _ROLE_NOUNS = {"rep", "representative", "owner", "assignee", "assigned_to", "age
                "policyholder", "insured", "beneficiary", "subscriber", "guarantor", "claimant",
                "dependent", "caregiver", "guardian",
                # the shop floor and a CMMS work order (Domain 7)
-               "operator", "supervisor", "reportedby", "reported_by", "changeby", "changed_by"}
+               "operator", "supervisor", "reportedby", "reported_by", "changeby", "changed_by",
+               "mechanic", "planner", "completedby", "completed_by", "inspector", "worker", "lead",
+               "lead_hand", "foreman", "login"}
 # A CMMS login (Maximo's REPORTEDBY "JSMITH"): one capitalised token of letters, 4+ long, so a
 # rep code ("R12") stays data. Read only in a column named for a person's role.
 _LOGIN_RE = re.compile(r"^[A-Z]{4,12}$")
