@@ -30,7 +30,7 @@ def test_slash_and_month_day_dates_leave_one_space():
 
 
 def test_a_role_column_half_of_whose_values_are_logins_is_a_name():
-    assert pii_kind("technician", ["JSMITH", "pump 3"])[0] == "name"
+    assert pii_kind("technician", ["JSMITH", "KLEE", "RPATEL", "pump 3"])[0] == "name"
 
 
 # ── evals: answer_numbers ─────────────────────────────────────────────────────

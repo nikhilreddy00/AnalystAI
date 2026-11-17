@@ -932,8 +932,12 @@ _ROLE_NOUNS = {"rep", "representative", "owner", "assignee", "assigned_to", "age
                "mechanic", "planner", "completedby", "completed_by", "inspector", "worker", "lead",
                "lead_hand", "foreman", "login"}
 # A CMMS login (Maximo's REPORTEDBY "JSMITH"): one capitalised token of letters, 4+ long, so a
-# rep code ("R12") stays data. Read only in a column named for a person's role.
+# rep code ("R12") stays data. Read only in a column named for a system user (an operator, a
+# lead or a shift lead holds names; "VERIZON", "WARM", "NIGHT" are categories), and only when 3
+# tokens or more differ ("SUCCESS"/"FAILED" is a status) (review 2026-11-17).
 _LOGIN_RE = re.compile(r"^[A-Z]{4,12}$")
+_LOGIN_NOUNS = {"reportedby", "reported_by", "changeby", "changed_by", "completedby", "completed_by",
+                "login", "technician", "inspector"}
 # An employee badge (a door-access or clock-in id) identifies one person: named, never valued.
 _BADGE_COL_RE = re.compile(r"(?:^|_)badge(?:_?(?:id|no|number|num))?$", re.I)
 # Department / unit names read like people ("Critical Care"): these words mark a thing, not a person.
@@ -1208,9 +1212,11 @@ def pii_kind(name: str, values: Iterable[Any]) -> tuple[str, str] | None:
     last = norm.lower().split("_")[-1] if norm else ""
     if _BADGE_COL_RE.search(norm):
         return "name", f"the column name '{name}' marks an employee badge"
+    logins = (last in _LOGIN_NOUNS or norm.lower() in _LOGIN_NOUNS) \
+        and len({t for t in text if _LOGIN_RE.match(t)}) >= 3
     if (last in _ROLE_NOUNS or norm.lower() in _ROLE_NOUNS) and text \
             and sum((bool(_PERSON_RE.match(t)) or bool(_LAST_FIRST_RE.match(t))
-                     or bool(_LOGIN_RE.match(t))) and not _ORG_RE.search(t) for t in text) \
+                     or (logins and bool(_LOGIN_RE.match(t)))) and not _ORG_RE.search(t) for t in text) \
             >= 0.5 * len(vals):
         return "name", f"'{name}' names a person's role and its values read as people's names"
     hits: dict[str, int] = {}
