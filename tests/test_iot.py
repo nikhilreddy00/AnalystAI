@@ -160,10 +160,20 @@ def test_a_value_no_pack_word_list_knows_is_said_never_silently_dropped():
     roles = {"work_order": "wonum", "asset": "assetnum", "work_type": "worktype", "status": "status"}
     _, audit = clean(CleanContext(df=df, ids={"wonum"}, dates=set(), targets=set(),
                                   drop_high_null=False, pack=IOT, roles=roles))
-    said = {d.column: d for d in audit.decisions if d.strategy == "unlisted_values"}
-    assert said["worktype"].rows_affected == 3 and "Modification (2)" in said["worktype"].reason
-    assert "Project (1)" in said["worktype"].reason and "corrective work orders" in said["worktype"].reason
-    assert said["status"].rows_affected == 1 and "Cancel requested (1)" in said["status"].reason
+    kpis = "MTTR, corrective work orders, preventive share of work orders"
+    assert [(d.column, d.operation, d.reason, d.rows_affected) for d in audit.decisions
+            if d.strategy == "unlisted_values"] == [
+        ("status", "flag", "1 rows have a status no word list of the pack names: Cancel requested (1): "
+         "read as counted (no status list holds them).", 1),
+        ("worktype", "flag", "3 rows have a work type no word list of the pack names: Modification (2), "
+         f"Project (1): left out of {kpis}.", 3)]
+    # every status known, then four unknown work types: the three commonest named
+    four = df.assign(worktype=["Mod", "Mod", "Proj", "Calib", "Audit", "CM"], status="COMP")
+    _, audit = clean(CleanContext(df=four, ids={"wonum"}, dates=set(), targets=set(),
+                                  drop_high_null=False, pack=IOT, roles=roles))
+    assert [d.reason for d in audit.decisions if d.strategy == "unlisted_values"] == [
+        "5 rows have a work type no word list of the pack names: Mod (2), Proj (1), Calib (1): "
+        f"left out of {kpis}."]
     known = df.assign(worktype=["CM", "Emergency Repair", "PM", "cm", "Inspection", "Reactive"],
                       status="COMP")
     _, audit = clean(CleanContext(df=known, ids={"wonum"}, dates=set(), targets=set(),
@@ -203,6 +213,11 @@ def test_epoch_seconds_are_their_dates_never_1970():
     assert [str(t)[:13] for t in as_times(secs)] == ["2026-02-28 21", "2026-02-28 22", "NaT", "2026-03-31 21"]
     assert as_times(secs.astype("Int64").astype(str).replace("<NA>", None)).iloc[0] == as_times(secs).iloc[0]
     assert as_times(pd.Series([3, 5, 7])).isna().all()   # small counts are no epoch
+    # epoch seconds are [1e9, 1e10) on 80% of the numbers at least; the rest are NaT
+    assert [str(t) for t in as_times(pd.Series([1e9] * 4 + [5.0]))] == ["2001-09-09 01:46:40"] * 4 + ["NaT"]
+    assert [str(t) for t in as_times(pd.Series([9999999999.0] * 4 + [1e10]))] == \
+        ["2286-11-20 17:46:39"] * 4 + ["NaT"]
+    assert as_times(pd.Series([1e10] + [9999999999.0] * 3 + [5.0])).isna().all()   # 3 of 5
     from agents.targeted_analysis_agent import handle_time_series
     from connectors.csv_connector import CSVConnector
     from orchestrator.state import ConnectorConfig, ConnectorType, TargetedParams
@@ -307,6 +322,28 @@ def test_a_shift_over_100_percent_performance_is_flagged_never_capped():
     assert "Performance rate over 100%" in flags[0].reason and "ideal cycle" in flags[0].reason
 
 
+def test_each_rows_ratio_over_its_max_is_flagged_and_a_ratio_at_the_max_is_not():
+    """Worked by hand: 100 run minutes each; performance = ideal cycle s × total ÷ 60 ÷ 100."""
+    from agents.cleaning_agent import CleanContext, clean
+    cols = ["planned_minutes", "unplanned_downtime", "total_count", "ideal_cycle_s", "good_count"]
+
+    def flags(rows, pack=IOT):
+        _, audit = clean(CleanContext(df=pd.DataFrame(rows, columns=cols), ids=set(), dates=set(),
+                                      targets=set(), drop_high_null=False, pack=pack,
+                                      roles={c: c for c in cols}))
+        return [(d.column, d.operation, d.reason, d.rows_affected) for d in audit.decisions
+                if d.strategy == "kpi_over_max"]
+    words = "the ideal cycle time is likely wrong (set too long)"
+    assert flags([[100, 0, 60, 120, 60], [100, 0, 50, 120, 50], [100, 0, 30, 60, 30]]) == [   # 120%, 100%, 30%
+        ("ideal_cycle_s", "flag", f"1 row with Performance rate over 100%: {words}; kept, never capped.", 1)]
+    assert flags([[100, 0, 60, 120, 60], [100, 0, 70, 120, 70], [100, 0, 30, 60, 30]]) == [   # 120%, 140%
+        ("ideal_cycle_s", "flag", f"2 rows with Performance rate over 100%: {words}; kept, never capped.", 2)]
+    plain = IOT.model_copy(update={"kpis": [k.model_copy(update={"max_words": None}) for k in IOT.kpis]})
+    assert flags([[100, 0, 60, 120, 60]], plain) == [
+        ("ideal_cycle_s", "flag", "1 row with Performance rate over 100%; kept, never capped.", 1)]
+    assert flags([[100, 0, 60, None, 60]]) == []   # no ideal cycle: performance not computable
+
+
 def test_a_blank_failure_code_is_no_failure_never_missing():
     """Live check (D1-04): a preventive order has no failure code by design; the high-null gate
     asked about it, an alert called it 48% missing and an action said to back-fill it."""
@@ -325,6 +362,19 @@ def test_a_machine_id_is_no_date_filter():
                        "x": range(30)})
     roles = classify_columns(df)
     assert "Machine" not in roles["datetime_cols"] and "Day" in roles["datetime_cols"]
+
+
+def test_a_span_ending_before_its_start_is_blank_unless_signed_for_the_range_check():
+    from domain_pack.columns import derived_roles
+    wo = pd.DataFrame({"s": ["2026-01-01T10:00Z"] * 2, "f": ["2026-01-01T12:30Z", "2026-01-01T08:00Z"]})
+    roles = {"actual_start": "s", "actual_finish": "f"}
+    hours = [derived_roles(wo, roles, IOT, **kw)[0].iloc[:, -1].tolist() for kw in ({}, {"signed": True})]
+    assert str(hours) == "[[2.5, nan], [2.5, -2.0]]"
+    stay = pd.DataFrame({"a": ["2026-01-03"] * 2, "d": ["2026-01-05", "2026-01-01"]})
+    roles = {"admit_date": "a", "date": "d"}
+    days = [derived_roles(stay, roles, dp.pack_for("healthcare"), **kw)[0].iloc[:, -1].tolist()
+            for kw in ({}, {"signed": True})]
+    assert str(days) == "[[2.0, nan], [2.0, -2.0]]"
 
 
 def test_a_kpi_reads_the_status_that_kinds_its_rows_and_its_derived_roles_sources():

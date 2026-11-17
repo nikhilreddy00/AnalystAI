@@ -243,7 +243,7 @@ def test_a_group_with_a_zero_base_is_said_never_dropped_or_ranked():
     """F9 (Domain 7, C5): a ratio by group dropped every group whose base is 0 without a word (a
     machine with run time and no failures vanished from 'MTBF by machine'). It is kept apart
     from the ranked values with its numerator and said in the KPI's words, else generic ones."""
-    from domain_pack.kpi import measure, zero_note
+    from domain_pack.kpi import Unavailable, measure, unavailable_words, zero_note
     pack = Pack.model_validate(__import__("yaml").safe_load(PER_UNIT))
     df = pd.DataFrame({"account_id": ["A", "A", "B", "C"], "amount": [10.0, 20.0, 50.0, 0.0],
                        "quantity": [1, 2, 0, 0]})
@@ -257,13 +257,22 @@ def test_a_group_with_a_zero_base_is_said_never_dropped_or_ranked():
     assert zero_note(pack.kpi("per_unit_plain"), plain.zero, str) == \
         " Not measurable, its base is 0: B, C."
     only_zero = measure(df[df.account_id != "A"], roles, pack, "per_unit", by="account_id")
-    assert only_zero.reason == "zero_denominator"
+    assert only_zero == Unavailable("zero_denominator", zero=50.0)
+    # said in the KPI's words when there is a numerator and the KPI has them, else generic
+    k = pack.kpi("per_unit")
+    assert [unavailable_words(u, pack, kpi) for u, kpi in (
+        (only_zero, k), (only_zero, None), (Unavailable("zero_denominator"), k),
+        (Unavailable("role_missing", roles=("quantity",)), k))] == [
+        "none counted against 50", "its base is 0", "its base is 0", "the data has no quantity"]
+    # one figure: B's 50 over 0 keeps its numerator; C's 0 over 0 has none
+    assert [measure(df[df.account_id == a], roles, pack, "per_unit") for a in "BC"] == [
+        Unavailable("zero_denominator", zero=50.0), Unavailable("zero_denominator")]
 
 
 def test_a_small_protected_group_with_a_zero_base_is_hidden_not_said():
     """F9 review: the zero-base groups skipped the small-cell rule, so a protected group of 2
     people with no base had its numerator said. Every group is checked first."""
-    from domain_pack.kpi import measure
+    from domain_pack.kpi import Unavailable, measure
     pack = Pack.model_validate(__import__("yaml").safe_load(
         PER_UNIT + "protected_roles: [status]\nperson_key: account_id\n"))
     people = [f"P{i}" for i in range(14)]
@@ -271,6 +280,9 @@ def test_a_small_protected_group_with_a_zero_base_is_hidden_not_said():
                        "quantity": [1] * 12 + [0, 0], "status": ["posted"] * 12 + ["held"] * 2})
     got = measure(df, {c: c for c in df.columns}, pack, "per_unit", by="status")
     assert "held" in got.hidden and got.zero == ()
+    # every group small (one valued, one at a 0 base): hidden, never its 0 base said
+    assert measure(df[df.status == "held"].assign(quantity=[1, 0]), {c: c for c in df.columns}, pack,
+                   "per_unit", by="status") == Unavailable("small_cell")
     # the complement of a hidden value is another value, never a zero base: with one small
     # valued group (V, 3 people) beside 2 large ones and a small zero-base group, the next
     # smallest VALUED group is hidden with it

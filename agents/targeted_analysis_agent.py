@@ -218,12 +218,15 @@ def run_targeted_analysis(session: AnalysisSession) -> TargetedResponse:
 def _also_named(df: pd.DataFrame, params: TargetedParams, contract: DataContract, pack, question: str) -> str:
     """The other KPIs the question names ('What is our MRR and how many paying customers?'),
     each overall, in its own words: an answer gives every figure asked for (Domain 6 E2E gate:
-    one of two was given). domain_pack.named_kpis decides which, as intake does."""
+    one of two was given). domain_pack.named_kpis decides which, as intake does. A named value
+    ('OEE and MTBF for M08') is that value's rows, as the answer's own KPI is (mutation gate)."""
     roles = {r: c for r, c in contract.roles.items() if c in df.columns}
-    out = []
+    out, cut = [], ()
+    if named := _named_group(df, params):
+        df, cut = df[df[params.segment_column].astype(str) == named], (params.segment_column,)
     group = params.group_by or params.segment_column
     if group and additive(pack, params.kpi) and _TOTAL_WORDS.search(question or "") and \
-            isinstance(v := measure(df, roles, pack, params.kpi), Measured):   # 'total billings, by type'
+            isinstance(v := measure(df, roles, pack, params.kpi, cut=cut), Measured):   # 'total billings, by type'
         k = pack.kpi(params.kpi)
         _, currency, _ = main_currency(df, roles)
         kind = {"money": "currency", "percent": "percent", "count": "count"}.get(k.unit, "number")
@@ -234,7 +237,7 @@ def _also_named(df: pd.DataFrame, params: TargetedParams, contract: DataContract
         if name == params.kpi or not computable(pack, name, roles):
             continue
         k = pack.kpi(name)
-        v = measure(df, roles, pack, name)
+        v = measure(df, roles, pack, name, cut=cut)
         if isinstance(v, Unavailable):   # asked for: said why, never left out (C5)
             out.append(f"{k.label}: unavailable, {unavailable_words(v, pack, k)}.")
             continue
@@ -728,7 +731,7 @@ def handle_time_series(df: pd.DataFrame, params: TargetedParams, contract: DataC
         # day is no point (the moving range spans it)
         same = series[series.diff().eq(0)]
         if len(same):
-            answer += (f" {len(same)} day{'s' if len(same) != 1 else ''} repeat the day before's "
+            answer += (f" {len(same)} day{'s repeat' if len(same) != 1 else ' repeats'} the day before's "
                        f"identical daily mean (first {same.index[0].date()}): a stuck instrument?")
         missing = len(pd.date_range(series.index.min(), series.index.max(), freq="D")) - len(series)
         if missing:

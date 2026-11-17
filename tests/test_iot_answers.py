@@ -61,6 +61,16 @@ def test_a_worked_control_chart_states_its_limits_and_the_days_outside():
         {"value": 5.6809, "label": "LCL", "axis": "y"}]
 
 
+def test_one_repeated_day_and_the_days_without_readings_are_counted():
+    v = [10, 12] * 15 + [12, 14, 10, 13, 11]   # 31 Aug repeats 30 Aug's 12
+    stuck = " 1 day repeats the day before's identical daily mean (first 2026-08-31): a stuck instrument?"
+    assert _series(v).answer_text.endswith(stuck)
+    contract = _built("machine_readings")[2]
+    for drop, said in (([32], " 1 day without readings."), ([32, 33], " 2 days without readings.")):
+        text = handle_time_series(_readings(v).drop(index=drop), TargetedParams(**S07), contract).answer_text
+        assert text.endswith(stuck + said), text
+
+
 def test_a_day_on_a_limit_is_not_beyond_it():
     """A point exactly on UCL or LCL is inside: only strictly beyond counts."""
     base = [10.0, 12.0] * 15
@@ -83,6 +93,10 @@ def test_a_flat_baseline_says_why_there_are_no_limits():
     assert r.answer_text.startswith("Temperature for Sensor S07 trended flat"), r.answer_text
     assert (" No control limits: no variation from day to day in the first days (a stuck "
             "instrument?). 34 days repeat the day before's identical daily mean") in r.answer_text
+    # 30 days 10, 12, 12, 12, …: 14 repeat the day before, 16 left
+    days = pd.date_range("2026-08-01", periods=30)
+    assert control_limits(pd.Series(([10.0, 12.0, 12.0, 12.0] * 8)[:30], index=days)) == (
+        "only 16 of the first days differ from the day before (20 at least; a stuck instrument?)")
 
 
 def test_a_control_chart_reads_daily_means_whatever_aggregation_was_asked():
@@ -235,6 +249,33 @@ def test_one_machine_with_no_failures_says_its_run_time_never_a_zero_base():
     iot = pack_for("iot")
     got = measure(m08, contract.roles, iot, "mtbf", by="Machine")
     assert unavailable_words(got, iot, iot.kpi("mtbf")) == f"no failure in {run:,.0f} hours of run time"
+
+
+def test_each_answer_path_says_a_zero_base_in_the_kpis_words():
+    """M08 never failed: MTBF on its rows is no failure in its 1,546 run hours, whichever path
+    answers (a tile, a group, a series, a year-earlier comparison, a second KPI asked).
+    Mutation gate: "OEE and MTBF for M08" gave the plant's MTBF (42.29 h) as M08's."""
+    from agents.visualization_agent import pack_kpis
+    _, clean, contract, _ = _built("shift_production")
+    m08 = clean.query("Machine == 'M08'")
+    none = "no failure in 1,546 hours of run time"
+    assert [(k.value, k.context) for k in pack_kpis(m08, contract, full=clean) if k.label == "MTBF"] == [
+        ("—", none)]
+    text, _ = answer("shift_production", "segment_compare", "OEE and MTBF for M08", kpi="oee",
+                     segment_column="Machine", segment_value="M08")
+    assert text.endswith(f" Also asked: MTBF: unavailable, {none}."), text
+    for params, intent, said in (
+            (dict(group_by="Machine"), QuestionIntent.SEGMENT_COMPARE, "MTBF can't be shown by Machine"),
+            (dict(frequency="M"), QuestionIntent.TIME_SERIES, "MTBF can't be computed over time here")):
+        r = handle_kpi(m08, TargetedParams(kpi="mtbf", **params), contract, intent=intent)
+        assert r.answer_text == f"I couldn't answer this — {said}: {none}", r.answer_text
+    date = contract.roles["date"]
+    two = pd.concat([m08.assign(**{date: m08[date] - pd.DateOffset(years=1)}), m08], ignore_index=True)
+    for params, said in (({}, "can't be computed from these rows: no failure in 3,091"),
+                         (dict(group_by="Machine"), "can't be shown by Machine: no failure in 3,091")):
+        r = handle_kpi(two, TargetedParams(kpi="mtbf", compare="yoy", **params), contract,
+                       intent=QuestionIntent.SEGMENT_COMPARE)
+        assert said in r.answer_text, r.answer_text
 
 
 def test_a_protected_group_of_five_gets_no_overall_value():

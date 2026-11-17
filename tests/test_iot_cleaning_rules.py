@@ -88,6 +88,38 @@ def test_a_measure_is_converted_once_by_its_unit_code_and_a_row_without_a_unit_i
          "1 rows' unit changed from dC to °C, with their values.", 1, 14.3, 14.3)]
 
 
+def _units(units, pack=PACK) -> tuple[list, list]:
+    df = pd.DataFrame({"account_id": [chr(65 + i) for i in range(len(units))],
+                       "pipe_temp": [20.0 + i for i in range(len(units))], "temp_unit": units})
+    out, audit = clean(CleanContext(df=df, ids={"account_id"}, dates=set(), targets=set(),
+                                    drop_high_null=False, pack=pack, roles={c: c for c in df.columns}))
+    return out["pipe_temp"].tolist(), [_said(d) for d in audit.decisions
+                                       if d.strategy in ("unit_converted", "unknown_unit")]
+
+
+def test_a_unit_no_conversion_knows_is_blanked_its_three_commonest_named():
+    temps, said = _units(["°C", "°R", "°R", "furlong", "X", "X", "X", "°C"])
+    assert str(temps) == "[20.0, nan, nan, nan, nan, nan, nan, 27.0]"
+    assert said == [("pipe_temp", "sentinel_null", "unknown_unit",
+                     "6 pipe temp values in a unit with no conversion to °C (X (3), °R (2), furlong (1)) "
+                     "read as missing, never averaged with the rest; the rows are kept.", 6, 0.0, 75.0)]
+    temps, said = _units(["°C", "°R", "°R", None])   # a blank unit beside °R: which is it?
+    assert str(temps) == "[20.0, nan, nan, nan]" and [s[3] for s in said] == [
+        "3 pipe temp values in a unit with no conversion to °C (°R (2), (blank) (1)) read as missing, "
+        "never averaged with the rest; the rows are kept."]
+
+
+def test_a_blank_unit_beside_the_target_unit_or_its_other_name_is_that_unit():
+    """No unit but `to` (or a 1 × + 0 name of it) in the column: a blank unit is no doubt."""
+    assert _units(["°C", None, "°C"]) == ([20.0, 21.0, 22.0], [])
+    rule = PACK.units["pipe_temp"]
+    alias = PACK.model_copy(update={"units": {**PACK.units, "pipe_temp": rule.model_copy(
+        update={"convert": {**rule.convert, "Celsius": (1.0, 0.0)}})}})
+    assert _units(["Celsius", None, "°C"], alias) == ([20.0, 21.0, 22.0], [   # renamed, never converted
+        ("temp_unit", "type_coerce", "unit_converted",
+         "1 rows' unit changed from Celsius to °C, with their values.", 1, 33.3, 33.3)])
+
+
 def test_one_clash_and_a_double_write_of_one_series():
     """C1 wrote 02:00 twice with another value (a clash, both kept); C2's 03:00 row is an exact
     copy (dropped). One series at a time has no clock change. A blank copy is no second value
@@ -104,6 +136,11 @@ def test_one_clash_and_a_double_write_of_one_series():
     assert _said(flags["series_clash"])[:5] == (
         "account_id", "flag", "series_clash", "1 time of one account_id with two different rows "
         "(C1 at 2026-03-01 02:00): both kept, check them at the source.", 1)
+
+
+def test_a_clash_row_blank_in_another_column_is_still_a_clash():
+    df = pd.DataFrame(_rows("C1", range(6)) + _rows("C1", [2], [99.0])).assign(amount=[1.0] * 6 + [None])
+    assert _flags(df)["series_clash"].rows_affected == 1
 
 
 def test_clashes_shared_by_fewer_than_half_the_series_are_clashes_three_named():
