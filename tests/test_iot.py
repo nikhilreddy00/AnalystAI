@@ -126,6 +126,27 @@ def test_what_a_kpi_lacks_is_said_with_each_column_once():
     assert _missing(IOT, "mttr", {"asset": "a"}) == "repair hours and work type and work order"
 
 
+def test_what_a_kpi_lacks_names_only_the_sides_that_lack_and_each_way_apart():
+    """Mutation gate on _missing: a side the data supports is never named; a side with two ways
+    says each ('x, or y and z'); a word shared with another side is merged only when every side
+    has one way; a computable KPI lacks 'other columns'."""
+    import yaml
+
+    from agents.targeted_analysis_agent import _missing
+    from domain_pack import Pack
+    from tests.test_second_pack import BANK
+    # availability: run time lacking, planned minutes there: only run time is named
+    assert _missing(IOT, "availability", {"planned_minutes": "p"}) == "run time"
+    # scrap rate: two ways for its numerator, one for its denominator
+    assert _missing(IOT, "scrap_rate", {"asset": "a"}) == \
+        "scrap count, or good count and total count and total count"
+    two_ways = Pack.model_validate(yaml.safe_load(BANK.replace("kpis:\n", """kpis:
+  - {name: odd, label: Odd, unit: number, num: [[{sum: amount}], [{sum: quantity}]], den: [[{sum: amount}]]}
+""")))
+    assert _missing(two_ways, "odd", {"account_id": "a"}) == "amount, or quantity and amount"
+    assert _missing(IOT, "good_count", {"good_count": "g"}) == "other columns"
+
+
 def test_a_machine_id_is_no_date_filter():
     """Browser read (mock stack): the dashboard offered 'Machine' as a date range; pandas reads
     'M01' as 00:00:01 on 1 Jan of year 1. Columns are dated by the load's one rule (F2)."""
