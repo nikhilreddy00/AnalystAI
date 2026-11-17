@@ -211,6 +211,16 @@ def test_the_baseline_is_thirty_calendar_days_without_stuck_days():
     assert (round(cl, 6), round(ucl, 6), round(lcl, 6)) == (11.0, 16.319149, 5.680851)
 
 
+def test_the_overview_chart_says_a_line_it_cannot_draw():
+    """Live check (S-a): Line D (0 planned minutes) vanished from the overview's OEE by Line
+    bars, unsaid; the answer said it. The chart's why names it too."""
+    from tests.test_dashboard_filters import _dashboard
+    charts = _dashboard("shift_production")[2]
+    oee = next(c for c in charts if c.title.startswith("OEE by Line"))
+    assert "Line D" not in {d["Line"] for d in oee.data}
+    assert "Not measurable, its base is 0: Line D." in oee.rationale.reason, oee.rationale.reason
+
+
 def test_one_machine_with_no_failures_says_its_run_time_never_a_zero_base():
     """S-b (spec review): a filter to M08 (never failed) said 'its base is 0'; MTBF there is a
     lower bound: no failure in its run hours. Asked alone and as a tile on the filtered part."""

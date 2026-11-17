@@ -1311,7 +1311,9 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
         else:
             answer = (f"{kpi.label} by {group}{where}: {lead} {'lowest' if asc else 'leads'} at "
                       f"{fmt(named.iloc[0])}" + (f", {tail} at {fmt(named.iloc[-1])}." if len(named) > 1 else "."))
-        answer += hidden_note(hidden, bool(protected_by)) + zero_note(kpi, got.zero, fmt)
+        # groups not drawn (hidden, a zero base) are said by the chart too, never vanished (F9)
+        notes = hidden_note(hidden, bool(protected_by)) + zero_note(kpi, got.zero, fmt)
+        answer += notes
         said = pack.spell.words.moved if spelled else ""
         if said and kpi.unit == "money" and any(t.move in MOVES for t in spell_terms(pack, kpi.name)):
             # a customer who changed group moved between the groups' bridges (GLOSSARY Move)
@@ -1352,7 +1354,7 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
                        x_key=group, y_keys=[kpi.label], x_label=group, y_label=kpi.label,
                        source="kpi")
         _percent_axis(chart, kind, kpi.label)
-        _why(chart, ctx, "targeted:kpi→ranked bars", f"{kpi.label} per {group}, ranked. {how}",
+        _why(chart, ctx, "targeted:kpi→ranked bars", f"{kpi.label} per {group}, ranked.{notes} {how}",
              group, kpi.label, "sum" if kpi.den is None and not spelled else "none", len(df))
         return TargetedResponse(intent=intent, answer_text=answer + f" How: {how}",
                                 chart_configs=[chart],   # every group's value, not only the ends

@@ -307,6 +307,15 @@ def test_a_shift_over_100_percent_performance_is_flagged_never_capped():
     assert "Performance rate over 100%" in flags[0].reason and "ideal cycle" in flags[0].reason
 
 
+def test_a_blank_failure_code_is_no_failure_never_missing():
+    """Live check (D1-04): a preventive order has no failure code by design; the high-null gate
+    asked about it, an alert called it 48% missing and an action said to back-fill it."""
+    from domain_pack.columns import layout_blanks
+    from tests.test_oracle import _built
+    _, clean, contract, _ = _built("work_orders")
+    assert clean["FAILURECODE"].isna().mean() > 0.4 and "FAILURECODE" in layout_blanks(clean, contract)
+
+
 def test_a_machine_id_is_no_date_filter():
     """Browser read (mock stack): the dashboard offered 'Machine' as a date range; pandas reads
     'M01' as 00:00:01 on 1 Jan of year 1. Columns are dated by the load's one rule (F2)."""

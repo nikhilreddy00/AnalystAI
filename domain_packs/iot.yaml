@@ -119,6 +119,8 @@ derived: {repair_hours: [actual_finish, hours, actual_start]}
 
 overview_groups: [production_line, asset, shift, work_type]
 overview_kpis: [oee, availability, good_count, mtbf, mttr, corrective_wos, assets, alarms]
+# blank = no event: a preventive order has no failure code (it is no failure), never missing
+marker_fields: [failure_code]
 protected_roles: [operator, reported_by]
 role_caveats:
   operator: "Operators are people: figures by operator describe the work, never rank the people, and groups of fewer than 11 operators are not shown."
