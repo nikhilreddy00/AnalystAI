@@ -253,6 +253,47 @@ def test_two_fixed_offsets_an_hour_apart_in_june_are_two_instants():
     assert t.iloc[0] != t.iloc[1]
 
 
+def test_audit_pass_2_negative_spans_blank_units_and_vibration_only_series():
+    """Audit pass 2: (1) a finish before its start was blanked before the range check, so never
+    flagged (repairs; healthcare's LOS too); (2) a blank unit beside °F rows was averaged as °C;
+    (3) a sensor with only vibration left had its clashes unread, and the clock-change fold
+    counted series that had no reading."""
+    from agents.cleaning_agent import CleanContext, clean
+    from tests.test_oracle import _built
+    wo, _ = __import__("evals.datagen", fromlist=["make"]).make("work_orders", 1)
+    done = wo.index[wo["ACTSTART"].notna() & wo["ACTFINISH"].notna()][:4]
+    wo.loc[done, "ACTFINISH"] = (pd.to_datetime(wo.loc[done, "ACTSTART"]) - pd.Timedelta(hours=3)
+                                 ).dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+    roles = {"work_order": "WONUM", "asset": "ASSETNUM", "work_type": "WORKTYPE", "status": "STATUS",
+             "actual_start": "ACTSTART", "actual_finish": "ACTFINISH", "date": "REPORTDATE"}
+    for c in ("ACTSTART", "ACTFINISH", "REPORTDATE"):
+        wo[c] = pd.to_datetime(wo[c])
+    _, audit = clean(CleanContext(df=wo, ids={"WONUM"}, dates=set(), targets=set(),
+                                  drop_high_null=False, pack=IOT, roles=roles))
+    assert [d.rows_affected for d in audit.decisions if d.strategy == "out_of_range"] == [6]
+    df = pd.DataFrame({"sensor": "S1", "temperature": [20.0, 68.0, 68.0] * 3,
+                       "unit": ["°C", "°F", ""] * 3})
+    out, audit = clean(CleanContext(df=df, ids={"sensor"}, dates=set(), targets=set(), drop_high_null=False,
+                                    pack=IOT, roles={"asset": "sensor", "temperature": "temperature",
+                                                     "temp_unit": "unit"}))
+    assert out["temperature"].mean() == pytest.approx(20.0)
+    t = list(pd.date_range("2026-10-01", periods=30, freq="h"))
+    v = pd.DataFrame({"sensor": ["S1"] * 30 + ["S2"] * 30 + ["S2"], "ts": t + t + [t[3]],
+                      "vibration": [1.0 + i % 3 for i in range(60)] + [9.0]})
+    _, audit = clean(CleanContext(df=v, ids={"sensor"}, dates={"ts"}, targets=set(), drop_high_null=False,
+                                  pack=IOT, roles={"asset": "sensor", "date": "ts", "vibration": "vibration"}))
+    assert [d.rows_affected for d in audit.decisions if d.strategy == "series_clash"] == [1]
+    # two live sensors repeat one hour; three with every reading blanked are no series to share it
+    live = pd.DataFrame({"sensor": ["S1"] * 31 + ["S2"] * 31, "ts": (t + [t[5]]) * 2,
+                         "vibration": [1.0 + i % 3 for i in range(62)]})
+    dead = pd.DataFrame({"sensor": [f"D{i}" for i in range(3) for _ in t], "ts": t * 3, "vibration": None})
+    _, audit = clean(CleanContext(df=pd.concat([live, dead], ignore_index=True), ids={"sensor"},
+                                  dates={"ts"}, targets=set(), drop_high_null=False, pack=IOT,
+                                  roles={"asset": "sensor", "date": "ts", "vibration": "vibration"}))
+    assert [d.strategy for d in audit.decisions if d.strategy.startswith("series_c")] == ["series_clock_change"]
+    assert _built("machine_readings")   # the stock readings still read as before (other tests)
+
+
 def test_a_machine_id_is_no_date_filter():
     """Browser read (mock stack): the dashboard offered 'Machine' as a date range; pandas reads
     'M01' as 00:00:01 on 1 Jan of year 1. Columns are dated by the load's one rule (F2)."""

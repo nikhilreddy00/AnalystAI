@@ -230,6 +230,10 @@ def test_without_dates_hides_days_and_years_from_number_grounding():
     "Readings at 11:30 pm and at 8:15 a.m. averaged 47.6.",
     "The stop began at 11:30 and the line read 47.6.",
     "Logged 23:59:59 with 47.6.",
+    # audit pass 2: an hour of 13+ or a cue keeps a clock time a clock time, units or not
+    "At 14:00 hrs the temperature was 47.6.",
+    "Downtime peaked at 23:15 h on Oct 23 with 47.6 units lost.",
+    "The night shift runs 22:00 to 06:00 hours and made 47.6.",
 ])
 def test_a_clock_time_is_no_number_claim(text):
     """K1 (Domain 7, from the 5.7b-3 retro): a clock time beside a date was read as a number

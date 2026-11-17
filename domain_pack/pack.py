@@ -698,16 +698,19 @@ def expand_header(norm: str, pack: Pack) -> str:
     return "_".join(pack.abbreviations.get(t, t) for t in norm.split("_"))
 
 
-def _column(df: pd.DataFrame, roles: dict[str, str], expr: str | list[str]) -> pd.Series:
+def _column(df: pd.DataFrame, roles: dict[str, str], expr: str | list[str],
+            signed: bool = False) -> pd.Series:
+    """A role's values, or a two-role expression's. A duration ending before its start is no
+    duration (blank); `signed` keeps it negative, for the check that says it (ranges)."""
     if isinstance(expr, str):
         return pd.to_numeric(df[roles[expr]], errors="coerce")
     if expr[1] == "days":   # whole days from b to a (a stay: discharge − admit; same day = 0)
         d = (_day(df[roles[expr[0]]]) - _day(df[roles[expr[2]]])).dt.days
-        return d.where(d >= 0).astype(float)
+        return d.astype(float) if signed else d.where(d >= 0).astype(float)
     if expr[1] == "hours":   # exact hours from b to a (a repair: finish − start), never negative
         from connectors.base import as_times
         h = (as_times(df[roles[expr[0]]]) - as_times(df[roles[expr[2]]])).dt.total_seconds() / 3600
-        return h.where(h >= 0).astype(float)
+        return h.astype(float) if signed else h.where(h >= 0).astype(float)
     a, op, b = (pd.to_numeric(df[roles[expr[0]]], errors="coerce"), expr[1],
                 pd.to_numeric(df[roles[expr[2]]], errors="coerce"))
     return a * b if op == "*" else a - b

@@ -63,13 +63,14 @@ def test_a_value_its_flag_marks_invalid_is_blanked_once_per_measure_and_its_doub
         "1 pipe temp values on 1 row its quality marks invalid (Bad, 0) read as missing; the rows are kept."]
 
 
-def test_a_measure_is_converted_once_by_its_unit_code_and_a_row_without_a_unit_is_left():
+def test_a_measure_is_converted_once_by_its_unit_code_and_a_row_without_a_unit_is_blanked():
+    """Audit pass 2: a row without a unit, in a column holding °F and K, is no °C reading."""
     df = pd.DataFrame({"account_id": list("ABCDEFG"),
                        "pipe_temp": [212.0, 50.0, 300.0, 205.0, 21.0, 22.0, None],
                        "temp_unit": ["deg F", "DegF", "K", "dC", "°C", None, "K"]})
     out, audit = _clean(df)
-    assert out["pipe_temp"].round(6).tolist()[:6] == [100.0, 10.0, 26.85, 20.5, 21.0, 22.0]
-    assert pd.isna(out["pipe_temp"].iloc[6])
+    assert out["pipe_temp"].round(6).tolist()[:5] == [100.0, 10.0, 26.85, 20.5, 21.0]
+    assert out["pipe_temp"].iloc[5:].isna().all()
     assert out["temp_unit"].tolist() == ["°C"] * 5 + ["Unknown", "°C"]   # a blank label: Unknown
     said = [_said(d) for d in audit.decisions if d.strategy == "unit_converted"]
     assert said == [

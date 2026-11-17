@@ -496,9 +496,11 @@ _DURATION_AFTER_RE = re.compile(r"^(?:\s*(?:to|-|–)\s*\d{1,2}:\d{2})?\s*(?:h|h
 
 
 def _clock(text: str, m: re.Match) -> bool:
-    if _DURATION_AFTER_RE.match(text[m.end():]):
+    if m["s"] or m["z"] or int(m["h"]) >= 13:   # '14:00 hrs' is a clock time, units or not
+        return True
+    if _DURATION_AFTER_RE.match(text[m.end():]):   # 'by 4:30 hours': a duration, a claim
         return False
-    return bool(m["s"] or m["z"] or int(m["h"]) >= 13 or _TIME_CUE_RE.search(text[:m.start()]))
+    return bool(_TIME_CUE_RE.search(text[:m.start()]))
 
 
 def without_dates(text: str, has_dates: bool) -> str:

@@ -112,7 +112,8 @@ invalid_when:
 # A reading belongs to its asset's series: double writes, repeated times, gaps and stuck values
 # are read per asset (a historian's on-change logging makes a gap; it never fills one).
 series_key: asset
-stuck_hours: {temperature: 24, pressure: 24}
+# every continuous reading the invalid flag blanks: a sensor with only vibration left is a series
+stuck_hours: {temperature: 24, vibration: 24, pressure: 24}
 ranges: {repair_hours: {gt: 0}}
 derived: {repair_hours: [actual_finish, hours, actual_start]}
 

@@ -81,6 +81,11 @@ CHANGED = {
     # never people) and its operator caveat counts operators; the stored ins-51 run predates it
     **{(r, "ins-51-iot-shift-overview"): "Domain 7: small cells count operators, never shifts"
        for r in ("insight-20261116T220202Z.json", "insight-20261116T220202Z-rescored.json")},
+    # Domain 7 audit: the iot pack's invalid-reading words name historian digital states
+    # (I/O Timeout, Shutdown, Comm Fail …); the cleaning note lists them
+    **{(r, "ins-52-iot-readings-overview"): "Domain 7 audit: the invalid-reading note lists the "
+       "historian's digital states" for r in ("insight-20261116T220202Z.json",
+                                              "insight-20261116T220202Z-rescored.json")},
     ("insight-20261116T035805Z.json", "ins-15-gap-not-significant"):
         "5.7b-3 smoke: a typed comparison on evidence short of high confidence says the gap may "
         "not hold (the plain one failed the hedge check)",

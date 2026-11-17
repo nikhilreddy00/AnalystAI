@@ -228,7 +228,7 @@ def test_a_closed_vocabulary_says_its_unknown_values_and_a_selection_does_not():
         return [d.reason for d in audit.decisions if d.strategy == "unlisted_values"]
     assert said(toy) == []
     assert said(toy + "closed_words: [channel]\n") == [
-        "1 rows have a channel no pack word names: phone (1): left out of online, branch."]
+        "1 rows have a channel no word list of the pack names: phone (1): left out of online, branch."]
 
 
 PER_UNIT = BANK.replace("kpis:\n", """kpis:

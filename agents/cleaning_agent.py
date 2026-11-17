@@ -200,7 +200,7 @@ def _unlisted(df: pd.DataFrame, ctx: CleanContext) -> list[tuple[str, str, int]]
         top = ", ".join(f"{v} ({n})" for v, n in unknown.astype(str).value_counts().head(3).items())
         what = (f"left out of {', '.join(dict.fromkeys(uses[role]))}" if role in uses
                 else "read as counted (no status list holds them)")
-        out.append((col, f"{len(unknown)} rows have a {role.replace('_', ' ')} no pack word names: "
+        out.append((col, f"{len(unknown)} rows have a {role.replace('_', ' ')} no word list of the pack names: "
                     f"{top}: {what}.", len(unknown)))
     return out
 
@@ -236,7 +236,7 @@ def _series_flags(df: pd.DataFrame, ctx: CleanContext, key: str, time: str) -> l
     # without their offset); a double write hits one series: shared by half of them (2+) = a fold
     pairs = d.loc[clash, [key, "_t"]].drop_duplicates()
     per_time = pairs.groupby("_t")[key].nunique()
-    folds = per_time.index[(per_time >= 2) & (per_time >= d[key].nunique() / 2)]
+    folds = per_time.index[(per_time >= 2) & (per_time >= d_valid[key].nunique() / 2)]
     own = pairs[~pairs["_t"].isin(folds)]
     if n := len(own):
         named = ", ".join(f"{k} at {v:%Y-%m-%d %H:%M}" for k, v in own.head(3).itertuples(index=False))
@@ -468,11 +468,16 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
                     df[ucol] = df[ucol].mask(row, rule.to)
                     log(ucol, "type_coerce", "unit_converted",
                         f"{m} rows' unit changed from {unit} to {rule.to}, with their values.", m, upct, upct)
-            # a unit no conversion knows (°R): its values are never averaged with the others
-            odd = code.notna() & ~done & df[col].notna()
+            # a unit no conversion knows (°R): its values are never averaged with the others; nor a
+            # blank unit in a column that holds another unit than `to` (is the row °F or °C?)
+            same = {_unit_code(rule.to)} | {_unit_code(u) for u, (s, o) in rule.convert.items() if (s, o) == (1, 0)}
+            blank = code.fillna("").eq("")
+            mixed = bool((~blank & ~code.isin(same).fillna(False)).any())
+            odd = (~blank | mixed) & ~done & df[col].notna()
             if n := int(odd.sum()):
                 pct = _null_pct(df[col])
-                top = ", ".join(f"{v} ({k})" for v, k in df.loc[odd, ucol].astype(str).value_counts().head(3).items())
+                seen = df.loc[odd, ucol].fillna("").astype(str).replace("", "(blank)")
+                top = ", ".join(f"{v} ({k})" for v, k in seen.value_counts().head(3).items())
                 df[col] = df[col].mask(odd)
                 log(col, "sentinel_null", "unknown_unit",
                     f"{n} {role.replace('_', ' ')} values in a unit with no conversion to {rule.to} "
@@ -694,7 +699,7 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
             log(roles["currency"], "flag", "other_currency", f"{other} rows in other currencies "
                 f"than {currency}; kept, left out of money totals.", other)
         # a derived role (repair hours) is checked on the same derivation every KPI reads
-        view, vroles = derived_roles(df, roles, ctx.pack)
+        view, vroles = derived_roles(df, roles, ctx.pack, signed=True)
         for role, bounds in ctx.pack.ranges.items():
             col = vroles.get(role)
             if col is None or not pd.api.types.is_numeric_dtype(view[col]):
