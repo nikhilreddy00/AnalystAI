@@ -28,3 +28,17 @@ def test_every_session_note_names_its_plan_steps_and_the_stop_rule():
     assert {n: m for n, t in due.items() if (m := missing_steps(t))} == {}
     assert missing_steps("brainstorming, domain-modeling, codebase-design, red-team") == [
         "research", "grilling", "sizing", "stop rule"]
+
+
+WALL = re.compile(r"^Wall clock: \d+(\.\d+)? h \(first commit .+ → merge .+\)", re.M)
+
+
+def test_every_session_note_says_its_wall_clock():
+    """Retro Domain 7 (D1-59): spend was tracked per session, time was not, so "are we slower?"
+    took a dig through git (Domain 6 ~7.5 h, Domain 7 ~20.5 h). From Domain 7 on, each note says
+    its hours, first commit to merge."""
+    notes = {p.name: p.read_text() for p in sorted(BASELINES.glob("phase5_7*.md"))}
+    due = {n for n, t in notes.items() if (_dated(t) or "") >= "2026-11-16"}
+    assert "phase5_7_iot.md" in due
+    assert sorted(n for n in due if not WALL.search(notes[n])) == []
+    assert not WALL.search("Wall clock: about a day")

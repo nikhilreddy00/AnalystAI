@@ -7,7 +7,7 @@ import pytest
 
 from scripts.mutation import (GATED, ROOT, check, function_hashes, functions_touching,
                               mutant_lines, naming, outside_source_paths, plant, plant_verdict,
-                              planted, progress, recorded, runnable, scores, uncommitted,
+                              planted, progress, recorded, rerun, runnable, scores, uncommitted,
                               undefined, unnamed, unreached, without_spinner)
 
 
@@ -279,6 +279,17 @@ def test_a_function_is_recorded_only_when_every_mutant_left_on_its_changed_lines
                 [("survived", "x = a or b", "x = b or b")]):
         new, unexplained = recorded(gate, {"s.py::f": "hf"}, {"s.py::f": bad})
         assert list(unexplained) == ["s.py::f"] and "hash" not in new["s.py::f"], bad
+
+
+def test_the_gates_rerun_command_names_only_the_functions_it_refused():
+    """Retro Domain 7: the hint said --changed-since main, which mutated 14 changed functions over
+    16 test files (~75 min) where the gate refused 2 (~7 min when named)."""
+    problems = [f"{SPELL}::f: changed since abc with no clean mutation gate recorded",
+                "domain_pack/story.py::P.k: changed since abc with no clean mutation gate recorded",
+                f"{SPELL}::g: in docs/mutation/gate.json, but no such function (renamed or deleted)"]
+    assert rerun(problems, "abc") == ("run: uv run python scripts/mutation.py f P.k --lines abc "
+                                      "--record --tests <each function's callers' test files>")
+    assert rerun(problems[2:], "abc") is None     # an orphan is fixed in gate.json, not by a run
 
 
 def test_the_hook_and_ci_both_run_the_gate():
