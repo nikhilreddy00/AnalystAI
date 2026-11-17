@@ -81,6 +81,10 @@ CHANGED = {
     # never people) and its operator caveat counts operators; the stored ins-51 run predates it
     **{(r, "ins-51-iot-shift-overview"): "Domain 7: small cells count operators, never shifts"
        for r in ("insight-20261116T220202Z.json", "insight-20261116T220202Z-rescored.json")},
+    # Domain 7 review: the over-100% performance flag is filed under Ideal Cycle Time (s), not
+    # Changeover (min); the final re-measure's ins-51 predates it
+    ("insight-20261117T102814Z.json", "ins-51-iot-shift-overview"):
+        "Domain 7 review: the over-max flag names the ideal cycle's column",
     # Domain 7 audit: the iot pack's invalid-reading words name historian digital states
     # (I/O Timeout, Shutdown, Comm Fail …); the cleaning note lists them
     **{(r, "ins-52-iot-readings-overview"): "Domain 7 audit: the invalid-reading note lists the "

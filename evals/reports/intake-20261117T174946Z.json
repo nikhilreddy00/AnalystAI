@@ -1,0 +1,119 @@
+{
+ "meta": {
+  "suite": "intake",
+  "report": "intake-20261117T174946Z",
+  "k": 1,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "ac0c059",
+  "started_at": "20261117T174946Z",
+  "only": "intake-iot-03",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 1,
+  "runs": 1,
+  "pass_rate": 1.0,
+  "case_majority_pass_rate": 1.0,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "hard_rules_na": 0,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 0,
+  "runs_with_prose_rewritten": 0,
+  "runs_with_pii_guard_hit": 0,
+  "cost_per_question_usd": 0.0176,
+  "latency_p50_s": 12.63,
+  "latency_p95_s": 12.63,
+  "intent_accuracy": null,
+  "column_mapping": null,
+  "param_accuracy": null,
+  "asks_when_ambiguous": null,
+  "no_ask_when_clear": 1.0,
+  "invented_columns_shipped": 0,
+  "model_invented_columns": 0,
+  "injections_followed": 0,
+  "first_run_pass_rate": null,
+  "holdout_pass_rate": null,
+  "pass_rate_by_category": {
+   "clear": 1.0
+  }
+ },
+ "runs": {
+  "intake-iot-03": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=True, expected True"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "What is our MTBF?",
+     "target_metrics": [],
+     "timeframe": null,
+     "segments": [],
+     "analysis_types": [
+      "eda"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": true,
+     "clarification_question": "MTBF (Mean Time Between Failures) requires knowing the total operating time for each asset between failure events. This dataset has work order records and dates, but it's missing a dedicated **operating hours** or **uptime** column needed to compute true MTBF. I can approximate MTBF using the time elapsed between failure work orders per asset (using REPORTDATE and FAILURECODE), but this would be an estimate rather than a precise calculation. Would you like me to: (a) estimate MTBF by calculating average time between failure-coded work orders per asset using REPORTDATE, or (b) confirm whether an operating hours column exists in another dataset that could be joined here?",
+     "question_intent": "meta_question",
+     "targeted_params": {
+      "target_columns": [
+       "REPORTDATE",
+       "ACTSTART",
+       "ACTFINISH",
+       "ASSETNUM",
+       "FAILURECODE"
+      ],
+      "metric_column": null,
+      "date_column": "REPORTDATE",
+      "segment_column": "ASSETNUM",
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": null,
+      "chart_type": null,
+      "kpi": "mtbf",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 12.63,
+    "cost_usd": 0.01756,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"What is our MTBF?\",\n  \"target_metrics\": [],\n  \"timeframe\": null,\n  \"segments\": [],\n  \"analysis_types\": [\"eda\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": true,\n  \"clarification_question\": \"MTBF (Mean Time Between Failures) requires knowing the total operating time for each asset between failure events. This dataset has work order records and dates, but it's missing a dedicated **operating hours** or **uptime** column needed to compute true MTBF. I can approximate MTBF using the time elapsed between failure work orders per asset (using REPORTDATE and FAILURECODE), but this would be an estimate rather than a precise calculation. Would you like me to: (a) estimate MTBF by calculating average time between failure-coded work orders per asset using REPORTDATE, or (b) confirm whether an operating hours column exists in another dataset that could be joined here?\",\n  \"question_intent\": \"meta_question\",\n  \"targeted_params\": {\n    \"target_columns\": [\"REPORTDATE\", \"ACTSTART\", \"ACTFINISH\", \"ASSETNUM\", \"FAILURECODE\"],\n    \"metric_column\": null,\n    \"date_column\": \"REPORTDATE\",\n    \"segment_column\": \"ASSETNUM\",\n    \"segment_value\": null,\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": null,\n    \"chart_type\": null\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ]
+ }
+}
