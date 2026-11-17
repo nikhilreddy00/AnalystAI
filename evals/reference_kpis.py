@@ -580,7 +580,8 @@ def wo_kpis(df: pd.DataFrame, c: dict) -> dict:
     seen, corrective, opened, preventive, assets = set(), set(), set(), set(), set()
     hours, repaired = 0.0, set()
     records = df.to_dict("records")
-    has = {k: any(_w(r[c[col]]) in words for r in records)
+    live = any(_w(r[c["status"]]) not in WO_CANCELLED for r in records)   # no counted row: unknown
+    has = {k: live and any(_w(r[c[col]]) in words for r in records)
            for k, col, words in (("corrective", "type", WO_CORRECTIVE), ("open", "status", WO_OPEN),
                                  ("preventive", "type", WO_PREVENTIVE))}
     for r in records:

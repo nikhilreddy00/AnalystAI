@@ -77,6 +77,10 @@ _SAAS_AUDIT1 = ("Domain 6 audit 1: the SaaS pack's caveat (a one-month customer 
                 "figure), the ledger story in generic words and the cohort window words changed the "
                 "deterministic text after the model")
 CHANGED = {
+    # Domain 7 quality run: 'shifts' left the iot pack's small-cell nouns (they are categories,
+    # never people) and its operator caveat counts operators; the stored ins-51 run predates it
+    **{(r, "ins-51-iot-shift-overview"): "Domain 7: small cells count operators, never shifts"
+       for r in ("insight-20261116T220202Z.json", "insight-20261116T220202Z-rescored.json")},
     ("insight-20261116T035805Z.json", "ins-15-gap-not-significant"):
         "5.7b-3 smoke: a typed comparison on evidence short of high confidence says the gap may "
         "not hold (the plain one failed the hedge check)",
