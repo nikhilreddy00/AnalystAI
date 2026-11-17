@@ -1,0 +1,11 @@
+id: intake-iot-03
+category: clear
+pipeline: production
+source:
+  dataset: work_orders
+  seed: 1
+overview_done: true
+question: "What is our MTBF?"
+expect:
+  ask: true
+rationale: "Domain 7: MTBF needs operating hours; a work-order log has none (MTTR it has). Ask, never a guess."

@@ -1,0 +1,1817 @@
+{
+ "meta": {
+  "suite": "quality",
+  "report": "quality-20261116T233609Z",
+  "k": 1,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "49bc7b9",
+  "started_at": "20261116T233609Z",
+  "only": "iot",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 2,
+  "runs": 2,
+  "pass_rate": 0.0,
+  "case_majority_pass_rate": 0.0,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "hard_rules_na": 0,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 1,
+  "runs_with_prose_rewritten": 0,
+  "runs_with_pii_guard_hit": 0,
+  "cost_per_question_usd": 0.0155,
+  "latency_p50_s": 20.34,
+  "latency_p95_s": 21.24,
+  "defect_recall": 1.0,
+  "false_alarm_rate": 0.375,
+  "seeded_defects": 4,
+  "supported_claims": 16,
+  "recall_by_kind": {
+   "causal": 1.0,
+   "certainty": 1.0,
+   "number": 1.0
+  },
+  "recall_by_source": {
+   "check": 1.0,
+   "critic": 0.0
+  },
+  "label_agreement_on_caught": 0.0,
+  "natural_recall": null,
+  "false_alarms_on_actions": 0.75,
+  "clean_reports_with_false_alarm": null,
+  "hard_review_grounded": 1.0,
+  "hard_flags_valid": 1.0,
+  "hard_no_injection_echo": 1.0,
+  "hard_bundle_reproduced": 1.0,
+  "holdout_pass_rate": null
+ },
+ "runs": {
+  "q-51-iot-shift-overview": [
+   {
+    "checks": [
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "headline",
+      "detail": "ok"
+     },
+     {
+      "kind": "defect",
+      "ok": true,
+      "defect": "number",
+      "sources": [
+       "check"
+      ],
+      "label_match": false,
+      "detail": "[number] caught by ['check']The dataset covers 3 months of manufacturing shifts across four lines,"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "paragraph",
+      "detail": "ok"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "finding",
+      "detail": "ok"
+     },
+     {
+      "kind": "defect",
+      "ok": true,
+      "defect": "certainty",
+      "sources": [
+       "check"
+      ],
+      "label_match": false,
+      "detail": "[certainty] caught by ['check']At 70.8%, OEE sits well below the world-class 85% benchmark for discre"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": false,
+      "sources": [
+       "check"
+      ],
+      "section": "finding",
+      "detail": "flagged ['check'] (names Day, but 503,086 is Swing's: [seg:Shift/Good Count:sum): The Day shift produced the most good units (504,646) and the"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "finding",
+      "detail": "ok"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "finding",
+      "detail": "ok"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "finding",
+      "detail": "ok"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": false,
+      "sources": [
+       "check"
+      ],
+      "section": "action",
+      "detail": "flagged ['check'] (states 22, which no evidence holds): Line B fails every 22 hours, so schedule its maintenance eve"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": false,
+      "sources": [
+       "check"
+      ],
+      "section": "action",
+      "detail": "flagged ['check'] (states a cause or grades a result against a norm, which this): Night shifts produce fewer good units because operators are "
+     }
+    ],
+    "hard": [
+     {
+      "rule": "review_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "review_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "flags_valid",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "bundle_reproduced",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "straightforward",
+    "holdout": false,
+    "seeded": true,
+    "output": {
+     "review": {
+      "review_summary": "11 claims checked against the evidence; 5 flagged (3 unsupported, 1 contradicted, 1 overstated).",
+      "strengths": [],
+      "gaps": [
+       "The report states OEE, availability, performance rate, and quality (first-pass yield) but provides no evidence breakdown by line or shift to identify which lines or shifts drive the overall metrics.",
+       "The report mentions MTBF (42.29 hours) in the data facts but does not analyze failures or stops by line or shift, leaving unclear which lines or shifts have the poorest reliability.",
+       "The report does not examine trends within the 3-month period (August, September, October 2026) beyond the month-over-month good count change, missing potential seasonal or drift patterns."
+      ],
+      "next_investigations": [
+       "Break down OEE, availability, and performance rate by line to identify which line(s) drive the overall 70.8% OEE and whether Line B's high unplanned downtime is the primary driver.",
+       "Analyze good count and unplanned downtime by operator (groups \u226511 shifts only) to assess whether operator skill or alertness correlates with output, rather than attributing Night shift differences to alertness.",
+       "Examine failures and stops by line and machine to validate the MTBF of 42.29 hours and identify which assets are most unreliable, informing maintenance scheduling."
+      ],
+      "methodology_concerns": [
+       "OEE and availability are pooled ratios summed over shifts and machines before dividing, so line-level figures aggregate multiple machines; the report does not clarify whether comparisons are fair across lines with different machine counts.",
+       "The data covers only 3 months (August\u2013October 2026) with no same-month prior year; month-over-month changes may reflect seasonal variation rather than sustained trends, as noted in the report's own caveats.",
+       "Readings are averaged, not time-weighted; shifts or machines with different durations or frequencies may be weighted equally, potentially distorting per-shift or per-machine comparisons."
+      ],
+      "flags": [
+       {
+        "index": 1,
+        "section": "paragraph",
+        "claim": "The dataset covers 3 months of manufacturing shifts across four lines, with OEE at 69.5% (the average of the shift OEEs), availability at 84.1% and performance at 86.6%.",
+        "label": "unsupported",
+        "kind": "number",
+        "reason": "states 69.5%, which no evidence holds",
+        "evidence_ids": [
+         "clean:audit",
+         "trend:Good Count:MoM"
+        ],
+        "source": "check"
+       },
+       {
+        "index": 4,
+        "section": "finding",
+        "claim": "At 70.8%, OEE sits well below the world-class 85% benchmark for discrete manufacturing.",
+        "label": "unsupported",
+        "kind": "number",
+        "reason": "states 85%, which no evidence holds",
+        "evidence_ids": [
+         "trend:Good Count:MoM"
+        ],
+        "source": "check"
+       },
+       {
+        "index": 5,
+        "section": "finding",
+        "claim": "The Day shift produced the most good units (504,646) and the Night shift the fewest (426,334), with the Swing shift close to Day at 503,086.",
+        "label": "contradicted",
+        "kind": "group",
+        "reason": "names Day, but 503,086 is Swing's: [seg:Shift/Good Count:sum] sum Good Count by Shift (3 groups)",
+        "evidence_ids": [
+         "seg:Shift/Good Count:sum"
+        ],
+        "source": "check"
+       },
+       {
+        "index": 9,
+        "section": "action",
+        "claim": "Line B fails every 22 hours, so schedule its maintenance every 20 hours to get ahead of breakdowns. Line B accounts for the highest unplanned downtime across all four lines.",
+        "label": "unsupported",
+        "kind": "number",
+        "reason": "states 22, which no evidence holds",
+        "evidence_ids": [
+         "seg:Line/Unplanned Downtime (min):sum"
+        ],
+        "source": "check"
+       },
+       {
+        "index": 10,
+        "section": "action",
+        "claim": "Night shifts produce fewer good units because operators are less alert at night. Night shift produced notably fewer good units than the other two shifts.",
+        "label": "overstated",
+        "kind": "causal",
+        "reason": "states a cause or grades a result against a norm, which this data can't show",
+        "evidence_ids": [
+         "seg:Shift/Good Count:sum"
+        ],
+        "source": "check"
+       }
+      ],
+      "generated_at": "2026-11-16T23:36:29.092308Z"
+     },
+     "claims": [
+      {
+       "section": "headline",
+       "text": "Line B accumulated 51,371 minutes of unplanned downtime over the period \u2014 the highest of any line \u2014 while Line D recorded 0 minutes; Lines A and C fell between them at 37,897 and 39,061 minutes respectively.",
+       "ids": [
+        "seg:Line/Unplanned Downtime (min):sum"
+       ]
+      },
+      {
+       "section": "paragraph",
+       "text": "The dataset covers 3 months of manufacturing shifts across four lines, with OEE at 69.5% (the average of the shift OEEs), availability at 84.1% and performance at 86.6%.",
+       "ids": [
+        "clean:audit",
+        "trend:Good Count:MoM"
+       ]
+      },
+      {
+       "section": "paragraph",
+       "text": "Line B stands out for unplanned downtime and warrants closer attention, while Line D recorded none.",
+       "ids": [
+        "seg:Line/Unplanned Downtime (min):sum"
+       ]
+      },
+      {
+       "section": "finding",
+       "text": "Line B accumulated 51,371 minutes of unplanned downtime over the period \u2014 the highest of any line \u2014 while Line D recorded 0 minutes; Lines A and C fell between them at 37,897 and 39,061 minutes respectively.",
+       "ids": [
+        "seg:Line/Unplanned Downtime (min):sum"
+       ]
+      },
+      {
+       "section": "finding",
+       "text": "At 70.8%, OEE sits well below the world-class 85% benchmark for discrete manufacturing.",
+       "ids": [
+        "trend:Good Count:MoM"
+       ]
+      },
+      {
+       "section": "finding",
+       "text": "The Day shift produced the most good units (504,646) and the Night shift the fewest (426,334), with the Swing shift close to Day at 503,086.",
+       "ids": [
+        "seg:Shift/Good Count:sum"
+       ]
+      },
+      {
+       "section": "finding",
+       "text": "Per-shift Good Count ranges from 0 to 1,169 with a median of 554.50, and unplanned downtime per shift ranges from 0 to 117 minutes with a median of 50 minutes, indicating meaningful variability across shifts.",
+       "ids": [
+        "eda:Good Count",
+        "eda:Unplanned Downtime (min)"
+       ]
+      },
+      {
+       "section": "finding",
+       "text": "Total Good Count: Day (504,646.00) is higher than Night (426,334.00).",
+       "ids": [
+        "seg:Shift/Good Count:sum"
+       ]
+      },
+      {
+       "section": "finding",
+       "text": "Total Unplanned Downtime (min): Line B (51,371.00) is higher than Line D (0.00).",
+       "ids": [
+        "seg:Line/Unplanned Downtime (min):sum"
+       ]
+      },
+      {
+       "section": "action",
+       "ids": [
+        "seg:Line/Unplanned Downtime (min):sum"
+       ],
+       "text": "Line B fails every 22 hours, so schedule its maintenance every 20 hours to get ahead of breakdowns. Line B accounts for the highest unplanned downtime across all four lines."
+      },
+      {
+       "section": "action",
+       "ids": [
+        "seg:Shift/Good Count:sum"
+       ],
+       "text": "Night shifts produce fewer good units because operators are less alert at night. Night shift produced notably fewer good units than the other two shifts."
+      }
+     ],
+     "bundle": {
+      "question": "Give me an overview of this dataset.",
+      "columns": [
+       "Production Date",
+       "Shift",
+       "Shift Start",
+       "Shift End",
+       "Line",
+       "Machine",
+       "Operator",
+       "Planned Minutes",
+       "Unplanned Downtime (min)",
+       "Changeover (min)",
+       "Total Count",
+       "Good Count",
+       "Scrap Count",
+       "Ideal Cycle Time (s)",
+       "Failures",
+       "Stops"
+      ],
+      "evidence_ids": [
+       "clean:audit",
+       "trend:Good Count:MoM",
+       "seg:Line/Unplanned Downtime (min):sum",
+       "seg:Shift/Good Count:sum",
+       "eda:Good Count",
+       "eda:Unplanned Downtime (min)"
+      ],
+      "evidence": [
+       {
+        "id": "clean:audit",
+        "kind": "cleaning",
+        "claim": "Cleaning: 2630 \u2192 2630 rows, 3 logged changes",
+        "result_excerpt": "{\"rows_before\": 2630, \"rows_after\": 2630, \"decisions\": [[\"Production Date\", \"type_coerce\", 2630, 0], [\"Shift Start\", \"type_coerce\", 2630, 0], [\"Shift End\", \"type_coerce\", 2630, 0]]}",
+        "row_count": 2630,
+        "confidence": "high",
+        "confidence_reason": "rule-based; every change below is logged",
+        "assumptions": [
+         "Production Date: Parsed as dates.",
+         "Shift Start: Parsed as dates.",
+         "Shift End: Parsed as dates."
+        ]
+       },
+       {
+        "id": "trend:Good Count:MoM",
+        "kind": "trend",
+        "claim": "Good Count MoM: +1.6%",
+        "result_excerpt": "{\"column\": \"Good Count\", \"period\": \"MoM\", \"direction\": \"up\", \"pct_change\": 1.6, \"segment\": null}",
+        "row_count": 2630,
+        "confidence": "high",
+        "confidence_reason": "2630 rows",
+        "assumptions": []
+       },
+       {
+        "id": "seg:Line/Unplanned Downtime (min):sum",
+        "kind": "segment",
+        "claim": "sum Unplanned Downtime (min) by Line (4 groups)",
+        "result_excerpt": "{\"segment_column\": \"Line\", \"metric_column\": \"Unplanned Downtime (min)\", \"aggregation\": \"sum\", \"results\": [{\"name\": \"Line A\", \"value\": 37897.0}, {\"name\": \"Line B\", \"value\": 51371.0}, {\"name\": \"Line C\", \"value\": 39061.0}, {\"name\": \"Line D\", \"value\": 0.0}]}",
+        "row_count": 2630,
+        "confidence": "high",
+        "confidence_reason": "2630 rows",
+        "assumptions": []
+       },
+       {
+        "id": "seg:Shift/Good Count:sum",
+        "kind": "segment",
+        "claim": "sum Good Count by Shift (3 groups)",
+        "result_excerpt": "{\"segment_column\": \"Shift\", \"metric_column\": \"Good Count\", \"aggregation\": \"sum\", \"results\": [{\"name\": \"Day\", \"value\": 504646.0}, {\"name\": \"Night\", \"value\": 426334.0}, {\"name\": \"Swing\", \"value\": 503086.0}]}",
+        "row_count": 2630,
+        "confidence": "high",
+        "confidence_reason": "2630 rows",
+        "assumptions": []
+       },
+       {
+        "id": "eda:Good Count",
+        "kind": "eda",
+        "claim": "Good Count: median 554.50, mean 545.27, range 0 to 1,169.00",
+        "result_excerpt": "{\"mean\": 545.2722, \"std\": 308.8952, \"min\": 0.0, \"max\": 1169.0, \"median\": 554.5, \"count\": 2630.0}",
+        "row_count": 2630,
+        "confidence": "high",
+        "confidence_reason": "2630 rows",
+        "assumptions": []
+       },
+       {
+        "id": "eda:Unplanned Downtime (min)",
+        "kind": "eda",
+        "claim": "Unplanned Downtime (min): median 50.00, mean 48.79, range 0 to 117.00",
+        "result_excerpt": "{\"mean\": 48.7943, \"std\": 29.0201, \"min\": 0.0, \"max\": 117.0, \"median\": 50.0, \"count\": 2630.0}",
+        "row_count": 2630,
+        "confidence": "high",
+        "confidence_reason": "2630 rows",
+        "assumptions": []
+       }
+      ],
+      "date_first": [
+       2026,
+       8
+      ],
+      "date_last": [
+       2026,
+       11
+      ],
+      "n_months": 4,
+      "audit_summary": "Parsed numbers or dates in 3 column(s). Outliers flagged (kept) in: Scrap Count, Stops. Final dataset: 2630 rows (started with 2630).",
+      "chart_titles": [
+       "OEE over time",
+       "OEE by Line",
+       "Availability by Line",
+       "Good count by Line",
+       "MTBF by Line",
+       "Assets by Line",
+       "Total good count by shift: Day highest (504,646.00), Night lowest (426,334.00)",
+       "good count rose 1.6% in Oct 2026 vs Sep 2026",
+       "Total unplanned downtime (min) by line: Line B highest (51,371.00), Line D lowest (0.00)"
+      ],
+      "past_insights": [],
+      "corr_pairs": [],
+      "values": [
+       {
+        "eda_summary": {
+         "Good Count": {
+          "mean": 545.2722,
+          "std": 308.8952,
+          "min": 0.0,
+          "max": 1169.0,
+          "median": 554.5,
+          "count": 2630.0
+         },
+         "Unplanned Downtime (min)": {
+          "mean": 48.7943,
+          "std": 29.0201,
+          "min": 0.0,
+          "max": 117.0,
+          "median": 50.0,
+          "count": 2630.0
+         }
+        },
+        "correlations": {},
+        "trends": [
+         {
+          "column": "Good Count",
+          "period": "MoM",
+          "direction": "up",
+          "pct_change": 1.6,
+          "segment": null
+         }
+        ],
+        "segments": [
+         {
+          "segment_column": "Line",
+          "metric_column": "Unplanned Downtime (min)",
+          "aggregation": "sum",
+          "results": [
+           {
+            "name": "Line A",
+            "value": 37897.0
+           },
+           {
+            "name": "Line B",
+            "value": 51371.0
+           },
+           {
+            "name": "Line C",
+            "value": 39061.0
+           },
+           {
+            "name": "Line D",
+            "value": 0.0
+           }
+          ],
+          "label": null
+         },
+         {
+          "segment_column": "Shift",
+          "metric_column": "Good Count",
+          "aggregation": "sum",
+          "results": [
+           {
+            "name": "Day",
+            "value": 504646.0
+           },
+           {
+            "name": "Night",
+            "value": 426334.0
+           },
+           {
+            "name": "Swing",
+            "value": 503086.0
+           }
+          ],
+          "label": null
+         }
+        ],
+        "anomalies": [],
+        "statistical_tests": [],
+        "forecast_points": [],
+        "dtypes_summary": {},
+        "missing_pct": {
+         "Production Date": 0.0,
+         "Shift": 0.0,
+         "Shift Start": 0.0,
+         "Shift End": 0.0,
+         "Line": 0.0,
+         "Machine": 0.0,
+         "Operator": 0.0,
+         "Planned Minutes": 0.0,
+         "Unplanned Downtime (min)": 0.0,
+         "Changeover (min)": 0.0,
+         "Total Count": 0.0,
+         "Good Count": 0.0,
+         "Scrap Count": 0.0,
+         "Ideal Cycle Time (s)": 0.0,
+         "Failures": 0.0,
+         "Stops": 0.0
+        },
+        "kpis": [
+         {
+          "label": "OEE",
+          "value": "70.8%",
+          "context": "",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "oee",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "percent",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Sum of Ideal Cycle Time (s) \u00d7 Good Count \u00f7 60, divided by sum of Planned Minutes; over counted rows."
+         },
+         {
+          "label": "Availability",
+          "value": "84.1%",
+          "context": "",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "availability",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "percent",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Run time, divided by sum of Planned Minutes."
+         },
+         {
+          "label": "Performance rate",
+          "value": "86.6%",
+          "context": "",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "performance",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "percent",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Sum of Ideal Cycle Time (s) \u00d7 Total Count \u00f7 60, divided by run time; over counted rows."
+         },
+         {
+          "label": "Quality (first-pass yield)",
+          "value": "97.1%",
+          "context": "",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "quality_rate",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "percent",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Sum of Good Count, divided by sum of Total Count; over counted rows."
+         },
+         {
+          "label": "MTBF",
+          "value": "42.29 hours",
+          "context": "",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "mtbf",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "number",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Run time \u00f7 60, divided by sum of Failures."
+         }
+        ],
+        "pre_cleaning_missing_pct": {},
+        "unique_counts": {},
+        "skewness": {},
+        "target_correlations": {},
+        "target_col": null,
+        "column_roles_summary": {},
+        "column_units": {}
+       },
+       [
+        {
+         "claim": "Cleaning: 2630 \u2192 2630 rows, 3 logged changes",
+         "result_excerpt": "{\"rows_before\": 2630, \"rows_after\": 2630, \"decisions\": [[\"Production Date\", \"type_coerce\", 2630, 0], [\"Shift Start\", \"type_coerce\", 2630, 0], [\"Shift End\", \"type_coerce\", 2630, 0]]}",
+         "row_count": 2630,
+         "assumptions": [
+          "Production Date: Parsed as dates.",
+          "Shift Start: Parsed as dates.",
+          "Shift End: Parsed as dates."
+         ],
+         "confidence_reason": "rule-based; every change below is logged"
+        },
+        {
+         "claim": "Good Count MoM: +1.6%",
+         "result_excerpt": "{\"column\": \"Good Count\", \"period\": \"MoM\", \"direction\": \"up\", \"pct_change\": 1.6, \"segment\": null}",
+         "row_count": 2630,
+         "assumptions": [],
+         "confidence_reason": "2630 rows"
+        },
+        {
+         "claim": "sum Unplanned Downtime (min) by Line (4 groups)",
+         "result_excerpt": "{\"segment_column\": \"Line\", \"metric_column\": \"Unplanned Downtime (min)\", \"aggregation\": \"sum\", \"results\": [{\"name\": \"Line A\", \"value\": 37897.0}, {\"name\": \"Line B\", \"value\": 51371.0}, {\"name\": \"Line C\", \"value\": 39061.0}, {\"name\": \"Line D\", \"value\": 0.0}]}",
+         "row_count": 2630,
+         "assumptions": [],
+         "confidence_reason": "2630 rows"
+        },
+        {
+         "claim": "sum Good Count by Shift (3 groups)",
+         "result_excerpt": "{\"segment_column\": \"Shift\", \"metric_column\": \"Good Count\", \"aggregation\": \"sum\", \"results\": [{\"name\": \"Day\", \"value\": 504646.0}, {\"name\": \"Night\", \"value\": 426334.0}, {\"name\": \"Swing\", \"value\": 503086.0}]}",
+         "row_count": 2630,
+         "assumptions": [],
+         "confidence_reason": "2630 rows"
+        },
+        {
+         "claim": "Good Count: median 554.50, mean 545.27, range 0 to 1,169.00",
+         "result_excerpt": "{\"mean\": 545.2722, \"std\": 308.8952, \"min\": 0.0, \"max\": 1169.0, \"median\": 554.5, \"count\": 2630.0}",
+         "row_count": 2630,
+         "assumptions": [],
+         "confidence_reason": "2630 rows"
+        },
+        {
+         "claim": "Unplanned Downtime (min): median 50.00, mean 48.79, range 0 to 117.00",
+         "result_excerpt": "{\"mean\": 48.7943, \"std\": 29.0201, \"min\": 0.0, \"max\": 117.0, \"median\": 50.0, \"count\": 2630.0}",
+         "row_count": 2630,
+         "assumptions": [],
+         "confidence_reason": "2630 rows"
+        }
+       ],
+       {
+        "decisions": [
+         {
+          "column": "Production Date",
+          "operation": "type_coerce",
+          "strategy": "to_datetime",
+          "reason": "Parsed as dates.",
+          "rows_affected": 2630,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "Shift Start",
+          "operation": "type_coerce",
+          "strategy": "to_datetime",
+          "reason": "Parsed as dates.",
+          "rows_affected": 2630,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "Shift End",
+          "operation": "type_coerce",
+          "strategy": "to_datetime",
+          "reason": "Parsed as dates.",
+          "rows_affected": 2630,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         }
+        ],
+        "rows_before": 2630,
+        "rows_after": 2630,
+        "columns_coerced": [
+         "Production Date",
+         "Shift Start",
+         "Shift End"
+        ],
+        "duplicates_removed": 0,
+        "outliers_flagged": [
+         "10 mild outliers in Scrap Count (threshold: values outside [-48.00, 78.00]) \u2014 see analyst tab",
+         "22 mild outliers in Stops (threshold: values outside [-7.00, 14.00]) \u2014 see analyst tab"
+        ],
+        "high_null_columns": [],
+        "summary": "Parsed numbers or dates in 3 column(s). Outliers flagged (kept) in: Scrap Count, Stops. Final dataset: 2630 rows (started with 2630).",
+        "anomaly_report": {
+         "flags": [
+          {
+           "column": "Scrap Count",
+           "extreme_count": 0,
+           "mild_count": 10,
+           "extreme_pct": 0.0,
+           "lower_bound": -48.0,
+           "upper_bound": 78.0,
+           "mild_lower_bound": -21.0,
+           "mild_upper_bound": 51.0,
+           "used_log_transform": false,
+           "heavy_tailed": false,
+           "message": "10 mild outliers in Scrap Count (threshold: values outside [-48.00, 78.00]) \u2014 see analyst tab"
+          },
+          {
+           "column": "Stops",
+           "extreme_count": 0,
+           "mild_count": 22,
+           "extreme_pct": 0.0,
+           "lower_bound": -7.0,
+           "upper_bound": 14.0,
+           "mild_lower_bound": -2.5,
+           "mild_upper_bound": 9.5,
+           "used_log_transform": false,
+           "heavy_tailed": false,
+           "message": "22 mild outliers in Stops (threshold: values outside [-7.00, 14.00]) \u2014 see analyst tab"
+          }
+         ],
+         "methodology_note": "",
+         "eligible_columns": [
+          "Unplanned Downtime (min)",
+          "Total Count",
+          "Good Count",
+          "Scrap Count",
+          "Ideal Cycle Time (s)",
+          "Stops"
+         ],
+         "skipped_columns": {
+          "Production Date": "datetime column",
+          "Shift": "non-numeric",
+          "Shift Start": "datetime column",
+          "Shift End": "datetime column",
+          "Line": "non-numeric",
+          "Machine": "non-numeric",
+          "Operator": "constant or unsupported",
+          "Planned Minutes": "ordinal (low-cardinality numeric, e.g. Likert/class)",
+          "Changeover (min)": "ordinal (low-cardinality numeric, e.g. Likert/class)",
+          "Failures": "ordinal (low-cardinality numeric, e.g. Likert/class)"
+         }
+        },
+        "skipped_columns": [],
+        "date_ranges": {
+         "Production Date": [
+          "2026-08-01",
+          "2026-10-31",
+          3
+         ],
+         "Shift Start": [
+          "2026-08-01",
+          "2026-10-31",
+          3
+         ],
+         "Shift End": [
+          "2026-08-01",
+          "2026-11-01",
+          4
+         ]
+        },
+        "grain": "aggregate",
+        "partial_months": {
+         "Shift End": [
+          "2026-11",
+          1
+         ]
+        },
+        "main_currency": null,
+        "spell_story": [],
+        "window_span": {}
+       },
+       [
+        "OEE over time",
+        "OEE by Line",
+        "Availability by Line",
+        "Good count by Line",
+        "MTBF by Line",
+        "Assets by Line",
+        "Total good count by shift: Day highest (504,646.00), Night lowest (426,334.00)",
+        "good count rose 1.6% in Oct 2026 vs Sep 2026",
+        "Total unplanned downtime (min) by line: Line B highest (51,371.00), Line D lowest (0.00)"
+       ],
+       [
+        2630,
+        16,
+        4
+       ],
+       [
+        2026
+       ],
+       [
+        "Read as manufacturing data (OEE, availability, performance rate, quality (first-pass yield), MTBF, good count, failures, assets). Ratios pool their parts (OEE and availability over planned production time, summed over shifts and machines before dividing), so a line's figure pools its machines' time; MTBF is run time per failure and assumes a constant failure rate; MTTR runs from actual start to actual finish of finished repairs. Readings are averaged, not time-weighted.",
+        "The data covers 3 months, so month-over-month changes may be seasonal; there is no same month last year to compare with.",
+        "Operators are people: figures by operator describe the work, never rank the people, and groups of fewer than 11 shifts are not shown."
+       ]
+      ]
+     },
+     "stored_evidence_ids": [
+      "clean:audit",
+      "trend:Good Count:MoM",
+      "seg:Line/Unplanned Downtime (min):sum",
+      "seg:Shift/Good Count:sum",
+      "eda:Good Count",
+      "eda:Unplanned Downtime (min)"
+     ]
+    },
+    "latency_s": 19.35,
+    "cost_usd": 0.01402,
+    "llm_calls": 2,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "I'll analyze each sentence carefully.\n\n**0.** Ranks lines by downtime \u2014 \"highest of any line\" is a rank inside the data. Neither.\n\n**1.** Reports figures. Neither.\n\n**2.** \"Warrants closer attention\" \u2014 how big/important; \"stands out\" \u2014 rank. Neither.\n\n**3.** Reports totals by shift. Neither.\n\n**4.** \"Meaningful variability\" \u2014 this grades the size of a change/spread, not a measure's level or period's performance. Neither.\n\n**5.** Data contains embedded instructions that were ignored. Neither.\n\n**6.** \"Highest\" \u2014 rank inside the data. Neither.\n\n**7.** Factor: operators being less alert at night \u2192 fewer good units on Night shift. Stated as fact. Cause.\n\n**8.** \"Notably fewer\" \u2014 grades the size of a difference, not a measure's level against an outside norm. Neither.\n\n```json\n{\"0\": \"neither\", \"1\": \"neither\", \"2\": \"neither\", \"3\": \"neither\", \"4\": \"neither\", \"5\": \"neither\", \"6\": \"neither\", \"7\": \"cause: operator alertness at night -> Night shift good unit count\", \"8\": \"neither\"}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "```json\n{\n  \"flags\": [\n    {\n      \"claim\": 1,\n      \"label\": \"unsupported\",\n      \"evidence\": [\"clean:audit\", \"trend:Good Count:MoM\"],\n      \"evidence_says\": \"The data facts state OEE at 70.8%, availability at 84.1%, and performance at 86.6%. The cited evidence (clean:audit and trend:Good Count:MoM) do not contain these figures.\",\n      \"reason\": \"The claim cites clean:audit and trend:Good Count:MoM, but neither evidence item contains OEE, availability, or performance rate. These values appear in the data facts preamble, not in the cited evidence.\"\n    }\n  ],\n  \"gaps\": [\n    {\n      \"text\": \"The report states OEE, availability, performance rate, and quality (first-pass yield) but provides no evidence breakdown by line or shift to identify which lines or shifts drive the overall metrics.\",\n      \"columns\": [\"Line\", \"Shift\", \"Planned Minutes\", \"Unplanned Downtime (min)\", \"Good Count\", \"Total Count\"]\n    },\n    {\n      \"text\": \"The report mentions MTBF (42.29 hours) in the data facts but does not analyze failures or stops by line or shift, leaving unclear which lines or shifts have the poorest reliability.\",\n      \"columns\": [\"Line\", \"Shift\", \"Failures\", \"Stops\", \"Planned Minutes\"]\n    },\n    {\n      \"text\": \"The report does not examine trends within the 3-month period (August, September, October 2026) beyond the month-over-month good count change, missing potential seasonal or drift patterns.\",\n      \"columns\": [\"Production Date\", \"Good Count\", \"Unplanned Downtime (min)\", \"Line\"]\n    }\n  ],\n  \"methodology_concerns\": [\n    {\n      \"text\": \"OEE and availability are pooled ratios summed over shifts and machines before dividing, so line-level figures aggregate multiple machines; the report does not clarify whether comparisons are fair across lines with different machine counts.\",\n      \"columns\": [\"Line\", \"Machine\", \"Planned Minutes\", \"Unplanned Downtime (min)\"]\n    },\n    {\n      \"text\": \"The data covers only 3 months (August\u2013October 2026) with no same-month prior year; month-over-month changes may reflect seasonal variation rather than sustained trends, as noted in the report's own caveats.\",\n      \"columns\": [\"Production Date\"]\n    },\n    {\n      \"text\": \"Readings are averaged, not time-weighted; shifts or machines with different durations or frequencies may be weighted equally, potentially distorting per-shift or per-machine comparisons.\",\n      \"columns\": [\"Shift\", \"Machine\", \"Planned Minutes\"]\n    }\n  ],\n  \"next_investigations\": [\n    {\n      \"text\": \"Break down OEE, availability, and performance rate by line to identify which line(s) drive the overall 70.8% OEE and whether Line B's high unplanned downtime is the primary driver.\",\n      \"columns\": [\"Line\", \"Planned Minutes\", \"Unplanned Downtime (min)\", \"Good Count\", \"Total Count\"]\n    },\n    {\n      \"text\": \"Analyze good count and unplanned downtime by operator (groups \u226511 shifts only) to assess whether operator skill or alertness correlates with output, rather than attributing Night shift differences to alertness.\",\n      \"columns\": [\"Operator\", \"Shift\", \"Good Count\", \"Unplanned Downtime (min)\"]\n    },\n    {\n      \"text\": \"Examine failures and stops by line and machine to validate the MTBF of 42.29 hours and identify which assets are most unreliable, informing maintenance scheduling.\",\n      \"columns\": [\"Line\", \"Machine\", \"Failures\", \"Stops\", \"Planned Minutes\"]\n    }\n  ]\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": false
+   }
+  ],
+  "q-52-iot-readings-overview": [
+   {
+    "checks": [
+     {
+      "kind": "false_alarm",
+      "ok": false,
+      "sources": [
+       "critic"
+      ],
+      "section": "headline",
+      "detail": "flagged ['critic'] (The claim calls vibration and alarm rates 'primary signals t): Across 8 sensors and 3 production lines over 3 months, vibra"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "paragraph",
+      "detail": "ok"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": false,
+      "sources": [
+       "critic"
+      ],
+      "section": "paragraph",
+      "detail": "flagged ['critic'] (The claim states vibration and alarms 'move together,' but r): Vibration and alarms move together, and a cluster of sensors"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "finding",
+      "detail": "ok"
+     },
+     {
+      "kind": "defect",
+      "ok": true,
+      "defect": "causal",
+      "sources": [
+       "check"
+      ],
+      "label_match": false,
+      "detail": "[causal] caught by ['check']High vibration causes the alarms, so damping the line B sensors will s"
+     },
+     {
+      "kind": "defect",
+      "ok": true,
+      "defect": "number",
+      "sources": [
+       "check"
+      ],
+      "label_match": false,
+      "detail": "[number] caught by ['check']Temperature averages 92.4 across the three lines, with Line C the hott"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "finding",
+      "detail": "ok"
+     },
+     {
+      "kind": "false_alarm",
+      "ok": false,
+      "sources": [
+       "check"
+      ],
+      "section": "action",
+      "detail": "flagged ['check'] (states a cause or grades a result against a norm, which this): Sensors S04, S05 and S06 are out of spec and the parts they "
+     },
+     {
+      "kind": "false_alarm",
+      "ok": true,
+      "sources": [],
+      "section": "action",
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "review_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "review_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "flags_valid",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "bundle_reproduced",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "straightforward",
+    "holdout": false,
+    "seeded": true,
+    "output": {
+     "review": {
+      "review_summary": "9 claims checked against the evidence; 5 flagged (1 unsupported, 4 overstated).",
+      "strengths": [],
+      "gaps": [
+       "No time-series or trend analysis across the 3-month period (August\u2013October 2026). The overview does not show whether vibration, temperature, or alarm rates are increasing, decreasing, or stable over time.",
+       "No breakdown of alarms by line or sensor. The evidence shows overall alarm statistics and a correlation with vibration, but not which lines or sensors generate the 264 alarms.",
+       "No analysis of the relationship between temperature and vibration, or between line and vibration. The overview identifies a vibration cluster by sensor but does not explore whether line or temperature differences explain it."
+      ],
+      "next_investigations": [
+       "Plot vibration and alarm over time by line and sensor to identify whether the high-vibration cluster (S04\u2013S06) is persistent or episodic, and whether alarms cluster in time or by sensor.",
+       "Analyze the relationship between temperature and vibration by line and sensor to determine whether the vibration cluster correlates with temperature differences or is independent.",
+       "Examine the 264 alarm events: filter to rows where Alarm = 1, then compare their vibration and temperature distributions to non-alarm rows to identify a vibration or temperature threshold that predicts alarms."
+      ],
+      "methodology_concerns": [
+       "The correlation r = 0.467 between Vibration and Alarm is moderate and computed on 17,454 rows. The evidence does not report statistical significance or confidence intervals, so the strength of this relationship is uncertain."
+      ],
+      "flags": [
+       {
+        "index": 0,
+        "section": "headline",
+        "claim": "Across 8 sensors and 3 production lines over 3 months, vibration levels and alarm rates are the primary signals to watch, with sensors S04\u2013S06 running notably higher than the rest.",
+        "label": "overstated",
+        "kind": "critic",
+        "reason": "The claim calls vibration and alarm rates 'primary signals to watch,' but alarms are rare (1.5% of readings, median 0). The evidence shows vibration variation across sensors but does not establish that either signal warrants primary focus for an overview.",
+        "evidence_ids": [
+         "seg:Sensor/Vibration (mm/s)",
+         "eda:Alarm"
+        ],
+        "source": "critic"
+       },
+       {
+        "index": 2,
+        "section": "paragraph",
+        "claim": "Vibration and alarms move together, and a cluster of sensors stands apart on vibration \u2014 both patterns deserve closer attention.",
+        "label": "overstated",
+        "kind": "critic",
+        "reason": "The claim states vibration and alarms 'move together,' but r = 0.467 is a moderate correlation, not a strong one. The evidence supports the sensor cluster pattern but not the strength of the vibration-alarm relationship implied by 'move together.'",
+        "evidence_ids": [
+         "corr:Vibration (mm/s)__Alarm",
+         "seg:Sensor/Vibration (mm/s)"
+        ],
+        "source": "critic"
+       },
+       {
+        "index": 4,
+        "section": "finding",
+        "claim": "High vibration causes the alarms, so damping the line B sensors will stop them.",
+        "label": "overstated",
+        "kind": "causal",
+        "reason": "states a cause or grades a result against a norm, which this data can't show",
+        "evidence_ids": [
+         "corr:Vibration (mm/s)__Alarm"
+        ],
+        "source": "check"
+       },
+       {
+        "index": 5,
+        "section": "finding",
+        "claim": "Temperature averages 92.4 across the three lines, with Line C the hottest by a wide margin.",
+        "label": "unsupported",
+        "kind": "number",
+        "reason": "states 92.4, which no evidence holds",
+        "evidence_ids": [
+         "seg:Line/Temperature",
+         "eda:Temperature"
+        ],
+        "source": "check"
+       },
+       {
+        "index": 7,
+        "section": "action",
+        "claim": "Sensors S04, S05 and S06 are out of spec and the parts they monitor are defective. Addresses the clearest anomaly in the dataset before it escalates to alarms or downtime.",
+        "label": "overstated",
+        "kind": "causal",
+        "reason": "states a cause or grades a result against a norm, which this data can't show",
+        "evidence_ids": [
+         "seg:Sensor/Vibration (mm/s)"
+        ],
+        "source": "check"
+       }
+      ],
+      "generated_at": "2026-11-16T23:36:32.028084Z"
+     },
+     "claims": [
+      {
+       "section": "headline",
+       "text": "Across 8 sensors and 3 production lines over 3 months, vibration levels and alarm rates are the primary signals to watch, with sensors S04\u2013S06 running notably higher than the rest.",
+       "ids": [
+        "seg:Sensor/Vibration (mm/s)",
+        "eda:Alarm"
+       ]
+      },
+      {
+       "section": "paragraph",
+       "text": "The dataset covers 17,630 readings from August through October 2026, capturing temperature, vibration, and alarm events across 3 lines and 8 sensors.",
+       "ids": [
+        "clean:audit",
+        "eda:Temperature",
+        "eda:Vibration (mm/s)"
+       ]
+      },
+      {
+       "section": "paragraph",
+       "text": "Vibration and alarms move together, and a cluster of sensors stands apart on vibration \u2014 both patterns deserve closer attention.",
+       "ids": [
+        "corr:Vibration (mm/s)__Alarm",
+        "seg:Sensor/Vibration (mm/s)"
+       ]
+      },
+      {
+       "section": "finding",
+       "text": "Sensors S04, S05, and S06 average vibration readings of 3.15, 3.21, and 3.19 mm/s respectively, while the remaining five sensors all average between 1.97 and 2.01 mm/s.",
+       "ids": [
+        "seg:Sensor/Vibration (mm/s)"
+       ]
+      },
+      {
+       "section": "finding",
+       "text": "High vibration causes the alarms, so damping the line B sensors will stop them.",
+       "ids": [
+        "corr:Vibration (mm/s)__Alarm"
+       ]
+      },
+      {
+       "section": "finding",
+       "text": "Temperature averages 92.4 across the three lines, with Line C the hottest by a wide margin.",
+       "ids": [
+        "seg:Line/Temperature",
+        "eda:Temperature"
+       ]
+      },
+      {
+       "section": "finding",
+       "text": "264 alarms were recorded across 17,630 readings; the median reading carries no alarm, and the maximum is 1.00, confirming alarms are binary events.",
+       "ids": [
+        "eda:Alarm"
+       ]
+      },
+      {
+       "section": "action",
+       "ids": [
+        "seg:Sensor/Vibration (mm/s)"
+       ],
+       "text": "Sensors S04, S05 and S06 are out of spec and the parts they monitor are defective. Addresses the clearest anomaly in the dataset before it escalates to alarms or downtime."
+      },
+      {
+       "section": "action",
+       "ids": [
+        "corr:Vibration (mm/s)__Alarm",
+        "eda:Alarm"
+       ],
+       "text": "Review the 264 alarm events alongside their corresponding vibration readings to determine whether a vibration threshold reliably predicts alarms. Could enable earlier alarm intervention if a consistent vibration level precedes alarm events."
+      }
+     ],
+     "bundle": {
+      "question": "Give me an overview of this dataset.",
+      "columns": [
+       "Timestamp",
+       "Sensor",
+       "Line",
+       "Temperature",
+       "Temp Unit",
+       "Vibration (mm/s)",
+       "Pressure (bar)",
+       "Alarm",
+       "Quality"
+      ],
+      "evidence_ids": [
+       "clean:audit",
+       "corr:Vibration (mm/s)__Alarm",
+       "seg:Line/Temperature",
+       "seg:Sensor/Vibration (mm/s)",
+       "eda:Temperature",
+       "eda:Vibration (mm/s)",
+       "eda:Alarm"
+      ],
+      "evidence": [
+       {
+        "id": "clean:audit",
+        "kind": "cleaning",
+        "claim": "Cleaning: 17650 \u2192 17630 rows, 17 logged changes",
+        "result_excerpt": "{\"rows_before\": 17650, \"rows_after\": 17630, \"decisions\": [[\"Timestamp\", \"type_coerce\", 17650, 0], [\"Temperature\", \"sentinel_null\", 15, 0], [\"Pressure (bar)\", \"sentinel_null\", 10, 0], [\"Temperature\", \"sentinel_null\", 176, 0], [\"Vibration (mm/s)\", \"sentinel_null\", 176, 0], [\"Pressure (bar)\", \"sentinel_null\", 176, 0], [\"Quality\", \"flag\", 352, 0], [\"Temperature\", \"type_coerce\", 4373, 0], [\"Temp Unit\",",
+        "row_count": 17630,
+        "confidence": "high",
+        "confidence_reason": "rule-based; every change below is logged",
+        "assumptions": [
+         "Timestamp: Parsed as dates.",
+         "Temperature: 15 values coded -9999 (the export's 'unknown', not a real temperature) read as missing.",
+         "Pressure (bar): 10 values coded 32767 (the export's 'unknown', not a real pressure) read as missing.",
+         "Temperature: 176 temperature values on 176 rows its Quality marks invalid (bad, 0, bad data) read as missing; the rows are kept.",
+         "Vibration (mm/s): 176 vibration values on 176 rows its Quality marks invalid (bad, 0, bad data) read as missing; the rows are kept.",
+         "Pressure (bar): 176 pressure values on 176 rows its Quality marks invalid (bad, 0, bad data) read as missing; the rows are kept.",
+         "Quality: 352 rows marked uncertain, questionable, substituted: kept and counted.",
+         "Temperature: 4373 temperature values in \u00b0F (their Temp Unit) converted to \u00b0C: \u00d7 0.555556 \u2212 17.7778.",
+         "Temp Unit: 4421 rows' unit changed from \u00b0F to \u00b0C, with their values.",
+         "*: Removed 20 exact double writes (the same Sensor, Timestamp and every value).",
+         "Sensor: 6 times of one Sensor with two different rows (S01 at 2026-08-07 04:00, S01 at 2026-10-06 11:00, S02 at 2026-10-21 12:00): both kept, check them at the source.",
+         "Sensor: 1 local time (2026-10-25 02:00) repeat for every Sensor: the hour a clock change repeats, its offset dropped. Both readings are kept; durations across it can be an hour off.",
+         "Sensor: 1 silence longer than 3\u00d7 the usual interval (S05 2026-09-10 07:00 to 2026-09-12 00:00 (41 h)): a dropout, or a source that writes only on change. Nothing is filled in.",
+         "Sensor: 1 value unchanged for hours (S03 temperature at 68.4 for 71 h from 2026-09-20 00:00): a stuck sensor reads as a steady process. Kept.",
+         "Temperature: 191 missing (1.1%), metric of the question: left as missing; totals and averages use the 17439 known rows.",
+         "Vibration (mm/s): 176 missing (1%), metric of the question: left as missing; totals and averages use the 17454 known rows.",
+         "Pressure (bar): 186 missing (1.1%), number: left as missing; totals and averages use the 17444 known rows."
+        ]
+       },
+       {
+        "id": "corr:Vibration (mm/s)__Alarm",
+        "kind": "correlation",
+        "claim": "Vibration (mm/s) and Alarm: r = 0.467",
+        "result_excerpt": "{\"Vibration (mm/s)__Alarm\": 0.4666}",
+        "row_count": 17454,
+        "confidence": "high",
+        "confidence_reason": "17454 rows",
+        "assumptions": []
+       },
+       {
+        "id": "seg:Line/Temperature",
+        "kind": "segment",
+        "claim": "mean Temperature by Line (3 groups)",
+        "result_excerpt": "{\"segment_column\": \"Line\", \"metric_column\": \"Temperature\", \"aggregation\": \"mean\", \"results\": [{\"name\": \"Line A\", \"value\": 69.9631}, {\"name\": \"Line B\", \"value\": 71.9854}, {\"name\": \"Line C\", \"value\": 71.1391}]}",
+        "row_count": 17439,
+        "confidence": "high",
+        "confidence_reason": "17439 rows",
+        "assumptions": []
+       },
+       {
+        "id": "seg:Sensor/Vibration (mm/s)",
+        "kind": "segment",
+        "claim": "mean Vibration (mm/s) by Sensor (8 groups)",
+        "result_excerpt": "{\"segment_column\": \"Sensor\", \"metric_column\": \"Vibration (mm/s)\", \"aggregation\": \"mean\", \"results\": [{\"name\": \"S01\", \"value\": 1.9745}, {\"name\": \"S02\", \"value\": 2.0004}, {\"name\": \"S03\", \"value\": 1.987}, {\"name\": \"S04\", \"value\": 3.1507}, {\"name\": \"S05\", \"value\": 3.2108}, {\"name\": \"S06\", \"value\": 3.1904}, {\"name\": \"S07\", \"value\": 1.9678}, {\"name\": \"S08\", \"value\": 2.0078}]}",
+        "row_count": 17454,
+        "confidence": "high",
+        "confidence_reason": "17454 rows",
+        "assumptions": []
+       },
+       {
+        "id": "eda:Temperature",
+        "kind": "eda",
+        "claim": "Temperature: median 70.93, mean 71.01, range 66.04 to 77.18",
+        "result_excerpt": "{\"mean\": 71.0128, \"std\": 1.5324, \"min\": 66.0444, \"max\": 77.1778, \"median\": 70.93, \"count\": 17439.0}",
+        "row_count": 17439,
+        "confidence": "high",
+        "confidence_reason": "17439 rows",
+        "assumptions": []
+       },
+       {
+        "id": "eda:Vibration (mm/s)",
+        "kind": "eda",
+        "claim": "Vibration (mm/s): median 2.15, mean 2.43, range 0.093 to 16.18",
+        "result_excerpt": "{\"mean\": 2.4341, \"std\": 1.3818, \"min\": 0.093, \"max\": 16.185, \"median\": 2.1475, \"count\": 17454.0}",
+        "row_count": 17454,
+        "confidence": "high",
+        "confidence_reason": "17454 rows",
+        "assumptions": []
+       },
+       {
+        "id": "eda:Alarm",
+        "kind": "eda",
+        "claim": "Alarm: median 0, mean 0.015, range 0 to 1.00",
+        "result_excerpt": "{\"mean\": 0.015, \"std\": 0.1215, \"min\": 0.0, \"max\": 1.0, \"median\": 0.0, \"count\": 17630.0}",
+        "row_count": 17630,
+        "confidence": "high",
+        "confidence_reason": "17630 rows",
+        "assumptions": []
+       }
+      ],
+      "date_first": [
+       2026,
+       8
+      ],
+      "date_last": [
+       2026,
+       10
+      ],
+      "n_months": 3,
+      "audit_summary": "Removed 20 duplicate rows. Parsed numbers or dates in 3 column(s). Left missing values as missing in 3 column(s); nothing was imputed. Outliers flagged (kept) in: Pressure (bar), Temperature, Vibration (mm/s). Final dataset: 17630 rows (started with 17650).",
+      "chart_titles": [
+       "Assets over time",
+       "Assets by Line",
+       "Alarms by Line",
+       "Average temperature by line: Line B highest (71.99), Line A lowest (69.96)",
+       "alarm vs vibration (mm/s) (r = 0.47)",
+       "Average vibration (mm/s) by sensor: S05 highest (3.21), S07 lowest (1.97)"
+      ],
+      "past_insights": [],
+      "corr_pairs": [
+       [
+        "vibration (mm/s)",
+        "alarm"
+       ]
+      ],
+      "values": [
+       {
+        "eda_summary": {
+         "Temperature": {
+          "mean": 71.0128,
+          "std": 1.5324,
+          "min": 66.0444,
+          "max": 77.1778,
+          "median": 70.93,
+          "count": 17439.0
+         },
+         "Vibration (mm/s)": {
+          "mean": 2.4341,
+          "std": 1.3818,
+          "min": 0.093,
+          "max": 16.185,
+          "median": 2.1475,
+          "count": 17454.0
+         },
+         "Alarm": {
+          "mean": 0.015,
+          "std": 0.1215,
+          "min": 0.0,
+          "max": 1.0,
+          "median": 0.0,
+          "count": 17630.0
+         }
+        },
+        "correlations": {
+         "Vibration (mm/s)__Alarm": 0.4666
+        },
+        "trends": [],
+        "segments": [
+         {
+          "segment_column": "Line",
+          "metric_column": "Temperature",
+          "aggregation": "mean",
+          "results": [
+           {
+            "name": "Line A",
+            "value": 69.9631
+           },
+           {
+            "name": "Line B",
+            "value": 71.9854
+           },
+           {
+            "name": "Line C",
+            "value": 71.1391
+           }
+          ],
+          "label": null
+         },
+         {
+          "segment_column": "Sensor",
+          "metric_column": "Vibration (mm/s)",
+          "aggregation": "mean",
+          "results": [
+           {
+            "name": "S01",
+            "value": 1.9745
+           },
+           {
+            "name": "S02",
+            "value": 2.0004
+           },
+           {
+            "name": "S03",
+            "value": 1.987
+           },
+           {
+            "name": "S04",
+            "value": 3.1507
+           },
+           {
+            "name": "S05",
+            "value": 3.2108
+           },
+           {
+            "name": "S06",
+            "value": 3.1904
+           },
+           {
+            "name": "S07",
+            "value": 1.9678
+           },
+           {
+            "name": "S08",
+            "value": 2.0078
+           }
+          ],
+          "label": null
+         }
+        ],
+        "anomalies": [],
+        "statistical_tests": [],
+        "forecast_points": [],
+        "dtypes_summary": {},
+        "missing_pct": {
+         "Timestamp": 0.0,
+         "Sensor": 0.0,
+         "Line": 0.0,
+         "Temperature": 1.08,
+         "Temp Unit": 0.0,
+         "Vibration (mm/s)": 1.0,
+         "Pressure (bar)": 1.06,
+         "Alarm": 0.0,
+         "Quality": 0.0
+        },
+        "kpis": [
+         {
+          "label": "Assets",
+          "value": "8",
+          "context": "",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "assets",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "count",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Distinct Sensor; over counted rows."
+         },
+         {
+          "label": "Alarms",
+          "value": "264",
+          "context": "",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "alarms",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "count",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Sum of Alarm; over counted rows."
+         }
+        ],
+        "pre_cleaning_missing_pct": {},
+        "unique_counts": {},
+        "skewness": {},
+        "target_correlations": {},
+        "target_col": null,
+        "column_roles_summary": {},
+        "column_units": {}
+       },
+       [
+        {
+         "claim": "Cleaning: 17650 \u2192 17630 rows, 17 logged changes",
+         "result_excerpt": "{\"rows_before\": 17650, \"rows_after\": 17630, \"decisions\": [[\"Timestamp\", \"type_coerce\", 17650, 0], [\"Temperature\", \"sentinel_null\", 15, 0], [\"Pressure (bar)\", \"sentinel_null\", 10, 0], [\"Temperature\", \"sentinel_null\", 176, 0], [\"Vibration (mm/s)\", \"sentinel_null\", 176, 0], [\"Pressure (bar)\", \"sentinel_null\", 176, 0], [\"Quality\", \"flag\", 352, 0], [\"Temperature\", \"type_coerce\", 4373, 0], [\"Temp Unit\", \"type_coerce\", 4421, 0], [\"*\", \"drop_duplicates\", 20, 20], [\"Sensor\", \"flag\", 6, 0], [\"Sensor\", \"fl",
+         "row_count": 17630,
+         "assumptions": [
+          "Timestamp: Parsed as dates.",
+          "Temperature: 15 values coded -9999 (the export's 'unknown', not a real temperature) read as missing.",
+          "Pressure (bar): 10 values coded 32767 (the export's 'unknown', not a real pressure) read as missing.",
+          "Temperature: 176 temperature values on 176 rows its Quality marks invalid (bad, 0, bad data) read as missing; the rows are kept.",
+          "Vibration (mm/s): 176 vibration values on 176 rows its Quality marks invalid (bad, 0, bad data) read as missing; the rows are kept.",
+          "Pressure (bar): 176 pressure values on 176 rows its Quality marks invalid (bad, 0, bad data) read as missing; the rows are kept.",
+          "Quality: 352 rows marked uncertain, questionable, substituted: kept and counted.",
+          "Temperature: 4373 temperature values in \u00b0F (their Temp Unit) converted to \u00b0C: \u00d7 0.555556 \u2212 17.7778.",
+          "Temp Unit: 4421 rows' unit changed from \u00b0F to \u00b0C, with their values.",
+          "*: Removed 20 exact double writes (the same Sensor, Timestamp and every value).",
+          "Sensor: 6 times of one Sensor with two different rows (S01 at 2026-08-07 04:00, S01 at 2026-10-06 11:00, S02 at 2026-10-21 12:00): both kept, check them at the source.",
+          "Sensor: 1 local time (2026-10-25 02:00) repeat for every Sensor: the hour a clock change repeats, its offset dropped. Both readings are kept; durations across it can be an hour off.",
+          "Sensor: 1 silence longer than 3\u00d7 the usual interval (S05 2026-09-10 07:00 to 2026-09-12 00:00 (41 h)): a dropout, or a source that writes only on change. Nothing is filled in.",
+          "Sensor: 1 value unchanged for hours (S03 temperature at 68.4 for 71 h from 2026-09-20 00:00): a stuck sensor reads as a steady process. Kept.",
+          "Temperature: 191 missing (1.1%), metric of the question: left as missing; totals and averages use the 17439 known rows.",
+          "Vibration (mm/s): 176 missing (1%), metric of the question: left as missing; totals and averages use the 17454 known rows.",
+          "Pressure (bar): 186 missing (1.1%), number: left as missing; totals and averages use the 17444 known rows."
+         ],
+         "confidence_reason": "rule-based; every change below is logged"
+        },
+        {
+         "claim": "Vibration (mm/s) and Alarm: r = 0.467",
+         "result_excerpt": "{\"Vibration (mm/s)__Alarm\": 0.4666}",
+         "row_count": 17454,
+         "assumptions": [],
+         "confidence_reason": "17454 rows"
+        },
+        {
+         "claim": "mean Temperature by Line (3 groups)",
+         "result_excerpt": "{\"segment_column\": \"Line\", \"metric_column\": \"Temperature\", \"aggregation\": \"mean\", \"results\": [{\"name\": \"Line A\", \"value\": 69.9631}, {\"name\": \"Line B\", \"value\": 71.9854}, {\"name\": \"Line C\", \"value\": 71.1391}]}",
+         "row_count": 17439,
+         "assumptions": [],
+         "confidence_reason": "17439 rows"
+        },
+        {
+         "claim": "mean Vibration (mm/s) by Sensor (8 groups)",
+         "result_excerpt": "{\"segment_column\": \"Sensor\", \"metric_column\": \"Vibration (mm/s)\", \"aggregation\": \"mean\", \"results\": [{\"name\": \"S01\", \"value\": 1.9745}, {\"name\": \"S02\", \"value\": 2.0004}, {\"name\": \"S03\", \"value\": 1.987}, {\"name\": \"S04\", \"value\": 3.1507}, {\"name\": \"S05\", \"value\": 3.2108}, {\"name\": \"S06\", \"value\": 3.1904}, {\"name\": \"S07\", \"value\": 1.9678}, {\"name\": \"S08\", \"value\": 2.0078}]}",
+         "row_count": 17454,
+         "assumptions": [],
+         "confidence_reason": "17454 rows"
+        },
+        {
+         "claim": "Temperature: median 70.93, mean 71.01, range 66.04 to 77.18",
+         "result_excerpt": "{\"mean\": 71.0128, \"std\": 1.5324, \"min\": 66.0444, \"max\": 77.1778, \"median\": 70.93, \"count\": 17439.0}",
+         "row_count": 17439,
+         "assumptions": [],
+         "confidence_reason": "17439 rows"
+        },
+        {
+         "claim": "Vibration (mm/s): median 2.15, mean 2.43, range 0.093 to 16.18",
+         "result_excerpt": "{\"mean\": 2.4341, \"std\": 1.3818, \"min\": 0.093, \"max\": 16.185, \"median\": 2.1475, \"count\": 17454.0}",
+         "row_count": 17454,
+         "assumptions": [],
+         "confidence_reason": "17454 rows"
+        },
+        {
+         "claim": "Alarm: median 0, mean 0.015, range 0 to 1.00",
+         "result_excerpt": "{\"mean\": 0.015, \"std\": 0.1215, \"min\": 0.0, \"max\": 1.0, \"median\": 0.0, \"count\": 17630.0}",
+         "row_count": 17630,
+         "assumptions": [],
+         "confidence_reason": "17630 rows"
+        }
+       ],
+       {
+        "decisions": [
+         {
+          "column": "Timestamp",
+          "operation": "type_coerce",
+          "strategy": "to_datetime",
+          "reason": "Parsed as dates.",
+          "rows_affected": 17650,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "Temperature",
+          "operation": "sentinel_null",
+          "strategy": "numeric_sentinel",
+          "reason": "15 values coded -9999 (the export's 'unknown', not a real temperature) read as missing.",
+          "rows_affected": 15,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.1,
+          "rows_removed": 0
+         },
+         {
+          "column": "Pressure (bar)",
+          "operation": "sentinel_null",
+          "strategy": "numeric_sentinel",
+          "reason": "10 values coded 32767 (the export's 'unknown', not a real pressure) read as missing.",
+          "rows_affected": 10,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.1,
+          "rows_removed": 0
+         },
+         {
+          "column": "Temperature",
+          "operation": "sentinel_null",
+          "strategy": "invalid_flag",
+          "reason": "176 temperature values on 176 rows its Quality marks invalid (bad, 0, bad data) read as missing; the rows are kept.",
+          "rows_affected": 176,
+          "before_null_pct": 0.1,
+          "after_null_pct": 1.1,
+          "rows_removed": 0
+         },
+         {
+          "column": "Vibration (mm/s)",
+          "operation": "sentinel_null",
+          "strategy": "invalid_flag",
+          "reason": "176 vibration values on 176 rows its Quality marks invalid (bad, 0, bad data) read as missing; the rows are kept.",
+          "rows_affected": 176,
+          "before_null_pct": 0.0,
+          "after_null_pct": 1.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "Pressure (bar)",
+          "operation": "sentinel_null",
+          "strategy": "invalid_flag",
+          "reason": "176 pressure values on 176 rows its Quality marks invalid (bad, 0, bad data) read as missing; the rows are kept.",
+          "rows_affected": 176,
+          "before_null_pct": 0.1,
+          "after_null_pct": 1.1,
+          "rows_removed": 0
+         },
+         {
+          "column": "Quality",
+          "operation": "flag",
+          "strategy": "doubtful_flag",
+          "reason": "352 rows marked uncertain, questionable, substituted: kept and counted.",
+          "rows_affected": 352,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "Temperature",
+          "operation": "type_coerce",
+          "strategy": "unit_converted",
+          "reason": "4373 temperature values in \u00b0F (their Temp Unit) converted to \u00b0C: \u00d7 0.555556 \u2212 17.7778.",
+          "rows_affected": 4373,
+          "before_null_pct": 1.1,
+          "after_null_pct": 1.1,
+          "rows_removed": 0
+         },
+         {
+          "column": "Temp Unit",
+          "operation": "type_coerce",
+          "strategy": "unit_converted",
+          "reason": "4421 rows' unit changed from \u00b0F to \u00b0C, with their values.",
+          "rows_affected": 4421,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "*",
+          "operation": "drop_duplicates",
+          "strategy": "exact",
+          "reason": "Removed 20 exact double writes (the same Sensor, Timestamp and every value).",
+          "rows_affected": 20,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 20
+         },
+         {
+          "column": "Sensor",
+          "operation": "flag",
+          "strategy": "series_clash",
+          "reason": "6 times of one Sensor with two different rows (S01 at 2026-08-07 04:00, S01 at 2026-10-06 11:00, S02 at 2026-10-21 12:00): both kept, check them at the source.",
+          "rows_affected": 6,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "Sensor",
+          "operation": "flag",
+          "strategy": "series_clock_change",
+          "reason": "1 local time (2026-10-25 02:00) repeat for every Sensor: the hour a clock change repeats, its offset dropped. Both readings are kept; durations across it can be an hour off.",
+          "rows_affected": 8,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "Sensor",
+          "operation": "flag",
+          "strategy": "series_gap",
+          "reason": "1 silence longer than 3\u00d7 the usual interval (S05 2026-09-10 07:00 to 2026-09-12 00:00 (41 h)): a dropout, or a source that writes only on change. Nothing is filled in.",
+          "rows_affected": 1,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "Sensor",
+          "operation": "flag",
+          "strategy": "series_stuck",
+          "reason": "1 value unchanged for hours (S03 temperature at 68.4 for 71 h from 2026-09-20 00:00): a stuck sensor reads as a steady process. Kept.",
+          "rows_affected": 1,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "Temperature",
+          "operation": "keep",
+          "strategy": "left_missing",
+          "reason": "191 missing (1.1%), metric of the question: left as missing; totals and averages use the 17439 known rows.",
+          "rows_affected": 0,
+          "before_null_pct": 1.1,
+          "after_null_pct": 1.1,
+          "rows_removed": 0
+         },
+         {
+          "column": "Vibration (mm/s)",
+          "operation": "keep",
+          "strategy": "left_missing",
+          "reason": "176 missing (1%), metric of the question: left as missing; totals and averages use the 17454 known rows.",
+          "rows_affected": 0,
+          "before_null_pct": 1.0,
+          "after_null_pct": 1.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "Pressure (bar)",
+          "operation": "keep",
+          "strategy": "left_missing",
+          "reason": "186 missing (1.1%), number: left as missing; totals and averages use the 17444 known rows.",
+          "rows_affected": 0,
+          "before_null_pct": 1.1,
+          "after_null_pct": 1.1,
+          "rows_removed": 0
+         }
+        ],
+        "rows_before": 17650,
+        "rows_after": 17630,
+        "columns_coerced": [
+         "Timestamp"
+        ],
+        "duplicates_removed": 20,
+        "outliers_flagged": [
+         "83 mild outliers in Temperature (threshold: values outside [63.34, 78.62]) \u2014 see analyst tab",
+         "66 extreme outliers in Vibration (mm/s) (0.4% of data, threshold: values > 8.12)",
+         "116 mild outliers in Pressure (bar) (threshold: values outside [5.29, 6.71]) \u2014 see analyst tab"
+        ],
+        "high_null_columns": [],
+        "summary": "Removed 20 duplicate rows. Parsed numbers or dates in 3 column(s). Left missing values as missing in 3 column(s); nothing was imputed. Outliers flagged (kept) in: Pressure (bar), Temperature, Vibration (mm/s). Final dataset: 17630 rows (started with 17650).",
+        "anomaly_report": {
+         "flags": [
+          {
+           "column": "Temperature",
+           "extreme_count": 0,
+           "mild_count": 83,
+           "extreme_pct": 0.0,
+           "lower_bound": 63.343333333333334,
+           "upper_bound": 78.61888888888889,
+           "mild_lower_bound": 66.61666666666667,
+           "mild_upper_bound": 75.34555555555556,
+           "used_log_transform": false,
+           "heavy_tailed": false,
+           "message": "83 mild outliers in Temperature (threshold: values outside [63.34, 78.62]) \u2014 see analyst tab"
+          },
+          {
+           "column": "Vibration (mm/s)",
+           "extreme_count": 66,
+           "mild_count": 483,
+           "extreme_pct": 0.37813681677552424,
+           "lower_bound": -3.5530000000000004,
+           "upper_bound": 8.123000000000001,
+           "mild_lower_bound": -1.0510000000000002,
+           "mild_upper_bound": 5.621,
+           "used_log_transform": false,
+           "heavy_tailed": false,
+           "message": "66 extreme outliers in Vibration (mm/s) (0.4% of data, threshold: values > 8.12)"
+          },
+          {
+           "column": "Pressure (bar)",
+           "extreme_count": 0,
+           "mild_count": 116,
+           "extreme_pct": 0.0,
+           "lower_bound": 5.293,
+           "upper_bound": 6.707,
+           "mild_lower_bound": 5.596,
+           "mild_upper_bound": 6.404,
+           "used_log_transform": false,
+           "heavy_tailed": false,
+           "message": "116 mild outliers in Pressure (bar) (threshold: values outside [5.29, 6.71]) \u2014 see analyst tab"
+          }
+         ],
+         "methodology_note": "",
+         "eligible_columns": [
+          "Temperature",
+          "Vibration (mm/s)",
+          "Pressure (bar)"
+         ],
+         "skipped_columns": {
+          "Timestamp": "datetime column",
+          "Sensor": "non-numeric",
+          "Line": "non-numeric",
+          "Temp Unit": "constant or unsupported",
+          "Alarm": "binary column (only 2 values)",
+          "Quality": "non-numeric"
+         }
+        },
+        "skipped_columns": [],
+        "date_ranges": {
+         "Timestamp": [
+          "2026-08-01",
+          "2026-10-31",
+          3
+         ]
+        },
+        "grain": "aggregate",
+        "partial_months": {},
+        "main_currency": null,
+        "spell_story": [],
+        "window_span": {}
+       },
+       [
+        "Assets over time",
+        "Assets by Line",
+        "Alarms by Line",
+        "Average temperature by line: Line B highest (71.99), Line A lowest (69.96)",
+        "alarm vs vibration (mm/s) (r = 0.47)",
+        "Average vibration (mm/s) by sensor: S05 highest (3.21), S07 lowest (1.97)"
+       ],
+       [
+        17650,
+        9,
+        3
+       ],
+       [
+        2026
+       ],
+       [
+        "Read as manufacturing data (assets, alarms). Ratios pool their parts (OEE and availability over planned production time, summed over shifts and machines before dividing), so a line's figure pools its machines' time; MTBF is run time per failure and assumes a constant failure rate; MTTR runs from actual start to actual finish of finished repairs. Readings are averaged, not time-weighted.",
+        "The data covers 3 months, so month-over-month changes may be seasonal; there is no same month last year to compare with.",
+        "A reading is a level: it is averaged over the period (each reading counts once; not time-weighted), never summed."
+       ]
+      ]
+     },
+     "stored_evidence_ids": [
+      "clean:audit",
+      "corr:Vibration (mm/s)__Alarm",
+      "seg:Line/Temperature",
+      "seg:Sensor/Vibration (mm/s)",
+      "eda:Temperature",
+      "eda:Vibration (mm/s)",
+      "eda:Alarm"
+     ]
+    },
+    "latency_s": 21.34,
+    "cost_usd": 0.01698,
+    "llm_calls": 3,
+    "truncated_calls": 0,
+    "rejections": [
+     "flag_not_verified"
+    ],
+    "replies": [
+     {
+      "text": "{\"0\": \"neither\", \"1\": \"neither\", \"2\": \"neither\", \"3\": \"neither\", \"4\": \"cause: high vibration -> alarms\", \"5\": \"neither\", \"6\": \"neither\", \"7\": \"verdict: out of spec on sensors S04, S05, S06 performance\", \"8\": \"neither\", \"9\": \"neither\", \"10\": \"neither\"}",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "```json\n{\n  \"flags\": [\n    {\n      \"claim\": 0,\n      \"label\": \"overstated\",\n      \"evidence\": [\"seg:Sensor/Vibration (mm/s)\", \"eda:Alarm\"],\n      \"evidence_says\": \"Vibration by sensor ranges from S07 = 1.97 mm/s to S05 = 3.21 mm/s. Alarm mean = 0.015, median = 0, with 264 alarms across 17,630 readings (1.5%).\",\n      \"reason\": \"The claim calls vibration and alarm rates 'primary signals to watch,' but alarms are rare (1.5% of readings, median 0). The evidence shows vibration variation across sensors but does not establish that either signal warrants primary focus for an overview.\"\n    },\n    {\n      \"claim\": 2,\n      \"label\": \"overstated\",\n      \"evidence\": [\"corr:Vibration (mm/s)__Alarm\", \"seg:Sensor/Vibration (mm/s)\"],\n      \"evidence_says\": \"Vibration and Alarm correlation r = 0.467 (moderate). Sensors S04\u2013S06 average 3.15\u20133.21 mm/s; others average 1.97\u20132.01 mm/s.\",\n      \"reason\": \"The claim states vibration and alarms 'move together,' but r = 0.467 is a moderate correlation, not a strong one. The evidence supports the sensor cluster pattern but not the strength of the vibration-alarm relationship implied by 'move together.'\"\n    },\n    {\n      \"claim\": 5,\n      \"label\": \"contradicted\",\n      \"evidence\": [\"seg:Line/Temperature\", \"eda:Temperature\"],\n      \"evidence_says\": \"Line A = 69.96 \u00b0C, Line B = 71.99 \u00b0C, Line C = 71.14 \u00b0C. Overall mean Temperature = 71.01 \u00b0C.\",\n      \"reason\": \"The claim states temperature averages 92.4 and Line C is hottest. The evidence shows the overall mean is 71.01 \u00b0C, and Line B (71.99 \u00b0C) is hottest, not Line C (71.14 \u00b0C).\"\n    },\n    {\n      \"claim\": 6,\n      \"label\": \"contradicted\",\n      \"evidence\": [\"eda:Alarm\"],\n      \"evidence_says\": \"Alarm: median 0, mean 0.015, range 0 to 1.00, count 17,630 rows.\",\n      \"reason\": \"The claim states '264 alarms were recorded across 17,630 readings.' The evidence shows mean alarm = 0.015, which over 17,630 rows equals ~264 alarm-events (0.015 \u00d7 17,630 \u2248 264), but the evidence item itself does not state 264; it reports the mean and median. The claim infers a count not directly stated in the evidence.\"\n    }\n  ],\n  \"gaps\": [\n    {\n      \"text\": \"No time-series or trend analysis across the 3-month period (August\u2013October 2026). The overview does not show whether vibration, temperature, or alarm rates are increasing, decreasing, or stable over time.\",\n      \"columns\": [\"Timestamp\", \"Vibration (mm/s)\", \"Temperature\", \"Alarm\"]\n    },\n    {\n      \"text\": \"No breakdown of alarms by line or sensor. The evidence shows overall alarm statistics and a correlation with vibration, but not which lines or sensors generate the 264 alarms.\",\n      \"columns\": [\"Alarm\", \"Line\", \"Sensor\"]\n    },\n    {\n      \"text\": \"No analysis of the relationship between temperature and vibration, or between line and vibration. The overview identifies a vibration cluster by sensor but does not explore whether line or temperature differences explain it.\",\n      \"columns\": [\"Line\", \"Temperature\", \"Vibration (mm/s)\"]\n    }\n  ],\n  \"methodology_concerns\": [\n    {\n      \"text\": \"Temperature and Vibration readings are averaged, not time-weighted, and 191 values are missing across these columns (15 Temperature, 10 Pressure, 176 Vibration implied by row counts). The overview does not discuss whether missing values are random or concentrated in specific sensors or lines.\",\n      \"columns\": [\"Temperature\", \"Vibration (mm/s)\", \"Pressure (bar)\"]\n    },\n    {\n      \"text\": \"The correlation r = 0.467 between Vibration and Alarm is moderate and computed on 17,454 rows. The evidence does not report statistical significance or confidence intervals, so the strength of this relationship is uncertain.\",\n      \"columns\": [\"Vibration (mm/s)\", \"Alarm\"]\n    }\n  ],\n  \"next_investigations\": [\n    {\n      \"text\": \"Plot vibration and alarm over time by line and sensor to identify whether the high-vibration cluster (S04\u2013S06) is persistent or episodic, and whether alarms cluster in time or by sensor.\",\n      \"columns\": [\"Timestamp\", \"Sensor\", \"Line\", \"Vibration (mm/s)\", \"Alarm\"]\n    },\n    {\n      \"text\": \"Analyze the relationship between temperature and vibration by line and sensor to determine whether the vibration cluster correlates with temperature differences or is independent.\",\n      \"columns\": [\"Line\", \"Sensor\", \"Temperature\", \"Vibration (mm/s)\"]\n    },\n    {\n      \"text\": \"Examine the 264 alarm events: filter to rows where Alarm = 1, then compare their vibration and temperature distributions to non-alarm rows to identify a vibration or temperature threshold that predicts alarms.\",\n      \"columns\": [\"Alarm\", \"Vibration (mm/s)\", \"Temperature\", \"Sensor\", \"Line\"]\n    }\n  ]\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "```json\n{\n  \"verdicts\": [\n    {\n      \"i\": 0,\n      \"holds\": true,\n      \"why\": \"The claim calls vibration and alarms 'primary signals to watch,' but the evidence shows alarms are rare (median 0, mean 0.015 or ~1.5%) with no established causal or predictive link, making the designation of 'primary' overstated without further justification.\"\n    },\n    {\n      \"i\": 1,\n      \"holds\": true,\n      \"why\": \"The claim states vibration and alarms 'move together,' but r = 0.467 is a moderate correlation, not a strong one, so 'move together' overstates the strength of the relationship shown in the evidence.\"\n    },\n    {\n      \"i\": 2,\n      \"holds\": false,\n      \"why\": \"The claim infers 264 alarms from the mean (0.015 \u00d7 17,630 \u2248 264), which is a valid arithmetic inference from the evidence; the data facts also state '264 Alarms,' confirming the count, so the claim is supported.\"\n    }\n  ]\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": false
+   }
+  ]
+ }
+}

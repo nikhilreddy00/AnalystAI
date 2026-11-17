@@ -1,0 +1,49 @@
+id: dom-iot-shifts
+category: domain
+dataset:
+  name: shift_production
+  seed: 1
+roles:
+  Production Date: date
+  Shift: category
+  Shift Start: date
+  Shift End: date
+  Line: category
+  Machine:
+  - category
+  - id
+  Operator:
+  - category
+  - id
+  Planned Minutes: metric
+  Unplanned Downtime (min): metric
+  Changeover (min): metric
+  Total Count: metric
+  Good Count: metric
+  Scrap Count: metric
+  Ideal Cycle Time (s): metric
+  Failures: metric
+  Stops: metric
+pii:
+  Operator: name
+traps:
+- Shift End
+- Stops
+expect_domain: iot
+expect_roles:
+  date: Production Date
+  shift_end: Shift End
+  asset: Machine
+  production_line: Line
+  shift: Shift
+  operator: Operator
+  planned_minutes: Planned Minutes
+  unplanned_downtime: Unplanned Downtime (min)
+  changeover: Changeover (min)
+  total_count: Total Count
+  good_count: Good Count
+  scrap_count: Scrap Count
+  ideal_cycle_s: Ideal Cycle Time (s)
+  failures: Failures
+label_note: 'Domain 7 MES shift report (T2, T6, T14): the production date is the time axis (a night shift is dated
+  by its start), never the shift end; stops are never failures; operators are people.'

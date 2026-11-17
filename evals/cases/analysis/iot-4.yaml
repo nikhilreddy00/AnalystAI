@@ -1,0 +1,32 @@
+id: iot-4
+domain: iot
+category: ratio
+pipeline: production
+dataset:
+  name: shift_production
+  seed: 1
+question: What is OEE by production line?
+task:
+  analysis_types:
+  - segmentation
+  target_metrics:
+  - Good Count
+  - Planned Minutes
+  segments:
+  - Line
+checks:
+- kind: segment_value_truth
+  planted: true
+  segment: Line
+  truth_key: oee_by_running_line
+  abs_tol: 0.005
+  scales:
+  - 1
+  - 100
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
+- numbers_grounded
+label_note: 'Domain 7 (T1): OEE pools each line''s shifts, sum(ideal cycle s x good) / 60 / sum(planned minutes);
+  a mean of shift OEEs weighs Saturday''s half shifts like full ones. Line D is never scheduled: not
+  measurable, never 0.'

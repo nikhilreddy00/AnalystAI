@@ -72,6 +72,19 @@ def parse_text_dates(s: pd.Series, share: float = 1.0) -> pd.Series | None:
     return parsed if parsed.notna().sum() >= share * s.notna().sum() else None
 
 
+def as_times(s: pd.Series) -> pd.Series:
+    """A column as datetimes by the load's one rule (offsets included); values that aren't
+    dates are NaT. Already-parsed columns come back as they are."""
+    if pd.api.types.is_datetime64_any_dtype(s):
+        return s
+    n = pd.to_numeric(s, errors="coerce")
+    if n.notna().any() and n.between(1e9, 1e10, inclusive="left")[n.notna()].mean() >= 0.8:
+        # Unix-epoch seconds (2001-09-09 .. 2286: a historian's timeInSeconds), never nanoseconds
+        return pd.to_datetime(n.where(n.between(1e9, 1e10, inclusive="left")), unit="s")
+    parsed = parse_text_dates(s, 0.0)   # all blank: None (no value looks like a date)
+    return parsed if parsed is not None else pd.Series(pd.NaT, index=s.index, dtype="datetime64[ns]")
+
+
 # A capped load names its cap: the source evidence carries this note and the report's alerts find
 # it by this start (agents/insight_agent._alerts). One wording for every connector.
 TRUNCATED = "Only the first "

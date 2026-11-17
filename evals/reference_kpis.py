@@ -527,8 +527,117 @@ def reference_by(name: str, df: pd.DataFrame, cols: list[str], metric: str, agg:
     return [o for o in levels if o], [o for o in moved if o]
 
 
+# ── IoT / manufacturing (Domain 7; docs/research/2026-11-16-iot.md §2) ─────────────────────────
+# iot.yaml's words, copied (test_the_references_word_lists_are_the_packs checks them)
+WO_CORRECTIVE = {"cm", "em", "corrective", "corrective maintenance", "emergency",
+                 "emergency maintenance", "emergency repair", "breakdown", "breakdown maintenance",
+                 "breakdown repair", "reactive", "reactive maintenance", "unplanned",
+                 "unplanned maintenance", "unplanned breakdown", "repair", "fault", "failure"}
+WO_PREVENTIVE = {"pm", "preventive", "preventive maintenance", "planned", "planned maintenance",
+                 "pdm", "predictive", "predictive maintenance", "condition based", "cbm",
+                 "inspection", "routine", "calibration"}
+WO_OPEN = {"inprg", "in progress", "wappr", "waiting on approval", "appr", "approved", "wmatl",
+           "waiting on material", "wsched", "waiting to be scheduled", "open", "hold"}
+WO_CANCELLED = {"can", "cancel", "cancelled", "canceled", "void", "voided", "rejected"}
+
+
+def _w(v) -> str:
+    return "" if v is None or (isinstance(v, float) and v != v) else \
+        re.sub(r"[\s_-]+", " ", str(v)).strip().lower()
+
+
+def _n(v) -> float:
+    try:
+        x = float(v)
+    except (TypeError, ValueError):
+        return 0.0
+    return 0.0 if x != x else x
+
+
+def shift_kpis(df: pd.DataFrame, c: dict) -> dict:
+    """A shift report's KPIs, summed over every row before any division (ISO 22400 / oee.com):
+    run = planned − unplanned downtime − changeover; OEE = Σ(ideal cycle s × good) / 60 ÷ Σ
+    planned minutes; MTBF = Σ run hours ÷ Σ failures."""
+    planned = run = ideal_total = ideal_good = total = good = scrap = fails = down = 0.0
+    for r in df.to_dict("records"):
+        p, u, ch = _n(r[c["planned"]]), _n(r[c["unplanned"]]), _n(r.get(c.get("changeover")))
+        planned += p
+        run += p - u - ch
+        down += u
+        total += _n(r[c["total"]])
+        good += _n(r[c["good"]])
+        scrap += _n(r[c["scrap"]])
+        ideal_total += _n(r[c["ideal"]]) * _n(r[c["total"]]) / 60
+        ideal_good += _n(r[c["ideal"]]) * _n(r[c["good"]]) / 60
+        fails += _n(r[c["failures"]])
+    ratio = lambda a, b: a / b if b else None   # noqa: E731
+    return {"oee": ratio(ideal_good, planned), "availability": ratio(run, planned),
+            "performance": ratio(ideal_total, run), "quality_rate": ratio(good, total),
+            "scrap_rate": ratio(scrap, total), "good_count": good, "failures": fails,
+            "unplanned_downtime": down, "run_minutes": run, "planned_time": planned,
+            "mtbf": ratio(run / 60, fails)}
+
+
+def wo_kpis(df: pd.DataFrame, c: dict) -> dict:
+    """A work-order log's KPIs: a cancelled order is no work; MTTR = actual finish − actual start
+    in hours over finished corrective orders whose span is known and not negative. A count of a
+    kind no row of the file has (no open order at all: an export of closed ones?) is unknown."""
+    seen, corrective, opened, preventive, assets = set(), set(), set(), set(), set()
+    hours, repaired = 0.0, set()
+    records = df.to_dict("records")
+    live = any(_w(r[c["status"]]) not in WO_CANCELLED for r in records)   # no counted row: unknown
+    has = {k: live and any(_w(r[c[col]]) in words for r in records)
+           for k, col, words in (("corrective", "type", WO_CORRECTIVE), ("open", "status", WO_OPEN),
+                                 ("preventive", "type", WO_PREVENTIVE))}
+    for r in records:
+        if _w(r[c["status"]]) in WO_CANCELLED:
+            continue
+        wo, kind = r[c["wo"]], _w(r[c["type"]])
+        seen.add(wo)
+        assets.add(r[c["asset"]])
+        if kind in WO_PREVENTIVE:
+            preventive.add(wo)
+        if _w(r[c["status"]]) in WO_OPEN:
+            opened.add(wo)
+        if kind not in WO_CORRECTIVE:
+            continue
+        corrective.add(wo)
+        a, b = r.get(c["start"]), r.get(c["finish"])
+        if a is None or b is None or pd.isna(a) or pd.isna(b):
+            continue
+        h = (pd.Timestamp(b) - pd.Timestamp(a)).total_seconds() / 3600
+        if h >= 0:
+            hours += h
+            repaired.add(wo)
+    return {"corrective_wos": float(len(corrective)) if has["corrective"] else None,
+            "open_wos": float(len(opened)) if has["open"] else None,
+            "pm_share": len(preventive) / len(seen) if seen and has["preventive"] else None,
+            "mttr": hours / len(repaired) if repaired else None,
+            "assets": float(len(assets)) if live else None}
+
+
+IOT = {   # dataset or book → (KPI function, its columns)
+    "shift_production": (shift_kpis, {"planned": "Planned Minutes", "unplanned": "Unplanned Downtime (min)",
+                                      "changeover": "Changeover (min)", "total": "Total Count",
+                                      "good": "Good Count", "scrap": "Scrap Count",
+                                      "ideal": "Ideal Cycle Time (s)", "failures": "Failures"}),
+    "book_iot_shifts": (shift_kpis, {"planned": "planned_minutes", "unplanned": "unplanned_downtime",
+                                     "changeover": "changeover", "total": "total_count",
+                                     "good": "good_count", "scrap": "scrap_count",
+                                     "ideal": "ideal_cycle_time", "failures": "failures"}),
+    "work_orders": (wo_kpis, {"wo": "WONUM", "type": "WORKTYPE", "status": "STATUS",
+                              "start": "ACTSTART", "finish": "ACTFINISH", "asset": "ASSETNUM"}),
+    "book_iot_work_orders": (wo_kpis, {"wo": "wonum", "type": "worktype", "status": "status",
+                                       "start": "actstart", "finish": "actfinish",
+                                       "asset": "assetnum"}),
+}
+
+
 def reference(name: str, df: pd.DataFrame, today: pd.Timestamp | None = None) -> dict:
     """Every spell or ledger KPI of a dataset, from the definitions alone."""
+    if name in IOT:
+        f, cols = IOT[name]
+        return f(df, cols)
     spec = SPECS[name]
     today = today or pd.Timestamp(os.environ.get("ANALYSTAI_TODAY") or pd.Timestamp.today())
     rows = prepare(df, spec)

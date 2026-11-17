@@ -608,6 +608,14 @@ def _pct(p: float) -> str:
     return ">99.9%" if p >= 99.9 else f"{p:.1f}%"
 
 
+_SERIES_ALERTS = {   # cleaning's per-series flags (series_key): title, what to check
+    "series_clash": ("two values at one time", "Check which value the source meant to keep."),
+    "series_gap": ("gaps in the series", "Check whether the source was down or writes only on change."),
+    "series_stuck": ("values stuck for hours", "Check the instrument before trusting a steady stretch."),
+    "series_clock_change": ("a repeated hour", "Export times in UTC, or with their offset kept."),
+}
+
+
 def _alerts(session: AnalysisSession) -> tuple[list[AnomalyAlert], str]:
     """Data-quality alerts from the source's load and the cleaning audit, severity by the
     numeric triggers."""
@@ -640,6 +648,9 @@ def _alerts(session: AnalysisSession) -> tuple[list[AnomalyAlert], str]:
                   f"After reading the values, {_pct(d.after_null_pct)} of {name} is missing; the "
                   "values that could not be read are left out of every result.",
                   f"Fix the {name} entries that are not valid values at the source.")
+        elif d.operation == "flag" and d.strategy in _SERIES_ALERTS:   # one series at a time
+            title, todo = _SERIES_ALERTS[d.strategy]
+            alert(Severity.MEDIUM, d.column, f"{name.capitalize()}: {title}", d.reason, todo)
         elif d.operation == "fill_unknown" and d.before_null_pct > 5:
             alert(Severity.MEDIUM if d.before_null_pct > 20 else Severity.LOW, d.column,
                   f"{name.capitalize()}: missing labels grouped",

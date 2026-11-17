@@ -1,0 +1,45 @@
+id: ins-52-iot-readings-overview
+domain: iot
+category: data_quality
+label_note: 'Domain 7 historian dump (K5, T16, T5, T7): vibration and alarms move together, an association, never
+  "vibration causes alarms"; line C read in deg C after conversion; the stuck S03 and the S05 silence are data
+  quality, never a steady process or downtime.'
+dataset:
+  name: machine_readings
+  seed: 1
+question: Give me an overview of this dataset.
+entity:
+- reading
+- readings
+plan:
+  target_metrics:
+  - Temperature
+  - Vibration (mm/s)
+  - Alarm
+  segments:
+  - Line
+  - Sensor
+  analysis_types:
+  - eda
+  - segmentation
+  - correlation
+findings:
+- kind: segment
+  segment_column: Line
+  metric: Temperature
+  aggregation: mean
+- kind: correlation
+  a: Vibration (mm/s)
+  b: Alarm
+- kind: segment
+  segment_column: Sensor
+  metric: Vibration (mm/s)
+  aggregation: mean
+expect:
+  must_mention:
+  - Line C
+  must_not_match:
+  - (?:^|[.!?]\s+)(?:(?!\b(?:not|no|never|cannot)\b|n't\b)[^.!?])*?\bvibration\b(?:(?!\b(?:not|no|never)\b)[^.!?]){0,40}?\b(?:causes?|caused|drives?|leads? to|triggers?)\b[^.!?]{0,30}\balarms?\b
+  - \b1[5-6]\d(?:\.\d+)?\s*(?:°|degrees)
+  - \b(?:sum|total) (?:of )?(?:the )?temperatures?\b
+  - net sales|order value|\bMRR\b|readmission|loss ratio|headcount|attrition|\bNPL\b

@@ -1,0 +1,29 @@
+id: iot-7
+domain: iot
+category: segment
+pipeline: production
+dataset:
+  name: machine_readings
+  seed: 1
+question: What is the average temperature on each line?
+task:
+  analysis_types:
+  - segmentation
+  target_metrics:
+  - Temperature
+  segments:
+  - Line
+checks:
+- kind: segment_value_truth
+  planted: true
+  segment: Line
+  truth_key: mean_temp_c_by_line
+  abs_tol: 0.05
+  scales:
+  - 1
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
+- numbers_grounded
+label_note: 'Domain 7 (T5, T6, T17): line C''s sensors report deg F (converted by the unit column), -9999 codes
+  and Bad readings are no measurement; each reading counts once. A mean mixing deg F reads line C near 158.'

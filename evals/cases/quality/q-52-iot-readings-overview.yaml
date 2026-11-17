@@ -1,0 +1,32 @@
+# Golden case: the stored insight report (source) with seeded defects; every claim not
+# listed under defects/natural was hand-labelled supported against the evidence.
+id: q-52-iot-readings-overview
+insight_case: ins-52-iot-readings-overview
+category: straightforward
+source:
+  report: insight-20261116T220202Z.json
+  run: 0
+seeded: true
+defects:
+- op: replace
+  i: 4
+  kind: causal
+  label: unsupported
+  text: High vibration causes the alarms, so damping the line B sensors will stop them.
+- op: replace
+  i: 5
+  kind: number
+  label: contradicted
+  text: Temperature averages 92.4 across the three lines, with Line C the hottest by a wide margin.
+- op: replace
+  i: 6
+  kind: semantic
+  label: overstated
+  text: Sensors S04, S05 and S06 are out of spec and the parts they monitor are defective.
+natural:
+- i: 0
+  label: unclear   # "the primary signals to watch": a framing judgement, not a measured claim
+
+label_note: 'Domain 7, seeded over the historian overview: vibration said to cause alarms (an association),
+  a mean mixing deg F and deg C readings (92.4 for 71.0 C, line C converted), and a vibration difference called
+  out of spec (no specification limit in this data; the pack''s never_say).'

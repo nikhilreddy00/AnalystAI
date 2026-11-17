@@ -120,6 +120,51 @@ def hr_snapshot_books(rehires: bool = True):
     return hr_rosters(rehires).map(_snapshots).filter(lambda df: len(df) > 0)
 
 
+IOT = dp.pack_for("iot")
+SHIFT_ROLES = {"date": "production_date", "asset": "machine", "production_line": "line",
+               "shift": "shift", "planned_minutes": "planned_minutes",
+               "unplanned_downtime": "unplanned_downtime", "changeover": "changeover",
+               "total_count": "total_count", "good_count": "good_count",
+               "scrap_count": "scrap_count", "ideal_cycle_s": "ideal_cycle_time", "failures": "failures"}
+WO_ROLES = {"date": "reportdate", "asset": "assetnum", "work_order": "wonum", "work_type": "worktype",
+            "status": "status", "actual_start": "actstart", "actual_finish": "actfinish"}
+
+
+@st.composite
+def iot_shift_books(draw) -> pd.DataFrame:
+    """A shift report: one row per machine × shift; a shift may be unscheduled (0 planned
+    minutes) or half; downtime and changeover fit inside it; good ≤ total."""
+    rows = []
+    for _ in range(draw(st.integers(1, 12))):
+        m = draw(st.sampled_from(["M1", "M2", "M3", "M4"]))
+        planned = draw(st.sampled_from([0, 225, 450]))
+        down = draw(st.integers(0, planned))
+        change = draw(st.integers(0, planned - down))
+        total = draw(st.integers(0, 900))
+        good = draw(st.integers(0, total))
+        rows.append((_date(draw, "2026-01-01", "2026-10-31"), m, "L1" if m in ("M1", "M2") else "L2",
+                     draw(st.sampled_from(["Day", "Night"])), planned, down, change, total, good,
+                     total - good, float(draw(st.sampled_from([20, 30, 45]))),
+                     draw(st.integers(0, 3))))
+    return pd.DataFrame(rows, columns=list(SHIFT_ROLES.values()))
+
+
+@st.composite
+def iot_wo_books(draw) -> pd.DataFrame:
+    """A work-order log: corrective, emergency and preventive orders, some open (no finish),
+    some cancelled; a finish before its start happens (a typo) and is no duration."""
+    rows = []
+    for i in range(draw(st.integers(1, 12))):
+        report = _date(draw, "2026-01-01", "2026-10-31") + pd.Timedelta(hours=draw(st.integers(0, 23)))
+        start = report + pd.Timedelta(minutes=draw(st.integers(0, 600)))
+        finish = start + pd.Timedelta(minutes=draw(st.integers(-60, 900)))
+        status = draw(st.sampled_from(["COMP", "CLOSE", "INPRG", "CAN"]))
+        rows.append((report, f"P{draw(st.integers(1, 3))}", f"W{i}",
+                     draw(st.sampled_from(["CM", "EM", "PM"])), status, start,
+                     pd.NaT if status in ("INPRG", "CAN") else finish))
+    return pd.DataFrame(rows, columns=list(WO_ROLES.values()))
+
+
 def _kpis(pack, roles, df) -> dict:
     return {k.name: dp.compute_kpi(df, roles, pack, k.name) for k in pack.kpis
             if dp.computable(pack, k.name, roles)}
@@ -316,6 +361,47 @@ def test_p2_hr_by_department_adds_up_to_the_total(df):
     _check_partition(HR, HR_ROLES, df, "department")
 
 
+@pytest.mark.parametrize("by", ["line", "machine", "shift"])
+@given(df=iot_shift_books())
+def test_p2_iot_shifts_by_line_machine_and_shift_add_up_to_the_total(by, df):
+    _check_partition(IOT, SHIFT_ROLES, df, by)
+
+
+def _ratio_parts(pack, name):
+    """The pack with the ratio's numerator and denominator as KPIs of their own (test-local:
+    no product function reads a KPI's two sides)."""
+    kpi = pack.kpi(name)
+    parts = [kpi.model_copy(update={"name": f"_{s}", "num": side, "den": None, "tile": False})
+             for s, side in (("num", kpi.num), ("den", kpi.den))]
+    return pack.model_copy(update={"kpis": [*pack.kpis, *parts]})
+
+
+# Ratios of sums: they recompose, never average (T1: OEE is never a mean of shift OEEs)
+RECOMPOSED = ["oee", "availability", "performance", "quality_rate", "scrap_rate", "mtbf", "mttr"]
+
+
+@pytest.mark.parametrize("book,roles,by", [(iot_shift_books(), SHIFT_ROLES, "line"),
+                                           (iot_shift_books(), SHIFT_ROLES, "shift"),
+                                           (iot_wo_books(), WO_ROLES, "assetnum")])
+@given(data=st.data())
+def test_p2r_a_ratio_is_its_parts_summed_then_divided_never_their_mean(book, roles, by, data):
+    df = data.draw(book)
+    checked = 0
+    for name in (n for n in RECOMPOSED if dp.computable(IOT, n, roles)):
+        whole, p = dp.compute_kpi(df, roles, IOT, name), _ratio_parts(IOT, name)
+        num, den = (dp.compute_kpi(df, roles, p, f"_{s}", by=by) for s in ("num", "den"))
+        if num is None or den is None or den.sum() == 0:
+            assert whole is None, name
+            continue
+        assert whole == pytest.approx(num.sum() / den.sum(), rel=1e-9), name
+        checked += 1
+    assume(checked)
+
+
+def test_p2r_reads_ratios_the_iot_pack_has():
+    assert set(RECOMPOSED) <= {k.name for k in IOT.kpis if k.den}
+
+
 @given(hr_snapshot_books())
 def test_p2_hr_snapshots_by_department_add_up_to_the_total(df):
     _check_partition(HR, SNAP_ROLES, df, "department")
@@ -324,14 +410,19 @@ def test_p2_hr_snapshots_by_department_add_up_to_the_total(df):
 # ── P3: shuffle, source and scale invariance ──────────────────────────────────────────────────
 
 BOOKS = [(mrr_books(), SAAS, MRR_ROLES), (subscription_lists(), SAAS, LIST_ROLES),
-         (hr_rosters(), HR, HR_ROLES), (hr_snapshot_books(), HR, SNAP_ROLES)]
-SHAPES = ["mrr_export", "subscription_list", "roster", "snapshots"]
+         (hr_rosters(), HR, HR_ROLES), (hr_snapshot_books(), HR, SNAP_ROLES),
+         # appended last: the slices above (P1, P3 money, P5) index the first four
+         (iot_shift_books(), IOT, SHIFT_ROLES), (iot_wo_books(), IOT, WO_ROLES)]
+SHAPES = ["mrr_export", "subscription_list", "roster", "snapshots", "shift_report", "work_orders"]
 
 
 # ── The property hook (5.7b-3): every pack's shapes run P1–P5 ──────────────────────────────────
 
 # A pack's shapes, each a generator in BOOKS. A new pack (Domain 7 on) registers its own here.
-SHAPES_BY_PACK = {"saas": ["mrr_export", "subscription_list"], "hr": ["roster", "snapshots"]}
+SHAPES_BY_PACK = {"saas": ["mrr_export", "subscription_list"], "hr": ["roster", "snapshots"],
+                  # P1 (a bridge) and P5 (a spell window) have no IoT reading: no stock/flow
+                  # identity and no spell; readings have no KPI to generate (nunique/sum tiles)
+                  "iot": ["shift_report", "work_orders"]}
 # Packs with no generator yet: their datasets run tier (b), the oracle and the golden only. The
 # list only shrinks (lower the count with it) and is empty before v0.1 (ROADMAP Phase 6).
 NO_GENERATOR_YET = {"retail", "banking", "healthcare", "insurance"}
@@ -348,7 +439,7 @@ def test_every_pack_registers_its_shapes_or_is_a_known_gap():
     from tests.test_dashboard_filters import DATASETS_BY_PACK
     packs = {p.domain for p in dp.load_packs()}
     assert _unregistered(packs, DATASETS_BY_PACK, SHAPES_BY_PACK, NO_GENERATOR_YET) == []
-    assert _unregistered({"iot"}, DATASETS_BY_PACK, SHAPES_BY_PACK, NO_GENERATOR_YET) == ["iot"]
+    assert _unregistered({"logistics"}, DATASETS_BY_PACK, SHAPES_BY_PACK, NO_GENERATOR_YET) == ["logistics"]
     assert len(NO_GENERATOR_YET) == NO_GENERATOR_COUNT and NO_GENERATOR_YET <= packs
     assert not NO_GENERATOR_YET & set(SHAPES_BY_PACK)
     for domain, shapes in SHAPES_BY_PACK.items():
@@ -577,7 +668,8 @@ def test_tier_b_money_in_another_scale_scales_money_kpis_only(name, k):
 
 @pytest.mark.parametrize("book,pack,roles,spec", [   # broken runs too: the cadence is declared (C7)
     (*BOOKS[0], "book_mrr_export"), (*BOOKS[1], "book_subscription_list"),
-    (*BOOKS[2], "book_roster"), (*BOOKS[3], "book_hr_snapshots")], ids=SHAPES)
+    (*BOOKS[2], "book_roster"), (*BOOKS[3], "book_hr_snapshots"),
+    (*BOOKS[4], "book_iot_shifts"), (*BOOKS[5], "book_iot_work_orders")], ids=SHAPES)
 @given(data=st.data())
 def test_d_the_product_equals_the_reference(book, pack, roles, spec, data):
     from evals.reference_kpis import reference
@@ -593,6 +685,19 @@ def test_d_the_product_equals_the_reference(book, pack, roles, spec, data):
         got = dp.compute_kpi(df, roles, pack, k, by="segment")   # C3: each segment's own lines
         got = {} if got is None else {str(s): v for s, v in got.items() if v}
         assert got == pytest.approx({str(s): v for s, v in ref[f"{k}_by_segment"].items() if v}), k
+
+
+def test_d_a_log_of_cancelled_orders_counts_no_assets():
+    """Full suite (CI profile): a log whose only order is cancelled has no counted row, so its
+    assets are unknown, never 0 (C5: 0 only where the kind exists); the reference said 0."""
+    from evals.reference_kpis import reference
+    df = pd.DataFrame({"reportdate": pd.to_datetime(["2026-01-01"]), "assetnum": ["P1"],
+                       "wonum": ["W0"], "worktype": ["CM"], "status": ["CAN"],
+                       "actstart": pd.to_datetime(["2026-01-01"]), "actfinish": [pd.NaT]})
+    roles = {"date": "reportdate", "asset": "assetnum", "work_order": "wonum", "work_type": "worktype",
+             "status": "status", "actual_start": "actstart", "actual_finish": "actfinish"}
+    assert reference("book_iot_work_orders", df)["assets"] is None
+    assert dp.compute_kpi(df, roles, dp.pack_for("iot"), "assets") is None
 
 
 def test_d_nobody_paying_at_the_as_of_is_0_mrr_not_unavailable():

@@ -51,3 +51,18 @@
 - {text: "Retention in EMEA (where demand was solid) reached 96.4%.", label: no, near: benchmark, source: saas-neutral}
 - {text: "Churn was highest among poor payers.", label: no, near: benchmark, source: saas-neutral}
 - {text: "Logo churn rose amid strong headwinds in SMB.", label: no, near: benchmark, source: saas-neutral}
+# Domain 7 (K5, 2026-11-16): IoT causal and benchmark traps; the held-out set is unchanged
+- {text: "Vibration causes the alarms on line B.", label: yes, kind: causal, source: iot}
+- {text: "S07 fails because its temperature drifts.", label: yes, kind: causal, source: iot}
+- {text: "High vibration drives the failures on line B, so damping it will cut breakdowns.", label: yes, kind: causal, source: iot}
+- {text: "Night shifts lower OEE because operators are less alert.", label: yes, kind: causal, source: iot}
+- {text: "The changeovers caused line A's availability to fall.", label: yes, kind: causal, source: iot}
+- {text: "At 70.8%, OEE is below the world-class 85%.", label: yes, kind: benchmark, source: iot}
+- {text: "Line C's OEE of 74% is good for a discrete plant.", label: yes, kind: benchmark, source: iot}
+- {text: "An MTTR of 4 hours is excellent for this kind of equipment.", label: yes, kind: benchmark, source: iot}
+- {text: "OEE was 70.8%, pooled over planned production time.", label: no, near: benchmark, source: iot}
+- {text: "Alarms are more frequent when vibration is higher (r = 0.41), an association.", label: no, near: causal, source: iot}
+- {text: "Availability fell because unplanned downtime rose by 1,200 minutes.", label: no, near: causal, source: iot}
+- {text: "To see whether vibration drives failures, compare vibration before each failure with a control period.", label: no, near: causal, source: iot}
+- {text: "MTBF was 42 h, assuming a constant failure rate.", label: no, near: none, source: iot}
+- {text: "S07's daily mean crossed its upper control limit on 31 Aug.", label: no, near: causal, source: iot}

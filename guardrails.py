@@ -477,11 +477,40 @@ def _is_date(text: str, m: re.Match) -> bool:
     return not m["bare"] or bool(_YEAR_CUE_RE.search(text[:m.start()]))
 
 
+# A clock time (K1, Domain 7): its own `T` after a date is consumed with it. A bare "2:30" is
+# a time only with seconds, am/pm, a zone, an hour of 13+, a date before it or a time cue ("at
+# 11:30"); otherwise it stays a number, so a wrong duration ("MTTR 2:30") is still checked.
+_TIME_RE = re.compile(
+    r"(?:(?<=\d)T|(?<![\w.:/]))(?P<h>[01]?\d|2[0-3]):[0-5]\d(?P<s>:[0-5]\d(?:\.\d+)?)?"
+    r"(?P<z>\s?[ap]\.?m\.?(?!\w)|Z\b|[+-][01]\d:?[0-5]\d)?(?![\d:])", re.I)
+_TIME_CUE_RE = re.compile(r"(?:\d{4}-\d\d-\d\d[T ]?|\b(?:at|from|to|until|till|between|and|by|"
+                          r"before|after|since|around)\s+)$", re.I)
+# Day-level forms the main pattern leaves: a slash date, a month and day with no year.
+_SLASH_DATE_RE = re.compile(r"\b(?:\d{1,2}/\d{1,2}/\d{2,4}|\d{4}/\d{1,2}/\d{1,2})\b")
+# (a month named with its capital: "march 47 units short" is prose, never a date)
+_MONTH_DAY_RE = re.compile(rf"\b(?:{_MONTH})\b\.?\s+\d{{1,2}}(?:st|nd|rd|th)?\b"
+                           r"(?![.,]\d|\s*(?:%|percent))")
+# a duration written h:mm with its unit ("4:30 hours", "from 3:15 to 2:45 hours") is a claim
+_DURATION_AFTER_RE = re.compile(r"^(?:\s*(?:to|-|–)\s*\d{1,2}:\d{2})?\s*(?:h|hrs?|hours?|mins?|minutes)\b",
+                                re.I)
+
+
+def _clock(text: str, m: re.Match) -> bool:
+    if m["s"] or m["z"] or int(m["h"]) >= 13:   # '14:00 hrs' is a clock time, units or not
+        return True
+    if _DURATION_AFTER_RE.match(text[m.end():]):   # 'by 4:30 hours': a duration, a claim
+        return False
+    return bool(_TIME_CUE_RE.search(text[:m.start()]))
+
+
 def without_dates(text: str, has_dates: bool) -> str:
-    """The text with its date mentions removed, so number grounding doesn't read a day or a
-    year as a claim. Bare years stay when the data has no dates (then they're just numbers)."""
-    return _DATE_RE.sub(
+    """The text with its date and clock-time mentions removed, so number grounding doesn't read
+    a day, a year or an hour as a claim. Bare years stay when the data has no dates (then
+    they're just numbers). The one date stripper: the eval scorers read through it too."""
+    text = _TIME_RE.sub(lambda m: " " if _clock(text, m) else m[0], text)
+    text = _DATE_RE.sub(
         lambda m: m[0] if m["bare"] and (not has_dates or not _is_date(text, m)) else " ", text)
+    return _MONTH_DAY_RE.sub(" ", _SLASH_DATE_RE.sub(" ", text))
 
 
 def ungrounded_dates(text: str, first: tuple[int, int] | None,
@@ -885,7 +914,9 @@ _THING_NAME_RE = re.compile(
     r"(?:^|_)(?:product|company|file|brand|category|item|sku|host|table|column|field|sheet|"
     r"store|shop|city|country|state|region|department|dept|team|project|campaign|vendor|"
     r"supplier|merchant|plan|model|event|job|app|domain|org|organization|channel|segment|"
-    r"lineitem|line_item)_names?$", re.I)
+    r"lineitem|line_item|"
+    # Domain 7: plant-floor things (a machine, an asset, a historian tag)
+    r"machine|asset|equipment|line|sensor|tag|station|work_?center|plant|site)_names?$", re.I)
 # A column named for a person's role (`sales_rep`, `contact_owner`, `assigned_to`): PII only when
 # its values read as people (pii_kind checks), so `new_customer` (Yes/No) keeps its breakdowns.
 _ROLE_NOUNS = {"rep", "representative", "owner", "assignee", "assigned_to", "agent", "salesperson",
@@ -895,7 +926,16 @@ _ROLE_NOUNS = {"rep", "representative", "owner", "assignee", "assigned_to", "age
                "reviewer", "approver", "requester", "submitter",
                # insurance and health plans (Phase 5.5): people, named by their role
                "policyholder", "insured", "beneficiary", "subscriber", "guarantor", "claimant",
-               "dependent", "caregiver", "guardian"}
+               "dependent", "caregiver", "guardian",
+               # the shop floor and a CMMS work order (Domain 7)
+               "operator", "supervisor", "reportedby", "reported_by", "changeby", "changed_by",
+               "mechanic", "planner", "completedby", "completed_by", "inspector", "worker", "lead",
+               "lead_hand", "foreman", "login"}
+# A CMMS login (Maximo's REPORTEDBY "JSMITH"): one capitalised token of letters, 4+ long, so a
+# rep code ("R12") stays data. Read only in a column named for a person's role.
+_LOGIN_RE = re.compile(r"^[A-Z]{4,12}$")
+# An employee badge (a door-access or clock-in id) identifies one person: named, never valued.
+_BADGE_COL_RE = re.compile(r"(?:^|_)badge(?:_?(?:id|no|number|num))?$", re.I)
 # Department / unit names read like people ("Critical Care"): these words mark a thing, not a person.
 _PLACE_WORDS = re.compile(r"\b(?:medicine|care|surgery|surgical|unit|clinic|center|centre|department|"
                           r"service|services|therapy|health|practice|ward|room|lab|laboratory|imaging|"
@@ -1166,8 +1206,11 @@ def pii_kind(name: str, values: Iterable[Any]) -> tuple[str, str] | None:
         return "dob", f"'{name}' holds dates of death"   # `deceased` = 2021-03-04, not a flag
     text = [v.strip() for v in vals if isinstance(v, str)]
     last = norm.lower().split("_")[-1] if norm else ""
+    if _BADGE_COL_RE.search(norm):
+        return "name", f"the column name '{name}' marks an employee badge"
     if (last in _ROLE_NOUNS or norm.lower() in _ROLE_NOUNS) and text \
-            and sum(bool(_PERSON_RE.match(t)) and not _ORG_RE.search(t) for t in text) \
+            and sum((bool(_PERSON_RE.match(t)) or bool(_LAST_FIRST_RE.match(t))
+                     or bool(_LOGIN_RE.match(t))) and not _ORG_RE.search(t) for t in text) \
             >= 0.5 * len(vals):
         return "name", f"'{name}' names a person's role and its values read as people's names"
     hits: dict[str, int] = {}

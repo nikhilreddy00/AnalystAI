@@ -89,6 +89,23 @@ class Role(_Strict):
         return self
 
 
+class Invalid(_Strict):
+    """A quality flag's values (matched as text, any case): `values` make the `blanks` measures
+    of that row no measurement; `doubtful` ones are kept and counted."""
+    values: list[str]
+    doubtful: list[str] = Field(default_factory=list)
+    blanks: list[str]
+
+
+class Units(_Strict):
+    """A measure written in more than one unit, each row's unit in `unit_role`: Cleaning
+    converts every row to `to` by its code (matched as text, any case or spacing):
+    value × scale + offset (°F → °C: × 5/9 − 160/9). Only the unit column decides (C7)."""
+    unit_role: str
+    to: str
+    convert: dict[str, tuple[float, float]]
+
+
 class Cond(_Strict):
     """One condition on a role's value: words (`in` / `not_in`, case, spaces, dashes and
     underscores ignored) or a number (`gt` … `le`)."""
@@ -230,6 +247,12 @@ class Spell(_Strict):
     snapshot_every: Literal["month"] | None = None
 
 
+# A two-role expression's operators: a product, a difference, whole days or exact hours from
+# the second role's time to the first's.
+TERM_OPS = ("*", "-", "days", "hours")
+DURATION_OPS = ("days", "hours")
+
+
 class Term(_Strict):
     """One summand: sum / sum_abs of a role or a 2-role product or difference, nunique of a
     role, or another KPI; over the given row kinds (default: the KPI's). `spell` (the pack's
@@ -277,8 +300,8 @@ class Term(_Strict):
                                          self.within)) != 1:
             raise ValueError("a term needs exactly one of sum, sum_abs, nunique, kpi, within, spell")
         expr = self.sum if self.sum is not None else self.sum_abs
-        if isinstance(expr, list) and (len(expr) != 3 or expr[1] not in ("*", "-", "days")):
-            raise ValueError(f"a term's expression is [role, '*', '-' or 'days', role], not {expr}")
+        if isinstance(expr, list) and (len(expr) != 3 or expr[1] not in TERM_OPS):
+            raise ValueError(f"a term's expression is [role, {' | '.join(TERM_OPS)}, role], not {expr}")
         return self
 
     def roles(self) -> list[str]:
@@ -302,7 +325,12 @@ class KPI(_Strict):
     rows: list[Literal["sale", "return", "refunded", "cancel", "test", "non_product"]] = ["sale"]
     unit: Literal["money", "percent", "count", "number"] = "number"
     unit_word: str | None = None  # a number's unit, written after it ("3.72 days")
-    tile: bool = False            # one of the domain's KPI tiles (when computable)
+    # a ratio's words for a group whose base is 0, {num} its numerator ("no failure in {num} h")
+    zero_words: str | None = None
+    # a ratio no row can exceed (performance ≤ 1): a row over it is flagged in cleaning, never capped
+    max: float | None = None
+    max_words: str | None = None   # what a row over `max` likely means, said with the flag
+    tile: bool = False          # one of the domain's KPI tiles (when computable)
     # "latest": a state at a date (outstanding balance, accounts, NPL): each snapshot_key's latest
     # row in the period, of any kind, THEN the kind / currency / where filters (a loan charged off
     # this month is out, never its last month's balance)
@@ -365,6 +393,19 @@ class Pack(_Strict):
     test_marker: str | None = None  # regex on the raw order / customer / email values
     test_roles: list[str] = Field(default_factory=list)
     sentinels: dict[str, list[float]] = Field(default_factory=dict)   # role → codes for "unknown"
+    # flag role → the values marking its row's measures as no measurement (a historian's Bad):
+    # Cleaning blanks those measures like a sentinel; `doubtful` values are kept and counted
+    invalid_when: dict[str, Invalid] = Field(default_factory=dict)
+    # measure role → its unit column and the conversions to one unit (a site reporting °F)
+    units: dict[str, Units] = Field(default_factory=dict)
+    # The role naming whose time series a row is (a sensor): an exact copy of one series' row at
+    # one time is a double write (dropped); a repeated time with other values, a gap and a value
+    # stuck for `stuck_hours` (a continuous measure's run of one value) are flagged and kept.
+    series_key: str | None = None
+    stuck_hours: dict[str, float] = Field(default_factory=dict)
+    # Roles whose every value the KPI conditions' word lists should name (a work type is
+    # corrective or preventive): a value none names is said by Cleaning, never silently dropped
+    closed_words: list[str] = Field(default_factory=list)
     # role → its sign from an indicator: Cleaning signs the values once (every consumer reads them)
     signed_by: dict[str, SignRule] = Field(default_factory=dict)
     ranges: dict[str, dict[Literal["gt", "ge", "lt", "le"], float]] = Field(default_factory=dict)
@@ -503,6 +544,14 @@ class Pack(_Strict):
                 if (other := seen.get(h)) and self.roles[other].kind == r.kind:
                     errors.append(f"header {h!r} is in roles {other} and {role} of the same kind")
                 seen.setdefault(h, role)
+        errors += [f"invalid_when {f}: unknown role {r}" for f, rule in self.invalid_when.items()
+                   for r in [f, *rule.blanks] if r not in self.roles]
+        errors += [f"units {m}: unknown role {r}" for m, u in self.units.items()
+                   for r in (m, u.unit_role) if r not in self.roles]
+        errors += [f"series_key: unknown role {r}" for r in [self.series_key] if r and r not in self.roles]
+        errors += [f"closed_words: unknown role {r}" for r in self.closed_words if r not in self.roles]
+        errors += [f"stuck_hours {r}: {'unknown role' if r not in self.roles else 'needs a series_key'}"
+                   for r in self.stuck_hours if r not in self.roles or not self.series_key]
         refs = [*self.order_fields, *self.sentinels, *self.ranges, *self.credit_prefix, *self.non_product,
                 *self.test_roles, *self.negative_is_return, *self.item_roles, *self.cost_roles, *self.overview_groups,
                 *(r for r in (self.order_key, self.location_role, self.snapshot_key,
@@ -525,9 +574,9 @@ class Pack(_Strict):
                 *self.strong_panel]
         errors += [f"unknown role {r}" for r in refs if r not in self.roles]
         for r, expr in self.derived.items():
-            if r not in self.roles or len(expr) != 3 or expr[1] not in ("*", "-", "days") \
+            if r not in self.roles or len(expr) != 3 or expr[1] not in TERM_OPS \
                     or expr[0] not in self.roles or expr[2] not in self.roles:
-                errors.append(f"derived {r}: a role and [role, '*', '-' or 'days', role]")
+                errors.append(f"derived {r}: a role and [role, {' | '.join(TERM_OPS)}, role]")
         for r, f in self.columns.items():
             errors += [f"columns {r}: unknown role {x}" for x in
                        [r, *f.times, *f.over, *([f.net_of] if f.net_of else []), *f.optional]
@@ -652,19 +701,27 @@ def expand_header(norm: str, pack: Pack) -> str:
     return "_".join(pack.abbreviations.get(t, t) for t in norm.split("_"))
 
 
-def _column(df: pd.DataFrame, roles: dict[str, str], expr: str | list[str]) -> pd.Series:
+def _column(df: pd.DataFrame, roles: dict[str, str], expr: str | list[str],
+            signed: bool = False) -> pd.Series:
+    """A role's values, or a two-role expression's. A duration ending before its start is no
+    duration (blank); `signed` keeps it negative, for the check that says it (ranges)."""
     if isinstance(expr, str):
         return pd.to_numeric(df[roles[expr]], errors="coerce")
     if expr[1] == "days":   # whole days from b to a (a stay: discharge − admit; same day = 0)
         d = (_day(df[roles[expr[0]]]) - _day(df[roles[expr[2]]])).dt.days
-        return d.where(d >= 0).astype(float)
+        return d.astype(float) if signed else d.where(d >= 0).astype(float)
+    if expr[1] == "hours":   # exact hours from b to a (a repair: finish − start), never negative
+        from connectors.base import as_times
+        h = (as_times(df[roles[expr[0]]]) - as_times(df[roles[expr[2]]])).dt.total_seconds() / 3600
+        return h.astype(float) if signed else h.where(h >= 0).astype(float)
     a, op, b = (pd.to_numeric(df[roles[expr[0]]], errors="coerce"), expr[1],
                 pd.to_numeric(df[roles[expr[2]]], errors="coerce"))
     return a * b if op == "*" else a - b
 
 
 def _day(s: pd.Series) -> pd.Series:
-    return pd.to_datetime(s, format="mixed", errors="coerce").dt.normalize()
+    from connectors.base import as_times
+    return as_times(s).dt.normalize()
 
 
 def snapshot_role(pack: Pack) -> str | None:
@@ -702,9 +759,11 @@ class Measured:
 class MeasuredBy:
     """A figure per group or period: a non-empty Series of finite numbers (a group or period the
     data can't support is left out, never NaN). `hidden`: the groups left out as small cells,
-    said in the answer. Shallow-frozen: the Series is copied in, never shared."""
+    said in the answer. `zero`: (group, numerator) of the groups whose base is 0 (GLOSSARY:
+    Zero-event group), said, never ranked. Shallow-frozen: the Series is copied in, never shared."""
     values: pd.Series
     hidden: tuple[Hashable, ...] = ()
+    zero: tuple[tuple[Hashable, float], ...] = ()
 
     def __post_init__(self):
         v = self.values
@@ -717,9 +776,11 @@ class MeasuredBy:
 class Unavailable:
     """A figure the data can't support, with its reason (GLOSSARY: Unavailable); `roles`: the
     pack roles it is about (never column names: the answer says them in the pack's words).
-    Never shown as a 0."""
+    Never shown as a 0. `zero`: a ratio's numerator over its 0 base (run hours with no failure),
+    said in the KPI's zero_words."""
     reason: Reason
     roles: tuple[str, ...] = ()
+    zero: float | None = None
 
     def __post_init__(self):
         if self.reason not in get_args(Reason):

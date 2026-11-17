@@ -57,8 +57,10 @@ def _probe(name: str) -> dict:
 
     def filtered(f):
         o = va.filtered_dashboard(clean, contract, charts, f)
-        return {**{k: v for k, v in o.items() if k not in ("charts", "titles")},
-                "charts": {pos[k]: v for k, v in o.get("charts", {}).items()}}
+        # K6's per-chart counts are keyed by chart id too: by position, or every run differs
+        return {**{k: v for k, v in o.items() if k not in ("charts", "titles", "counts")},
+                "charts": {pos[k]: v for k, v in o.get("charts", {}).items()},
+                "counts": {pos[k]: v for k, v in o.get("counts", {}).items()}}
     pills = [o for o in (opts.get("options", []) if isinstance(opts, dict) else [])
              if o["control"] in ("binary", "pills") and o.get("values")]
     out["filtered"] = {"none": safe(lambda: filtered({}))}

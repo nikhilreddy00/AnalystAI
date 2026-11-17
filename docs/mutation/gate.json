@@ -45,6 +45,82 @@
   "equivalents": [],
   "hash": "fe69e1b4dc76a39a"
  },
+ "agents/cleaning_agent.py::_series_flags": {
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "d = df.assign(_t=t).dropna(subset=[\"_t\"]).sort_values([key, \"_t\"], kind=None)",
+    "old": "d = df.assign(_t=t).dropna(subset=[\"_t\"]).sort_values([key, \"_t\"], kind=\"stable\")",
+    "reason": "pandas ignores `kind` when sorting by several columns ([series, time]); ties are one series' rows at one time"
+   },
+   {
+    "n": 1,
+    "new": "d = df.assign(_t=t).dropna(subset=[\"_t\"]).sort_values([key, \"_t\"], )",
+    "old": "d = df.assign(_t=t).dropna(subset=[\"_t\"]).sort_values([key, \"_t\"], kind=\"stable\")",
+    "reason": "pandas ignores `kind` when sorting by several columns ([series, time]); ties are one series' rows at one time"
+   },
+   {
+    "n": 1,
+    "new": "stuck.append(f\"{k} {role.replace('_', ' ')} at {r[col].iloc[1]:g} for {_hours(span)} \"",
+    "old": "stuck.append(f\"{k} {role.replace('_', ' ')} at {r[col].iloc[0]:g} for {_hours(span)} \"",
+    "reason": "a stuck run spans hours, so it has 2+ rows, all of one value: its first and second values are equal"
+   },
+   {
+    "n": 1,
+    "new": "d = df.assign(_t=t).dropna(subset=[\"_t\"]).sort_values([key, \"_t\"], kind=\"XXstableXX\")",
+    "old": "d = df.assign(_t=t).dropna(subset=[\"_t\"]).sort_values([key, \"_t\"], kind=\"stable\")",
+    "reason": "pandas ignores `kind` when sorting by several columns ([series, time]); ties are one series' rows at one time"
+   },
+   {
+    "n": 1,
+    "new": "d = df.assign(_t=t).dropna(subset=[\"_t\"]).sort_values([key, \"_t\"], kind=\"STABLE\")",
+    "old": "d = df.assign(_t=t).dropna(subset=[\"_t\"]).sort_values([key, \"_t\"], kind=\"stable\")",
+    "reason": "pandas ignores `kind` when sorting by several columns ([series, time]); ties are one series' rows at one time"
+   },
+   {
+    "n": 1,
+    "new": "clash = d_valid.duplicated([key, \"_t\"], ).reindex(d.index, fill_value=False)",
+    "old": "clash = d_valid.duplicated([key, \"_t\"], keep=False).reindex(d.index, fill_value=False)",
+    "reason": "keep=False or 'first' marks the same (series, time) pairs, and only those pairs are counted and named"
+   },
+   {
+    "n": 1,
+    "new": "d_valid = d[d[measured].notna().any(axis=1)] if (measured) or True else d",
+    "old": "d_valid = d[d[measured].notna().any(axis=1)] if measured else d",
+    "reason": "_series_columns returns a series only when a stuck_hours role is mapped, so measured is never empty"
+   },
+   {
+    "n": 1,
+    "new": "named = \", \".join(f\"{k} at {v:%Y-%m-%d %H:%M}\" for k, v in own.head(3).itertuples(index=None))",
+    "old": "named = \", \".join(f\"{k} at {v:%Y-%m-%d %H:%M}\" for k, v in own.head(3).itertuples(index=False))",
+    "reason": "index=None is falsy like False: the tuples carry no index either way"
+   },
+   {
+    "n": 1,
+    "new": "for k, g in d.groupby(key, sort=None):",
+    "old": "for k, g in d.groupby(key, sort=True):",
+    "reason": "the frame is already sorted by the series key, so groups come in the same order sorted or not"
+   },
+   {
+    "n": 1,
+    "new": "for k, g in d.groupby(key, ):",
+    "old": "for k, g in d.groupby(key, sort=True):",
+    "reason": "the frame is already sorted by the series key, so groups come in the same order sorted or not"
+   },
+   {
+    "n": 1,
+    "new": "for k, g in d.groupby(key, sort=False):",
+    "old": "for k, g in d.groupby(key, sort=True):",
+    "reason": "the frame is already sorted by the series key, so groups come in the same order sorted or not"
+   },
+   {
+    "n": 1,
+    "new": "usual = step[step > pd.Timedelta(1)].median()",
+    "old": "usual = step[step > pd.Timedelta(0)].median()",
+    "reason": "a step of 1 ns between two readings of one series does not occur: timestamps are to the second at finest"
+   }
+  ]
+ },
  "agents/drill_down_agent.py::run_drill_down_agent": {
   "equivalents": [
    {
@@ -91,6 +167,126 @@
    }
   ]
  },
+ "agents/targeted_analysis_agent.py::handle_kpi": {
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "over = measure(df, roles, pack, kpi.name, full=all_rows, window=None, cut=cut)",
+    "old": "over = measure(df, roles, pack, kpi.name, full=all_rows, window=win, cut=cut)",
+    "reason": "the overall lead runs only for KPIs that are neither state nor spell, for which win is always None"
+   },
+   {
+    "n": 1,
+    "new": "over = measure(df, roles, pack, kpi.name, full=all_rows, cut=cut)",
+    "old": "over = measure(df, roles, pack, kpi.name, full=all_rows, window=win, cut=cut)",
+    "reason": "the overall lead runs only for KPIs that are neither state nor spell, for which win is always None"
+   },
+   {
+    "n": 1,
+    "new": "t = pd.to_datetime(frame[date], errors=\"coerce\").dropna() if (date) or True else None",
+    "old": "t = pd.to_datetime(frame[date], errors=\"coerce\").dropna() if date else None",
+    "reason": "the series branch is reached only with a date column (not spelled), so date is never empty there"
+   },
+   {
+    "n": 1,
+    "new": "span = f\" ({t.min():%d %b %Y} to {t.max():%d %b %Y})\" if (t is not None and len(t)) or True else \"\"",
+    "old": "span = f\" ({t.min():%d %b %Y} to {t.max():%d %b %Y})\" if t is not None and len(t) else \"\"",
+    "reason": "the series branch has a non-empty series built from dated rows, so t is never None or empty there"
+   },
+   {
+    "n": 1,
+    "new": "span = f\" ({t.min():%d %b %Y} to {t.max():%d %b %Y})\" if t is not None or len(t) else \"\"",
+    "old": "span = f\" ({t.min():%d %b %Y} to {t.max():%d %b %Y})\" if t is not None and len(t) else \"\"",
+    "reason": "the series branch has a non-empty series built from dated rows, so t is never None or empty there"
+   },
+   {
+    "n": 1,
+    "new": "span = f\" ({t.min():%d %b %Y} to {t.max():%d %b %Y})\" if t is not None and len(t) else \"XXXX\"",
+    "old": "span = f\" ({t.min():%d %b %Y} to {t.max():%d %b %Y})\" if t is not None and len(t) else \"\"",
+    "reason": "the series branch has a non-empty series built from dated rows, so t is never None or empty there"
+   }
+  ]
+ },
+ "agents/targeted_analysis_agent.py::handle_time_series": {
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "else \"XXMXX\")).upper()",
+    "old": "else \"M\")).upper()",
+    "reason": "freq is upper-cased, and an unknown frequency falls back to M on the next line"
+   },
+   {
+    "n": 1,
+    "new": "else \"m\")).upper()",
+    "old": "else \"M\")).upper()",
+    "reason": "freq is upper-cased: 'm' is 'M'"
+   },
+   {
+    "n": 1,
+    "new": "freq = (params.frequency or (\"d\" if spc else _default_freq(df[date], agg) if conventions",
+    "old": "freq = (params.frequency or (\"D\" if spc else _default_freq(df[date], agg) if conventions",
+    "reason": "freq is upper-cased: 'd' is 'D'"
+   }
+  ]
+ },
+ "agents/targeted_analysis_agent.py::run_targeted_analysis": {
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "metric = params.metric_column or (params.target_columns[:1] or [None])[0] if (params) or True else None",
+    "old": "metric = params.metric_column or (params.target_columns[:1] or [None])[0] if params else None",
+    "reason": "targeted_params is a required TargetedParams (pydantic refuses None), so params is never falsy"
+   },
+   {
+    "n": 1,
+    "new": "metric = params.metric_column or (params.target_columns[:2] or [None])[0] if params else None",
+    "old": "metric = params.metric_column or (params.target_columns[:1] or [None])[0] if params else None",
+    "reason": "[:1] or [:2] then [0] take the same first column"
+   }
+  ]
+ },
+ "agents/visualization_agent.py::_overview_asks": {
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "group = roles.get(role) if (role) or True else None",
+    "old": "group = roles.get(role) if role else None",
+    "reason": "role is None only when no group matched; roles never has a None key, so roles.get(None) is None either way"
+   }
+  ]
+ },
+ "connectors/base.py::as_times": {
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "return parsed if parsed is not None else pd.Series(None, index=s.index, dtype=\"datetime64[ns]\")",
+    "old": "return parsed if parsed is not None else pd.Series(pd.NaT, index=s.index, dtype=\"datetime64[ns]\")",
+    "reason": "an all-missing datetime64[ns] Series is all NaT however it is built (pandas 3.0.3, checked: None data, no data, no dtype)"
+   },
+   {
+    "n": 1,
+    "new": "return parsed if parsed is not None else pd.Series(pd.NaT, index=s.index, dtype=None)",
+    "old": "return parsed if parsed is not None else pd.Series(pd.NaT, index=s.index, dtype=\"datetime64[ns]\")",
+    "reason": "an all-missing datetime64[ns] Series is all NaT however it is built (pandas 3.0.3, checked: None data, no data, no dtype)"
+   },
+   {
+    "n": 1,
+    "new": "return parsed if parsed is not None else pd.Series(index=s.index, dtype=\"datetime64[ns]\")",
+    "old": "return parsed if parsed is not None else pd.Series(pd.NaT, index=s.index, dtype=\"datetime64[ns]\")",
+    "reason": "an all-missing datetime64[ns] Series is all NaT however it is built (pandas 3.0.3, checked: None data, no data, no dtype)"
+   },
+   {
+    "n": 1,
+    "new": "return parsed if parsed is not None else pd.Series(pd.NaT, index=s.index, )",
+    "old": "return parsed if parsed is not None else pd.Series(pd.NaT, index=s.index, dtype=\"datetime64[ns]\")",
+    "reason": "an all-missing datetime64[ns] Series is all NaT however it is built (pandas 3.0.3, checked: None data, no data, no dtype)"
+   }
+  ]
+ },
+ "domain_pack/columns.py::derived_roles": {
+  "equivalents": [],
+  "hash": "5d50a720548bb313"
+ },
  "domain_pack/columns.py::pack_columns": {
   "equivalents": [],
   "hash": "f9ad34f904bfc0da"
@@ -123,6 +319,21 @@
   ],
   "hash": "ce5e7821f4397a7b"
  },
+ "domain_pack/columns.py::with_derived": {
+  "equivalents": [],
+  "hash": "bde71c77d88b7363"
+ },
+ "domain_pack/kpi.py::_kpi_value": {
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "base = den.reindex(None)",
+    "old": "base = den.reindex(num.index)",
+    "reason": "num and den are built over the same groups (_term reindexes both to the KPI's groups), so their indexes are equal"
+   }
+  ],
+  "hash": "151fa0cb63df31c3"
+ },
  "domain_pack/kpi.py::_term": {
   "equivalents": [
    {
@@ -133,6 +344,61 @@
    }
   ],
   "hash": "c44482d43d599a73"
+ },
+ "domain_pack/kpi.py::computable": {
+  "equivalents": [],
+  "hash": "bcd14fb09d358025"
+ },
+ "domain_pack/kpi.py::kpi_measures": {
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "None, *TERM_OPS} if (expr is not None) or True else set()",
+    "old": "None, *TERM_OPS} if expr is not None else set()",
+    "reason": "with expr None the set is {None} minus a set holding None: empty, as set() is"
+   }
+  ],
+  "hash": "a57d457c84c21c0e"
+ },
+ "domain_pack/kpi.py::kpi_roles": {
+  "equivalents": [],
+  "hash": "4bb039540023616a"
+ },
+ "domain_pack/kpi.py::measure": {
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "return MeasuredBy(value.astype(None), tuple(hidden), zero)",
+    "old": "return MeasuredBy(value.astype(float), tuple(hidden), zero)",
+    "reason": "astype(None) gives float64 as astype(float) does (checked)"
+   }
+  ],
+  "hash": "94d59547f0f51c12"
+ },
+ "domain_pack/kpi.py::unavailable_words": {
+  "equivalents": [],
+  "hash": "65da1bcee7cf1137"
+ },
+ "domain_pack/kpi.py::zero_note": {
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "return (\"XXXX\".join([\" \" + \"; \".join(f\"{g}: {kpi.zero_words.format(num=fmt(n))}\" for g, n in said) + \".\"]",
+    "old": "return (\"\".join([\" \" + \"; \".join(f\"{g}: {kpi.zero_words.format(num=fmt(n))}\" for g, n in said) + \".\"]",
+    "reason": "the joiner of a one-element list is never written"
+   }
+  ],
+  "hash": "58ba7589a5f26e93"
+ },
+ "domain_pack/pack.py::_column": {
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "return h.where(h >= 0).astype(None)",
+    "old": "return h.where(h >= 0).astype(float)",
+    "reason": "hours are floats already, and astype(None) gives float64 (checked)"
+   }
+  ]
  },
  "domain_pack/spell.py::window_span": {
   "equivalents": [],
@@ -163,6 +429,31 @@
   "equivalents": [],
   "hash": "507bcb4bf459cc27"
  },
+ "domain_pack/story.py::describe_kpi": {
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "n = round(1 / times) if times else 1",
+    "old": "n = round(1 / times) if times else 0",
+    "reason": "times is never 0 in a pack (a zero multiplier would zero the KPI); with n 0 or 1 the ÷ form is skipped alike"
+   },
+   {
+    "n": 1,
+    "new": "return text if times == 1 else f\"{text} ÷ {n}\" if n > 1 and abs(n * times - 1) <= 1e-9 \\",
+    "old": "return text if times == 1 else f\"{text} ÷ {n}\" if n > 1 and abs(n * times - 1) < 1e-9 \\",
+    "reason": "an exact 1e-9 error of 1/N in floating point does not occur: < and <= decide alike"
+   }
+  ],
+  "hash": "ac65192c6ae246e6"
+ },
+ "domain_pack/story.py::first_questions": {
+  "equivalents": [],
+  "hash": "9658cea9faad84fb"
+ },
+ "domain_pack/story.py::pack_brief": {
+  "equivalents": [],
+  "hash": "e8896d16d8f03fdf"
+ },
  "domain_pack/story.py::unit_said": {
   "equivalents": [
    {
@@ -172,6 +463,10 @@
     "reason": "the \\b anchors leave a non-word character or a string edge on both sides, so no unit word's boundary changes"
    }
   ]
+ },
+ "evals/scoring.py::answer_numbers": {
+  "equivalents": [],
+  "hash": "92391a203273c399"
  },
  "evals/scoring.py::score_quality": {
   "equivalents": [],

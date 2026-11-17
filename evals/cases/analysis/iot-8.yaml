@@ -1,0 +1,29 @@
+id: iot-8
+domain: iot
+category: ratio
+pipeline: production
+dataset:
+  name: shift_production
+  seed: 3
+question: What is the mean time between failures for each machine?
+task:
+  analysis_types:
+  - segmentation
+  target_metrics:
+  - Failures
+  segments:
+  - Machine
+checks:
+- kind: segment_value_truth
+  planted: true
+  segment: Machine
+  truth_key: mtbf_by_failing_machine
+  abs_tol: 0.5
+  scales:
+  - 1
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
+- numbers_grounded
+label_note: 'Domain 7 (T13, T6): MTBF = run hours / failures per machine (run = planned - unplanned downtime -
+  changeover); stops are not failures; M08 has none (a lower bound, never infinity), M10 never runs.'

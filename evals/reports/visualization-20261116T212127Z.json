@@ -1,0 +1,1790 @@
+{
+ "meta": {
+  "suite": "visualization",
+  "report": "visualization-20261116T212127Z",
+  "k": 1,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "c439e12",
+  "started_at": "20261116T212127Z",
+  "only": "viz-t1",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 7,
+  "runs": 7,
+  "pass_rate": 1.0,
+  "case_majority_pass_rate": 1.0,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "hard_rules_na": 0,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 0,
+  "runs_with_prose_rewritten": 0,
+  "runs_with_pii_guard_hit": 0,
+  "cost_per_question_usd": 0,
+  "latency_p50_s": 0.84,
+  "latency_p95_s": 2.13,
+  "right_chart": 1.0,
+  "headline_coverage": null,
+  "lint_violations": 0,
+  "charts_without_rationale": 0,
+  "holdout_pass_rate": null,
+  "pass_rate_by_category": {
+   "targeted": 1.0
+  }
+ },
+ "runs": {
+  "viz-t10-hr-attrition": [
+   {
+    "checks": [
+     {
+      "kind": "chart",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "chart_lint_clean",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "chart_has_rationale",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "targeted",
+    "holdout": false,
+    "output": {
+     "charts": [
+      {
+       "id": "377dabf9-12fe-4421-94cc-c173900ec6c6",
+       "chart_type": "HorizontalBarChart",
+       "title": "Attrition rate by Department (12 months to 31 Oct 2026)",
+       "data": [
+        {
+         "Department": "Support",
+         "Attrition rate": 54.5703
+        },
+        {
+         "Department": "Sales",
+         "Attrition rate": 30.0469
+        },
+        {
+         "Department": "Engineering",
+         "Attrition rate": 24.3468
+        },
+        {
+         "Department": "Finance",
+         "Attrition rate": 23.402
+        },
+        {
+         "Department": "Marketing",
+         "Attrition rate": 20.7075
+        },
+        {
+         "Department": "Operations",
+         "Attrition rate": 15.2327
+        },
+        {
+         "Department": "Legal",
+         "Attrition rate": 0.0
+        }
+       ],
+       "x_key": "Department",
+       "y_keys": [
+        "Attrition rate"
+       ],
+       "colors": [],
+       "x_label": "Department",
+       "y_label": "Attrition rate",
+       "show_legend": true,
+       "show_grid": true,
+       "source_finding": "kpi",
+       "value_format": "percent",
+       "layout_hint": "half_width",
+       "rationale": {
+        "rule": "targeted:kpi\u2192ranked bars",
+        "reason": "Attrition rate per Department, ranked. Separations (exits in the period (events: by Termination_Date; a returning Employee_ID's exits count separately) where Worker_Type is not contractor / contingent / agency / agency worker / consultant / freelancer / vendor / contract worker / temp agency; over employment records), divided by average headcount (the mean of the month-end counts of distinct Employee_ID in force (Hire_Date on or before the date, Termination_Date blank or after it) where Worker_Type is not contractor / contingent / agency / agency worker / consultant / freelancer / vendor / contract worker / temp agency; over employment records). 5 start or end dates fall after 31 Oct 2026: not counted yet.",
+        "x": "Department",
+        "y": "Attrition rate",
+        "split": null,
+        "aggregation": "none",
+        "n_rows": 1770,
+        "evidence_ids": [],
+        "code": "",
+        "confidence": null
+       },
+       "placement": "summary",
+       "lint_warnings": [],
+       "error_key": null,
+       "split_key": null,
+       "reference_lines": []
+      }
+     ],
+     "evidence_ids": []
+    },
+    "latency_s": 1.05,
+    "cost_usd": 0,
+    "llm_calls": 0,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "viz-t10-ins-incurred-by-ay": [
+   {
+    "checks": [
+     {
+      "kind": "chart",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "chart_lint_clean",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "chart_has_rationale",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "targeted",
+    "holdout": false,
+    "output": {
+     "charts": [
+      {
+       "id": "06f59ba2-cf1a-4f03-8e1f-33bb88e446ef",
+       "chart_type": "BarChart",
+       "title": "Incurred losses over time",
+       "data": [
+        {
+         "period": "2022",
+         "Incurred losses": 6349106.62
+        },
+        {
+         "period": "2023",
+         "Incurred losses": 7200690.15
+        },
+        {
+         "period": "2024",
+         "Incurred losses": 9451184.01
+        },
+        {
+         "period": "2025",
+         "Incurred losses": 7548707.16
+        },
+        {
+         "period": "2026",
+         "Incurred losses": 3125266.94
+        }
+       ],
+       "x_key": "period",
+       "y_keys": [
+        "Incurred losses"
+       ],
+       "colors": [],
+       "x_label": "Period",
+       "y_label": "Incurred losses",
+       "show_legend": true,
+       "show_grid": true,
+       "source_finding": "kpi",
+       "value_format": "number",
+       "layout_hint": "half_width",
+       "rationale": {
+        "rule": "targeted:kpi\u2192line",
+        "reason": "Incurred losses per Y period. Sum of Incurred; over counted rows (earlier valuations of claims left out).",
+        "x": "Loss Date",
+        "y": "Incurred losses",
+        "split": null,
+        "aggregation": "sum",
+        "n_rows": 38255,
+        "evidence_ids": [],
+        "code": "",
+        "confidence": null
+       },
+       "placement": "summary",
+       "lint_warnings": [],
+       "error_key": null,
+       "split_key": null,
+       "reference_lines": []
+      }
+     ],
+     "evidence_ids": []
+    },
+    "latency_s": 1.01,
+    "cost_usd": 0,
+    "llm_calls": 0,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "viz-t11-hr-headcount": [
+   {
+    "checks": [
+     {
+      "kind": "chart",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "chart_lint_clean",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "chart_has_rationale",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "targeted",
+    "holdout": false,
+    "output": {
+     "charts": [
+      {
+       "id": "3b4dc35e-2c62-4fa3-be0b-086bbbab53b2",
+       "chart_type": "LineChart",
+       "title": "Headcount over time",
+       "data": [
+        {
+         "period": "2024-11",
+         "Headcount": 345.0
+        },
+        {
+         "period": "2024-12",
+         "Headcount": 342.0
+        },
+        {
+         "period": "2025-01",
+         "Headcount": 342.0
+        },
+        {
+         "period": "2025-02",
+         "Headcount": 344.0
+        },
+        {
+         "period": "2025-03",
+         "Headcount": 339.0
+        },
+        {
+         "period": "2025-04",
+         "Headcount": 340.0
+        },
+        {
+         "period": "2025-05",
+         "Headcount": 340.0
+        },
+        {
+         "period": "2025-06",
+         "Headcount": 341.0
+        },
+        {
+         "period": "2025-07",
+         "Headcount": 340.0
+        },
+        {
+         "period": "2025-08",
+         "Headcount": 334.0
+        },
+        {
+         "period": "2025-09",
+         "Headcount": 330.0
+        },
+        {
+         "period": "2025-10",
+         "Headcount": 332.0
+        },
+        {
+         "period": "2025-11",
+         "Headcount": 336.0
+        },
+        {
+         "period": "2025-12",
+         "Headcount": 333.0
+        },
+        {
+         "period": "2026-01",
+         "Headcount": 336.0
+        },
+        {
+         "period": "2026-02",
+         "Headcount": 337.0
+        },
+        {
+         "period": "2026-03",
+         "Headcount": 336.0
+        },
+        {
+         "period": "2026-04",
+         "Headcount": 340.0
+        },
+        {
+         "period": "2026-05",
+         "Headcount": 343.0
+        },
+        {
+         "period": "2026-06",
+         "Headcount": 347.0
+        },
+        {
+         "period": "2026-07",
+         "Headcount": 351.0
+        },
+        {
+         "period": "2026-08",
+         "Headcount": 351.0
+        },
+        {
+         "period": "2026-09",
+         "Headcount": 354.0
+        },
+        {
+         "period": "2026-10",
+         "Headcount": 353.0
+        }
+       ],
+       "x_key": "period",
+       "y_keys": [
+        "Headcount"
+       ],
+       "colors": [],
+       "x_label": "Period",
+       "y_label": "Headcount",
+       "show_legend": true,
+       "show_grid": true,
+       "source_finding": "kpi",
+       "value_format": "number",
+       "layout_hint": "half_width",
+       "rationale": {
+        "rule": "targeted:kpi\u2192line",
+        "reason": "Headcount per M period. Distinct Emp_ID in force at the date (each Emp_ID's latest Snapshot_Date snapshot on or before the date, Termination_Date blank or after it) where Worker_Type is not contractor / contingent / agency / agency worker / consultant / freelancer / vendor / contract worker / temp agency; over employment records. 1 start or end date falls after 31 Oct 2026: not counted yet.",
+        "x": "Snapshot_Date",
+        "y": "Headcount",
+        "split": null,
+        "aggregation": "none",
+        "n_rows": 8220,
+        "evidence_ids": [],
+        "code": "",
+        "confidence": null
+       },
+       "placement": "summary",
+       "lint_warnings": [],
+       "error_key": null,
+       "split_key": null,
+       "reference_lines": []
+      }
+     ],
+     "evidence_ids": []
+    },
+    "latency_s": 0.8,
+    "cost_usd": 0,
+    "llm_calls": 0,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "viz-t12-saas-bridge": [
+   {
+    "checks": [
+     {
+      "kind": "chart",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "chart_lint_clean",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "chart_has_rationale",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "targeted",
+    "holdout": false,
+    "output": {
+     "charts": [
+      {
+       "id": "557cf52c-8509-48e4-9dd3-e23e13297d76",
+       "chart_type": "LineChart",
+       "title": "MRR over time",
+       "data": [
+        {
+         "period": "2024-11",
+         "MRR": 301898.89
+        },
+        {
+         "period": "2024-12",
+         "MRR": 311149.71
+        },
+        {
+         "period": "2025-01",
+         "MRR": 325095.34
+        },
+        {
+         "period": "2025-02",
+         "MRR": 339566.70999999996
+        },
+        {
+         "period": "2025-03",
+         "MRR": 361342.01
+        },
+        {
+         "period": "2025-04",
+         "MRR": 365976.0
+        },
+        {
+         "period": "2025-05",
+         "MRR": 380292.74
+        },
+        {
+         "period": "2025-06",
+         "MRR": 379158.05999999994
+        },
+        {
+         "period": "2025-07",
+         "MRR": 385369.77
+        },
+        {
+         "period": "2025-08",
+         "MRR": 388620.45
+        },
+        {
+         "period": "2025-09",
+         "MRR": 403682.24
+        },
+        {
+         "period": "2025-10",
+         "MRR": 412929.0800000001
+        },
+        {
+         "period": "2025-11",
+         "MRR": 428405.81000000006
+        },
+        {
+         "period": "2025-12",
+         "MRR": 431875.73
+        },
+        {
+         "period": "2026-01",
+         "MRR": 462775.41000000003
+        },
+        {
+         "period": "2026-02",
+         "MRR": 485611.30999999994
+        },
+        {
+         "period": "2026-03",
+         "MRR": 453588.22
+        },
+        {
+         "period": "2026-04",
+         "MRR": 464428.28
+        },
+        {
+         "period": "2026-05",
+         "MRR": 475599.10000000003
+        },
+        {
+         "period": "2026-06",
+         "MRR": 509438.38
+        },
+        {
+         "period": "2026-07",
+         "MRR": 524448.3
+        },
+        {
+         "period": "2026-08",
+         "MRR": 538652.55
+        },
+        {
+         "period": "2026-09",
+         "MRR": 557945.9099999999
+        },
+        {
+         "period": "2026-10",
+         "MRR": 562608.85
+        }
+       ],
+       "x_key": "period",
+       "y_keys": [
+        "MRR"
+       ],
+       "colors": [],
+       "x_label": "Period",
+       "y_label": "MRR",
+       "show_legend": true,
+       "show_grid": true,
+       "source_finding": "kpi",
+       "value_format": "number",
+       "layout_hint": "half_width",
+       "rationale": {
+        "rule": "targeted:kpi\u2192line",
+        "reason": "MRR per M period. Sum of mrr over the distinct customer_id in force at the date (each customer_id's latest month snapshot on or before the date, ended_at blank or after it) where mrr > 0; over records.",
+        "x": "month",
+        "y": "MRR",
+        "split": null,
+        "aggregation": "none",
+        "n_rows": 10117,
+        "evidence_ids": [],
+        "code": "",
+        "confidence": null
+       },
+       "placement": "summary",
+       "lint_warnings": [],
+       "error_key": null,
+       "split_key": null,
+       "reference_lines": []
+      },
+      {
+       "id": "5175b2e6-db62-431a-84c2-3acd9e05ba1e",
+       "chart_type": "LineChart",
+       "title": "Net revenue retention over time",
+       "data": [
+        {
+         "period": "2025-11",
+         "Net revenue retention": 98.5399
+        },
+        {
+         "period": "2025-12",
+         "Net revenue retention": 97.228
+        },
+        {
+         "period": "2026-01",
+         "Net revenue retention": 100.3063
+        },
+        {
+         "period": "2026-02",
+         "Net revenue retention": 99.7788
+        },
+        {
+         "period": "2026-03",
+         "Net revenue retention": 86.645
+        },
+        {
+         "period": "2026-04",
+         "Net revenue retention": 87.8862
+        },
+        {
+         "period": "2026-05",
+         "Net revenue retention": 88.6226
+        },
+        {
+         "period": "2026-06",
+         "Net revenue retention": 89.2659
+        },
+        {
+         "period": "2026-07",
+         "Net revenue retention": 90.6715
+        },
+        {
+         "period": "2026-08",
+         "Net revenue retention": 93.9737
+        },
+        {
+         "period": "2026-09",
+         "Net revenue retention": 93.5387
+        },
+        {
+         "period": "2026-10",
+         "Net revenue retention": 91.0506
+        }
+       ],
+       "x_key": "period",
+       "y_keys": [
+        "Net revenue retention"
+       ],
+       "colors": [],
+       "x_label": "Period",
+       "y_label": "Net revenue retention",
+       "show_legend": true,
+       "show_grid": true,
+       "source_finding": "kpi",
+       "value_format": "percent",
+       "layout_hint": "half_width",
+       "rationale": {
+        "rule": "targeted:kpi\u2192line",
+        "reason": "Net revenue retention per M period. Sum of mrr over the same customer_id (in force at the cohort's start) at the date where mrr > 0, divided by opening MRR (sum of mrr over the distinct customer_id in force 12 months before the date, or at the data's first month-end when it covers less (each customer_id's latest month snapshot on or before the date, ended_at blank or after it) where mrr > 0; over records); over records.",
+        "x": "month",
+        "y": "Net revenue retention",
+        "split": null,
+        "aggregation": "none",
+        "n_rows": 10117,
+        "evidence_ids": [],
+        "code": "",
+        "confidence": null
+       },
+       "placement": "summary",
+       "lint_warnings": [],
+       "error_key": null,
+       "split_key": null,
+       "reference_lines": []
+      },
+      {
+       "id": "d6fbc7c4-dc06-400c-a7f9-cf6b89ba2bea",
+       "chart_type": "BarChart",
+       "title": "MRR bridge, 12 months to 31 Oct 2026: $412,929.08 \u2192 $562,608.85",
+       "data": [
+        {
+         "step": "New MRR",
+         "value": 176207.56
+        },
+        {
+         "step": "Expansion MRR",
+         "value": 89367.79
+        },
+        {
+         "step": "Reactivation MRR",
+         "value": 6462.68
+        },
+        {
+         "step": "Contraction MRR",
+         "value": -36744.52
+        },
+        {
+         "step": "Churned MRR",
+         "value": -85613.74
+        },
+        {
+         "step": "MRR moved in",
+         "value": 0.0
+        },
+        {
+         "step": "MRR moved out",
+         "value": 0.0
+        }
+       ],
+       "x_key": "step",
+       "y_keys": [
+        "value"
+       ],
+       "colors": [
+        "#1D9E75",
+        "#1D9E75",
+        "#1D9E75",
+        "#A32D2D",
+        "#A32D2D",
+        "#1D9E75",
+        "#A32D2D"
+       ],
+       "x_label": "Move",
+       "y_label": "MRR",
+       "show_legend": false,
+       "show_grid": true,
+       "source_finding": "pack",
+       "value_format": "number",
+       "layout_hint": "full_width",
+       "rationale": {
+        "rule": "pack:bridge\u2192bars",
+        "reason": "MRR from 31 Oct 2025 to 31 Oct 2026: each bar is its own tile, and the bars add up to the change between the two dates",
+        "x": "step",
+        "y": "MRR",
+        "split": null,
+        "aggregation": "sum",
+        "n_rows": 10117,
+        "evidence_ids": [],
+        "code": "opening_mrr + new_mrr + expansion_mrr + reactivation_mrr + contraction_mrr + churned_mrr + transfer_in_mrr + transfer_out_mrr + mrr",
+        "confidence": null
+       },
+       "placement": "summary",
+       "lint_warnings": [],
+       "error_key": null,
+       "split_key": null,
+       "reference_lines": []
+      },
+      {
+       "id": "99470c89-d97d-43a9-b028-b503ca5ff59d",
+       "chart_type": "HorizontalBarChart",
+       "title": "MRR by segment (as of 31 Oct 2026)",
+       "data": [
+        {
+         "segment": "Enterprise",
+         "MRR": 322230.94
+        },
+        {
+         "segment": "Mid",
+         "MRR": 179558.89
+        },
+        {
+         "segment": "SMB",
+         "MRR": 60819.02
+        }
+       ],
+       "x_key": "segment",
+       "y_keys": [
+        "MRR"
+       ],
+       "colors": [],
+       "x_label": "segment",
+       "y_label": "MRR",
+       "show_legend": true,
+       "show_grid": true,
+       "source_finding": "kpi",
+       "value_format": "number",
+       "layout_hint": "half_width",
+       "rationale": {
+        "rule": "targeted:kpi\u2192ranked bars",
+        "reason": "MRR per segment, ranked. Sum of mrr over the distinct customer_id in force at the date (each customer_id's latest month snapshot on or before the date, ended_at blank or after it) where mrr > 0; over records.",
+        "x": "segment",
+        "y": "MRR",
+        "split": null,
+        "aggregation": "none",
+        "n_rows": 10117,
+        "evidence_ids": [],
+        "code": "",
+        "confidence": null
+       },
+       "placement": "summary",
+       "lint_warnings": [],
+       "error_key": null,
+       "split_key": null,
+       "reference_lines": []
+      },
+      {
+       "id": "b03f33b3-c837-42fd-946f-9b212cf31579",
+       "chart_type": "HorizontalBarChart",
+       "title": "Net revenue retention by segment (12-month cohort to 31 Oct 2026)",
+       "data": [
+        {
+         "segment": "Enterprise",
+         "Net revenue retention": 93.0346
+        },
+        {
+         "segment": "Mid",
+         "Net revenue retention": 89.238
+        },
+        {
+         "segment": "SMB",
+         "Net revenue retention": 85.4475
+        }
+       ],
+       "x_key": "segment",
+       "y_keys": [
+        "Net revenue retention"
+       ],
+       "colors": [],
+       "x_label": "segment",
+       "y_label": "Net revenue retention",
+       "show_legend": true,
+       "show_grid": true,
+       "source_finding": "kpi",
+       "value_format": "percent",
+       "layout_hint": "half_width",
+       "rationale": {
+        "rule": "targeted:kpi\u2192ranked bars",
+        "reason": "Net revenue retention per segment, ranked. Sum of mrr over the same customer_id (in force at the cohort's start) at the date where mrr > 0, divided by opening MRR (sum of mrr over the distinct customer_id in force 12 months before the date, or at the data's first month-end when it covers less (each customer_id's latest month snapshot on or before the date, ended_at blank or after it) where mrr > 0; over records); over records.",
+        "x": "segment",
+        "y": "Net revenue retention",
+        "split": null,
+        "aggregation": "none",
+        "n_rows": 10117,
+        "evidence_ids": [],
+        "code": "",
+        "confidence": null
+       },
+       "placement": "summary",
+       "lint_warnings": [],
+       "error_key": null,
+       "split_key": null,
+       "reference_lines": []
+      },
+      {
+       "id": "8614715d-1d64-4a56-abd6-e22f8852e3a2",
+       "chart_type": "HorizontalBarChart",
+       "title": "Logo churn by segment (12-month cohort to 31 Oct 2026)",
+       "data": [
+        {
+         "segment": "SMB",
+         "Logo churn": 26.7717
+        },
+        {
+         "segment": "Mid",
+         "Logo churn": 11.9403
+        },
+        {
+         "segment": "Enterprise",
+         "Logo churn": 5.1282
+        }
+       ],
+       "x_key": "segment",
+       "y_keys": [
+        "Logo churn"
+       ],
+       "colors": [],
+       "x_label": "segment",
+       "y_label": "Logo churn",
+       "show_legend": true,
+       "show_grid": true,
+       "source_finding": "kpi",
+       "value_format": "percent",
+       "layout_hint": "half_width",
+       "rationale": {
+        "rule": "targeted:kpi\u2192ranked bars",
+        "reason": "Logo churn per segment, ranked. Distinct customer_id in force 12 months before the date, or at the data's first month-end when it covers less (each customer_id's latest month snapshot on or before the date, ended_at blank or after it) where mrr > 0 less same customer_id (in force at the cohort's start) at the date where mrr > 0, divided by opening customers (distinct customer_id in force 12 months before the date, or at the data's first month-end when it covers less (each customer_id's latest month snapshot on or before the date, ended_at blank or after it) where mrr > 0; over records); over records.",
+        "x": "segment",
+        "y": "Logo churn",
+        "split": null,
+        "aggregation": "none",
+        "n_rows": 10117,
+        "evidence_ids": [],
+        "code": "",
+        "confidence": null
+       },
+       "placement": "summary",
+       "lint_warnings": [],
+       "error_key": null,
+       "split_key": null,
+       "reference_lines": []
+      },
+      {
+       "id": "793213c5-ae65-44ff-a896-5acbae660c2c",
+       "chart_type": "HorizontalBarChart",
+       "title": "New MRR by segment (12 months to 31 Oct 2026)",
+       "data": [
+        {
+         "segment": "Enterprise",
+         "New MRR": 94193.44
+        },
+        {
+         "segment": "Mid",
+         "New MRR": 61591.78
+        },
+        {
+         "segment": "SMB",
+         "New MRR": 20422.339999999997
+        }
+       ],
+       "x_key": "segment",
+       "y_keys": [
+        "New MRR"
+       ],
+       "colors": [],
+       "x_label": "segment",
+       "y_label": "New MRR",
+       "show_legend": true,
+       "show_grid": true,
+       "source_finding": "kpi",
+       "value_format": "number",
+       "layout_hint": "half_width",
+       "rationale": {
+        "rule": "targeted:kpi\u2192ranked bars",
+        "reason": "New MRR per segment, ranked. Sum of mrr over the new moves: each customer_id whose value went from 0 (never in force before) to above 0 between consecutive month-ends in the period where mrr > 0; over records.",
+        "x": "segment",
+        "y": "New MRR",
+        "split": null,
+        "aggregation": "none",
+        "n_rows": 10117,
+        "evidence_ids": [],
+        "code": "",
+        "confidence": null
+       },
+       "placement": "summary",
+       "lint_warnings": [],
+       "error_key": null,
+       "split_key": null,
+       "reference_lines": []
+      },
+      {
+       "id": "78611396-b95f-4f7f-ab87-e42dfe59aa9c",
+       "chart_type": "HorizontalBarChart",
+       "title": "Churned MRR by segment (12 months to 31 Oct 2026)",
+       "data": [
+        {
+         "segment": "Enterprise",
+         "Churned MRR": 43528.57
+        },
+        {
+         "segment": "Mid",
+         "Churned MRR": 22148.050000000003
+        },
+        {
+         "segment": "SMB",
+         "Churned MRR": 19937.12
+        }
+       ],
+       "x_key": "segment",
+       "y_keys": [
+        "Churned MRR"
+       ],
+       "colors": [],
+       "x_label": "segment",
+       "y_label": "Churned MRR",
+       "show_legend": true,
+       "show_grid": true,
+       "source_finding": "kpi",
+       "value_format": "number",
+       "layout_hint": "half_width",
+       "rationale": {
+        "rule": "targeted:kpi\u2192ranked bars",
+        "reason": "Churned MRR per segment, ranked. Sum of mrr over the churn moves: each customer_id whose value went to 0 between consecutive month-ends in the period where mrr > 0; over records.",
+        "x": "segment",
+        "y": "Churned MRR",
+        "split": null,
+        "aggregation": "none",
+        "n_rows": 10117,
+        "evidence_ids": [],
+        "code": "",
+        "confidence": null
+       },
+       "placement": "summary",
+       "lint_warnings": [],
+       "error_key": null,
+       "split_key": null,
+       "reference_lines": []
+      }
+     ],
+     "evidence_ids": []
+    },
+    "latency_s": 2.6,
+    "cost_usd": 0,
+    "llm_calls": 0,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "viz-t13-iot-oee": [
+   {
+    "checks": [
+     {
+      "kind": "chart",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "chart_lint_clean",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "chart_has_rationale",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "targeted",
+    "holdout": false,
+    "output": {
+     "charts": [
+      {
+       "id": "80d8d777-5f3e-4a64-8187-77986dff8de9",
+       "chart_type": "LineChart",
+       "title": "OEE over time",
+       "data": [
+        {
+         "period": "2026-08",
+         "OEE": 70.6991
+        },
+        {
+         "period": "2026-09",
+         "OEE": 70.8904
+        },
+        {
+         "period": "2026-10",
+         "OEE": 70.7843
+        }
+       ],
+       "x_key": "period",
+       "y_keys": [
+        "OEE"
+       ],
+       "colors": [],
+       "x_label": "Period",
+       "y_label": "OEE",
+       "show_legend": true,
+       "show_grid": true,
+       "source_finding": "kpi",
+       "value_format": "percent",
+       "layout_hint": "half_width",
+       "rationale": {
+        "rule": "targeted:kpi\u2192line",
+        "reason": "OEE per M period. Sum of Ideal Cycle Time (s) \u00d7 Good Count, divided by sum of Planned Minutes; over counted rows.",
+        "x": "Production Date",
+        "y": "OEE",
+        "split": null,
+        "aggregation": "none",
+        "n_rows": 2630,
+        "evidence_ids": [],
+        "code": "",
+        "confidence": null
+       },
+       "placement": "summary",
+       "lint_warnings": [],
+       "error_key": null,
+       "split_key": null,
+       "reference_lines": []
+      },
+      {
+       "id": "bc78f4b4-e702-46fd-8b42-c715cb006630",
+       "chart_type": "HorizontalBarChart",
+       "title": "OEE by Line",
+       "data": [
+        {
+         "Line": "Line A",
+         "OEE": 72.2312
+        },
+        {
+         "Line": "Line C",
+         "OEE": 71.4128
+        },
+        {
+         "Line": "Line B",
+         "OEE": 68.7291
+        }
+       ],
+       "x_key": "Line",
+       "y_keys": [
+        "OEE"
+       ],
+       "colors": [],
+       "x_label": "Line",
+       "y_label": "OEE",
+       "show_legend": true,
+       "show_grid": true,
+       "source_finding": "kpi",
+       "value_format": "percent",
+       "layout_hint": "half_width",
+       "rationale": {
+        "rule": "targeted:kpi\u2192ranked bars",
+        "reason": "OEE per Line, ranked. Sum of Ideal Cycle Time (s) \u00d7 Good Count, divided by sum of Planned Minutes; over counted rows.",
+        "x": "Line",
+        "y": "OEE",
+        "split": null,
+        "aggregation": "none",
+        "n_rows": 2630,
+        "evidence_ids": [],
+        "code": "",
+        "confidence": null
+       },
+       "placement": "summary",
+       "lint_warnings": [],
+       "error_key": null,
+       "split_key": null,
+       "reference_lines": []
+      },
+      {
+       "id": "aa29c2ee-f027-41fd-8385-95f2172a7841",
+       "chart_type": "HorizontalBarChart",
+       "title": "Availability by Line",
+       "data": [
+        {
+         "Line": "Line A",
+         "Availability": 85.6912
+        },
+        {
+         "Line": "Line C",
+         "Availability": 85.2522
+        },
+        {
+         "Line": "Line B",
+         "Availability": 81.498
+        }
+       ],
+       "x_key": "Line",
+       "y_keys": [
+        "Availability"
+       ],
+       "colors": [],
+       "x_label": "Line",
+       "y_label": "Availability",
+       "show_legend": true,
+       "show_grid": true,
+       "source_finding": "kpi",
+       "value_format": "percent",
+       "layout_hint": "half_width",
+       "rationale": {
+        "rule": "targeted:kpi\u2192ranked bars",
+        "reason": "Availability per Line, ranked. Run time, divided by sum of Planned Minutes.",
+        "x": "Line",
+        "y": "Availability",
+        "split": null,
+        "aggregation": "none",
+        "n_rows": 2630,
+        "evidence_ids": [],
+        "code": "",
+        "confidence": null
+       },
+       "placement": "summary",
+       "lint_warnings": [],
+       "error_key": null,
+       "split_key": null,
+       "reference_lines": []
+      },
+      {
+       "id": "4e5e4186-0012-41c0-9ede-c39c313bdbad",
+       "chart_type": "HorizontalBarChart",
+       "title": "Good count by Line",
+       "data": [
+        {
+         "Line": "Line C",
+         "Good count": 678791.0
+        },
+        {
+         "Line": "Line A",
+         "Good count": 462118.0
+        },
+        {
+         "Line": "Line B",
+         "Good count": 293157.0
+        },
+        {
+         "Line": "Line D",
+         "Good count": 0.0
+        }
+       ],
+       "x_key": "Line",
+       "y_keys": [
+        "Good count"
+       ],
+       "colors": [],
+       "x_label": "Line",
+       "y_label": "Good count",
+       "show_legend": true,
+       "show_grid": true,
+       "source_finding": "kpi",
+       "value_format": "number",
+       "layout_hint": "half_width",
+       "rationale": {
+        "rule": "targeted:kpi\u2192ranked bars",
+        "reason": "Good count per Line, ranked. Sum of Good Count; over counted rows.",
+        "x": "Line",
+        "y": "Good count",
+        "split": null,
+        "aggregation": "sum",
+        "n_rows": 2630,
+        "evidence_ids": [],
+        "code": "",
+        "confidence": null
+       },
+       "placement": "summary",
+       "lint_warnings": [],
+       "error_key": null,
+       "split_key": null,
+       "reference_lines": []
+      },
+      {
+       "id": "891523e2-0a35-48ba-862f-ea71f09a7961",
+       "chart_type": "HorizontalBarChart",
+       "title": "MTBF by Line",
+       "data": [
+        {
+         "Line": "Line C",
+         "MTBF": 76.098087431694
+        },
+        {
+         "Line": "Line A",
+         "MTBF": 66.6554761904762
+        },
+        {
+         "Line": "Line B",
+         "MTBF": 22.87405498281787
+        }
+       ],
+       "x_key": "Line",
+       "y_keys": [
+        "MTBF"
+       ],
+       "colors": [],
+       "x_label": "Line",
+       "y_label": "MTBF",
+       "show_legend": true,
+       "show_grid": true,
+       "source_finding": "kpi",
+       "value_format": "number",
+       "layout_hint": "half_width",
+       "rationale": {
+        "rule": "targeted:kpi\u2192ranked bars",
+        "reason": "MTBF per Line, ranked. 0.0166667 \u00d7 run time, divided by sum of Failures.",
+        "x": "Line",
+        "y": "MTBF",
+        "split": null,
+        "aggregation": "none",
+        "n_rows": 2630,
+        "evidence_ids": [],
+        "code": "",
+        "confidence": null
+       },
+       "placement": "summary",
+       "lint_warnings": [],
+       "error_key": null,
+       "split_key": null,
+       "reference_lines": []
+      },
+      {
+       "id": "8e9c96db-84cb-4ebd-b2ef-bfa2cc21b282",
+       "chart_type": "HorizontalBarChart",
+       "title": "Assets by Line",
+       "data": [
+        {
+         "Line": "Line A",
+         "Assets": 3.0
+        },
+        {
+         "Line": "Line B",
+         "Assets": 3.0
+        },
+        {
+         "Line": "Line C",
+         "Assets": 3.0
+        },
+        {
+         "Line": "Line D",
+         "Assets": 1.0
+        }
+       ],
+       "x_key": "Line",
+       "y_keys": [
+        "Assets"
+       ],
+       "colors": [],
+       "x_label": "Line",
+       "y_label": "Assets",
+       "show_legend": true,
+       "show_grid": true,
+       "source_finding": "kpi",
+       "value_format": "number",
+       "layout_hint": "half_width",
+       "rationale": {
+        "rule": "targeted:kpi\u2192ranked bars",
+        "reason": "Assets per Line, ranked. Distinct Machine; over counted rows.",
+        "x": "Line",
+        "y": "Assets",
+        "split": null,
+        "aggregation": "sum",
+        "n_rows": 2630,
+        "evidence_ids": [],
+        "code": "",
+        "confidence": null
+       },
+       "placement": "summary",
+       "lint_warnings": [],
+       "error_key": null,
+       "split_key": null,
+       "reference_lines": []
+      }
+     ],
+     "evidence_ids": []
+    },
+    "latency_s": 0.17,
+    "cost_usd": 0,
+    "llm_calls": 0,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "viz-t13-saas-nrr": [
+   {
+    "checks": [
+     {
+      "kind": "chart",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "chart_lint_clean",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "chart_has_rationale",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "targeted",
+    "holdout": false,
+    "output": {
+     "charts": [
+      {
+       "id": "3a601ca9-f1d9-4677-9934-3970a2a7cbe2",
+       "chart_type": "LineChart",
+       "title": "Net revenue retention over time",
+       "data": [
+        {
+         "period": "2025-11",
+         "Net revenue retention": 98.5399
+        },
+        {
+         "period": "2025-12",
+         "Net revenue retention": 97.228
+        },
+        {
+         "period": "2026-01",
+         "Net revenue retention": 100.3063
+        },
+        {
+         "period": "2026-02",
+         "Net revenue retention": 99.7788
+        },
+        {
+         "period": "2026-03",
+         "Net revenue retention": 86.645
+        },
+        {
+         "period": "2026-04",
+         "Net revenue retention": 87.8862
+        },
+        {
+         "period": "2026-05",
+         "Net revenue retention": 88.6226
+        },
+        {
+         "period": "2026-06",
+         "Net revenue retention": 89.2659
+        },
+        {
+         "period": "2026-07",
+         "Net revenue retention": 90.6715
+        },
+        {
+         "period": "2026-08",
+         "Net revenue retention": 93.9737
+        },
+        {
+         "period": "2026-09",
+         "Net revenue retention": 93.5387
+        },
+        {
+         "period": "2026-10",
+         "Net revenue retention": 91.0506
+        }
+       ],
+       "x_key": "period",
+       "y_keys": [
+        "Net revenue retention"
+       ],
+       "colors": [],
+       "x_label": "Period",
+       "y_label": "Net revenue retention",
+       "show_legend": true,
+       "show_grid": true,
+       "source_finding": "kpi",
+       "value_format": "percent",
+       "layout_hint": "half_width",
+       "rationale": {
+        "rule": "targeted:kpi\u2192line",
+        "reason": "Net revenue retention per M period. Sum of mrr over the same customer_id (in force at the cohort's start) at the date where mrr > 0, divided by opening MRR (sum of mrr over the distinct customer_id in force 12 months before the date, or at the data's first month-end when it covers less (each customer_id's latest month snapshot on or before the date, ended_at blank or after it) where mrr > 0; over records); over records.",
+        "x": "month",
+        "y": "Net revenue retention",
+        "split": null,
+        "aggregation": "none",
+        "n_rows": 10117,
+        "evidence_ids": [],
+        "code": "",
+        "confidence": null
+       },
+       "placement": "summary",
+       "lint_warnings": [],
+       "error_key": null,
+       "split_key": null,
+       "reference_lines": []
+      }
+     ],
+     "evidence_ids": []
+    },
+    "latency_s": 0.84,
+    "cost_usd": 0,
+    "llm_calls": 0,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "viz-t14-iot-mttr": [
+   {
+    "checks": [
+     {
+      "kind": "chart",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "chart_lint_clean",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "chart_has_rationale",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "targeted",
+    "holdout": false,
+    "output": {
+     "charts": [
+      {
+       "id": "4206e422-def7-47cb-913b-e0a6fb07ff03",
+       "chart_type": "LineChart",
+       "title": "MTTR over time",
+       "data": [
+        {
+         "period": "2026-05",
+         "MTTR": 4.565116279069768
+        },
+        {
+         "period": "2026-06",
+         "MTTR": 3.8703333333333334
+        },
+        {
+         "period": "2026-07",
+         "MTTR": 3.9564102564102566
+        },
+        {
+         "period": "2026-08",
+         "MTTR": 4.554761904761905
+        },
+        {
+         "period": "2026-09",
+         "MTTR": 2.9874213836477987
+        }
+       ],
+       "x_key": "period",
+       "y_keys": [
+        "MTTR"
+       ],
+       "colors": [],
+       "x_label": "Period",
+       "y_label": "MTTR",
+       "show_legend": true,
+       "show_grid": true,
+       "source_finding": "kpi",
+       "value_format": "number",
+       "layout_hint": "half_width",
+       "rationale": {
+        "rule": "targeted:kpi\u2192line",
+        "reason": "MTTR per M period. , divided by .",
+        "x": "REPORTDATE",
+        "y": "MTTR",
+        "split": null,
+        "aggregation": "none",
+        "n_rows": 640,
+        "evidence_ids": [],
+        "code": "",
+        "confidence": null
+       },
+       "placement": "summary",
+       "lint_warnings": [],
+       "error_key": null,
+       "split_key": null,
+       "reference_lines": []
+      },
+      {
+       "id": "647b1e32-be09-4b16-abc2-9048b2cbc60c",
+       "chart_type": "HorizontalBarChart",
+       "title": "MTTR by ASSETNUM",
+       "data": [
+        {
+         "ASSETNUM": "P03",
+         "MTTR": 4.834210526315789
+        },
+        {
+         "ASSETNUM": "M04",
+         "MTTR": 4.501449275362319
+        },
+        {
+         "ASSETNUM": "P01",
+         "MTTR": 4.288888888888889
+        },
+        {
+         "ASSETNUM": "P04",
+         "MTTR": 4.258333333333334
+        },
+        {
+         "ASSETNUM": "M03",
+         "MTTR": 4.246666666666667
+        },
+        {
+         "ASSETNUM": "M06",
+         "MTTR": 4.2404761904761905
+        },
+        {
+         "ASSETNUM": "P02",
+         "MTTR": 4.072916666666667
+        },
+        {
+         "ASSETNUM": "M01",
+         "MTTR": 3.9274999999999998
+        },
+        {
+         "ASSETNUM": "M07",
+         "MTTR": 3.83
+        },
+        {
+         "ASSETNUM": "M02",
+         "MTTR": 3.7047619047619045
+        },
+        {
+         "ASSETNUM": "M08",
+         "MTTR": 3.4681818181818183
+        },
+        {
+         "ASSETNUM": "M09",
+         "MTTR": 3.4510752688172044
+        },
+        {
+         "ASSETNUM": "M05",
+         "MTTR": 3.134027777777778
+        }
+       ],
+       "x_key": "ASSETNUM",
+       "y_keys": [
+        "MTTR"
+       ],
+       "colors": [],
+       "x_label": "ASSETNUM",
+       "y_label": "MTTR",
+       "show_legend": true,
+       "show_grid": true,
+       "source_finding": "kpi",
+       "value_format": "number",
+       "layout_hint": "half_width",
+       "rationale": {
+        "rule": "targeted:kpi\u2192ranked bars",
+        "reason": "MTTR per ASSETNUM, ranked. , divided by .",
+        "x": "ASSETNUM",
+        "y": "MTTR",
+        "split": null,
+        "aggregation": "none",
+        "n_rows": 640,
+        "evidence_ids": [],
+        "code": "",
+        "confidence": null
+       },
+       "placement": "summary",
+       "lint_warnings": [],
+       "error_key": null,
+       "split_key": null,
+       "reference_lines": []
+      },
+      {
+       "id": "714c004c-d7dd-48f2-b32c-a04a0ffa0c96",
+       "chart_type": "HorizontalBarChart",
+       "title": "Corrective work orders by ASSETNUM",
+       "data": [
+        {
+         "ASSETNUM": "M09",
+         "Corrective work orders": 35.0
+        },
+        {
+         "ASSETNUM": "M06",
+         "Corrective work orders": 30.0
+        },
+        {
+         "ASSETNUM": "P02",
+         "Corrective work orders": 27.0
+        },
+        {
+         "ASSETNUM": "M03",
+         "Corrective work orders": 26.0
+        },
+        {
+         "ASSETNUM": "M05",
+         "Corrective work orders": 25.0
+        },
+        {
+         "ASSETNUM": "M01",
+         "Corrective work orders": 24.0
+        },
+        {
+         "ASSETNUM": "M02",
+         "Corrective work orders": 23.0
+        },
+        {
+         "ASSETNUM": "M04",
+         "Corrective work orders": 23.0
+        },
+        {
+         "ASSETNUM": "M08",
+         "Corrective work orders": 22.0
+        },
+        {
+         "ASSETNUM": "P01",
+         "Corrective work orders": 21.0
+        },
+        {
+         "ASSETNUM": "P03",
+         "Corrective work orders": 21.0
+        },
+        {
+         "ASSETNUM": "P04",
+         "Corrective work orders": 18.0
+        },
+        {
+         "ASSETNUM": "M07",
+         "Corrective work orders": 16.0
+        }
+       ],
+       "x_key": "ASSETNUM",
+       "y_keys": [
+        "Corrective work orders"
+       ],
+       "colors": [],
+       "x_label": "ASSETNUM",
+       "y_label": "Corrective work orders",
+       "show_legend": true,
+       "show_grid": true,
+       "source_finding": "kpi",
+       "value_format": "number",
+       "layout_hint": "half_width",
+       "rationale": {
+        "rule": "targeted:kpi\u2192ranked bars",
+        "reason": "Corrective work orders per ASSETNUM, ranked. Distinct WONUM where WORKTYPE is cm / em / corrective / emergency / breakdown; over counted rows (cancelled work orders left out).",
+        "x": "ASSETNUM",
+        "y": "Corrective work orders",
+        "split": null,
+        "aggregation": "sum",
+        "n_rows": 640,
+        "evidence_ids": [],
+        "code": "",
+        "confidence": null
+       },
+       "placement": "summary",
+       "lint_warnings": [],
+       "error_key": null,
+       "split_key": null,
+       "reference_lines": []
+      },
+      {
+       "id": "330ab2aa-1804-48fb-b4fe-176e2ac60a0e",
+       "chart_type": "DonutChart",
+       "title": "Worktype Breakdown \u2014 PM Leads at 48%",
+       "data": [
+        {
+         "name": "PM",
+         "value": 307,
+         "pct": 48.0
+        },
+        {
+         "name": "CM",
+         "value": 275,
+         "pct": 43.0
+        },
+        {
+         "name": "EM",
+         "value": 58,
+         "pct": 9.1
+        }
+       ],
+       "x_key": "name",
+       "y_keys": [
+        "value"
+       ],
+       "colors": [],
+       "x_label": null,
+       "y_label": null,
+       "show_legend": true,
+       "show_grid": true,
+       "source_finding": "composition_donut",
+       "value_format": "number",
+       "layout_hint": "half_width",
+       "rationale": {
+        "rule": "profile:row_count",
+        "reason": "How many rows fall in each WORKTYPE.",
+        "x": "WORKTYPE",
+        "y": "count",
+        "split": null,
+        "aggregation": "count",
+        "n_rows": 640,
+        "evidence_ids": [],
+        "code": "df['WORKTYPE'].value_counts()",
+        "confidence": null
+       },
+       "placement": "data",
+       "lint_warnings": [],
+       "error_key": null,
+       "split_key": null,
+       "reference_lines": []
+      },
+      {
+       "id": "d986be15-e333-40af-a2fa-8719288abcee",
+       "chart_type": "BarChart",
+       "title": "WORKTYPE breakdown",
+       "data": [
+        {
+         "WORKTYPE": "PM",
+         "count": 307
+        },
+        {
+         "WORKTYPE": "CM",
+         "count": 275
+        },
+        {
+         "WORKTYPE": "EM",
+         "count": 58
+        }
+       ],
+       "x_key": "WORKTYPE",
+       "y_keys": [
+        "count"
+       ],
+       "colors": [],
+       "x_label": "WORKTYPE",
+       "y_label": "Count",
+       "show_legend": false,
+       "show_grid": true,
+       "source_finding": "value_counts",
+       "value_format": "number",
+       "layout_hint": "half_width",
+       "rationale": {
+        "rule": "profile:row_count",
+        "reason": "How many rows fall in each WORKTYPE.",
+        "x": "WORKTYPE",
+        "y": "count",
+        "split": null,
+        "aggregation": "count",
+        "n_rows": 640,
+        "evidence_ids": [],
+        "code": "df['WORKTYPE'].value_counts()",
+        "confidence": null
+       },
+       "placement": "data",
+       "lint_warnings": [],
+       "error_key": null,
+       "split_key": null,
+       "reference_lines": []
+      }
+     ],
+     "evidence_ids": []
+    },
+    "latency_s": 0.11,
+    "cost_usd": 0,
+    "llm_calls": 0,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ]
+ }
+}

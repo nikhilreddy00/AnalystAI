@@ -9,7 +9,8 @@ const FIXTURES = "scripts/ui_check/fixtures";
 export default function globalSetup() {
   rmSync(`../${FIXTURES}/scenario`, { force: true });
   for (const args of [[FIXTURES, "--dashboard-only"],
-    [`${FIXTURES}/saas_mrr_snapshots`, "--dataset", "saas_mrr_snapshots"]]) {
+    [`${FIXTURES}/saas_mrr_snapshots`, "--dataset", "saas_mrr_snapshots"],
+    [`${FIXTURES}/shift_production`, "--dataset", "shift_production"]]) {
     execFileSync("uv", ["run", "python", "scripts/ui_check/make_fixture.py", ...args],
       { cwd: "..", stdio: ["ignore", "ignore", "inherit"] });
   }

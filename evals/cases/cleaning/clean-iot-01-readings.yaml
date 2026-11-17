@@ -1,0 +1,45 @@
+id: clean-iot-01-readings
+dataset:
+  name: machine_readings
+  seed: 1
+category: iot
+expect_decisions:
+- column: '*'
+  operation: drop_duplicates
+  truth_key: exact_duplicates
+- column: Temperature
+  operation: sentinel_null
+  strategy: numeric_sentinel
+  truth_key: sentinel_temps
+- column: Temperature
+  operation: sentinel_null
+  strategy: invalid_flag
+  truth_key: bad_readings
+- column: Quality
+  operation: flag
+  strategy: doubtful_flag
+  truth_key: uncertain_readings
+- column: Temperature
+  operation: type_coerce
+  strategy: unit_converted
+- column: Sensor
+  operation: flag
+  strategy: series_clash
+  truth_key: clashing_timestamps
+- column: Sensor
+  operation: flag
+  strategy: series_clock_change
+- column: Sensor
+  operation: flag
+  strategy: series_gap
+  rows: 1
+- column: Sensor
+  operation: flag
+  strategy: series_stuck
+  rows: 1
+forbid:
+- operation: fill_unknown
+  column: Temperature
+label_note: 'Domain 7 historian dump (T5-T10, T17): double writes dropped; -9999 and Bad readings are no
+  measurement (blanked, rows kept); Uncertain kept and counted; deg F converted by the unit column; 6 clashing
+  times, the 25 Oct clock change, the S05 silence and the stuck S03 flagged and kept. Nothing filled in.'

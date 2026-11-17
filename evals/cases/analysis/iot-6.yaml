@@ -1,0 +1,31 @@
+id: iot-6
+domain: iot
+category: ratio
+pipeline: production
+dataset:
+  name: shift_production
+  seed: 2
+question: How does availability compare across the three shifts?
+task:
+  analysis_types:
+  - segmentation
+  target_metrics:
+  - Unplanned Downtime (min)
+  - Planned Minutes
+  segments:
+  - Shift
+checks:
+- kind: segment_value_truth
+  planted: true
+  segment: Shift
+  truth_key: availability_by_shift
+  abs_tol: 0.005
+  scales:
+  - 1
+  - 100
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
+- numbers_grounded
+label_note: 'Domain 7: availability = sum(planned - unplanned downtime - changeover) / sum(planned minutes)
+  per shift; the unscheduled line D adds 0 to both, never a 0% shift.'

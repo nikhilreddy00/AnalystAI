@@ -133,6 +133,7 @@ from .kpi import (  # noqa: F401
     compute_kpi,
     measure,
     unavailable_words,
+    zero_note,
     _person_col,
     _population,
     pay_columns,

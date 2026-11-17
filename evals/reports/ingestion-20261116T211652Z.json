@@ -1,0 +1,2265 @@
+{
+ "meta": {
+  "suite": "ingestion",
+  "report": "ingestion-20261116T211652Z",
+  "k": 1,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "c439e12",
+  "started_at": "20261116T211652Z",
+  "only": "dom-iot",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 3,
+  "runs": 3,
+  "pass_rate": 1.0,
+  "case_majority_pass_rate": 1.0,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "hard_rules_na": 0,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 0,
+  "runs_with_prose_rewritten": 0,
+  "runs_with_pii_guard_hit": 0,
+  "cost_per_question_usd": 0,
+  "latency_p50_s": 0.98,
+  "latency_p95_s": 1.62,
+  "type_inference": 1.0,
+  "pii_recall": 1.0,
+  "over_masking": 0.0,
+  "load_fidelity": 1.0,
+  "typed_errors": null,
+  "hard_pii_canary": 0,
+  "hard_silent_misload": 0,
+  "hard_summary_grounded": 0,
+  "hard_source_evidence": 0,
+  "nondeterministic_cases": 0,
+  "holdout_pass_rate": null,
+  "pii_recall_by_kind": {
+   "name": 1.0
+  },
+  "phi_recall": null,
+  "phi_planted_columns": 0,
+  "phi_over_masking": 0.0,
+  "phi_flag_accuracy": 1.0,
+  "domain_accuracy": 1.0
+ },
+ "runs": {
+  "dom-iot-readings": [
+   {
+    "checks": [
+     {
+      "kind": "load",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "kind": "role",
+      "column": "Timestamp",
+      "ok": true,
+      "detail": "date"
+     },
+     {
+      "kind": "role",
+      "column": "Sensor",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "Line",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "Temperature",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "role",
+      "column": "Temp Unit",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "Vibration (mm/s)",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "role",
+      "column": "Pressure (bar)",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "role",
+      "column": "Alarm",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "role",
+      "column": "Quality",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "overmask",
+      "column": "Temp Unit",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "overmask",
+      "column": "Quality",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_flag",
+      "ok": true,
+      "detail": "phi=False"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Timestamp",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Sensor",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Line",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Temperature",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Temp Unit",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Vibration (mm/s)",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Pressure (bar)",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Alarm",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Quality",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "domain",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "silent_misload",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "summary_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "source_evidence",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "domain",
+    "case": "dom-iot-readings",
+    "holdout": false,
+    "contract_sha": "ef7adc0b6e389254",
+    "output": {
+     "contract": {
+      "source_type": "csv",
+      "row_count": 17650,
+      "column_count": 9,
+      "columns": [
+       {
+        "name": "Timestamp",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2026-10-02T21:00:00",
+         "2026-08-19T16:00:00",
+         "2026-09-07T15:00:00",
+         "2026-10-10T11:00:00",
+         "2026-08-18T07:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Sensor",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "S08",
+         "S02",
+         "S08",
+         "S02",
+         "S08"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Line",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Line C",
+         "Line A",
+         "Line C",
+         "Line A",
+         "Line C"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Temperature",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         156.75,
+         70.65,
+         155.78,
+         68.92,
+         159.86
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": "mean",
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Temp Unit",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "\u00b0F",
+         "\u00b0C",
+         "\u00b0F",
+         "\u00b0C",
+         "\u00b0F"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Vibration (mm/s)",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         0.639,
+         4.528,
+         2.466,
+         1.789,
+         2.551
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": "mean",
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Pressure (bar)",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         6.088,
+         5.793,
+         5.974,
+         6.02,
+         6.041
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": "mean",
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Alarm",
+        "dtype": "int64",
+        "nullable": false,
+        "sample_values": [
+         0,
+         0,
+         0,
+         0,
+         0
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Quality",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Good",
+         "Good",
+         "Good",
+         "Good",
+         "Good"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       }
+      ],
+      "sample_rows": [
+       {
+        "Timestamp": "2026-10-02T21:00:00",
+        "Sensor": "S08",
+        "Line": "Line C",
+        "Temperature": 156.75,
+        "Temp Unit": "\u00b0F",
+        "Vibration (mm/s)": 0.639,
+        "Pressure (bar)": 6.088,
+        "Alarm": 0,
+        "Quality": "Good"
+       },
+       {
+        "Timestamp": "2026-08-19T16:00:00",
+        "Sensor": "S02",
+        "Line": "Line A",
+        "Temperature": 70.65,
+        "Temp Unit": "\u00b0C",
+        "Vibration (mm/s)": 4.528,
+        "Pressure (bar)": 5.793,
+        "Alarm": 0,
+        "Quality": "Good"
+       },
+       {
+        "Timestamp": "2026-09-07T15:00:00",
+        "Sensor": "S08",
+        "Line": "Line C",
+        "Temperature": 155.78,
+        "Temp Unit": "\u00b0F",
+        "Vibration (mm/s)": 2.466,
+        "Pressure (bar)": 5.974,
+        "Alarm": 0,
+        "Quality": "Good"
+       },
+       {
+        "Timestamp": "2026-10-10T11:00:00",
+        "Sensor": "S02",
+        "Line": "Line A",
+        "Temperature": 68.92,
+        "Temp Unit": "\u00b0C",
+        "Vibration (mm/s)": 1.789,
+        "Pressure (bar)": 6.02,
+        "Alarm": 0,
+        "Quality": "Good"
+       },
+       {
+        "Timestamp": "2026-08-18T07:00:00",
+        "Sensor": "S08",
+        "Line": "Line C",
+        "Temperature": 159.86,
+        "Temp Unit": "\u00b0F",
+        "Vibration (mm/s)": 2.551,
+        "Pressure (bar)": 6.041,
+        "Alarm": 0,
+        "Quality": "Good"
+       }
+      ],
+      "date_columns": [
+       "Timestamp"
+      ],
+      "id_columns": [],
+      "metric_columns": [
+       "Temperature",
+       "Vibration (mm/s)",
+       "Pressure (bar)",
+       "Alarm"
+      ],
+      "schema_summary": "17,650 rows \u00d7 9 columns. Dates: Timestamp from 2026-08-01 to 2026-10-31 (daily). Metrics: Temperature, Vibration (mm/s), Pressure (bar), Alarm. Categories: Sensor, Line, Temp Unit, Quality.",
+      "source_query": null,
+      "source_evidence": {
+       "id": "source:data",
+       "kind": "source",
+       "claim": "Loaded 17,650 rows \u00d7 9 columns from a CSV file.",
+       "code": "pd.read_csv(<uploaded file>, encoding='utf-8', sep=',')",
+       "result_excerpt": "{\"roles\": {\"date\": [\"Timestamp\"], \"category\": [\"Sensor\", \"Line\", \"Temp Unit\", \"Quality\"], \"metric\": [\"Temperature\", \"Vibration (mm/s)\", \"Pressure (bar)\", \"Alarm\"]}, \"personal_data\": {}, \"fingerprint\": \"f6367f10f45ba2b5\"}",
+       "row_count": 17650,
+       "confidence": "high",
+       "confidence_reason": "Read as-is: no layout guessing was needed.",
+       "assumptions": []
+      },
+      "fingerprint": "f6367f10f45ba2b53dce12f908016d77020d3c847c654e6469c87f5b8a0b9b72",
+      "pii_columns": [],
+      "phi": false,
+      "deidentification": [],
+      "deidentified": false,
+      "domain": "iot",
+      "roles": {
+       "date": "Timestamp",
+       "asset": "Sensor",
+       "production_line": "Line",
+       "temperature": "Temperature",
+       "temp_unit": "Temp Unit",
+       "vibration": "Vibration (mm/s)",
+       "pressure": "Pressure (bar)",
+       "reading_quality": "Quality",
+       "alarm": "Alarm"
+      },
+      "domain_confidence": "strong"
+     },
+     "requests": [],
+     "loaded": {
+      "columns": [
+       "Timestamp",
+       "Sensor",
+       "Line",
+       "Temperature",
+       "Temp Unit",
+       "Vibration (mm/s)",
+       "Pressure (bar)",
+       "Alarm",
+       "Quality"
+      ],
+      "rows": 17650,
+      "cells": [
+       [
+        15013,
+        "Timestamp",
+        {
+         "ts": "2026-08-13T12:00:00"
+        }
+       ],
+       [
+        11242,
+        "Sensor",
+        "S05"
+       ],
+       [
+        9021,
+        "Line",
+        "Line C"
+       ],
+       [
+        4761,
+        "Temperature",
+        73.1
+       ],
+       [
+        5433,
+        "Temp Unit",
+        "\u00b0C"
+       ],
+       [
+        723,
+        "Vibration (mm/s)",
+        3.718
+       ],
+       [
+        1327,
+        "Pressure (bar)",
+        5.963
+       ],
+       [
+        291,
+        "Alarm",
+        0.0
+       ],
+       [
+        3093,
+        "Quality",
+        "Good"
+       ],
+       [
+        14354,
+        "Timestamp",
+        {
+         "ts": "2026-10-01T00:00:00"
+        }
+       ],
+       [
+        11462,
+        "Sensor",
+        "S05"
+       ],
+       [
+        16110,
+        "Line",
+        "Line B"
+       ],
+       [
+        8889,
+        "Temperature",
+        158.3
+       ],
+       [
+        10707,
+        "Temp Unit",
+        "\u00b0C"
+       ],
+       [
+        17133,
+        "Vibration (mm/s)",
+        1.418
+       ],
+       [
+        12875,
+        "Pressure (bar)",
+        5.96
+       ],
+       [
+        11159,
+        "Alarm",
+        0.0
+       ],
+       [
+        9594,
+        "Quality",
+        "Good"
+       ],
+       [
+        9882,
+        "Timestamp",
+        {
+         "ts": "2026-10-06T06:00:00"
+        }
+       ],
+       [
+        16504,
+        "Sensor",
+        "S01"
+       ]
+      ]
+     },
+     "contract_sha": "ef7adc0b6e389254",
+     "phi": {
+      "flag": false,
+      "status": {
+       "Timestamp": "kept",
+       "Sensor": "kept",
+       "Line": "kept",
+       "Temperature": "kept",
+       "Temp Unit": "kept",
+       "Vibration (mm/s)": "kept",
+       "Pressure (bar)": "kept",
+       "Alarm": "kept",
+       "Quality": "kept"
+      },
+      "contract": null
+     }
+    },
+    "latency_s": 1.69,
+    "cost_usd": 0,
+    "llm_calls": 0,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "dom-iot-shifts": [
+   {
+    "checks": [
+     {
+      "kind": "load",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "kind": "role",
+      "column": "Production Date",
+      "ok": true,
+      "detail": "date"
+     },
+     {
+      "kind": "role",
+      "column": "Shift",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "Shift Start",
+      "ok": true,
+      "detail": "date"
+     },
+     {
+      "kind": "role",
+      "column": "Shift End",
+      "ok": true,
+      "detail": "date"
+     },
+     {
+      "kind": "role",
+      "column": "Line",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "Machine",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "Operator",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "Planned Minutes",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "role",
+      "column": "Unplanned Downtime (min)",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "role",
+      "column": "Changeover (min)",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "role",
+      "column": "Total Count",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "role",
+      "column": "Good Count",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "role",
+      "column": "Scrap Count",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "role",
+      "column": "Ideal Cycle Time (s)",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "role",
+      "column": "Failures",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "role",
+      "column": "Stops",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "overmask",
+      "column": "Shift End",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "pii",
+      "column": "Operator",
+      "pii": "name",
+      "ok": true,
+      "detail": "masked"
+     },
+     {
+      "kind": "overmask",
+      "column": "Stops",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_flag",
+      "ok": true,
+      "detail": "phi=False"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Production Date",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Shift",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Shift Start",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Shift End",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Line",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Machine",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Operator",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Planned Minutes",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Unplanned Downtime (min)",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Changeover (min)",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Total Count",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Good Count",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Scrap Count",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Ideal Cycle Time (s)",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Failures",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Stops",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "domain",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "silent_misload",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "summary_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "source_evidence",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "domain",
+    "case": "dom-iot-shifts",
+    "holdout": false,
+    "contract_sha": "a98566531535a86e",
+    "output": {
+     "contract": {
+      "source_type": "csv",
+      "row_count": 2630,
+      "column_count": 16,
+      "columns": [
+       {
+        "name": "Production Date",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2026-09-22T00:00:00",
+         "2026-10-11T00:00:00",
+         "2026-08-13T00:00:00",
+         "2026-08-23T00:00:00",
+         "2026-10-07T00:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Shift",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Swing",
+         "Day",
+         "Day",
+         "Day",
+         "Night"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Shift Start",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2026-09-22T14:00:00",
+         "2026-10-11T06:00:00",
+         "2026-08-13T06:00:00",
+         "2026-08-23T06:00:00",
+         "2026-10-07T22:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Shift End",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2026-09-22T22:00:00",
+         "2026-10-11T14:00:00",
+         "2026-08-13T14:00:00",
+         "2026-08-23T14:00:00",
+         "2026-10-08T06:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Line",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Line A",
+         "Line A",
+         "Line C",
+         "Line C",
+         "Line B"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Machine",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "M01",
+         "M01",
+         "M07",
+         "M09",
+         "M04"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Operator",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": "name",
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Planned Minutes",
+        "dtype": "int64",
+        "nullable": false,
+        "sample_values": [
+         450,
+         450,
+         450,
+         450,
+         450
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Unplanned Downtime (min)",
+        "dtype": "int64",
+        "nullable": false,
+        "sample_values": [
+         56,
+         44,
+         50,
+         97,
+         102
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Changeover (min)",
+        "dtype": "int64",
+        "nullable": false,
+        "sample_values": [
+         0,
+         0,
+         0,
+         0,
+         0
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Total Count",
+        "dtype": "int64",
+        "nullable": false,
+        "sample_values": [
+         734,
+         769,
+         1123,
+         910,
+         406
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Good Count",
+        "dtype": "int64",
+        "nullable": false,
+        "sample_values": [
+         700,
+         758,
+         1100,
+         885,
+         396
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Scrap Count",
+        "dtype": "int64",
+        "nullable": false,
+        "sample_values": [
+         34,
+         11,
+         23,
+         25,
+         10
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Ideal Cycle Time (s)",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         30.0,
+         30.0,
+         20.0,
+         22.0,
+         45.0
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": "mean",
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Failures",
+        "dtype": "int64",
+        "nullable": false,
+        "sample_values": [
+         0,
+         1,
+         1,
+         0,
+         0
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Stops",
+        "dtype": "int64",
+        "nullable": false,
+        "sample_values": [
+         6,
+         4,
+         6,
+         4,
+         4
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       }
+      ],
+      "sample_rows": [
+       {
+        "Production Date": "2026-09-22T00:00:00",
+        "Shift": "Swing",
+        "Shift Start": "2026-09-22T14:00:00",
+        "Shift End": "2026-09-22T22:00:00",
+        "Line": "Line A",
+        "Machine": "M01",
+        "Operator": "[REDACTED]",
+        "Planned Minutes": 450,
+        "Unplanned Downtime (min)": 56,
+        "Changeover (min)": 0,
+        "Total Count": 734,
+        "Good Count": 700,
+        "Scrap Count": 34,
+        "Ideal Cycle Time (s)": 30.0,
+        "Failures": 0,
+        "Stops": 6
+       },
+       {
+        "Production Date": "2026-10-11T00:00:00",
+        "Shift": "Day",
+        "Shift Start": "2026-10-11T06:00:00",
+        "Shift End": "2026-10-11T14:00:00",
+        "Line": "Line A",
+        "Machine": "M01",
+        "Operator": "[REDACTED]",
+        "Planned Minutes": 450,
+        "Unplanned Downtime (min)": 44,
+        "Changeover (min)": 0,
+        "Total Count": 769,
+        "Good Count": 758,
+        "Scrap Count": 11,
+        "Ideal Cycle Time (s)": 30.0,
+        "Failures": 1,
+        "Stops": 4
+       },
+       {
+        "Production Date": "2026-08-13T00:00:00",
+        "Shift": "Day",
+        "Shift Start": "2026-08-13T06:00:00",
+        "Shift End": "2026-08-13T14:00:00",
+        "Line": "Line C",
+        "Machine": "M07",
+        "Operator": "[REDACTED]",
+        "Planned Minutes": 450,
+        "Unplanned Downtime (min)": 50,
+        "Changeover (min)": 0,
+        "Total Count": 1123,
+        "Good Count": 1100,
+        "Scrap Count": 23,
+        "Ideal Cycle Time (s)": 20.0,
+        "Failures": 1,
+        "Stops": 6
+       },
+       {
+        "Production Date": "2026-08-23T00:00:00",
+        "Shift": "Day",
+        "Shift Start": "2026-08-23T06:00:00",
+        "Shift End": "2026-08-23T14:00:00",
+        "Line": "Line C",
+        "Machine": "M09",
+        "Operator": "[REDACTED]",
+        "Planned Minutes": 450,
+        "Unplanned Downtime (min)": 97,
+        "Changeover (min)": 0,
+        "Total Count": 910,
+        "Good Count": 885,
+        "Scrap Count": 25,
+        "Ideal Cycle Time (s)": 22.0,
+        "Failures": 0,
+        "Stops": 4
+       },
+       {
+        "Production Date": "2026-10-07T00:00:00",
+        "Shift": "Night",
+        "Shift Start": "2026-10-07T22:00:00",
+        "Shift End": "2026-10-08T06:00:00",
+        "Line": "Line B",
+        "Machine": "M04",
+        "Operator": "[REDACTED]",
+        "Planned Minutes": 450,
+        "Unplanned Downtime (min)": 102,
+        "Changeover (min)": 0,
+        "Total Count": 406,
+        "Good Count": 396,
+        "Scrap Count": 10,
+        "Ideal Cycle Time (s)": 45.0,
+        "Failures": 0,
+        "Stops": 4
+       }
+      ],
+      "date_columns": [
+       "Production Date",
+       "Shift Start",
+       "Shift End"
+      ],
+      "id_columns": [],
+      "metric_columns": [
+       "Planned Minutes",
+       "Unplanned Downtime (min)",
+       "Changeover (min)",
+       "Total Count",
+       "Good Count",
+       "Scrap Count",
+       "Ideal Cycle Time (s)",
+       "Failures",
+       "Stops"
+      ],
+      "schema_summary": "2,630 rows \u00d7 16 columns. Dates: Production Date from 2026-08-01 to 2026-10-31 (daily). Metrics: Planned Minutes, Unplanned Downtime (min), Changeover (min), Total Count, Good Count, Scrap Count, Ideal Cycle Time (s), Failures, Stops. Categories: Shift, Line, Machine. Personal data, masked before any model sees it: Operator (name).",
+      "source_query": null,
+      "source_evidence": {
+       "id": "source:data",
+       "kind": "source",
+       "claim": "Loaded 2,630 rows \u00d7 16 columns from a CSV file.",
+       "code": "pd.read_csv(<uploaded file>, encoding='utf-8', sep=',')",
+       "result_excerpt": "{\"roles\": {\"date\": [\"Production Date\", \"Shift Start\", \"Shift End\"], \"category\": [\"Shift\", \"Line\", \"Machine\", \"Operator\"], \"metric\": [\"Planned Minutes\", \"Unplanned Downtime (min)\", \"Changeover (min)\", \"Total Count\", \"Good Count\", \"Scrap Count\", \"Ideal Cycle Time (s)\", \"Failures\", \"Stops\"]}, \"personal_data\": {\"Operator\": \"name\"}, \"fingerprint\": \"ae99184f88bdcd6f\"}",
+       "row_count": 2630,
+       "confidence": "high",
+       "confidence_reason": "Read as-is: no layout guessing was needed.",
+       "assumptions": [
+        "1 column hold personal data; their values are masked before any model sees them."
+       ]
+      },
+      "fingerprint": "ae99184f88bdcd6f3f557fcb9ae94d8a2d2f4ad23423030fccf873c0d7f7fcd2",
+      "pii_columns": [
+       "Operator"
+      ],
+      "phi": false,
+      "deidentification": [],
+      "deidentified": false,
+      "domain": "iot",
+      "roles": {
+       "date": "Production Date",
+       "shift_end": "Shift End",
+       "asset": "Machine",
+       "production_line": "Line",
+       "shift": "Shift",
+       "operator": "Operator",
+       "failures": "Failures",
+       "planned_minutes": "Planned Minutes",
+       "unplanned_downtime": "Unplanned Downtime (min)",
+       "changeover": "Changeover (min)",
+       "total_count": "Total Count",
+       "good_count": "Good Count",
+       "scrap_count": "Scrap Count",
+       "ideal_cycle_s": "Ideal Cycle Time (s)"
+      },
+      "domain_confidence": "strong"
+     },
+     "requests": [],
+     "loaded": {
+      "columns": [
+       "Production Date",
+       "Shift",
+       "Shift Start",
+       "Shift End",
+       "Line",
+       "Machine",
+       "Operator",
+       "Planned Minutes",
+       "Unplanned Downtime (min)",
+       "Changeover (min)",
+       "Total Count",
+       "Good Count",
+       "Scrap Count",
+       "Ideal Cycle Time (s)",
+       "Failures",
+       "Stops"
+      ],
+      "rows": 2630,
+      "cells": [
+       [
+        2237,
+        "Production Date",
+        {
+         "ts": "2026-09-02T00:00:00"
+        }
+       ],
+       [
+        1675,
+        "Shift",
+        "Day"
+       ],
+       [
+        1344,
+        "Shift Start",
+        {
+         "ts": "2026-10-13T06:00:00"
+        }
+       ],
+       [
+        709,
+        "Shift End",
+        {
+         "ts": "2026-09-05T22:00:00"
+        }
+       ],
+       [
+        809,
+        "Line",
+        "Line C"
+       ],
+       [
+        107,
+        "Machine",
+        "M04"
+       ],
+       [
+        197,
+        "Operator",
+        "Ana Lopez"
+       ],
+       [
+        43,
+        "Planned Minutes",
+        225.0
+       ],
+       [
+        460,
+        "Unplanned Downtime (min)",
+        25.0
+       ],
+       [
+        2138,
+        "Changeover (min)",
+        0.0
+       ],
+       [
+        1707,
+        "Total Count",
+        498.0
+       ],
+       [
+        2400,
+        "Good Count",
+        427.0
+       ],
+       [
+        1324,
+        "Scrap Count",
+        40.0
+       ],
+       [
+        1595,
+        "Ideal Cycle Time (s)",
+        25.0
+       ],
+       [
+        2553,
+        "Failures",
+        0.0
+       ],
+       [
+        1918,
+        "Stops",
+        0.0
+       ],
+       [
+        1662,
+        "Production Date",
+        {
+         "ts": "2026-10-28T00:00:00"
+        }
+       ],
+       [
+        1429,
+        "Shift",
+        "Swing"
+       ],
+       [
+        1472,
+        "Shift Start",
+        {
+         "ts": "2026-08-17T22:00:00"
+        }
+       ],
+       [
+        2459,
+        "Shift End",
+        {
+         "ts": "2026-09-07T14:00:00"
+        }
+       ]
+      ]
+     },
+     "contract_sha": "a98566531535a86e",
+     "phi": {
+      "flag": false,
+      "status": {
+       "Production Date": "kept",
+       "Shift": "kept",
+       "Shift Start": "kept",
+       "Shift End": "kept",
+       "Line": "kept",
+       "Machine": "kept",
+       "Operator": "kept",
+       "Planned Minutes": "kept",
+       "Unplanned Downtime (min)": "kept",
+       "Changeover (min)": "kept",
+       "Total Count": "kept",
+       "Good Count": "kept",
+       "Scrap Count": "kept",
+       "Ideal Cycle Time (s)": "kept",
+       "Failures": "kept",
+       "Stops": "kept"
+      },
+      "contract": null
+     }
+    },
+    "latency_s": 0.98,
+    "cost_usd": 0,
+    "llm_calls": 0,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ],
+  "dom-iot-work-orders": [
+   {
+    "checks": [
+     {
+      "kind": "load",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "kind": "role",
+      "column": "WONUM",
+      "ok": true,
+      "detail": "id"
+     },
+     {
+      "kind": "role",
+      "column": "ASSETNUM",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "WORKTYPE",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "STATUS",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "FAILURECODE",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "REPORTDATE",
+      "ok": true,
+      "detail": "date"
+     },
+     {
+      "kind": "role",
+      "column": "ACTSTART",
+      "ok": true,
+      "detail": "date"
+     },
+     {
+      "kind": "role",
+      "column": "ACTFINISH",
+      "ok": true,
+      "detail": "date"
+     },
+     {
+      "kind": "role",
+      "column": "REPORTEDBY",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "overmask",
+      "column": "ACTFINISH",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "pii",
+      "column": "REPORTEDBY",
+      "pii": "name",
+      "ok": true,
+      "detail": "masked"
+     },
+     {
+      "kind": "phi_flag",
+      "ok": true,
+      "detail": "phi=False"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "WONUM",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "ASSETNUM",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "WORKTYPE",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "STATUS",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "FAILURECODE",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "REPORTDATE",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "ACTSTART",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "ACTFINISH",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "REPORTEDBY",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "domain",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "silent_misload",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "summary_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "source_evidence",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "domain",
+    "case": "dom-iot-work-orders",
+    "holdout": false,
+    "contract_sha": "f81055e645018ff8",
+    "output": {
+     "contract": {
+      "source_type": "csv",
+      "row_count": 640,
+      "column_count": 9,
+      "columns": [
+       {
+        "name": "WONUM",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "WO100632",
+         "WO101122",
+         "WO101025",
+         "WO100789",
+         "WO100582"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "unique codes, one per row",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "ASSETNUM",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "M01",
+         "M03",
+         "P04",
+         "M07",
+         "P03"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "WORKTYPE",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "PM",
+         "PM",
+         "PM",
+         "PM",
+         "PM"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "STATUS",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "COMP",
+         "CLOSE",
+         "COMP",
+         "COMP",
+         "CLOSE"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "FAILURECODE",
+        "dtype": "str",
+        "nullable": true,
+        "sample_values": [
+         "SEAL",
+         "BELT",
+         "MOTOR",
+         "SEAL",
+         "SENSOR"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 47.97,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "REPORTDATE",
+        "dtype": "datetime64[us, UTC]",
+        "nullable": false,
+        "sample_values": [
+         "2026-06-27T20:00:00Z",
+         "2026-05-09T01:00:00Z",
+         "2026-05-11T13:00:00Z",
+         "2026-06-28T10:00:00Z",
+         "2026-08-07T14:00:00Z"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "ACTSTART",
+        "dtype": "datetime64[us, UTC]",
+        "nullable": true,
+        "sample_values": [
+         "2026-06-27T21:50:00Z",
+         "2026-05-09T06:40:00Z",
+         "2026-05-11T16:44:00Z",
+         "2026-06-28T15:47:00Z",
+         "2026-08-07T22:32:00Z"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 9.22,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "ACTFINISH",
+        "dtype": "datetime64[us, UTC]",
+        "nullable": true,
+        "sample_values": [
+         "2026-06-28T01:08:00Z",
+         "2026-05-09T08:07:00Z",
+         "2026-05-11T18:49:00Z",
+         "2026-06-28T17:16:00Z",
+         "2026-08-08T00:36:00Z"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 12.81,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "REPORTEDBY",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": "name",
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       }
+      ],
+      "sample_rows": [
+       {
+        "WONUM": "WO100632",
+        "ASSETNUM": "M01",
+        "WORKTYPE": "PM",
+        "STATUS": "COMP",
+        "FAILURECODE": null,
+        "REPORTDATE": "2026-06-27T20:00:00Z",
+        "ACTSTART": "2026-06-27T21:50:00Z",
+        "ACTFINISH": "2026-06-28T01:08:00Z",
+        "REPORTEDBY": "[REDACTED]"
+       },
+       {
+        "WONUM": "WO101122",
+        "ASSETNUM": "M03",
+        "WORKTYPE": "PM",
+        "STATUS": "CLOSE",
+        "FAILURECODE": null,
+        "REPORTDATE": "2026-05-09T01:00:00Z",
+        "ACTSTART": "2026-05-09T06:40:00Z",
+        "ACTFINISH": "2026-05-09T08:07:00Z",
+        "REPORTEDBY": "[REDACTED]"
+       },
+       {
+        "WONUM": "WO101025",
+        "ASSETNUM": "P04",
+        "WORKTYPE": "PM",
+        "STATUS": "COMP",
+        "FAILURECODE": null,
+        "REPORTDATE": "2026-05-11T13:00:00Z",
+        "ACTSTART": "2026-05-11T16:44:00Z",
+        "ACTFINISH": "2026-05-11T18:49:00Z",
+        "REPORTEDBY": "[REDACTED]"
+       },
+       {
+        "WONUM": "WO100789",
+        "ASSETNUM": "M07",
+        "WORKTYPE": "PM",
+        "STATUS": "COMP",
+        "FAILURECODE": null,
+        "REPORTDATE": "2026-06-28T10:00:00Z",
+        "ACTSTART": "2026-06-28T15:47:00Z",
+        "ACTFINISH": "2026-06-28T17:16:00Z",
+        "REPORTEDBY": "[REDACTED]"
+       },
+       {
+        "WONUM": "WO100582",
+        "ASSETNUM": "P03",
+        "WORKTYPE": "PM",
+        "STATUS": "CLOSE",
+        "FAILURECODE": null,
+        "REPORTDATE": "2026-08-07T14:00:00Z",
+        "ACTSTART": "2026-08-07T22:32:00Z",
+        "ACTFINISH": "2026-08-08T00:36:00Z",
+        "REPORTEDBY": "[REDACTED]"
+       }
+      ],
+      "date_columns": [
+       "REPORTDATE",
+       "ACTSTART",
+       "ACTFINISH"
+      ],
+      "id_columns": [
+       "WONUM"
+      ],
+      "metric_columns": [],
+      "schema_summary": "640 rows \u00d7 9 columns. Dates: REPORTDATE from 2026-05-01 to 2026-10-24 (daily). Identifiers: WONUM. Categories: ASSETNUM, WORKTYPE, STATUS, FAILURECODE. Personal data, masked before any model sees it: REPORTEDBY (name). Missing values: FAILURECODE 47.97%, ACTFINISH 12.81%, ACTSTART 9.22%.",
+      "source_query": null,
+      "source_evidence": {
+       "id": "source:data",
+       "kind": "source",
+       "claim": "Loaded 640 rows \u00d7 9 columns from a CSV file.",
+       "code": "pd.read_csv(<uploaded file>, encoding='utf-8', sep=',')",
+       "result_excerpt": "{\"roles\": {\"id\": [\"WONUM\"], \"category\": [\"ASSETNUM\", \"WORKTYPE\", \"STATUS\", \"FAILURECODE\", \"REPORTEDBY\"], \"date\": [\"REPORTDATE\", \"ACTSTART\", \"ACTFINISH\"]}, \"personal_data\": {\"REPORTEDBY\": \"name\"}, \"fingerprint\": \"aa0c8b1c5858a37d\"}",
+       "row_count": 640,
+       "confidence": "high",
+       "confidence_reason": "Read as-is: no layout guessing was needed.",
+       "assumptions": [
+        "1 column hold personal data; their values are masked before any model sees them."
+       ]
+      },
+      "fingerprint": "aa0c8b1c5858a37dec69100da284da589de72b6b4cfeab18fd151c9802906c5f",
+      "pii_columns": [
+       "REPORTEDBY"
+      ],
+      "phi": false,
+      "deidentification": [],
+      "deidentified": false,
+      "domain": "iot",
+      "roles": {
+       "date": "REPORTDATE",
+       "actual_start": "ACTSTART",
+       "actual_finish": "ACTFINISH",
+       "asset": "ASSETNUM",
+       "reported_by": "REPORTEDBY",
+       "work_order": "WONUM",
+       "work_type": "WORKTYPE",
+       "failure_code": "FAILURECODE",
+       "status": "STATUS"
+      },
+      "domain_confidence": "strong"
+     },
+     "requests": [],
+     "loaded": {
+      "columns": [
+       "WONUM",
+       "ASSETNUM",
+       "WORKTYPE",
+       "STATUS",
+       "FAILURECODE",
+       "REPORTDATE",
+       "ACTSTART",
+       "ACTFINISH",
+       "REPORTEDBY"
+      ],
+      "rows": 640,
+      "cells": [
+       [
+        544,
+        "WONUM",
+        "WO100652"
+       ],
+       [
+        407,
+        "ASSETNUM",
+        "M05"
+       ],
+       [
+        327,
+        "WORKTYPE",
+        "CM"
+       ],
+       [
+        172,
+        "STATUS",
+        "CLOSE"
+       ],
+       [
+        197,
+        "FAILURECODE",
+        "SENSOR"
+       ],
+       [
+        26,
+        "REPORTDATE",
+        {
+         "ts": "2026-06-08T20:00:00+00:00"
+        }
+       ],
+       [
+        48,
+        "ACTSTART",
+        {
+         "ts": "2026-07-03T23:47:00+00:00"
+        }
+       ],
+       [
+        10,
+        "ACTFINISH",
+        {
+         "ts": "2026-06-28T21:06:00+00:00"
+        }
+       ],
+       [
+        112,
+        "REPORTEDBY",
+        "HKAUR"
+       ],
+       [
+        520,
+        "WONUM",
+        "WO100683"
+       ],
+       [
+        415,
+        "ASSETNUM",
+        "M02"
+       ],
+       [
+        584,
+        "WORKTYPE",
+        "PM"
+       ],
+       [
+        322,
+        "STATUS",
+        "INPRG"
+       ],
+       [
+        388,
+        "FAILURECODE",
+        null
+       ],
+       [
+        621,
+        "REPORTDATE",
+        {
+         "ts": "2026-05-30T23:00:00+00:00"
+        }
+       ],
+       [
+        466,
+        "ACTSTART",
+        {
+         "ts": "2026-09-24T04:27:00+00:00"
+        }
+       ],
+       [
+        404,
+        "ACTFINISH",
+        {
+         "ts": "2026-08-18T08:40:00+00:00"
+        }
+       ],
+       [
+        347,
+        "REPORTEDBY",
+        "HKAUR"
+       ],
+       [
+        358,
+        "WONUM",
+        "WO100514"
+       ],
+       [
+        598,
+        "ASSETNUM",
+        "P02"
+       ]
+      ]
+     },
+     "contract_sha": "f81055e645018ff8",
+     "phi": {
+      "flag": false,
+      "status": {
+       "WONUM": "kept",
+       "ASSETNUM": "kept",
+       "WORKTYPE": "kept",
+       "STATUS": "kept",
+       "FAILURECODE": "kept",
+       "REPORTDATE": "kept",
+       "ACTSTART": "kept",
+       "ACTFINISH": "kept",
+       "REPORTEDBY": "kept"
+      },
+      "contract": null
+     }
+    },
+    "latency_s": 0.8,
+    "cost_usd": 0,
+    "llm_calls": 0,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ]
+ }
+}

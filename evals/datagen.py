@@ -499,6 +499,265 @@ def make_sensor_readings(seed: int) -> tuple[pd.DataFrame, dict]:
     return df, truth
 
 
+# ── IoT / manufacturing (Domain 7; definitions: docs/research/2026-11-16-iot.md) ──────────────
+_IOT_LINES = {"A": ["M01", "M02", "M03"], "B": ["M04", "M05", "M06"], "C": ["M07", "M08", "M09"],
+              "D": ["M10"]}   # line D is installed, never scheduled: every planned minute is 0
+_IOT_CYCLE = {"M01": 30.0, "M02": 30.0, "M03": 32.0, "M04": 45.0, "M05": 45.0, "M06": 48.0,
+              "M07": 20.0, "M08": 20.0, "M09": 22.0, "M10": 25.0}   # ideal seconds per unit
+_IOT_SHIFTS = {"Day": 6, "Swing": 14, "Night": 22}   # start hour; 8 h each, a 30 min break
+
+
+def make_shift_production(seed: int) -> tuple[pd.DataFrame, dict]:
+    """An MES shift report: one row per machine × shift, 2026-08-01 .. 2026-10-31.
+
+    Traps: OEE as a mean of shift OEEs (1; Saturdays are half shifts with start-up losses, so a
+    mean of ratios weighs them like full ones); good output by the night shift's END date (2: it
+    runs 22:00–06:00 and belongs to the day it starts); a shift whose performance is over 100%
+    (3: a wrong ideal cycle, flagged, never capped); M08 with no failure (4: MTBF a lower bound,
+    never ∞ or dropped); line D never scheduled (5: OEE not measurable, never 0); stops are not
+    failures (6); operators are people (7)."""
+    rng = np.random.default_rng(seed)
+    rows = []
+    for day in pd.date_range("2026-08-01", "2026-10-31", freq="D"):
+        for shift, hour in _IOT_SHIFTS.items():
+            if day.dayofweek == 6 and shift == "Night":   # no Sunday night shift
+                continue
+            half = day.dayofweek == 5   # Saturday: half shifts with start-up losses
+            start = day + pd.Timedelta(hours=hour)
+            for line, machines in _IOT_LINES.items():
+                for m in machines:
+                    planned = 0 if line == "D" else (225 if half else 450)
+                    if planned == 0:
+                        unplanned = change = total = good = fails = stops = 0
+                    else:
+                        avail = rng.uniform(0.78, 0.95) - (0.12 if half else 0) - (0.04 if line == "B" else 0)
+                        change = int(rng.choice([0, 0, 15, 30]))
+                        unplanned = max(0, int(round(planned * (1 - avail))) - change)
+                        run = planned - unplanned - change
+                        perf = rng.uniform(0.80, 0.95) - (0.10 if half else 0)
+                        total = int(run * 60 * perf / _IOT_CYCLE[m])
+                        good = int(total * rng.uniform(0.95, 0.995))
+                        fails = 0 if m == "M08" else int(rng.poisson(0.25 if line == "B" else 0.1))
+                        stops = fails + int(rng.poisson(4))   # micro-stops: never failures (6)
+                    rows.append({
+                        "Production Date": f"{day:%Y-%m-%d}", "Shift": shift,
+                        "Shift Start": f"{start:%Y-%m-%d %H:%M}",
+                        "Shift End": f"{start + pd.Timedelta(hours=8):%Y-%m-%d %H:%M}",
+                        "Line": f"Line {line}", "Machine": m,
+                        "Operator": f"{_FIRST[int(rng.integers(len(_FIRST)))]} {_LAST[int(rng.integers(len(_LAST)))]}",
+                        "Planned Minutes": planned, "Unplanned Downtime (min)": unplanned,
+                        "Changeover (min)": change, "Total Count": total, "Good Count": good,
+                        "Scrap Count": total - good, "Ideal Cycle Time (s)": _IOT_CYCLE[m],
+                        "Failures": fails, "Stops": stops})
+    df = pd.DataFrame(rows)
+    hot = df.index[(df["Machine"] == "M02") & (df["Production Date"] == "2026-09-15") & (df["Shift"] == "Day")][0]
+    run = df.at[hot, "Planned Minutes"] - df.at[hot, "Unplanned Downtime (min)"] - df.at[hot, "Changeover (min)"]
+    df.at[hot, "Total Count"] = int(run * 60 * 1.12 / _IOT_CYCLE["M02"])   # (3) over 100%
+    df.at[hot, "Good Count"] = df.at[hot, "Total Count"] - 20
+    df.at[hot, "Scrap Count"] = 20
+    df = df.sample(frac=1, random_state=seed).reset_index(drop=True)
+    return df, _shift_production_truth(df)
+
+
+def _shift_production_truth(df: pd.DataFrame) -> dict:
+    run = df["Planned Minutes"] - df["Unplanned Downtime (min)"] - df["Changeover (min)"]
+    d = df.assign(_run=run, _ideal_total=df["Ideal Cycle Time (s)"] * df["Total Count"] / 60,
+                  _ideal_good=df["Ideal Cycle Time (s)"] * df["Good Count"] / 60)
+
+    def pooled(g: pd.DataFrame) -> dict:
+        p, r = g["Planned Minutes"].sum(), g["_run"].sum()
+        return {"oee": g["_ideal_good"].sum() / p if p else None,
+                "availability": r / p if p else None,
+                "performance": g["_ideal_total"].sum() / r if r else None,
+                "quality": g["Good Count"].sum() / g["Total Count"].sum() if g["Total Count"].sum() else None,
+                "mtbf_hours": r / 60 / g["Failures"].sum() if g["Failures"].sum() else None}
+
+    whole = pooled(d)
+    ran = d[d["Planned Minutes"] > 0]
+    by_line = {k: pooled(g) for k, g in d.groupby("Line")}
+    by_machine = {k: pooled(g) for k, g in d.groupby("Machine")}
+    by_shift = {k: pooled(g) for k, g in d.groupby("Shift")}
+    end_day = pd.to_datetime(d["Shift End"]).dt.strftime("%Y-%m-%d")
+    t = {
+        "row_count": len(df), "pii_columns": ["Operator"],
+        **{k: v for k, v in whole.items()},
+        "scrap_rate": d["Scrap Count"].sum() / d["Total Count"].sum(),
+        "good_count": int(d["Good Count"].sum()), "failures": int(d["Failures"].sum()),
+        "stops": int(d["Stops"].sum()), "unplanned_downtime_min": int(d["Unplanned Downtime (min)"].sum()),
+        "run_hours": d["_run"].sum() / 60,
+        "oee_by_line": {k: v["oee"] for k, v in by_line.items()},
+        "oee_by_running_line": {k: v["oee"] for k, v in by_line.items() if v["oee"] is not None},
+        "availability_by_shift": {k: v["availability"] for k, v in by_shift.items()},
+        "oee_by_shift": {k: v["oee"] for k, v in by_shift.items()},
+        "mtbf_by_machine": {k: v["mtbf_hours"] for k, v in by_machine.items()},
+        "mtbf_by_failing_machine": {k: v["mtbf_hours"] for k, v in by_machine.items() if v["mtbf_hours"]},
+        "zero_failure_run_hours": {k: d.loc[d["Machine"] == k, "_run"].sum() / 60
+                                   for k, v in by_machine.items() if v["mtbf_hours"] is None and
+                                   d.loc[d["Machine"] == k, "_run"].sum() > 0},
+        "good_by_day": d.groupby("Production Date")["Good Count"].sum().astype(int).to_dict(),
+        # naive twins
+        "naive_mean_shift_oee": float((ran["_ideal_good"] / ran["Planned Minutes"]).mean()),
+        "naive_good_by_end_day": d.groupby(end_day)["Good Count"].sum().astype(int).to_dict(),
+        "naive_mtbf_with_stops": d["_run"].sum() / 60 / d["Stops"].sum(),
+        "over_100_performance_rows": int((d["_ideal_total"] > d["_run"]).sum()),
+    }
+    assert abs(t["naive_mean_shift_oee"] - t["oee"]) > 0.01                                    # 1
+    assert t["good_by_day"]["2026-08-02"] != t["naive_good_by_end_day"]["2026-08-02"]           # 2
+    assert t["over_100_performance_rows"] == 1                                                  # 3
+    assert t["mtbf_by_machine"]["M08"] is None and t["zero_failure_run_hours"]["M08"] > 0      # 4
+    assert t["oee_by_line"]["Line D"] is None                                                    # 5
+    assert t["naive_mtbf_with_stops"] < t["mtbf_hours"] / 5                                     # 6
+    return t
+
+
+_WO_ASSETS = [*(m for ms in _IOT_LINES.values() for m in ms if m != "M10"), "P01", "P02", "P03", "P04"]
+_WO_LOGINS = ["JSMITH", "ALOPEZ", "KPARK", "RNOVAK", "DMOSS", "HKAUR"]
+
+
+def make_work_orders(seed: int) -> tuple[pd.DataFrame, dict]:
+    """A CMMS (Maximo-like) work-order export, reported 2026-05-01 .. 2026-10-31, times in UTC.
+
+    Traps: preventive WOs in MTTR (1: a PM is no failure); open WOs in MTTR or "fixed in 0 h"
+    (2: no actual finish yet: left out and counted); cancelled WOs counted (3); a COMP WO with no
+    actual finish (4: left out of MTTR); a repair across the EU clock change of 2026-10-25, exact
+    in UTC (5); two 0 h repairs (6: flagged, kept); REPORTEDBY logins are people (7)."""
+    rng = np.random.default_rng(seed)
+    rows = []
+    starts = pd.date_range("2026-05-01", "2026-10-31 18:00", freq="h", tz="UTC")
+    for i in range(640):
+        kind = rng.choice(["PM", "CM", "EM"], p=[0.45, 0.45, 0.10])
+        status = rng.choice(["COMP", "CLOSE", "INPRG", "WAPPR", "CAN"], p=[0.55, 0.32, 0.04, 0.03, 0.06])
+        report = starts[int(rng.integers(len(starts) - 400))]
+        start = report + pd.Timedelta(minutes=int(rng.integers(10, 600)))
+        hours = {"PM": rng.gamma(4, 0.5), "CM": rng.gamma(2.5, 1.4), "EM": rng.gamma(3, 2.0)}[kind]
+        finish = start + pd.Timedelta(minutes=int(round(hours * 60)))
+        open_ = status in ("INPRG", "WAPPR")
+        rows.append({
+            "WONUM": f"WO{100500 + i}", "ASSETNUM": _WO_ASSETS[int(rng.integers(len(_WO_ASSETS)))],
+            "WORKTYPE": kind, "STATUS": status,
+            "FAILURECODE": None if kind == "PM" else str(rng.choice(["BEARING", "SEAL", "MOTOR", "SENSOR", "BELT"])),
+            "REPORTDATE": f"{report:%Y-%m-%dT%H:%M:%SZ}",
+            "ACTSTART": None if status in ("WAPPR", "CAN") else f"{start:%Y-%m-%dT%H:%M:%SZ}",
+            "ACTFINISH": None if open_ or status == "CAN" else f"{finish:%Y-%m-%dT%H:%M:%SZ}",
+            "REPORTEDBY": _WO_LOGINS[int(rng.integers(len(_WO_LOGINS)))]})
+    df = pd.DataFrame(rows)
+    done = df.index[(df["WORKTYPE"] != "PM") & df["STATUS"].isin(["COMP", "CLOSE"])]
+    df.loc[done[:3], "ACTFINISH"] = None                                                       # 4
+    df.loc[done[3:5], "ACTFINISH"] = df.loc[done[3:5], "ACTSTART"]                             # 6
+    df.loc[done[5], ["REPORTDATE", "ACTSTART", "ACTFINISH"]] = [                               # 5
+        "2026-10-24T22:40:00Z", "2026-10-24T23:30:00Z", "2026-10-25T02:15:00Z"]
+    df = df.sample(frac=1, random_state=seed).reset_index(drop=True)
+    return df, _work_orders_truth(df)
+
+
+def _work_orders_truth(df: pd.DataFrame) -> dict:
+    start = pd.to_datetime(df["ACTSTART"], utc=True)
+    finish = pd.to_datetime(df["ACTFINISH"], utc=True)
+    hours = (finish - start).dt.total_seconds() / 3600
+    live = df["STATUS"] != "CAN"
+    corrective = live & df["WORKTYPE"].isin(["CM", "EM"])
+    valid = corrective & hours.notna() & (hours >= 0)
+    d = df.assign(_h=hours)
+    t = {
+        "row_count": len(df), "pii_columns": ["REPORTEDBY"],
+        "mttr_hours": float(hours[valid].mean()),
+        "corrective_wos": int(corrective.sum()), "cancelled_wos": int((~live).sum()),
+        "open_wos": int((live & df["STATUS"].isin(["INPRG", "WAPPR"])).sum()),
+        "pm_share": float((live & (df["WORKTYPE"] == "PM")).sum() / live.sum()),
+        "finished_corrective_wos": int(valid.sum()),
+        "zero_hour_repairs": int((valid & (hours == 0)).sum()),
+        "mttr_by_asset": d[valid].groupby("ASSETNUM")["_h"].mean().to_dict(),
+        "mttr_by_worktype": d[valid].groupby("WORKTYPE")["_h"].mean().to_dict(),
+        "dst_repair_hours": float(hours[df["ACTSTART"] == "2026-10-24T23:30:00Z"].iloc[0]),
+        # naive twins
+        "naive_mttr_every_type": float(hours[live & hours.notna()].mean()),
+        "naive_corrective_with_cancelled": int(df["WORKTYPE"].isin(["CM", "EM"]).sum()),
+    }
+    assert abs(t["naive_mttr_every_type"] - t["mttr_hours"]) > 0.3                              # 1
+    assert t["naive_corrective_with_cancelled"] > t["corrective_wos"]                           # 3
+    assert t["dst_repair_hours"] == 2.75 and t["zero_hour_repairs"] == 2                        # 5, 6
+    return t
+
+
+_MR_SENSORS = {"S01": "A", "S02": "A", "S03": "A", "S04": "B", "S05": "B", "S06": "B", "S07": "C",
+               "S08": "C"}
+
+
+def make_machine_readings(seed: int) -> tuple[pd.DataFrame, dict]:
+    """A historian dump pivoted wide: 8 sensors, hourly, 2026-08-01 .. 2026-10-31, local time with
+    its UTC offset (Europe/Paris: +02:00, then +01:00 from 2026-10-25 03:00).
+
+    Traps: line C's sensors report °F (1: a unit column says so; averaging it with °C is wrong);
+    −9999 / 32767 codes (2); S03 stuck at 68.40 for 3 days (3); S05 silent for 40 h (4); exact
+    double writes and a few same-time rows with different values (5); the repeated hour of the
+    clock change (6); Bad readings are no measurement, Uncertain ones are kept (7); S07 drifts
+    +0.05 °C a day (8); a monthly sum of temperature (9)."""
+    rng = np.random.default_rng(seed)
+    utc = pd.date_range("2026-07-31 22:00", "2026-10-31 22:00", freq="h", tz="UTC", inclusive="left")
+    local = utc.tz_convert("Europe/Paris")
+    rows = []
+    for s, line in _MR_SENSORS.items():
+        day = (utc - utc[0]).days.to_numpy()
+        temp_c = 70 + rng.normal(0, 1.0, len(utc)) + (0.05 * day if s == "S07" else 0) + (2 if line == "B" else 0)
+        f = line == "C"
+        vib = rng.gamma(4.0, 0.5 if line != "B" else 0.8, len(utc))
+        for i, t in enumerate(local):
+            if s == "S05" and pd.Timestamp("2026-09-10 08:00", tz="Europe/Paris") <= t < pd.Timestamp(
+                    "2026-09-12 00:00", tz="Europe/Paris"):
+                continue                                                                        # 4
+            temp = 68.40 if s == "S03" and pd.Timestamp("2026-09-20", tz="Europe/Paris") <= t < pd.Timestamp(
+                "2026-09-23", tz="Europe/Paris") else round(float(temp_c[i] * 9 / 5 + 32 if f else temp_c[i]), 2)
+            rows.append({"Timestamp": t.strftime("%Y-%m-%d %H:%M:%S%z"), "Sensor": s, "Line": f"Line {line}",
+                         "Temperature": temp, "Temp Unit": "°F" if f else "°C",
+                         "Vibration (mm/s)": round(float(vib[i]), 3),
+                         "Pressure (bar)": round(float(rng.normal(6.0, 0.15)), 3),
+                         "Alarm": int(vib[i] > 6.5), "Quality": "Good"})
+    df = pd.DataFrame(rows)
+    pick = lambda n, mask=None: rng.choice(df.index[mask] if mask is not None else df.index,  # noqa: E731
+                                           n, replace=False)
+    df.loc[pick(15), "Temperature"] = -9999.0                                                   # 2
+    df.loc[pick(10), "Pressure (bar)"] = 32767.0
+    bad = pick(int(len(df) * 0.01), df["Temperature"] != -9999.0)
+    df.loc[bad, ["Quality", "Temperature"]] = ["Bad", 0.0]                                      # 7
+    df.loc[pick(int(len(df) * 0.02), df["Quality"] == "Good"), "Quality"] = "Uncertain"
+    exact = df.loc[pick(20, df["Quality"] == "Good")]                                           # 5
+    clash = df.loc[pick(6, df["Quality"] == "Good")].assign(
+        Temperature=lambda x: (x["Temperature"] + 0.8).round(2))
+    df = pd.concat([df, exact, clash], ignore_index=True)
+    df = df.sample(frac=1, random_state=seed).reset_index(drop=True)
+    return df, _machine_readings_truth(df)
+
+
+def _machine_readings_truth(df: pd.DataFrame) -> dict:
+    d = df.drop_duplicates()
+    ok = (d["Quality"] != "Bad") & (d["Temperature"] != -9999.0)
+    c = d["Temperature"].where(d["Temp Unit"] == "°C", (d["Temperature"] - 32) * 5 / 9)[ok]
+    wall = pd.to_datetime(d["Timestamp"].str[:19])
+    s07 = d[ok & (d["Sensor"] == "S07")]
+    days = (pd.to_datetime(s07["Timestamp"].str[:19]) - pd.Timestamp("2026-08-01")).dt.days
+    slope = float(np.polyfit(days, ((s07["Temperature"] - 32) * 5 / 9).to_numpy(), 1)[0])
+    t = {
+        "row_count": len(df), "pii_columns": [],
+        "mean_temp_c": float(c.mean()),
+        "mean_temp_c_by_line": c.groupby(d.loc[ok, "Line"]).mean().to_dict(),
+        "assets": int(d["Sensor"].nunique()), "alarms": int(d["Alarm"].sum()),
+        "exact_duplicates": int(df.duplicated().sum()),
+        "clashing_timestamps": int(d.duplicated(["Sensor", "Timestamp"]).sum()),
+        "sentinel_temps": int((d["Temperature"] == -9999.0).sum()),
+        "bad_readings": int((d["Quality"] == "Bad").sum()),
+        "uncertain_readings": int((d["Quality"] == "Uncertain").sum()),
+        "fahrenheit_rows": int((d["Temp Unit"] == "°F").sum()),
+        "s07_drift_c_per_day": slope, "stuck_sensor": "S03", "dropout_sensor": "S05",
+        "repeated_wall_hours": int((wall[d["Sensor"] == "S01"] == pd.Timestamp("2026-10-25 02:00")).sum() - 1),
+        # naive twins
+        "naive_mean_temp": float(df.loc[df["Temperature"] != -9999.0, "Temperature"].mean()),
+    }
+    assert t["naive_mean_temp"] - t["mean_temp_c"] > 5                                          # 1
+    assert abs(t["s07_drift_c_per_day"] - 0.05) < 0.01                                         # 8
+    assert t["repeated_wall_hours"] == 1                                                        # 6
+    return t
+
+
 def make_shipments(seed: int) -> tuple[pd.DataFrame, dict]:
     """4,000 shipments, 2026-01 .. 2026-10, two carriers.
 
@@ -2876,7 +3135,9 @@ DATASETS = {"sales": make_sales, "simpson": make_simpson, "mixed_dates": make_mi
             "policies": make_policies, "loss_run": make_loss_run,
             "hr_roster": make_hr_roster, "hr_roster_onerow": make_hr_roster_onerow,
             "hr_snapshots": make_hr_snapshots, "saas_subscriptions": make_saas_subscriptions,
-            "saas_mrr_snapshots": make_saas_mrr_snapshots, "saas_invoices": make_saas_invoices}
+            "saas_mrr_snapshots": make_saas_mrr_snapshots, "saas_invoices": make_saas_invoices,
+            "shift_production": make_shift_production, "work_orders": make_work_orders,
+            "machine_readings": make_machine_readings}
 
 
 def make(name: str, seed: int) -> tuple[pd.DataFrame, dict]:

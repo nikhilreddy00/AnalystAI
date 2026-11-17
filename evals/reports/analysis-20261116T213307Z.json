@@ -1,0 +1,750 @@
+{
+ "meta": {
+  "suite": "analysis",
+  "report": "analysis-20261116T213307Z",
+  "k": 1,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "7f7f4d0",
+  "started_at": "20261116T213307Z",
+  "only": "iot-4",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 1,
+  "runs": 1,
+  "pass_rate": 1.0,
+  "case_majority_pass_rate": 1.0,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "hard_rules_na": 0,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 0,
+  "runs_with_prose_rewritten": 0,
+  "runs_with_pii_guard_hit": 0,
+  "cost_per_question_usd": 0.0185,
+  "latency_p50_s": 28.58,
+  "latency_p95_s": 28.58,
+  "numeric_accuracy": 1.0,
+  "insight_recall": 1.0,
+  "false_finding_rate": 0.0,
+  "verifiable_claims": 36,
+  "by_domain": {
+   "iot": {
+    "cases": 1,
+    "k_min": 1,
+    "k_max": 1,
+    "cases_passed_all_runs": 1,
+    "pass_rate": 1.0,
+    "hard_rule_violations": 0,
+    "hard_rules_na": 0,
+    "builtin_only_cases": [],
+    "model_dependent_passed": 1,
+    "model_dependent_cases": 1,
+    "numeric_accuracy": 1.0,
+    "insight_recall": 1.0,
+    "false_finding_rate": 0.0,
+    "verifiable_claims": 36,
+    "model_dependent_quality": {
+     "numeric_accuracy": 1.0,
+     "insight_recall": 1.0,
+     "false_finding_rate": 0.0,
+     "verifiable_claims": 36
+    }
+   }
+  }
+ },
+ "runs": {
+  "iot-4": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value_truth",
+      "ok": true,
+      "detail": "ok (Good Count)",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_exits",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 36,
+     "details": []
+    },
+    "builtin_only": false,
+    "pii_exits": {
+     "rule": "pii_exits",
+     "ok": true,
+     "detail": "ok"
+    },
+    "pii_canary_hits": 0,
+    "pii_model_hits": 0,
+    "pii_planted": 80,
+    "output": {
+     "eda_summary": {
+      "Planned Minutes": {
+       "mean": 372.6616,
+       "std": 146.8098,
+       "min": 0.0,
+       "max": 450.0,
+       "median": 450.0,
+       "count": 2630
+      },
+      "Unplanned Downtime (min)": {
+       "mean": 48.7943,
+       "std": 29.0201,
+       "min": 0.0,
+       "max": 117.0,
+       "median": 50.0,
+       "count": 2630
+      },
+      "Changeover (min)": {
+       "mean": 10.2833,
+       "std": 12.3042,
+       "min": 0.0,
+       "max": 30.0,
+       "median": 0.0,
+       "count": 2630
+      },
+      "Total Count": {
+       "mean": 561.511,
+       "std": 317.9406,
+       "min": 0.0,
+       "max": 1206.0,
+       "median": 573.0,
+       "count": 2630
+      },
+      "Good Count": {
+       "mean": 545.2722,
+       "std": 308.8952,
+       "min": 0.0,
+       "max": 1169.0,
+       "median": 554.5,
+       "count": 2630
+      },
+      "Scrap Count": {
+       "mean": 16.2388,
+       "std": 12.472,
+       "min": 0.0,
+       "max": 57.0,
+       "median": 14.0,
+       "count": 2630
+      }
+     },
+     "correlations": {},
+     "trends": [],
+     "segments": [
+      {
+       "segment_column": "Line",
+       "metric_column": "Good Count",
+       "aggregation": "ratio",
+       "results": [
+        {
+         "name": "Line A",
+         "value": 0.722312
+        },
+        {
+         "name": "Line C",
+         "value": 0.714128
+        },
+        {
+         "name": "Line B",
+         "value": 0.687291
+        },
+        {
+         "name": "Line D",
+         "value": null
+        }
+       ],
+       "label": "oee"
+      }
+     ],
+     "anomalies": [],
+     "statistical_tests": [],
+     "forecast_points": [],
+     "distributions": {
+      "Planned Minutes": [
+       {
+        "label": "(-0.45, 150.0]",
+        "count": 263
+       },
+       {
+        "label": "(150.0, 300.0]",
+        "count": 378
+       },
+       {
+        "label": "(300.0, 450.0]",
+        "count": 1989
+       }
+      ],
+      "Unplanned Downtime (min)": [
+       {
+        "label": "(-0.117, 11.7]",
+        "count": 364
+       },
+       {
+        "label": "(11.7, 23.4]",
+        "count": 162
+       },
+       {
+        "label": "(23.4, 35.1]",
+        "count": 319
+       },
+       {
+        "label": "(35.1, 46.8]",
+        "count": 358
+       },
+       {
+        "label": "(46.8, 58.5]",
+        "count": 400
+       },
+       {
+        "label": "(58.5, 70.2]",
+        "count": 398
+       },
+       {
+        "label": "(70.2, 81.9]",
+        "count": 274
+       },
+       {
+        "label": "(81.9, 93.6]",
+        "count": 188
+       },
+       {
+        "label": "(93.6, 105.3]",
+        "count": 113
+       },
+       {
+        "label": "(105.3, 117.0]",
+        "count": 54
+       }
+      ],
+      "Changeover (min)": [
+       {
+        "label": "(-0.03, 10.0]",
+        "count": 1428
+       },
+       {
+        "label": "(10.0, 20.0]",
+        "count": 601
+       },
+       {
+        "label": "(20.0, 30.0]",
+        "count": 601
+       }
+      ],
+      "Total Count": [
+       {
+        "label": "(-1.206, 120.6]",
+        "count": 263
+       },
+       {
+        "label": "(120.6, 241.2]",
+        "count": 165
+       },
+       {
+        "label": "(241.2, 361.8]",
+        "count": 157
+       },
+       {
+        "label": "(361.8, 482.4]",
+        "count": 679
+       },
+       {
+        "label": "(482.4, 603.0]",
+        "count": 111
+       },
+       {
+        "label": "(603.0, 723.6]",
+        "count": 477
+       },
+       {
+        "label": "(723.6, 844.2]",
+        "count": 149
+       },
+       {
+        "label": "(844.2, 964.8]",
+        "count": 255
+       },
+       {
+        "label": "(964.8, 1085.4]",
+        "count": 286
+       },
+       {
+        "label": "(1085.4, 1206.0]",
+        "count": 88
+       }
+      ],
+      "Good Count": [
+       {
+        "label": "(-1.169, 116.9]",
+        "count": 263
+       },
+       {
+        "label": "(116.9, 233.8]",
+        "count": 165
+       },
+       {
+        "label": "(233.8, 350.7]",
+        "count": 153
+       },
+       {
+        "label": "(350.7, 467.6]",
+        "count": 680
+       },
+       {
+        "label": "(467.6, 584.5]",
+        "count": 118
+       },
+       {
+        "label": "(584.5, 701.4]",
+        "count": 466
+       },
+       {
+        "label": "(701.4, 818.3]",
+        "count": 157
+       },
+       {
+        "label": "(818.3, 935.2]",
+        "count": 254
+       },
+       {
+        "label": "(935.2, 1052.1]",
+        "count": 281
+       },
+       {
+        "label": "(1052.1, 1169.0]",
+        "count": 93
+       }
+      ],
+      "Scrap Count": [
+       {
+        "label": "(-0.057, 5.7]",
+        "count": 564
+       },
+       {
+        "label": "(5.7, 11.4]",
+        "count": 567
+       },
+       {
+        "label": "(11.4, 17.1]",
+        "count": 449
+       },
+       {
+        "label": "(17.1, 22.8]",
+        "count": 333
+       },
+       {
+        "label": "(22.8, 28.5]",
+        "count": 235
+       },
+       {
+        "label": "(28.5, 34.2]",
+        "count": 220
+       },
+       {
+        "label": "(34.2, 39.9]",
+        "count": 96
+       },
+       {
+        "label": "(39.9, 45.6]",
+        "count": 105
+       },
+       {
+        "label": "(45.6, 51.3]",
+        "count": 51
+       },
+       {
+        "label": "(51.3, 57.0]",
+        "count": 10
+       }
+      ],
+      "Shift": [
+       {
+        "label": "Swing",
+        "count": 920
+       },
+       {
+        "label": "Day",
+        "count": 920
+       },
+       {
+        "label": "Night",
+        "count": 790
+       }
+      ],
+      "Line": [
+       {
+        "label": "Line A",
+        "count": 789
+       },
+       {
+        "label": "Line C",
+        "count": 789
+       },
+       {
+        "label": "Line B",
+        "count": 789
+       },
+       {
+        "label": "Line D",
+        "count": 263
+       }
+      ],
+      "Machine": [
+       {
+        "label": "M01",
+        "count": 263
+       },
+       {
+        "label": "M07",
+        "count": 263
+       },
+       {
+        "label": "M09",
+        "count": 263
+       },
+       {
+        "label": "M04",
+        "count": 263
+       },
+       {
+        "label": "M08",
+        "count": 263
+       },
+       {
+        "label": "M10",
+        "count": 263
+       },
+       {
+        "label": "M02",
+        "count": 263
+       },
+       {
+        "label": "M05",
+        "count": 263
+       },
+       {
+        "label": "M06",
+        "count": 263
+       },
+       {
+        "label": "M03",
+        "count": 263
+       }
+      ],
+      "Operator": [
+       {
+        "label": "Eli Quinn",
+        "count": 49
+       },
+       {
+        "label": "Chen Park",
+        "count": 45
+       },
+       {
+        "label": "Ivo Quinn",
+        "count": 41
+       },
+       {
+        "label": "Eli Okafor",
+        "count": 41
+       },
+       {
+        "label": "Chen Lopez",
+        "count": 41
+       },
+       {
+        "label": "Gus Novak",
+        "count": 39
+       },
+       {
+        "label": "Dara Novak",
+        "count": 38
+       },
+       {
+        "label": "Ana Kaur",
+        "count": 38
+       },
+       {
+        "label": "Eli Kaur",
+        "count": 38
+       },
+       {
+        "label": "Dara Okafor",
+        "count": 38
+       }
+      ]
+     },
+     "code_executed": "import pandas as pd\nimport numpy as np\nimport json\nfrom scipy import stats as scipy_stats\n\ndf = pd.read_csv('/data/df.csv')\n\nresult = {\n    \"eda_summary\": {},\n    \"correlations\": {},\n    \"trends\": [],\n    \"segments\": [],\n    \"anomalies\": [],\n    \"statistical_tests\": [],\n    \"forecast_points\": [],\n    \"distributions\": {},\n    \"head_preview\": [],\n    \"dtypes_summary\": {},\n    \"missing_pct\": {},\n    \"assumptions\": [],\n}\n\ntry:\n    import numpy as np\n\n    valid = df[df['row_kind'].isin(['sale', 'return', 'refunded', 'other_currency', 'non_product', 'other'])] \\\n        if 'row_kind' in df.columns else df.copy()\n\n    oee_by_line = (\n        valid.groupby('Line')\n        .apply(lambda g: (\n            (g['Ideal Cycle Time (s)'] * g['Good Count']).sum() / 60.0\n        ) / g['Planned Minutes'].sum()\n        )\n        .reset_index()\n        .rename(columns={0: 'oee'})\n    )\n\n    oee_by_line = oee_by_line.sort_values('oee', ascending=False)\n\n    result['segments'].append({\n        \"segment_column\": \"Line\",\n        \"metric_column\": \"Good Count\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"oee\",\n        \"results\": [\n            {\"name\": str(row['Line']), \"value\": round(float(row['oee']), 6)}\n            for _, row in oee_by_line.iterrows()\n        ]\n    })\n\n    result['assumptions'].append(\n        \"OEE = sum(ideal_cycle_s \u00d7 good_count / 60) / sum(planned_minutes) per line; \"\n        \"only non-test row_kind rows included.\"\n    )\n    result['assumptions'].append(\n        \"run time not used in OEE numerator per domain formula; denominator is planned_minutes.\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Line\",\n        \"metric_column\": \"Good Count\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"oee\",\n        \"results\": [{\"name\": \"error\", \"value\": 0.0}]\n    })\n    result['assumptions'].append(f\"OEE segmentation failed: {str(e)}\")\n\n# \u2500\u2500\u2500 Guaranteed EDA + chart distributions + briefing (always runs) \u2500\u2500\u2500\n\ntry:\n    _head_df = df.head(5).replace({float('nan'): None})\n    result['head_preview'] = _head_df.to_dict('records')\nexcept Exception:\n    pass\n\ntry:\n    result['dtypes_summary'] = {str(k): str(v) for k, v in df.dtypes.items()}\n    result['non_null'] = {str(k): int(v) for k, v in df.notna().sum().items()}\n    result['n_rows'] = int(len(df))\nexcept Exception:\n    pass\n\ntry:\n    _miss = df.isna().mean() * 100\n    result['missing_pct'] = {str(k): round(float(v), 2) for k, v in _miss.items()}\nexcept Exception:\n    pass\n\ntry:\n    if 'Planned Minutes' in df.columns and pd.api.types.is_numeric_dtype(df['Planned Minutes']):\n        _s = df['Planned Minutes'].dropna()\n        if len(_s) > 0 and 'Planned Minutes' not in result['eda_summary']:\n            result['eda_summary']['Planned Minutes'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Unplanned Downtime (min)' in df.columns and pd.api.types.is_numeric_dtype(df['Unplanned Downtime (min)']):\n        _s = df['Unplanned Downtime (min)'].dropna()\n        if len(_s) > 0 and 'Unplanned Downtime (min)' not in result['eda_summary']:\n            result['eda_summary']['Unplanned Downtime (min)'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Changeover (min)' in df.columns and pd.api.types.is_numeric_dtype(df['Changeover (min)']):\n        _s = df['Changeover (min)'].dropna()\n        if len(_s) > 0 and 'Changeover (min)' not in result['eda_summary']:\n            result['eda_summary']['Changeover (min)'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Total Count' in df.columns and pd.api.types.is_numeric_dtype(df['Total Count']):\n        _s = df['Total Count'].dropna()\n        if len(_s) > 0 and 'Total Count' not in result['eda_summary']:\n            result['eda_summary']['Total Count'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Good Count' in df.columns and pd.api.types.is_numeric_dtype(df['Good Count']):\n        _s = df['Good Count'].dropna()\n        if len(_s) > 0 and 'Good Count' not in result['eda_summary']:\n            result['eda_summary']['Good Count'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Scrap Count' in df.columns and pd.api.types.is_numeric_dtype(df['Scrap Count']):\n        _s = df['Scrap Count'].dropna()\n        if len(_s) > 0 and 'Scrap Count' not in result['eda_summary']:\n            result['eda_summary']['Scrap Count'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Planned Minutes' in df.columns and pd.api.types.is_numeric_dtype(df['Planned Minutes']):\n        _col_data = df['Planned Minutes'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Planned Minutes'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Unplanned Downtime (min)' in df.columns and pd.api.types.is_numeric_dtype(df['Unplanned Downtime (min)']):\n        _col_data = df['Unplanned Downtime (min)'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Unplanned Downtime (min)'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Changeover (min)' in df.columns and pd.api.types.is_numeric_dtype(df['Changeover (min)']):\n        _col_data = df['Changeover (min)'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Changeover (min)'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Total Count' in df.columns and pd.api.types.is_numeric_dtype(df['Total Count']):\n        _col_data = df['Total Count'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Total Count'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Good Count' in df.columns and pd.api.types.is_numeric_dtype(df['Good Count']):\n        _col_data = df['Good Count'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Good Count'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Scrap Count' in df.columns and pd.api.types.is_numeric_dtype(df['Scrap Count']):\n        _col_data = df['Scrap Count'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Scrap Count'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Shift' in df.columns:\n        _vc = df['Shift'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Shift'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Line' in df.columns:\n        _vc = df['Line'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Line'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Machine' in df.columns:\n        _vc = df['Machine'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Machine'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Operator' in df.columns:\n        _vc = df['Operator'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Operator'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\nprint(json.dumps(result, default=str))",
+     "figures_base64": [],
+     "head_preview": [
+      {
+       "Production Date": "2026-09-22",
+       "Shift": "Swing",
+       "Shift Start": "2026-09-22 14:00:00",
+       "Shift End": "2026-09-22 22:00:00",
+       "Line": "Line A",
+       "Machine": "M01",
+       "Operator": "Eli Park",
+       "Planned Minutes": 450,
+       "Unplanned Downtime (min)": 56,
+       "Changeover (min)": 0,
+       "Total Count": 734,
+       "Good Count": 700,
+       "Scrap Count": 34,
+       "Ideal Cycle Time (s)": 30.0,
+       "Failures": 0,
+       "Stops": 6,
+       "row_kind": "sale"
+      },
+      {
+       "Production Date": "2026-10-11",
+       "Shift": "Day",
+       "Shift Start": "2026-10-11 06:00:00",
+       "Shift End": "2026-10-11 14:00:00",
+       "Line": "Line A",
+       "Machine": "M01",
+       "Operator": "Fay Lopez",
+       "Planned Minutes": 450,
+       "Unplanned Downtime (min)": 44,
+       "Changeover (min)": 0,
+       "Total Count": 769,
+       "Good Count": 758,
+       "Scrap Count": 11,
+       "Ideal Cycle Time (s)": 30.0,
+       "Failures": 1,
+       "Stops": 4,
+       "row_kind": "sale"
+      },
+      {
+       "Production Date": "2026-08-13",
+       "Shift": "Day",
+       "Shift Start": "2026-08-13 06:00:00",
+       "Shift End": "2026-08-13 14:00:00",
+       "Line": "Line C",
+       "Machine": "M07",
+       "Operator": "Fay Okafor",
+       "Planned Minutes": 450,
+       "Unplanned Downtime (min)": 50,
+       "Changeover (min)": 0,
+       "Total Count": 1123,
+       "Good Count": 1100,
+       "Scrap Count": 23,
+       "Ideal Cycle Time (s)": 20.0,
+       "Failures": 1,
+       "Stops": 6,
+       "row_kind": "sale"
+      },
+      {
+       "Production Date": "2026-08-23",
+       "Shift": "Day",
+       "Shift Start": "2026-08-23 06:00:00",
+       "Shift End": "2026-08-23 14:00:00",
+       "Line": "Line C",
+       "Machine": "M09",
+       "Operator": "Dara Moss",
+       "Planned Minutes": 450,
+       "Unplanned Downtime (min)": 97,
+       "Changeover (min)": 0,
+       "Total Count": 910,
+       "Good Count": 885,
+       "Scrap Count": 25,
+       "Ideal Cycle Time (s)": 22.0,
+       "Failures": 0,
+       "Stops": 4,
+       "row_kind": "sale"
+      },
+      {
+       "Production Date": "2026-10-07",
+       "Shift": "Night",
+       "Shift Start": "2026-10-07 22:00:00",
+       "Shift End": "2026-10-08 06:00:00",
+       "Line": "Line B",
+       "Machine": "M04",
+       "Operator": "Ana Lopez",
+       "Planned Minutes": 450,
+       "Unplanned Downtime (min)": 102,
+       "Changeover (min)": 0,
+       "Total Count": 406,
+       "Good Count": 396,
+       "Scrap Count": 10,
+       "Ideal Cycle Time (s)": 45.0,
+       "Failures": 0,
+       "Stops": 4,
+       "row_kind": "sale"
+      }
+     ],
+     "dtypes_summary": {
+      "Production Date": "object",
+      "Shift": "object",
+      "Shift Start": "object",
+      "Shift End": "object",
+      "Line": "object",
+      "Machine": "object",
+      "Operator": "object",
+      "Planned Minutes": "int64",
+      "Unplanned Downtime (min)": "int64",
+      "Changeover (min)": "int64",
+      "Total Count": "int64",
+      "Good Count": "int64",
+      "Scrap Count": "int64",
+      "Ideal Cycle Time (s)": "float64",
+      "Failures": "int64",
+      "Stops": "int64",
+      "row_kind": "object"
+     },
+     "missing_pct": {
+      "Production Date": 0.0,
+      "Shift": 0.0,
+      "Shift Start": 0.0,
+      "Shift End": 0.0,
+      "Line": 0.0,
+      "Machine": 0.0,
+      "Operator": 0.0,
+      "Planned Minutes": 0.0,
+      "Unplanned Downtime (min)": 0.0,
+      "Changeover (min)": 0.0,
+      "Total Count": 0.0,
+      "Good Count": 0.0,
+      "Scrap Count": 0.0,
+      "Ideal Cycle Time (s)": 0.0,
+      "Failures": 0.0,
+      "Stops": 0.0,
+      "row_kind": 0.0
+     },
+     "kpis": [],
+     "pre_cleaning_missing_pct": {},
+     "unique_counts": {},
+     "sample_values_per_col": {},
+     "skewness": {},
+     "target_correlations": {},
+     "target_col": null,
+     "column_roles_summary": {},
+     "column_units": {},
+     "evidence": [
+      {
+       "id": "seg:Line/Good Count:ratio:oee",
+       "kind": "segment",
+       "claim": "oee (from Good Count) by Line (4 groups)",
+       "code": "try:\n    import numpy as np\n\n    valid = df[df['row_kind'].isin(['sale', 'return', 'refunded', 'other_currency', 'non_product', 'other'])] \\\n        if 'row_kind' in df.columns else df.copy()\n\n    oee_by_line = (\n        valid.groupby('Line')\n        .apply(lambda g: (\n            (g['Ideal Cycle Time (s)'] * g['Good Count']).sum() / 60.0\n        ) / g['Planned Minutes'].sum()\n        )\n        .reset_index()\n        .rename(columns={0: 'oee'})\n    )\n\n    oee_by_line = oee_by_line.sort_values('oee', ascending=False)\n\n    result['segments'].append({\n        \"segment_column\": \"Line\",\n        \"metric_column\": \"Good Count\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"oee\",\n        \"results\": [\n            {\"name\": str(row['Line']), \"value\": round(float(row['oee']), 6)}\n            for _, row in oee_by_line.iterrows()\n        ]\n    })\n\n    result['assumptions'].append(\n        \"OEE = sum(ideal_cycle_s \u00d7 good_count / 60) / sum(planned_minutes) per line; \"\n        \"only non-test row_kind rows included.\"\n    )\n    result['assumptions'].append(\n        \"run time not used in OEE numerator per domain formula; denominator is planned_minutes.\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Line\",\n        \"metric_column\": \"Good Count\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"oee\",\n        \"results\": [{\"name\": \"error\", \"value\": 0.0}]\n    })\n    result['assumptions'].append(f\"OEE segmentation failed: {str(e)}\")",
+       "result_excerpt": "{\"segment_column\": \"Line\", \"metric_column\": \"Good Count\", \"aggregation\": \"ratio\", \"results\": [{\"name\": \"Line A\", \"value\": 0.722312}, {\"name\": \"Line C\", \"value\": 0.714128}, {\"name\": \"Line B\", \"value\": 0.687291}, {\"name\": \"Line D\", \"value\": NaN}], \"label\": \"oee\"}",
+       "row_count": 2630,
+       "confidence": "high",
+       "confidence_reason": "2630 rows",
+       "assumptions": []
+      },
+      {
+       "id": "eda:Planned Minutes",
+       "kind": "eda",
+       "claim": "Planned Minutes: median 450.00, mean 372.66, range 0 to 450.00",
+       "code": "try:\n    import numpy as np\n\n    valid = df[df['row_kind'].isin(['sale', 'return', 'refunded', 'other_currency', 'non_product', 'other'])] \\\n        if 'row_kind' in df.columns else df.copy()\n\n    oee_by_line = (\n        valid.groupby('Line')\n        .apply(lambda g: (\n            (g['Ideal Cycle Time (s)'] * g['Good Count']).sum() / 60.0\n        ) / g['Planned Minutes'].sum()\n        )\n        .reset_index()\n        .rename(columns={0: 'oee'})\n    )\n\n    oee_by_line = oee_by_line.sort_values('oee', ascending=False)\n\n    result['segments'].append({\n        \"segment_column\": \"Line\",\n        \"metric_column\": \"Good Count\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"oee\",\n        \"results\": [\n            {\"name\": str(row['Line']), \"value\": round(float(row['oee']), 6)}\n            for _, row in oee_by_line.iterrows()\n        ]\n    })\n\n    result['assumptions'].append(\n        \"OEE = sum(ideal_cycle_s \u00d7 good_count / 60) / sum(planned_minutes) per line; \"\n        \"only non-test row_kind rows included.\"\n    )\n    result['assumptions'].append(\n        \"run time not used in OEE numerator per domain formula; denominator is planned_minutes.\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Line\",\n        \"metric_column\": \"Good Count\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"oee\",\n        \"results\": [{\"name\": \"error\", \"value\": 0.0}]\n    })\n    result['assumptions'].append(f\"OEE segmentation failed: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 372.6616, \"std\": 146.8098, \"min\": 0.0, \"max\": 450.0, \"median\": 450.0, \"count\": 2630}",
+       "row_count": 2630,
+       "confidence": "high",
+       "confidence_reason": "2630 rows",
+       "assumptions": []
+      },
+      {
+       "id": "eda:Unplanned Downtime (min)",
+       "kind": "eda",
+       "claim": "Unplanned Downtime (min): median 50.00, mean 48.79, range 0 to 117.00",
+       "code": "try:\n    import numpy as np\n\n    valid = df[df['row_kind'].isin(['sale', 'return', 'refunded', 'other_currency', 'non_product', 'other'])] \\\n        if 'row_kind' in df.columns else df.copy()\n\n    oee_by_line = (\n        valid.groupby('Line')\n        .apply(lambda g: (\n            (g['Ideal Cycle Time (s)'] * g['Good Count']).sum() / 60.0\n        ) / g['Planned Minutes'].sum()\n        )\n        .reset_index()\n        .rename(columns={0: 'oee'})\n    )\n\n    oee_by_line = oee_by_line.sort_values('oee', ascending=False)\n\n    result['segments'].append({\n        \"segment_column\": \"Line\",\n        \"metric_column\": \"Good Count\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"oee\",\n        \"results\": [\n            {\"name\": str(row['Line']), \"value\": round(float(row['oee']), 6)}\n            for _, row in oee_by_line.iterrows()\n        ]\n    })\n\n    result['assumptions'].append(\n        \"OEE = sum(ideal_cycle_s \u00d7 good_count / 60) / sum(planned_minutes) per line; \"\n        \"only non-test row_kind rows included.\"\n    )\n    result['assumptions'].append(\n        \"run time not used in OEE numerator per domain formula; denominator is planned_minutes.\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Line\",\n        \"metric_column\": \"Good Count\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"oee\",\n        \"results\": [{\"name\": \"error\", \"value\": 0.0}]\n    })\n    result['assumptions'].append(f\"OEE segmentation failed: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 48.7943, \"std\": 29.0201, \"min\": 0.0, \"max\": 117.0, \"median\": 50.0, \"count\": 2630}",
+       "row_count": 2630,
+       "confidence": "high",
+       "confidence_reason": "2630 rows",
+       "assumptions": []
+      },
+      {
+       "id": "eda:Changeover (min)",
+       "kind": "eda",
+       "claim": "Changeover (min): median 0, mean 10.28, range 0 to 30.00",
+       "code": "try:\n    import numpy as np\n\n    valid = df[df['row_kind'].isin(['sale', 'return', 'refunded', 'other_currency', 'non_product', 'other'])] \\\n        if 'row_kind' in df.columns else df.copy()\n\n    oee_by_line = (\n        valid.groupby('Line')\n        .apply(lambda g: (\n            (g['Ideal Cycle Time (s)'] * g['Good Count']).sum() / 60.0\n        ) / g['Planned Minutes'].sum()\n        )\n        .reset_index()\n        .rename(columns={0: 'oee'})\n    )\n\n    oee_by_line = oee_by_line.sort_values('oee', ascending=False)\n\n    result['segments'].append({\n        \"segment_column\": \"Line\",\n        \"metric_column\": \"Good Count\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"oee\",\n        \"results\": [\n            {\"name\": str(row['Line']), \"value\": round(float(row['oee']), 6)}\n            for _, row in oee_by_line.iterrows()\n        ]\n    })\n\n    result['assumptions'].append(\n        \"OEE = sum(ideal_cycle_s \u00d7 good_count / 60) / sum(planned_minutes) per line; \"\n        \"only non-test row_kind rows included.\"\n    )\n    result['assumptions'].append(\n        \"run time not used in OEE numerator per domain formula; denominator is planned_minutes.\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Line\",\n        \"metric_column\": \"Good Count\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"oee\",\n        \"results\": [{\"name\": \"error\", \"value\": 0.0}]\n    })\n    result['assumptions'].append(f\"OEE segmentation failed: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 10.2833, \"std\": 12.3042, \"min\": 0.0, \"max\": 30.0, \"median\": 0.0, \"count\": 2630}",
+       "row_count": 2630,
+       "confidence": "high",
+       "confidence_reason": "2630 rows",
+       "assumptions": []
+      },
+      {
+       "id": "eda:Total Count",
+       "kind": "eda",
+       "claim": "Total Count: median 573.00, mean 561.51, range 0 to 1,206.00",
+       "code": "try:\n    import numpy as np\n\n    valid = df[df['row_kind'].isin(['sale', 'return', 'refunded', 'other_currency', 'non_product', 'other'])] \\\n        if 'row_kind' in df.columns else df.copy()\n\n    oee_by_line = (\n        valid.groupby('Line')\n        .apply(lambda g: (\n            (g['Ideal Cycle Time (s)'] * g['Good Count']).sum() / 60.0\n        ) / g['Planned Minutes'].sum()\n        )\n        .reset_index()\n        .rename(columns={0: 'oee'})\n    )\n\n    oee_by_line = oee_by_line.sort_values('oee', ascending=False)\n\n    result['segments'].append({\n        \"segment_column\": \"Line\",\n        \"metric_column\": \"Good Count\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"oee\",\n        \"results\": [\n            {\"name\": str(row['Line']), \"value\": round(float(row['oee']), 6)}\n            for _, row in oee_by_line.iterrows()\n        ]\n    })\n\n    result['assumptions'].append(\n        \"OEE = sum(ideal_cycle_s \u00d7 good_count / 60) / sum(planned_minutes) per line; \"\n        \"only non-test row_kind rows included.\"\n    )\n    result['assumptions'].append(\n        \"run time not used in OEE numerator per domain formula; denominator is planned_minutes.\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Line\",\n        \"metric_column\": \"Good Count\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"oee\",\n        \"results\": [{\"name\": \"error\", \"value\": 0.0}]\n    })\n    result['assumptions'].append(f\"OEE segmentation failed: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 561.511, \"std\": 317.9406, \"min\": 0.0, \"max\": 1206.0, \"median\": 573.0, \"count\": 2630}",
+       "row_count": 2630,
+       "confidence": "high",
+       "confidence_reason": "2630 rows",
+       "assumptions": []
+      },
+      {
+       "id": "eda:Good Count",
+       "kind": "eda",
+       "claim": "Good Count: median 554.50, mean 545.27, range 0 to 1,169.00",
+       "code": "try:\n    import numpy as np\n\n    valid = df[df['row_kind'].isin(['sale', 'return', 'refunded', 'other_currency', 'non_product', 'other'])] \\\n        if 'row_kind' in df.columns else df.copy()\n\n    oee_by_line = (\n        valid.groupby('Line')\n        .apply(lambda g: (\n            (g['Ideal Cycle Time (s)'] * g['Good Count']).sum() / 60.0\n        ) / g['Planned Minutes'].sum()\n        )\n        .reset_index()\n        .rename(columns={0: 'oee'})\n    )\n\n    oee_by_line = oee_by_line.sort_values('oee', ascending=False)\n\n    result['segments'].append({\n        \"segment_column\": \"Line\",\n        \"metric_column\": \"Good Count\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"oee\",\n        \"results\": [\n            {\"name\": str(row['Line']), \"value\": round(float(row['oee']), 6)}\n            for _, row in oee_by_line.iterrows()\n        ]\n    })\n\n    result['assumptions'].append(\n        \"OEE = sum(ideal_cycle_s \u00d7 good_count / 60) / sum(planned_minutes) per line; \"\n        \"only non-test row_kind rows included.\"\n    )\n    result['assumptions'].append(\n        \"run time not used in OEE numerator per domain formula; denominator is planned_minutes.\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Line\",\n        \"metric_column\": \"Good Count\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"oee\",\n        \"results\": [{\"name\": \"error\", \"value\": 0.0}]\n    })\n    result['assumptions'].append(f\"OEE segmentation failed: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 545.2722, \"std\": 308.8952, \"min\": 0.0, \"max\": 1169.0, \"median\": 554.5, \"count\": 2630}",
+       "row_count": 2630,
+       "confidence": "high",
+       "confidence_reason": "2630 rows",
+       "assumptions": []
+      },
+      {
+       "id": "eda:Scrap Count",
+       "kind": "eda",
+       "claim": "Scrap Count: median 14.00, mean 16.24, range 0 to 57.00",
+       "code": "try:\n    import numpy as np\n\n    valid = df[df['row_kind'].isin(['sale', 'return', 'refunded', 'other_currency', 'non_product', 'other'])] \\\n        if 'row_kind' in df.columns else df.copy()\n\n    oee_by_line = (\n        valid.groupby('Line')\n        .apply(lambda g: (\n            (g['Ideal Cycle Time (s)'] * g['Good Count']).sum() / 60.0\n        ) / g['Planned Minutes'].sum()\n        )\n        .reset_index()\n        .rename(columns={0: 'oee'})\n    )\n\n    oee_by_line = oee_by_line.sort_values('oee', ascending=False)\n\n    result['segments'].append({\n        \"segment_column\": \"Line\",\n        \"metric_column\": \"Good Count\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"oee\",\n        \"results\": [\n            {\"name\": str(row['Line']), \"value\": round(float(row['oee']), 6)}\n            for _, row in oee_by_line.iterrows()\n        ]\n    })\n\n    result['assumptions'].append(\n        \"OEE = sum(ideal_cycle_s \u00d7 good_count / 60) / sum(planned_minutes) per line; \"\n        \"only non-test row_kind rows included.\"\n    )\n    result['assumptions'].append(\n        \"run time not used in OEE numerator per domain formula; denominator is planned_minutes.\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Line\",\n        \"metric_column\": \"Good Count\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"oee\",\n        \"results\": [{\"name\": \"error\", \"value\": 0.0}]\n    })\n    result['assumptions'].append(f\"OEE segmentation failed: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 16.2388, \"std\": 12.472, \"min\": 0.0, \"max\": 57.0, \"median\": 14.0, \"count\": 2630}",
+       "row_count": 2630,
+       "confidence": "high",
+       "confidence_reason": "2630 rows",
+       "assumptions": []
+      }
+     ]
+    },
+    "domain": "iot",
+    "latency_s": 28.58,
+    "cost_usd": 0.01848,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```python\ntry:\n    import numpy as np\n\n    valid = df[df['row_kind'].isin(['sale', 'return', 'refunded', 'other_currency', 'non_product', 'other'])] \\\n        if 'row_kind' in df.columns else df.copy()\n\n    oee_by_line = (\n        valid.groupby('Line')\n        .apply(lambda g: (\n            (g['Ideal Cycle Time (s)'] * g['Good Count']).sum() / 60.0\n        ) / g['Planned Minutes'].sum()\n        )\n        .reset_index()\n        .rename(columns={0: 'oee'})\n    )\n\n    oee_by_line = oee_by_line.sort_values('oee', ascending=False)\n\n    result['segments'].append({\n        \"segment_column\": \"Line\",\n        \"metric_column\": \"Good Count\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"oee\",\n        \"results\": [\n            {\"name\": str(row['Line']), \"value\": round(float(row['oee']), 6)}\n            for _, row in oee_by_line.iterrows()\n        ]\n    })\n\n    result['assumptions'].append(\n        \"OEE = sum(ideal_cycle_s \u00d7 good_count / 60) / sum(planned_minutes) per line; \"\n        \"only non-test row_kind rows included.\"\n    )\n    result['assumptions'].append(\n        \"run time not used in OEE numerator per domain formula; denominator is planned_minutes.\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Line\",\n        \"metric_column\": \"Good Count\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"oee\",\n        \"results\": [{\"name\": \"error\", \"value\": 0.0}]\n    })\n    result['assumptions'].append(f\"OEE segmentation failed: {str(e)}\")\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ]
+ }
+}

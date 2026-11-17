@@ -26,6 +26,7 @@ import pandas as pd
 from scipy import stats as scipy_stats
 
 from agents.analysis_agent import segment_id
+from connectors.base import parse_text_dates
 from agents.utils import (
     ranked,
     LevelUnavailable,
@@ -199,15 +200,11 @@ def classify_columns(df: pd.DataFrame) -> dict:
         if pd.api.types.is_datetime64_any_dtype(s):
             roles["datetime_cols"].append(col)  # type: ignore[union-attr]
             continue
-        if pd.api.types.is_string_dtype(s) and nunique > 3:
-            sample = s.head(100)
-            try:
-                parsed = pd.to_datetime(sample, format="mixed", errors="coerce")
-                if parsed.notna().sum() / len(parsed) > 0.8:
-                    roles["datetime_cols"].append(col)  # type: ignore[union-attr]
-                    continue
-            except Exception:
-                pass
+        # the load's one date rule (Domain 7: pandas alone read machine 'M01' as a time)
+        if pd.api.types.is_string_dtype(s) and nunique > 3 and \
+                parse_text_dates(s.head(100), 0.8) is not None:
+            roles["datetime_cols"].append(col)  # type: ignore[union-attr]
+            continue
 
         # Binary
         if nunique == 2:
@@ -1197,7 +1194,7 @@ def pack_kpis(df: pd.DataFrame, contract: DataContract | None,
         kind = {"money": "currency", "percent": "percent", "count": "count"}.get(k.unit, "number")
         unit = money if kind == "currency" else None
         if isinstance(v, Unavailable):   # the part can't support it: said, never a 0 or a gap
-            tiles.append(KPI(label=k.label, value=UNAVAILABLE, context=unavailable_words(v, pack),
+            tiles.append(KPI(label=k.label, value=UNAVAILABLE, context=unavailable_words(v, pack, k),
                              recipe=KPIRecipe(kind="pack", kpi=k.name, format_kind=kind,
                                               **_unit_fields(kind, unit)),
                              how=describe_kpi(pack, k.name, roles, present)))
@@ -2773,12 +2770,14 @@ def _overview_asks(pack, roles: dict[str, str], columns) -> list[tuple[QuestionI
         can = [money, ratio] if money and ratio else [money] if money else []
     if not can:
         return []
-    group = next((roles[r] for r in pack.overview_groups if roles.get(r) in columns), None)
+    role = next((r for r in pack.overview_groups if roles.get(r) in columns), None)
+    group = roles.get(role) if role else None
     series = [k for k in can if k.name in pack.overview_series] or can[:1]
     asks = [(QuestionIntent.TIME_SERIES, TargetedParams(kpi=k.name, frequency="M")) for k in series]
-    if group:
+    if group:   # never a distinct count of the group's own column by it: every bar is 1
         asks += [(QuestionIntent.TOP_N, TargetedParams(kpi=k.name, segment_column=group,
-                                                       group_by=group)) for k in can]
+                                                       group_by=group)) for k in can
+                 if not (k.den is None and all(t.nunique == role for alt in k.num for t in alt))]
     return asks
 
 

@@ -118,3 +118,11 @@ Domain words (ALOS, readmission, NPL …) live in `domain_packs/<domain>.yaml`, 
   what drives churn") are no overreach.
 - **Bridge** — a level's opening, each move over the window (signed: falls negative) and the
   unsplit rest, adding up to its closing level.
+- **Series key** — the role naming whose time series a row belongs to (a sensor, a machine): the
+  per-series checks (a repeated timestamp, a gap, a value stuck for hours) read one series at a
+  time, never across them.
+- **Invalid reading** — a measured value its own quality flag marks as not a measurement (a
+  historian's Bad): blanked like a sentinel, the row kept and counted in the log; never averaged.
+- **Zero-event group** — a group whose ratio has a denominator of 0 (a machine with run time and
+  no failures): its numerator is said ("no failure in 1,240 h"), never a 0, an infinity, a rank or
+  a silently missing bar.

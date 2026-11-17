@@ -1,0 +1,726 @@
+{
+ "meta": {
+  "suite": "e2e",
+  "report": "e2e-20261116T213348Z",
+  "k": 1,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "7f7f4d0",
+  "started_at": "20261116T213348Z",
+  "only": "e2e-85",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 1,
+  "runs": 1,
+  "pass_rate": 0.0,
+  "case_majority_pass_rate": 0.0,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "hard_rules_na": 0,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 0,
+  "runs_with_prose_rewritten": 0,
+  "runs_with_pii_guard_hit": 0,
+  "cost_per_question_usd": 0.0257,
+  "latency_p50_s": 19.62,
+  "latency_p95_s": 19.62,
+  "by_domain": {
+   "iot": {
+    "cases": 1,
+    "k_min": 1,
+    "k_max": 1,
+    "cases_passed_all_runs": 0,
+    "pass_rate": 0.0,
+    "hard_rule_violations": 0,
+    "hard_rules_na": 0,
+    "builtin_only_cases": [],
+    "model_dependent_passed": 0,
+    "model_dependent_cases": 0
+   }
+  }
+ },
+ "runs": {
+  "e2e-85": [
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": false,
+      "detail": "want \u22483.973 [(1.0, ' hours')] in answer; saw [2.99, 4.55, 34.4, 0.0, 0.0]"
+     },
+     {
+      "kind": "must_not_number",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "charts_lint_clean",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "charts_have_rationale",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_exits",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "answer": "MTTR by period: latest 2026-09 2.99 hours, vs 4.55 hours the period before (-34.4%). The last month (2026-10) is left out: it is covered only to 24 Oct 2026. How: Sum of hours from ACTSTART to ACTFINISH where WORKTYPE is cm / em / corrective / emergency / breakdown and hours from ACTSTART to ACTFINISH \u2265 0, divided by distinct WONUM where WORKTYPE is cm / em / corrective / emergency / breakdown and hours from ACTSTART to ACTFINISH \u2265 0; over counted rows (cancelled work orders left out).",
+    "pii_exits": {
+     "rule": "pii_exits",
+     "ok": true,
+     "detail": "ok"
+    },
+    "pii_canary_hits": 0,
+    "pii_model_hits": 0,
+    "pii_planted": 6,
+    "approvals": [
+     "high_null"
+    ],
+    "output": {
+     "session_id": "b4907072-32b0-45ac-ad18-d569fb56f312",
+     "user_id": "default",
+     "conversation_history": [
+      {
+       "role": "user",
+       "content": "What is our MTTR?",
+       "timestamp": "2026-11-16T21:34:07.222171Z"
+      },
+      {
+       "role": "user",
+       "content": "Continue with imputation",
+       "timestamp": "2026-11-16T21:34:07.594139Z"
+      },
+      {
+       "role": "assistant",
+       "content": "MTTR by period: latest 2026-09 2.99 hours, vs 4.55 hours the period before (-34.4%). The last month (2026-10) is left out: it is covered only to 24 Oct 2026. How: Sum of hours from ACTSTART to ACTFINISH where WORKTYPE is cm / em / corrective / emergency / breakdown and hours from ACTSTART to ACTFINISH \u2265 0, divided by distinct WONUM where WORKTYPE is cm / em / corrective / emergency / breakdown and hours from ACTSTART to ACTFINISH \u2265 0; over counted rows (cancelled work orders left out).",
+       "timestamp": "2026-11-16T21:34:07.713027Z"
+      }
+     ],
+     "connector_config": {
+      "type": "csv",
+      "file_path": "/Users/uvnikhil/Projects/AnalystAI/uploads/evals/work_orders-1.xlsx",
+      "connection_string": null,
+      "table_name": null,
+      "spreadsheet_id": null,
+      "sheet_name": null,
+      "service_account_json": null,
+      "url": null,
+      "auth_type": null,
+      "auth_value": null,
+      "api_key_header": null,
+      "pagination_key": null
+     },
+     "task_plan": {
+      "raw_query": "What is our MTTR?",
+      "target_metrics": [
+       "ACTSTART",
+       "ACTFINISH",
+       "WORKTYPE",
+       "WONUM"
+      ],
+      "timeframe": null,
+      "segments": [],
+      "analysis_types": [
+       "eda"
+      ],
+      "output_format": "both",
+      "resume_from": null,
+      "clarification_needed": false,
+      "clarification_question": null,
+      "question_intent": "time_series",
+      "targeted_params": {
+       "target_columns": [
+        "ACTSTART",
+        "ACTFINISH",
+        "WORKTYPE",
+        "WONUM"
+       ],
+       "metric_column": null,
+       "date_column": "REPORTDATE",
+       "segment_column": null,
+       "segment_value": null,
+       "group_by": null,
+       "variant_column": null,
+       "n": null,
+       "order": null,
+       "frequency": null,
+       "test_type": null,
+       "aggregation": null,
+       "chart_type": null,
+       "kpi": "mttr",
+       "period_start": null,
+       "period_end": null,
+       "compare": null
+      }
+     },
+     "data_contract": {
+      "source_type": "csv",
+      "row_count": 640,
+      "column_count": 9,
+      "columns": [
+       {
+        "name": "WONUM",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "WO100632",
+         "WO101122",
+         "WO101025",
+         "WO100789",
+         "WO100582"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "unique codes, one per row",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "ASSETNUM",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "M01",
+         "M03",
+         "P04",
+         "M07",
+         "P03"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "WORKTYPE",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "PM",
+         "PM",
+         "PM",
+         "PM",
+         "PM"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "STATUS",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "COMP",
+         "CLOSE",
+         "COMP",
+         "COMP",
+         "CLOSE"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "FAILURECODE",
+        "dtype": "str",
+        "nullable": true,
+        "sample_values": [
+         "SEAL",
+         "BELT",
+         "MOTOR",
+         "SEAL",
+         "SENSOR"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 47.97,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "REPORTDATE",
+        "dtype": "datetime64[us, UTC]",
+        "nullable": false,
+        "sample_values": [
+         "2026-06-27T20:00:00Z",
+         "2026-05-09T01:00:00Z",
+         "2026-05-11T13:00:00Z",
+         "2026-06-28T10:00:00Z",
+         "2026-08-07T14:00:00Z"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "ACTSTART",
+        "dtype": "datetime64[us, UTC]",
+        "nullable": true,
+        "sample_values": [
+         "2026-06-27T21:50:00Z",
+         "2026-05-09T06:40:00Z",
+         "2026-05-11T16:44:00Z",
+         "2026-06-28T15:47:00Z",
+         "2026-08-07T22:32:00Z"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 9.22,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "ACTFINISH",
+        "dtype": "datetime64[us, UTC]",
+        "nullable": true,
+        "sample_values": [
+         "2026-06-28T01:08:00Z",
+         "2026-05-09T08:07:00Z",
+         "2026-05-11T18:49:00Z",
+         "2026-06-28T17:16:00Z",
+         "2026-08-08T00:36:00Z"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 12.81,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "REPORTEDBY",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": "name",
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       }
+      ],
+      "sample_rows": [
+       {
+        "WONUM": "WO100632",
+        "ASSETNUM": "M01",
+        "WORKTYPE": "PM",
+        "STATUS": "COMP",
+        "FAILURECODE": null,
+        "REPORTDATE": "2026-06-27T20:00:00Z",
+        "ACTSTART": "2026-06-27T21:50:00Z",
+        "ACTFINISH": "2026-06-28T01:08:00Z",
+        "REPORTEDBY": "[REDACTED]"
+       },
+       {
+        "WONUM": "WO101122",
+        "ASSETNUM": "M03",
+        "WORKTYPE": "PM",
+        "STATUS": "CLOSE",
+        "FAILURECODE": null,
+        "REPORTDATE": "2026-05-09T01:00:00Z",
+        "ACTSTART": "2026-05-09T06:40:00Z",
+        "ACTFINISH": "2026-05-09T08:07:00Z",
+        "REPORTEDBY": "[REDACTED]"
+       },
+       {
+        "WONUM": "WO101025",
+        "ASSETNUM": "P04",
+        "WORKTYPE": "PM",
+        "STATUS": "COMP",
+        "FAILURECODE": null,
+        "REPORTDATE": "2026-05-11T13:00:00Z",
+        "ACTSTART": "2026-05-11T16:44:00Z",
+        "ACTFINISH": "2026-05-11T18:49:00Z",
+        "REPORTEDBY": "[REDACTED]"
+       },
+       {
+        "WONUM": "WO100789",
+        "ASSETNUM": "M07",
+        "WORKTYPE": "PM",
+        "STATUS": "COMP",
+        "FAILURECODE": null,
+        "REPORTDATE": "2026-06-28T10:00:00Z",
+        "ACTSTART": "2026-06-28T15:47:00Z",
+        "ACTFINISH": "2026-06-28T17:16:00Z",
+        "REPORTEDBY": "[REDACTED]"
+       },
+       {
+        "WONUM": "WO100582",
+        "ASSETNUM": "P03",
+        "WORKTYPE": "PM",
+        "STATUS": "CLOSE",
+        "FAILURECODE": null,
+        "REPORTDATE": "2026-08-07T14:00:00Z",
+        "ACTSTART": "2026-08-07T22:32:00Z",
+        "ACTFINISH": "2026-08-08T00:36:00Z",
+        "REPORTEDBY": "[REDACTED]"
+       }
+      ],
+      "date_columns": [
+       "REPORTDATE",
+       "ACTSTART",
+       "ACTFINISH"
+      ],
+      "id_columns": [
+       "WONUM"
+      ],
+      "metric_columns": [],
+      "schema_summary": "640 rows \u00d7 9 columns. Dates: REPORTDATE from 2026-05-01 to 2026-10-24 (daily). Identifiers: WONUM. Categories: ASSETNUM, WORKTYPE, STATUS, FAILURECODE. Personal data, masked before any model sees it: REPORTEDBY (name). Missing values: FAILURECODE 47.97%, ACTFINISH 12.81%, ACTSTART 9.22%.",
+      "source_query": null,
+      "source_evidence": {
+       "id": "source:data",
+       "kind": "source",
+       "claim": "Loaded 640 rows \u00d7 9 columns from a XLSX file.",
+       "code": "pd.read_excel(<uploaded file>, sheet_name=<largest sheet>)",
+       "result_excerpt": "{\"roles\": {\"id\": [\"WONUM\"], \"category\": [\"ASSETNUM\", \"WORKTYPE\", \"STATUS\", \"FAILURECODE\", \"REPORTEDBY\"], \"date\": [\"REPORTDATE\", \"ACTSTART\", \"ACTFINISH\"]}, \"personal_data\": {\"REPORTEDBY\": \"name\"}, \"fingerprint\": \"aa0c8b1c5858a37d\"}",
+       "row_count": 640,
+       "confidence": "high",
+       "confidence_reason": "Read as-is: no layout guessing was needed.",
+       "assumptions": [
+        "1 column hold personal data; their values are masked before any model sees them."
+       ]
+      },
+      "fingerprint": "aa0c8b1c5858a37dec69100da284da589de72b6b4cfeab18fd151c9802906c5f",
+      "pii_columns": [
+       "REPORTEDBY"
+      ],
+      "phi": false,
+      "deidentification": [],
+      "deidentified": false,
+      "domain": "iot",
+      "roles": {
+       "date": "REPORTDATE",
+       "actual_start": "ACTSTART",
+       "actual_finish": "ACTFINISH",
+       "asset": "ASSETNUM",
+       "reported_by": "REPORTEDBY",
+       "work_order": "WONUM",
+       "work_type": "WORKTYPE",
+       "failure_code": "FAILURECODE",
+       "status": "STATUS"
+      },
+      "domain_confidence": "strong"
+     },
+     "cleaning_audit": {
+      "decisions": [
+       {
+        "column": "FAILURECODE",
+        "operation": "keep",
+        "strategy": "high_null",
+        "reason": "307 of 640 values missing (48%): too empty to use with confidence; left as missing.",
+        "rows_affected": 0,
+        "before_null_pct": 48.0,
+        "after_null_pct": 48.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "ACTSTART",
+        "operation": "keep",
+        "strategy": "left_missing",
+        "reason": "59 missing (9.2%), date: left as missing; totals and averages use the 581 known rows.",
+        "rows_affected": 0,
+        "before_null_pct": 9.2,
+        "after_null_pct": 9.2,
+        "rows_removed": 0
+       },
+       {
+        "column": "ACTFINISH",
+        "operation": "keep",
+        "strategy": "left_missing",
+        "reason": "82 missing (12.8%), date: left as missing; totals and averages use the 558 known rows.",
+        "rows_affected": 0,
+        "before_null_pct": 12.8,
+        "after_null_pct": 12.8,
+        "rows_removed": 0
+       },
+       {
+        "column": "*",
+        "operation": "flag",
+        "strategy": "cancel",
+        "reason": "39 cancelled work orders: left out of every count and of MTTR; kept in the data.",
+        "rows_affected": 39,
+        "before_null_pct": 0.0,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       }
+      ],
+      "rows_before": 640,
+      "rows_after": 640,
+      "columns_coerced": [],
+      "duplicates_removed": 0,
+      "outliers_flagged": [],
+      "high_null_columns": [
+       "FAILURECODE"
+      ],
+      "summary": "Left missing values as missing in 2 column(s); nothing was imputed. More than 40% missing in: FAILURECODE \u2014 review recommended. Final dataset: 640 rows (started with 640).",
+      "anomaly_report": {
+       "flags": [],
+       "methodology_note": "",
+       "eligible_columns": [],
+       "skipped_columns": {
+        "WONUM": "constant or unsupported",
+        "ASSETNUM": "non-numeric",
+        "WORKTYPE": "non-numeric",
+        "STATUS": "non-numeric",
+        "FAILURECODE": "non-numeric",
+        "REPORTDATE": "datetime column",
+        "ACTSTART": "datetime column",
+        "ACTFINISH": "datetime column",
+        "REPORTEDBY": "non-numeric"
+       }
+      },
+      "skipped_columns": [],
+      "date_ranges": {
+       "REPORTDATE": [
+        "2026-05-01",
+        "2026-10-24",
+        6
+       ],
+       "ACTSTART": [
+        "2026-05-01",
+        "2026-10-24",
+        6
+       ],
+       "ACTFINISH": [
+        "2026-05-01",
+        "2026-10-25",
+        6
+       ]
+      },
+      "grain": "aggregate",
+      "partial_months": {
+       "REPORTDATE": [
+        "2026-10",
+        24
+       ],
+       "ACTSTART": [
+        "2026-10",
+        24
+       ],
+       "ACTFINISH": [
+        "2026-10",
+        25
+       ]
+      },
+      "main_currency": null,
+      "spell_story": [],
+      "window_span": {}
+     },
+     "analysis_findings": null,
+     "chart_configs": [],
+     "insight_report": null,
+     "targeted_response": {
+      "intent": "time_series",
+      "answer_text": "MTTR by period: latest 2026-09 2.99 hours, vs 4.55 hours the period before (-34.4%). The last month (2026-10) is left out: it is covered only to 24 Oct 2026. How: Sum of hours from ACTSTART to ACTFINISH where WORKTYPE is cm / em / corrective / emergency / breakdown and hours from ACTSTART to ACTFINISH \u2265 0, divided by distinct WONUM where WORKTYPE is cm / em / corrective / emergency / breakdown and hours from ACTSTART to ACTFINISH \u2265 0; over counted rows (cancelled work orders left out).",
+      "chart_configs": [
+       {
+        "id": "30aecf64-1207-4e59-9e95-2dc249d0033d",
+        "chart_type": "LineChart",
+        "title": "MTTR over time",
+        "data": [
+         {
+          "period": "2026-05",
+          "MTTR": 4.565116279069768
+         },
+         {
+          "period": "2026-06",
+          "MTTR": 3.8703333333333334
+         },
+         {
+          "period": "2026-07",
+          "MTTR": 3.9564102564102566
+         },
+         {
+          "period": "2026-08",
+          "MTTR": 4.554761904761905
+         },
+         {
+          "period": "2026-09",
+          "MTTR": 2.9874213836477987
+         }
+        ],
+        "x_key": "period",
+        "y_keys": [
+         "MTTR"
+        ],
+        "colors": [],
+        "x_label": "Period",
+        "y_label": "MTTR",
+        "show_legend": true,
+        "show_grid": true,
+        "source_finding": "kpi",
+        "value_format": "number",
+        "layout_hint": "half_width",
+        "rationale": {
+         "rule": "targeted:kpi\u2192line",
+         "reason": "MTTR per M period. Sum of hours from ACTSTART to ACTFINISH where WORKTYPE is cm / em / corrective / emergency / breakdown and hours from ACTSTART to ACTFINISH \u2265 0, divided by distinct WONUM where WORKTYPE is cm / em / corrective / emergency / breakdown and hours from ACTSTART to ACTFINISH \u2265 0; over counted rows (cancelled work orders left out).",
+         "x": "REPORTDATE",
+         "y": "MTTR",
+         "split": null,
+         "aggregation": "none",
+         "n_rows": 640,
+         "evidence_ids": [],
+         "code": "",
+         "confidence": null
+        },
+        "placement": "summary",
+        "lint_warnings": [],
+        "error_key": null,
+        "split_key": null,
+        "reference_lines": []
+       }
+      ],
+      "table_data": [],
+      "table_columns": [],
+      "suggestions": [],
+      "unanswerable_reason": null,
+      "generated_at": "2026-11-16T21:34:07.712437Z"
+     },
+     "expert_review": null,
+     "narrative": {
+      "column_display_names": {
+       "WONUM": "Work Order Number",
+       "ASSETNUM": "Asset Number",
+       "WORKTYPE": "Work Type",
+       "STATUS": "Status",
+       "FAILURECODE": "Failure Code",
+       "REPORTDATE": "Report Date",
+       "ACTSTART": "Actual Start",
+       "ACTFINISH": "Actual Finish",
+       "REPORTEDBY": "Reported By"
+      },
+      "entity_singular": "work order",
+      "entity_plural": "work orders"
+     },
+     "iteration": 1,
+     "quality_check_attempts": 0,
+     "high_null_answer": "continue",
+     "prior_pii": [],
+     "error_retryable": true,
+     "error_reask": true,
+     "overview_done": true,
+     "dataset_name": null,
+     "file_hash": null,
+     "dataset_id": null,
+     "dataset_version_id": null,
+     "status": "completed",
+     "cleaned_data_path": "/Users/uvnikhil/Projects/AnalystAI/session_data/b4907072-32b0-45ac-ad18-d569fb56f312/cleaned_data.parquet",
+     "error_message": null,
+     "created_at": "2026-11-16T21:33:51.343565Z",
+     "updated_at": "2026-11-16T21:34:07.713034Z"
+    },
+    "domain": "iot",
+    "latency_s": 19.62,
+    "cost_usd": 0.02573,
+    "llm_calls": 3,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "[\n  \"What is the average time to complete work orders (ACTFINISH minus ACTSTART) broken down by ASSETNUM, and which assets consistently show the longest resolution times?\",\n  \"How does the monthly volume of work orders trend across the REPORTDATE range (May\u2013October 2026), and are there any months with a spike in new work orders that could indicate a systemic asset failure event?\",\n  \"Which FAILURECODE values are most frequently associated with each WORKTYPE, and given that nearly 48% of FAILURECODE entries are missing, are incomplete failure codes concentrated in specific STATUS categories or assets that might indicate a reporting compliance problem?\",\n  \"What percentage of work orders have a STATUS that indicates they are still open or incomplete past their expected completion window, and which ASSETNUM values have the highest backlog of unfinished work orders?\",\n  \"Is there a correlation between the time elapsed from REPORTDATE to ACTSTART (response lag) and the overall work order duration (ACTSTART to ACTFINISH), and do specific WORKTYPE or ASSETNUM combinations show unusually long response lags that warrant operational intervention?\"\n]",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "{\n  \"column_display_names\": {\n    \"WONUM\": \"Work Order Number\",\n    \"ASSETNUM\": \"Asset Number\",\n    \"WORKTYPE\": \"Work Type\",\n    \"STATUS\": \"Status\",\n    \"FAILURECODE\": \"Failure Code\",\n    \"REPORTDATE\": \"Report Date\",\n    \"ACTSTART\": \"Actual Start\",\n    \"ACTFINISH\": \"Actual Finish\",\n    \"REPORTEDBY\": \"Reported By\"\n  },\n  \"entity_singular\": \"work order\",\n  \"entity_plural\": \"work orders\"\n}",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "```json\n{\n  \"raw_query\": \"What is our MTTR?\",\n  \"target_metrics\": [\"ACTSTART\", \"ACTFINISH\", \"WORKTYPE\", \"WONUM\"],\n  \"timeframe\": null,\n  \"segments\": [],\n  \"analysis_types\": [\"eda\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"overview\",\n  \"targeted_params\": {\n    \"target_columns\": [\"ACTSTART\", \"ACTFINISH\", \"WORKTYPE\", \"WONUM\"],\n    \"metric_column\": null,\n    \"date_column\": \"REPORTDATE\",\n    \"segment_column\": null,\n    \"segment_value\": null,\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": null,\n    \"chart_type\": null,\n    \"kpi\": \"mttr\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": false
+   }
+  ]
+ }
+}

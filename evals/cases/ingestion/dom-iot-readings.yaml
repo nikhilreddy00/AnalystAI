@@ -1,0 +1,34 @@
+id: dom-iot-readings
+category: domain
+dataset:
+  name: machine_readings
+  seed: 1
+roles:
+  Timestamp: date
+  Sensor:
+  - category
+  - id
+  Line: category
+  Temperature: metric
+  Temp Unit: category
+  Vibration (mm/s): metric
+  Pressure (bar): metric
+  Alarm: metric
+  Quality: category
+pii: {}
+traps:
+- Temp Unit
+- Quality
+expect_domain: iot
+expect_roles:
+  date: Timestamp
+  asset: Sensor
+  production_line: Line
+  temperature: Temperature
+  temp_unit: Temp Unit
+  vibration: Vibration (mm/s)
+  pressure: Pressure (bar)
+  alarm: Alarm
+  reading_quality: Quality
+label_note: 'Domain 7 historian dump (T5, T10, T17): local times with their offset across the 25 Oct clock change;
+  a unit column and a quality flag per reading; no personal data.'

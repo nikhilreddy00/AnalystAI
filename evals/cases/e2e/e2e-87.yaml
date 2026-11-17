@@ -1,0 +1,20 @@
+id: e2e-87
+domain: iot
+dataset:
+  name: shift_production
+  seed: 1
+question: Which machines have the lowest mean time between failures?
+overview_done: true
+checks:
+- kind: must_match
+  pattern: 'M08[^.]{0,40}no failure'
+- kind: must_not_number
+  truth_key: naive_mtbf_with_stops
+  rel_tol: 0.01
+  unit: ' hours'
+hard_rules:
+- charts_lint_clean
+- charts_have_rationale
+- non_empty_or_error
+label_note: 'Domain 7 (T13, T6): M08 has run hours and no failure: said as "no failure in N h of run time", never
+  ranked, never infinity; stops are not failures (MTBF ~1.4 h if they were).'

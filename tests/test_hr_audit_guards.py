@@ -381,3 +381,17 @@ def test_a_rosters_spell_facts_and_story_are_the_references_numbers(monkeypatch)
                         domain_pack.Unavailable("no_rows") if name == "headcount" and not kw
                         else real(df_, roles_, pack_, name, **kw))
     assert f"{said}." in domain_pack.spell_story(pack, df, roles)
+
+
+def test_a_second_kpi_asked_for_a_small_protected_group_is_hidden():
+    """Domain 7 mutation gate: a second KPI asked for a named value reads that value's rows;
+    for 5 non-binary employees neither figure is shown (13 are)."""
+    from agents.targeted_analysis_agent import _also_named
+    from orchestrator.state import TargetedParams
+    _, clean, contract, _ = _built("hr_roster")
+    hr, q = pack_for("hr"), "average salary and headcount for Non-binary"
+    params = TargetedParams(kpi="avg_salary", segment_column="Gender", segment_value="Non-binary")
+    five = clean.drop(index=clean.index[clean["Gender"] == "Non-binary"][5:])
+    assert _also_named(five, params, contract, hr, q) == (
+        " Also asked: Headcount: unavailable, fewer than 11 people, so a figure can identify them.")
+    assert _also_named(clean, params, contract, hr, q) == " Also asked: Headcount (as of 5 Aug 2026): 13 employees."

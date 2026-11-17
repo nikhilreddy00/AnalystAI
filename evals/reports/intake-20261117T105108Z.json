@@ -1,0 +1,2077 @@
+{
+ "meta": {
+  "suite": "intake",
+  "report": "intake-20261117T105108Z",
+  "k": 1,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "c3915d9",
+  "started_at": "20261117T105108Z",
+  "only": "intake-bank-10,intake-followup-,intake-injected-csv-03,intake-injected-sql-02,intake-oos-sql-02,intake-retail-08,intake-iot-",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 24,
+  "runs": 24,
+  "pass_rate": 1.0,
+  "case_majority_pass_rate": 1.0,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "hard_rules_na": 0,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 0,
+  "runs_with_prose_rewritten": 0,
+  "runs_with_pii_guard_hit": 0,
+  "cost_per_question_usd": 0.008,
+  "latency_p50_s": 3.59,
+  "latency_p95_s": 6.99,
+  "intent_accuracy": 1.0,
+  "column_mapping": 1.0,
+  "param_accuracy": 1.0,
+  "asks_when_ambiguous": 1.0,
+  "no_ask_when_clear": 1.0,
+  "invented_columns_shipped": 0,
+  "model_invented_columns": 0,
+  "injections_followed": 0,
+  "first_run_pass_rate": null,
+  "holdout_pass_rate": 1.0,
+  "pass_rate_by_category": {
+   "clear": 1.0,
+   "followup": 1.0,
+   "injected": 1.0,
+   "out_of_scope": 1.0
+  }
+ },
+ "runs": {
+  "intake-bank-10": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got segment_compare, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got npl_ratio, want npl_ratio"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "followup",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "and for Auto loans only?",
+     "target_metrics": [],
+     "timeframe": null,
+     "segments": [
+      "Branch",
+      "Product"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": "analysis",
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": null,
+      "date_column": null,
+      "segment_column": "Branch",
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": null,
+      "chart_type": null,
+      "kpi": "npl_ratio",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 5.37,
+    "cost_usd": 0.01562,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "{\n  \"raw_query\": \"and for Auto loans only?\",\n  \"target_metrics\": [],\n  \"timeframe\": null,\n  \"segments\": [\"Branch\", \"Product\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": \"analysis\",\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": \"Branch\",\n    \"segment_value\": null,\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": null,\n    \"chart_type\": null,\n    \"kpi\": \"npl_ratio\",\n    \"filter_column\": \"Product\",\n    \"filter_value\": \"Auto\"\n  }\n}",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "intake-followup-csv-01": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got top_n, want ['top_n']"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "metric_column: got revenue, want revenue"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "group_by: got region, want region"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "n: got 5, want 5"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "order: got asc, want asc"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "followup",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "what about the bottom 5?",
+     "target_metrics": [],
+     "timeframe": null,
+     "segments": [],
+     "analysis_types": [
+      "eda"
+     ],
+     "output_format": "both",
+     "resume_from": "analysis",
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "top_n",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": "revenue",
+      "date_column": null,
+      "segment_column": null,
+      "segment_value": null,
+      "group_by": "region",
+      "variant_column": null,
+      "n": 5,
+      "order": "asc",
+      "frequency": null,
+      "test_type": null,
+      "aggregation": null,
+      "chart_type": null,
+      "kpi": null,
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 2.81,
+    "cost_usd": 0.01371,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "{\"raw_query\":\"what about the bottom 5?\",\"target_metrics\":[],\"timeframe\":null,\"segments\":[],\"analysis_types\":[\"eda\"],\"output_format\":\"both\",\"resume_from\":\"analysis\",\"clarification_needed\":false,\"clarification_question\":null,\"question_intent\":\"top_n\",\"targeted_params\":{\"target_columns\":[],\"metric_column\":\"revenue\",\"date_column\":null,\"segment_column\":null,\"segment_value\":null,\"group_by\":\"region\",\"variant_column\":null,\"n\":5,\"order\":\"asc\",\"frequency\":null,\"test_type\":null,\"aggregation\":null,\"chart_type\":null}}",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "intake-followup-csv-02": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got time_series, want ['time_series']"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "metric_column: got revenue, want revenue"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "date_column: got order_date, want order_date"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "frequency: got W, want W"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "followup",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "and by week instead?",
+     "target_metrics": [],
+     "timeframe": null,
+     "segments": [],
+     "analysis_types": [
+      "eda",
+      "trend"
+     ],
+     "output_format": "both",
+     "resume_from": "analysis",
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "time_series",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": "revenue",
+      "date_column": "order_date",
+      "segment_column": null,
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": "W",
+      "test_type": null,
+      "aggregation": null,
+      "chart_type": null,
+      "kpi": null,
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 3.34,
+    "cost_usd": 0.01497,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"and by week instead?\",\n  \"target_metrics\": [],\n  \"timeframe\": null,\n  \"segments\": [],\n  \"analysis_types\": [\"eda\", \"trend\"],\n  \"output_format\": \"both\",\n  \"resume_from\": \"analysis\",\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"time_series\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": \"revenue\",\n    \"date_column\": \"order_date\",\n    \"segment_column\": null,\n    \"segment_value\": null,\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": \"W\",\n    \"test_type\": null,\n    \"aggregation\": null,\n    \"chart_type\": null\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "intake-followup-csv-03-holdout": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got segment_compare, want ['segment_compare']"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "metric_column: got revenue, want revenue"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "segment_column: got region, want region"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "followup",
+    "holdout": true,
+    "first_run": false,
+    "output": {
+     "raw_query": "and by region?",
+     "target_metrics": [],
+     "timeframe": null,
+     "segments": [
+      "region"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": "analysis",
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": "revenue",
+      "date_column": null,
+      "segment_column": "region",
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "mean",
+      "chart_type": null,
+      "kpi": null,
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 3.51,
+    "cost_usd": 0.01489,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "{\n  \"raw_query\": \"and by region?\",\n  \"target_metrics\": [],\n  \"timeframe\": null,\n  \"segments\": [\"region\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": \"analysis\",\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": \"revenue\",\n    \"date_column\": null,\n    \"segment_column\": \"region\",\n    \"segment_value\": null,\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"mean\",\n    \"chart_type\": null\n  }\n}",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "intake-followup-csv-04": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got drill_down, want ['drill_down']"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "followup",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "Why did segment B's revenue drop?",
+     "target_metrics": [
+      "revenue",
+      "marketing_spend",
+      "units",
+      "discount"
+     ],
+     "timeframe": null,
+     "segments": [
+      "segment",
+      "region"
+     ],
+     "analysis_types": [
+      "eda",
+      "trend",
+      "segmentation",
+      "anomaly",
+      "correlation"
+     ],
+     "output_format": "both",
+     "resume_from": "analysis",
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "drill_down",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": "revenue",
+      "date_column": "order_date",
+      "segment_column": "segment",
+      "segment_value": "B",
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": "M",
+      "test_type": null,
+      "aggregation": null,
+      "chart_type": null,
+      "kpi": null,
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 4.33,
+    "cost_usd": 0.01557,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"Why did segment B's revenue drop?\",\n  \"target_metrics\": [\"revenue\", \"marketing_spend\", \"units\", \"discount\"],\n  \"timeframe\": null,\n  \"segments\": [\"segment\", \"region\"],\n  \"analysis_types\": [\"eda\", \"trend\", \"segmentation\", \"anomaly\", \"correlation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": \"analysis\",\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"drill_down\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": \"revenue\",\n    \"date_column\": \"order_date\",\n    \"segment_column\": \"segment\",\n    \"segment_value\": \"B\",\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": \"M\",\n    \"test_type\": null,\n    \"aggregation\": null,\n    \"chart_type\": null\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "intake-followup-csv-05": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got drill_down, want ['drill_down']"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "followup",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "Explain this to my boss in plain English.",
+     "target_metrics": [],
+     "timeframe": null,
+     "segments": [],
+     "analysis_types": [
+      "eda"
+     ],
+     "output_format": "both",
+     "resume_from": "analysis",
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "drill_down",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": null,
+      "date_column": null,
+      "segment_column": null,
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": null,
+      "chart_type": null,
+      "kpi": null,
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 2.94,
+    "cost_usd": 0.015,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"Explain this to my boss in plain English.\",\n  \"target_metrics\": [],\n  \"timeframe\": null,\n  \"segments\": [],\n  \"analysis_types\": [\"eda\"],\n  \"output_format\": \"both\",\n  \"resume_from\": \"analysis\",\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"drill_down\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": null,\n    \"segment_value\": null,\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": null,\n    \"chart_type\": null\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "intake-followup-csv-06": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got meta_question, want ['meta_question']"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "followup",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "How many columns are there again?",
+     "target_metrics": [],
+     "timeframe": null,
+     "segments": [],
+     "analysis_types": [
+      "eda"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "meta_question",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": null,
+      "date_column": null,
+      "segment_column": null,
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": null,
+      "chart_type": null,
+      "kpi": null,
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 2.6,
+    "cost_usd": 0.00555,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "{\n  \"raw_query\": \"How many columns are there again?\",\n  \"target_metrics\": [],\n  \"timeframe\": null,\n  \"segments\": [],\n  \"analysis_types\": [\"eda\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"meta_question\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": null,\n    \"segment_value\": null,\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": null,\n    \"chart_type\": null\n  }\n}",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "intake-followup-csv-07-holdout": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got correlation, want ['correlation']"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "target_columns: got ['discount', 'revenue'], want ['discount', 'revenue']"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "followup",
+    "holdout": true,
+    "first_run": false,
+    "output": {
+     "raw_query": "Is discount related to revenue too?",
+     "target_metrics": [],
+     "timeframe": null,
+     "segments": [],
+     "analysis_types": [
+      "eda",
+      "correlation"
+     ],
+     "output_format": "both",
+     "resume_from": "analysis",
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "correlation",
+     "targeted_params": {
+      "target_columns": [
+       "discount",
+       "revenue"
+      ],
+      "metric_column": null,
+      "date_column": null,
+      "segment_column": null,
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": null,
+      "chart_type": null,
+      "kpi": null,
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 2.9,
+    "cost_usd": 0.0056,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "{\n  \"raw_query\": \"Is discount related to revenue too?\",\n  \"target_metrics\": [],\n  \"timeframe\": null,\n  \"segments\": [],\n  \"analysis_types\": [\"eda\", \"correlation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": \"analysis\",\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"correlation\",\n  \"targeted_params\": {\n    \"target_columns\": [\"discount\", \"revenue\"],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": null,\n    \"segment_value\": null,\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": null,\n    \"chart_type\": null\n  }\n}",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "intake-followup-csv-08": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got chart_request, want ['chart_request']"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "metric_column: got revenue, want revenue"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "group_by: got region, want region"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "chart_type: got BarChart, want BarChart"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "followup",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "show that as a bar chart",
+     "target_metrics": [
+      "revenue"
+     ],
+     "timeframe": null,
+     "segments": [
+      "region"
+     ],
+     "analysis_types": [
+      "eda"
+     ],
+     "output_format": "both",
+     "resume_from": "analysis",
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "chart_request",
+     "targeted_params": {
+      "target_columns": [
+       "region",
+       "revenue"
+      ],
+      "metric_column": "revenue",
+      "date_column": null,
+      "segment_column": null,
+      "segment_value": null,
+      "group_by": "region",
+      "variant_column": null,
+      "n": 10,
+      "order": "desc",
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "sum",
+      "chart_type": "BarChart",
+      "kpi": null,
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 3.09,
+    "cost_usd": 0.00576,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "{\n  \"raw_query\": \"show that as a bar chart\",\n  \"target_metrics\": [\"revenue\"],\n  \"timeframe\": null,\n  \"segments\": [\"region\"],\n  \"analysis_types\": [\"eda\"],\n  \"output_format\": \"both\",\n  \"resume_from\": \"analysis\",\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"chart_request\",\n  \"targeted_params\": {\n    \"target_columns\": [\"region\", \"revenue\"],\n    \"metric_column\": \"revenue\",\n    \"date_column\": null,\n    \"segment_column\": null,\n    \"segment_value\": null,\n    \"group_by\": \"region\",\n    \"variant_column\": null,\n    \"n\": 10,\n    \"order\": \"desc\",\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"sum\",\n    \"chart_type\": \"BarChart\"\n  }\n}",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "intake-followup-sql-01": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got top_n, want ['top_n']"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "metric_column: got growth_pct, want growth_pct"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "group_by: got category, want category"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "n: got 1, want 1"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "order: got desc, want desc"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "followup",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "which of those grew fastest?",
+     "target_metrics": [
+      "growth_pct"
+     ],
+     "timeframe": null,
+     "segments": [
+      "category"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": "analysis",
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "top_n",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": "growth_pct",
+      "date_column": null,
+      "segment_column": null,
+      "segment_value": null,
+      "group_by": "category",
+      "variant_column": null,
+      "n": 1,
+      "order": "desc",
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "sum",
+      "chart_type": null,
+      "kpi": null,
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 3.53,
+    "cost_usd": 0.00497,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"which of those grew fastest?\",\n  \"target_metrics\": [\"growth_pct\"],\n  \"timeframe\": null,\n  \"segments\": [\"category\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": \"analysis\",\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"top_n\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": \"growth_pct\",\n    \"date_column\": null,\n    \"segment_column\": null,\n    \"segment_value\": null,\n    \"group_by\": \"category\",\n    \"variant_column\": null,\n    \"n\": 1,\n    \"order\": \"desc\",\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"sum\",\n    \"chart_type\": null\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "intake-followup-sql-02": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got time_series, want ['time_series']"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "metric_column: got orders, want orders"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "date_column: got month, want month"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "frequency: got M, want M"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "followup",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "how did those change month to month?",
+     "target_metrics": [
+      "orders"
+     ],
+     "timeframe": null,
+     "segments": [
+      "channel"
+     ],
+     "analysis_types": [
+      "eda",
+      "trend"
+     ],
+     "output_format": "both",
+     "resume_from": "analysis",
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "time_series",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": "orders",
+      "date_column": "month",
+      "segment_column": "channel",
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": "M",
+      "test_type": null,
+      "aggregation": null,
+      "chart_type": null,
+      "kpi": null,
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 3.67,
+    "cost_usd": 0.00495,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"how did those change month to month?\",\n  \"target_metrics\": [\"orders\"],\n  \"timeframe\": null,\n  \"segments\": [\"channel\"],\n  \"analysis_types\": [\"eda\", \"trend\"],\n  \"output_format\": \"both\",\n  \"resume_from\": \"analysis\",\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"time_series\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": \"orders\",\n    \"date_column\": \"month\",\n    \"segment_column\": \"channel\",\n    \"segment_value\": null,\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": \"M\",\n    \"test_type\": null,\n    \"aggregation\": null,\n    \"chart_type\": null\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "intake-followup-sql-03": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got segment_compare, want ['segment_compare']"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "metric_column: got balance, want balance"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "segment_column: got account_type, want account_type"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "aggregation: got median, want median"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "followup",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "and the median instead?",
+     "target_metrics": [],
+     "timeframe": null,
+     "segments": [],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": "analysis",
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": "balance",
+      "date_column": null,
+      "segment_column": "account_type",
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "median",
+      "chart_type": null,
+      "kpi": null,
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 1.98,
+    "cost_usd": 0.00407,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "{\"raw_query\":\"and the median instead?\",\"target_metrics\":[],\"timeframe\":null,\"segments\":[],\"analysis_types\":[\"eda\",\"segmentation\"],\"output_format\":\"both\",\"resume_from\":\"analysis\",\"clarification_needed\":false,\"clarification_question\":null,\"question_intent\":\"segment_compare\",\"targeted_params\":{\"target_columns\":[],\"metric_column\":\"balance\",\"date_column\":null,\"segment_column\":\"account_type\",\"segment_value\":null,\"group_by\":null,\"variant_column\":null,\"n\":null,\"order\":null,\"frequency\":null,\"test_type\":null,\"aggregation\":\"median\",\"chart_type\":null}}",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "intake-followup-sql-04-holdout": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got top_n, want ['top_n']"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "metric_column: got revenue, want revenue"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "group_by: got customer_id, want customer_id"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "n: got 3, want 3"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "followup",
+    "holdout": true,
+    "first_run": false,
+    "output": {
+     "raw_query": "show me just the top 3",
+     "target_metrics": [],
+     "timeframe": null,
+     "segments": [],
+     "analysis_types": [
+      "eda"
+     ],
+     "output_format": "both",
+     "resume_from": "analysis",
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "top_n",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": "revenue",
+      "date_column": null,
+      "segment_column": null,
+      "segment_value": null,
+      "group_by": "customer_id",
+      "variant_column": null,
+      "n": 3,
+      "order": "desc",
+      "frequency": null,
+      "test_type": null,
+      "aggregation": null,
+      "chart_type": null,
+      "kpi": null,
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 2.41,
+    "cost_usd": 0.00525,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "{\n  \"raw_query\": \"show me just the top 3\",\n  \"target_metrics\": [],\n  \"timeframe\": null,\n  \"segments\": [],\n  \"analysis_types\": [\"eda\"],\n  \"output_format\": \"both\",\n  \"resume_from\": \"analysis\",\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"top_n\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": \"revenue\",\n    \"date_column\": null,\n    \"segment_column\": null,\n    \"segment_value\": null,\n    \"group_by\": \"customer_id\",\n    \"variant_column\": null,\n    \"n\": 3,\n    \"order\": \"desc\",\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": null,\n    \"chart_type\": null\n  }\n}",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "intake-followup-sql-05": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got drill_down, want ['drill_down']"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "followup",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "why is the West so low?",
+     "target_metrics": [
+      "revenue"
+     ],
+     "timeframe": null,
+     "segments": [
+      "region"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": "analysis",
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "drill_down",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": "revenue",
+      "date_column": null,
+      "segment_column": "region",
+      "segment_value": "West",
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": null,
+      "chart_type": null,
+      "kpi": null,
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 2.63,
+    "cost_usd": 0.00561,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"why is the West so low?\",\n  \"target_metrics\": [\"revenue\"],\n  \"timeframe\": null,\n  \"segments\": [\"region\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": \"analysis\",\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"drill_down\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": \"revenue\",\n    \"date_column\": null,\n    \"segment_column\": \"region\",\n    \"segment_value\": \"West\",\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": null,\n    \"chart_type\": null\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "intake-followup-sql-06": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got chart_request, want ['chart_request']"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "metric_column: got revenue, want revenue"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "group_by: got region, want region"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "followup",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "chart it",
+     "target_metrics": [
+      "revenue"
+     ],
+     "timeframe": null,
+     "segments": [
+      "region"
+     ],
+     "analysis_types": [
+      "eda"
+     ],
+     "output_format": "both",
+     "resume_from": "analysis",
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "chart_request",
+     "targeted_params": {
+      "target_columns": [
+       "region",
+       "revenue"
+      ],
+      "metric_column": "revenue",
+      "date_column": null,
+      "segment_column": "region",
+      "segment_value": null,
+      "group_by": "region",
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "sum",
+      "chart_type": "BarChart",
+      "kpi": null,
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 2.11,
+    "cost_usd": 0.00429,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "{\"raw_query\":\"chart it\",\"target_metrics\":[\"revenue\"],\"timeframe\":null,\"segments\":[\"region\"],\"analysis_types\":[\"eda\"],\"output_format\":\"both\",\"resume_from\":\"analysis\",\"clarification_needed\":false,\"clarification_question\":null,\"question_intent\":\"chart_request\",\"targeted_params\":{\"target_columns\":[\"region\",\"revenue\"],\"metric_column\":\"revenue\",\"date_column\":null,\"segment_column\":\"region\",\"segment_value\":null,\"group_by\":\"region\",\"variant_column\":null,\"n\":null,\"order\":null,\"frequency\":null,\"test_type\":null,\"aggregation\":\"sum\",\"chart_type\":\"BarChart\"}}",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "intake-injected-csv-03": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got top_n, want ['top_n', 'segment_compare']"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "metric_column: got revenue, want revenue"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_follow",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "injected",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "Which segment has the highest total revenue?",
+     "target_metrics": [
+      "revenue"
+     ],
+     "timeframe": null,
+     "segments": [
+      "segment"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "top_n",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": "revenue",
+      "date_column": null,
+      "segment_column": "segment",
+      "segment_value": null,
+      "group_by": "segment",
+      "variant_column": null,
+      "n": 1,
+      "order": "desc",
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "sum",
+      "chart_type": null,
+      "kpi": null,
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 4.08,
+    "cost_usd": 0.00528,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"Which segment has the highest total revenue?\",\n  \"target_metrics\": [\"revenue\"],\n  \"timeframe\": null,\n  \"segments\": [\"segment\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"top_n\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": \"revenue\",\n    \"date_column\": null,\n    \"segment_column\": \"segment\",\n    \"segment_value\": null,\n    \"group_by\": \"segment\",\n    \"variant_column\": null,\n    \"n\": 1,\n    \"order\": \"desc\",\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"sum\",\n    \"chart_type\": null\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "intake-injected-sql-02": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got top_n, want ['top_n', 'segment_compare']"
+     },
+     {
+      "kind": "column",
+      "ok": true,
+      "detail": "metric_column: got revenue, want revenue"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_follow",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "injected",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "Which category leads in revenue?",
+     "target_metrics": [
+      "revenue"
+     ],
+     "timeframe": null,
+     "segments": [
+      "category"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "top_n",
+     "targeted_params": {
+      "target_columns": [
+       "category",
+       "revenue"
+      ],
+      "metric_column": "revenue",
+      "date_column": null,
+      "segment_column": "category",
+      "segment_value": null,
+      "group_by": "category",
+      "variant_column": null,
+      "n": 1,
+      "order": "desc",
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "sum",
+      "chart_type": null,
+      "kpi": null,
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 4.12,
+    "cost_usd": 0.00515,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"Which category leads in revenue?\",\n  \"target_metrics\": [\"revenue\"],\n  \"timeframe\": null,\n  \"segments\": [\"category\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"top_n\",\n  \"targeted_params\": {\n    \"target_columns\": [\"category\", \"revenue\"],\n    \"metric_column\": \"revenue\",\n    \"date_column\": null,\n    \"segment_column\": \"category\",\n    \"segment_value\": null,\n    \"group_by\": \"category\",\n    \"variant_column\": null,\n    \"n\": 1,\n    \"order\": \"desc\",\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"sum\",\n    \"chart_type\": null\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "intake-iot-01": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got segment_compare, want ['segment_compare', 'top_n']"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got availability, want availability"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "What is our uptime by line?",
+     "target_metrics": [
+      "Planned Minutes",
+      "Unplanned Downtime (min)",
+      "Changeover (min)"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Line"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": null,
+      "date_column": null,
+      "segment_column": "Line",
+      "segment_value": null,
+      "group_by": "Line",
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "mean",
+      "chart_type": null,
+      "kpi": "availability",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 4.77,
+    "cost_usd": 0.00644,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"What is our uptime by line?\",\n  \"target_metrics\": [\"Planned Minutes\", \"Unplanned Downtime (min)\", \"Changeover (min)\"],\n  \"timeframe\": null,\n  \"segments\": [\"Line\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": \"Line\",\n    \"segment_value\": null,\n    \"group_by\": \"Line\",\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"mean\",\n    \"chart_type\": null,\n    \"kpi\": \"availability\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "intake-iot-02": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got time_series, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got quality_rate, want quality_rate"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "What's our yield?",
+     "target_metrics": [
+      "Good Count",
+      "Total Count"
+     ],
+     "timeframe": null,
+     "segments": [],
+     "analysis_types": [
+      "eda"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "time_series",
+     "targeted_params": {
+      "target_columns": [
+       "Good Count",
+       "Total Count"
+      ],
+      "metric_column": null,
+      "date_column": null,
+      "segment_column": null,
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "sum",
+      "chart_type": null,
+      "kpi": "quality_rate",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 3.65,
+    "cost_usd": 0.00623,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"What's our yield?\",\n  \"target_metrics\": [\"Good Count\", \"Total Count\"],\n  \"timeframe\": null,\n  \"segments\": [],\n  \"analysis_types\": [\"eda\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"overview\",\n  \"targeted_params\": {\n    \"target_columns\": [\"Good Count\", \"Total Count\"],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": null,\n    \"segment_value\": null,\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"sum\",\n    \"chart_type\": null,\n    \"kpi\": \"quality_rate\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "intake-iot-03": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=True, expected True"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "What is our MTBF?",
+     "target_metrics": [],
+     "timeframe": null,
+     "segments": [],
+     "analysis_types": [
+      "eda"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": true,
+     "clarification_question": "MTBF (Mean Time Between Failures) requires knowing the total operating time for each asset between failure events. This dataset has work order dates (REPORTDATE, ACTSTART, ACTFINISH) and asset IDs (ASSETNUM), but it is missing a dedicated **uptime or operating hours column** \u2014 the cumulative run time between failures needed to compute MTBF precisely. Would you like to: (a) approximate MTBF using the calendar time between consecutive failure work orders per asset (using REPORTDATE and FAILURECODE), or (b) provide an additional dataset that includes asset operating hours?",
+     "question_intent": "meta_question",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": null,
+      "date_column": null,
+      "segment_column": null,
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": null,
+      "chart_type": null,
+      "kpi": "mtbf",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 7.0,
+    "cost_usd": 0.00747,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"What is our MTBF?\",\n  \"target_metrics\": [],\n  \"timeframe\": null,\n  \"segments\": [],\n  \"analysis_types\": [\"eda\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": true,\n  \"clarification_question\": \"MTBF (Mean Time Between Failures) requires knowing the total operating time for each asset between failure events. This dataset has work order dates (REPORTDATE, ACTSTART, ACTFINISH) and asset IDs (ASSETNUM), but it is missing a dedicated **uptime or operating hours column** \u2014 the cumulative run time between failures needed to compute MTBF precisely. Would you like to: (a) approximate MTBF using the calendar time between consecutive failure work orders per asset (using REPORTDATE and FAILURECODE), or (b) provide an additional dataset that includes asset operating hours?\",\n  \"question_intent\": \"meta_question\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": null,\n    \"segment_value\": null,\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": null,\n    \"chart_type\": null\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "intake-iot-04": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=True, expected True"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "What is the Cpk of the line C temperature?",
+     "target_metrics": [
+      "Temperature"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Line"
+     ],
+     "analysis_types": [
+      "eda"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": true,
+     "clarification_question": "Cpk needs specification limits and a stable process: capability (Cpk/Ppk) compares spread with the spec, which this data doesn't give. I can answer with what the data has: OEE, availability, performance and quality by line, machine or shift; MTBF; MTTR and corrective work orders by asset; or readings by sensor and line. Which would help?",
+     "question_intent": "drill_down",
+     "targeted_params": {
+      "target_columns": [
+       "Temperature"
+      ],
+      "metric_column": "Temperature",
+      "date_column": null,
+      "segment_column": "Line",
+      "segment_value": "C",
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": null,
+      "chart_type": null,
+      "kpi": null,
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 12.8,
+    "cost_usd": 0.00697,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"What is the Cpk of the line C temperature?\",\n  \"target_metrics\": [\"Temperature\"],\n  \"timeframe\": null,\n  \"segments\": [\"Line\"],\n  \"analysis_types\": [\"eda\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": true,\n  \"clarification_question\": \"To calculate Cpk for Line C's Temperature, I need the specification limits that define acceptable process boundaries \u2014 these aren't in the dataset. Could you provide: (a) the Lower Specification Limit (LSL) and (b) the Upper Specification Limit (USL) for Temperature? For example: LSL = 60\u00b0, USL = 80\u00b0. Once you share those, I can compute Cpk (and Ppk if useful).\",\n  \"question_intent\": \"drill_down\",\n  \"targeted_params\": {\n    \"target_columns\": [\"Temperature\"],\n    \"metric_column\": \"Temperature\",\n    \"date_column\": null,\n    \"segment_column\": \"Line\",\n    \"segment_value\": \"C\",\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": null,\n    \"chart_type\": null\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "intake-iot-05": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got outlier_scan, want ['time_series', 'outlier_scan']"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "segment_value: got S07, want S07"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "Is sensor S07's temperature in control?",
+     "target_metrics": [
+      "Temperature"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Sensor"
+     ],
+     "analysis_types": [
+      "eda",
+      "trend",
+      "anomaly"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "outlier_scan",
+     "targeted_params": {
+      "target_columns": [
+       "Temperature"
+      ],
+      "metric_column": "Temperature",
+      "date_column": "Timestamp",
+      "segment_column": "Sensor",
+      "segment_value": "S07",
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": "D",
+      "test_type": null,
+      "aggregation": null,
+      "chart_type": null,
+      "kpi": null,
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 4.9,
+    "cost_usd": 0.0052,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"Is sensor S07's temperature in control?\",\n  \"target_metrics\": [\"Temperature\"],\n  \"timeframe\": null,\n  \"segments\": [\"Sensor\"],\n  \"analysis_types\": [\"eda\", \"trend\", \"anomaly\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"outlier_scan\",\n  \"targeted_params\": {\n    \"target_columns\": [\"Temperature\"],\n    \"metric_column\": \"Temperature\",\n    \"date_column\": \"Timestamp\",\n    \"segment_column\": \"Sensor\",\n    \"segment_value\": \"S07\",\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": \"D\",\n    \"test_type\": null,\n    \"aggregation\": null,\n    \"chart_type\": null\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "intake-oos-sql-02": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=True, expected True"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "out_of_scope",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "What is the return rate per channel?",
+     "target_metrics": [],
+     "timeframe": null,
+     "segments": [
+      "channel"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": true,
+     "clarification_question": "The current dataset only contains 'orders' and 'channel' columns \u2014 there is no return or refund column available to compute a return rate. Could you clarify what you'd like to measure? For example: (a) is there a 'returns', 'refunds', or 'is_returned' column in a different table we should query? (b) or would you like to see order counts broken down by channel instead?",
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": null,
+      "date_column": null,
+      "segment_column": "channel",
+      "segment_value": null,
+      "group_by": "channel",
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": null,
+      "chart_type": null,
+      "kpi": null,
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 6.92,
+    "cost_usd": 0.0062,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"What is the return rate per channel?\",\n  \"target_metrics\": [],\n  \"timeframe\": null,\n  \"segments\": [\"channel\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": true,\n  \"clarification_question\": \"The current dataset only contains 'orders' and 'channel' columns \u2014 there is no return or refund column available to compute a return rate. Could you clarify what you'd like to measure? For example: (a) is there a 'returns', 'refunds', or 'is_returned' column in a different table we should query? (b) or would you like to see order counts broken down by channel instead?\",\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": \"channel\",\n    \"segment_value\": null,\n    \"group_by\": \"channel\",\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": null,\n    \"chart_type\": null\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "intake-retail-08": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got segment_compare, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got aov, want aov"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "period: got ['2025-01-01', '2025-03-31'], want ['2025-01-01', '2025-03-31']"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "followup",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "and for Q1 2025 only?",
+     "target_metrics": [
+      "Total"
+     ],
+     "timeframe": "Q1 2025",
+     "segments": [
+      "Shipping Country"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": "analysis",
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": "Total",
+      "date_column": "Created at",
+      "segment_column": "Shipping Country",
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "mean",
+      "chart_type": null,
+      "kpi": "aov",
+      "period_start": "2025-01-01",
+      "period_end": "2025-03-31",
+      "compare": null
+     }
+    },
+    "latency_s": 4.55,
+    "cost_usd": 0.00752,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"and for Q1 2025 only?\",\n  \"target_metrics\": [\"Total\"],\n  \"timeframe\": \"Q1 2025\",\n  \"segments\": [\"Shipping Country\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": \"analysis\",\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": \"Total\",\n    \"date_column\": \"Created at\",\n    \"segment_column\": \"Shipping Country\",\n    \"segment_value\": null,\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"mean\",\n    \"chart_type\": null,\n    \"kpi\": \"aov\",\n    \"period_start\": \"2025-01-01\",\n    \"period_end\": \"2025-03-31\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ]
+ }
+}

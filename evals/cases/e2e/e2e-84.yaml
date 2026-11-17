@@ -1,0 +1,20 @@
+id: e2e-84
+domain: iot
+dataset:
+  name: shift_production
+  seed: 1
+question: How many good parts did we make on 2 August 2026?
+overview_done: true
+checks:
+- kind: number_in_answer
+  truth_key: good_by_day.2026-08-02
+  rel_tol: 0.0005
+- kind: must_not_number
+  truth_key: naive_good_by_end_day.2026-08-02
+  rel_tol: 0.0005
+hard_rules:
+- charts_lint_clean
+- charts_have_rationale
+- non_empty_or_error
+label_note: 'Domain 7 (T2): a night shift runs 22:00-06:00 and belongs to its production date (the day it starts);
+  grouped by its end it moves the 1 August night''s output to 2 August.'

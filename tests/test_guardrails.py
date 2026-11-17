@@ -69,6 +69,35 @@ def test_pii_column_names(col, pii):
     assert g.is_pii_column(col) is pii
 
 
+@pytest.mark.parametrize("col, values, pii", [
+    # Domain 7: a machine, asset or line is a thing, never a person's name (fail-closed `*_name`)
+    ("machine_name", ["Press 4", "Lathe Two"], None), ("asset_name", ["Pump A"], None),
+    ("equipment_name", ["Boiler"], None), ("line_name", ["Line B"], None),
+    ("sensor_name", ["Temp North"], None), ("tag_name", ["FIC101.PV"], None),
+    ("station_name", ["Weld 3"], None), ("work_center_name", ["Paint Shop"], None),
+    ("plant_name", ["Lyon Works"], None), ("site_name", ["North Plant"], None),
+    # the people on a shop floor or a work order, by their names, their logins or their badges
+    ("operator", ["Ana Lopez", "Raj Patel"], "name"), ("supervisor", ["Kim Lee"], "name"),
+    ("reportedby", ["JSMITH", "ALOPEZ", "RPATEL"], "name"),
+    ("reported_by", ["Smith, John", "Lopez, Ana"], "name"),
+    ("changeby", ["MAXADMIN", "KLEE"], "name"), ("technician", ["JSMITH", "KLEE"], "name"),
+    ("badge_id", [10423, 10424], "name"), ("badge", ["B-0193"], "name"),
+    # audit pass 1: more shop-floor people, by their names or logins
+    ("Completed By", ["Ann Lee", "Raj Patel"], "name"), ("Mechanic", ["Ann Lee"], "name"),
+    ("Planner", ["Kim Moss"], "name"), ("Inspector", ["JSMITH"], "name"),
+    ("Worker", ["Ann Lee"], "name"), ("Shift Lead", ["Kim Moss"], "name"),
+    ("Lead Hand", ["Raj Patel"], "name"), ("Login", ["ALOPEZ", "KPARK"], "name"),
+    ("Mechanic", ["Electrical", "Hydraulic"], None), ("worker_type", ["Employee", "Contractor"], None),
+    # negatives from other domains: carriers, retail rep codes, a crew/team and a count stay data
+    ("operator", ["Vodafone", "Orange", "AT&T"], None), ("sales_rep", ["R12", "R07"], None),
+    ("crew", ["Crew A", "Crew B"], None), ("badges_issued", [3, 5], None),
+    ("product_name", ["Widget Pro"], None), ("line", ["Auto", "Home"], None),
+])
+def test_shop_floor_people_are_personal_data_and_machines_are_not(col, values, pii):
+    got = g.pii_kind(col, values)
+    assert (got[0] if got else None) == pii
+
+
 def test_pii_masking():
     assert g.is_pii_column("customer_email") and g.is_pii_column("customer_name")
     assert not g.is_pii_column("region") and not g.is_pii_column("units")
@@ -189,6 +218,42 @@ def test_without_dates_hides_days_and_years_from_number_grounding():
     text = "On Jan 15, 2026 revenue was 120.5; 2025-11-03 too."
     assert g.ungrounded_numbers(g.without_dates(text, True), {"r": 120.5}) == []
     assert g.without_dates("2025 orders", has_dates=False) == "2025 orders"
+
+
+@pytest.mark.parametrize("text", [
+    "At 2026-10-31 20:00 the line read 47.6.",
+    "At 2026-10-31T20:00:00Z the line read 47.6.",
+    "At 2026-10-31T20:00+02:00 the line read 47.6.",
+    "At 2026-10-31 20:00:15 the line read 47.6.",
+    "The night shift ran from 22:00 to 06:00 and read 47.6.",
+    "Alarms peaked at 14:45 UTC with 47.6.",
+    "Readings at 11:30 pm and at 8:15 a.m. averaged 47.6.",
+    "The stop began at 11:30 and the line read 47.6.",
+    "Logged 23:59:59 with 47.6.",
+    # audit pass 2: an hour of 13+ or a cue keeps a clock time a clock time, units or not
+    "At 14:00 hrs the temperature was 47.6.",
+    "Downtime peaked at 23:15 h on Oct 23 with 47.6 units lost.",
+    "The night shift runs 22:00 to 06:00 hours and made 47.6.",
+])
+def test_a_clock_time_is_no_number_claim(text):
+    """K1 (Domain 7, from the 5.7b-3 retro): a clock time beside a date was read as a number
+    ('2026-10-31 20:00 … 31.2' flagged '20'; the evidence here is 47.6 so a day can't round to it). One stripper for the product and the scorers."""
+    assert g.ungrounded_numbers(g.without_dates(text, True), {"r": 47.6}) == []
+
+
+@pytest.mark.parametrize("text, bad", [
+    ("MTTR was 2:30 against 47.6.", ["30"]),        # a duration, no time cue: still a claim
+    ("A 3:1 ratio and 47.6.", []),                    # small integers are prose anyway
+    ("Step 13 and Land 27 read 47.6.", ["13", "27"]),  # words beside numbers stay numbers
+    ("In Q3 2026 the plant read 47.6 on 24/7 running.", ["24"]),
+    ("Version 12.30 shipped; it read 47.6.", ["12.30"]),
+    # audit pass 1: a duration written h:mm with its unit is a claim, after any cue word
+    ("Downtime rose by 4:30 hours to 47.6.", ["30"]),
+    ("MTTR fell from 3:15 to 2:45 hours; 47.6 overall.", ["15", "45"]),
+    ("We were march 47 units short of 47.6.", ["47"]),   # a lower-case month is prose
+])
+def test_a_number_that_is_no_clock_time_is_still_checked(text, bad):
+    assert g.ungrounded_numbers(g.without_dates(text, True), {"r": 47.6}) == bad
 
 
 def test_a_bare_count_is_not_a_year():

@@ -207,6 +207,7 @@ def score_analysis(case: dict, findings, error: str | None, baseline: bool = Tru
     # spell data: the scorer reads the independent reference on the raw table (5.7b-2b)
     spell = (case["dataset"]["name"], raw) if case["dataset"]["name"] in SPECS else None
     df, contract = working_frame(case)
+    df = cleaned_for_analysis(case, df, contract)[0]   # production cases: the cleaned frame (D7)
     df = model_frame(df, contract)[0] if contract and contract.domain else df   # the model's own frame
     checks = []
     for spec in case["checks"]:
@@ -785,16 +786,23 @@ def _insight_case(cid: str) -> dict:
 
 QUALITY_CHECKS_ONLY = {"on": False}   # --checks-only: the deterministic half, at $0
 # The paid quality report whose prose-judge replies --checks-only replays (ADR-0009, 5.7b-3):
-# the judge is a review's first call, so its reply is each run's first. Set after a paid run.
-QUALITY_JUDGE_REPORT: str | None = "quality-20261116T041831Z.json"   # judge v3 (--replay of the k=1 run)
+# the judge is a review's first call, so its reply is each run's first. Set after a paid run; a
+# case added later replays from the first report in this order that ran it (Domain 7: q-51, q-52).
+QUALITY_JUDGE_REPORT: str | tuple[str, ...] | None = (
+    "quality-20261116T041831Z.json",   # judge v3 (--replay of the k=1 run)
+    "quality-20261116T233816Z.json", "quality-20261116T233730Z.json")   # Domain 7's live runs
 
 
 def judge_replay(case: dict):
     """The paid run's replies for this case in a RecordedClient: the $0 suite runs the prose judge
-    on the production path. A case that run didn't cover, or covered with no replies, fails loudly
-    (KeyError, ValueError), never passes."""
+    on the production path. A case no listed run covered, or covered with no replies, fails
+    loudly (KeyError, ValueError), never passes."""
     from llm.client import RecordedClient
-    runs = json.loads((EVALS_DIR / "reports" / QUALITY_JUDGE_REPORT).read_text())["runs"][case["id"]]
+    names = (QUALITY_JUDGE_REPORT,) if isinstance(QUALITY_JUDGE_REPORT, str) else QUALITY_JUDGE_REPORT
+    reports = [json.loads((EVALS_DIR / "reports" / n).read_text())["runs"] for n in names]
+    runs = next((r[case["id"]] for r in reports if case["id"] in r), None)
+    if runs is None:
+        raise KeyError(case["id"])
     if not (replies := runs[0]["replies"]):
         raise ValueError(f"{case['id']}: the paid run stored no replies")
     return RecordedClient([r["text"] for r in replies])
@@ -1433,8 +1441,11 @@ def rescore(path: Path) -> Path:
         for r in rs:
             if "output" not in r:
                 raise SystemExit(f"{path.name} predates stored outputs; it can't be rescored")
+            # only the last turn's session is stored: a follow-up's checks keep their stored result
+            turns = [c for c in r.get("checks", []) if c["detail"].startswith("turn ")]
             try:
                 r.update(RESCORERS[suite](cases[cid], r["output"], r["error"]))
+                r["checks"] += turns
             except Exception as exc:   # one unscoreable run, not a lost report
                 r.update({"checks": [{"kind": "harness", "ok": False,
                                       "detail": f"{type(exc).__name__}: {exc}"[:300]}], "hard": []})

@@ -7,7 +7,7 @@ from typing import NamedTuple
 
 import pandas as pd
 
-from .pack import (CONDITIONS, Cond, KPI, Maturity, Measured, MeasuredBy, Pack, ROW_KINDS,
+from .pack import (CONDITIONS, Cond, DURATION_OPS, KPI, Maturity, Measured, MeasuredBy, Pack, ROW_KINDS,
                    ROW_KIND_COLUMN, Term, _column,
                    _day, _snapshot_column, and_list, defaults_pack, expand_header, normalize_header,
                    ordinal, roles_of, span_words, spell_terms)
@@ -270,11 +270,19 @@ def describe_kpi(pack: Pack, name: str, roles: dict[str, str],
     also says how each part was counted (an answer's 'How': the 12 month-ends, exits as events,
     who is out), never just 'separations ÷ headcount'."""
     kpi = pack.kpi(name)
+    # a derived role (measure adds it) is named by what it is: 'hours from start to finish'
+    roles = {**{r: f"{e[1]} from {roles[e[2]]} to {roles[e[0]]}" for r, e in pack.derived.items()
+                if e[1] in DURATION_OPS and e[0] in roles and e[2] in roles}, **roles}
+
+    def scaled(text: str, times: float) -> str:   # ÷ 60 (minutes to hours), never '0.0166667 ×'
+        n = round(1 / times) if times else 0
+        return text if times == 1 else f"{text} ÷ {n}" if n > 1 and abs(n * times - 1) < 1e-9 \
+            else f"{times:g} × {text}"
 
     def term(t: Term) -> str:
         if t.kpi:
             how = describe_kpi(pack, t.kpi, roles, present).rstrip(".")
-            return (f"{t.times:g} × " if t.times != 1 else "") + pack.kpi(t.kpi).phrase + (
+            return scaled(pack.kpi(t.kpi).phrase, t.times) + (
                 f" ({how[:1].lower() + how[1:]})" if parts and kpi.den is not None
                 and spell_terms(pack, t.kpi) else "")
         if t.nunique:
@@ -310,12 +318,12 @@ def describe_kpi(pack: Pack, name: str, roles: dict[str, str],
                 f" where {where(t.where)}" if t.where else "")
         expr = t.sum if t.sum is not None else t.sum_abs
         cols = roles[expr] if isinstance(expr, str) else (
-            f"days from {roles[expr[2]]} to {roles[expr[0]]}" if expr[1] == "days" else
+            f"{expr[1]} from {roles[expr[2]]} to {roles[expr[0]]}" if expr[1] in DURATION_OPS else
             f"{roles[expr[0]]} {'×' if expr[1] == '*' else '−'} {roles[expr[2]]}")
         once = " (once per order)" if isinstance(expr, str) and pack.roles[expr].level == "order" \
             and pack.order_key in roles else ""
-        return f"{'sum of |' + cols + '|' if t.sum_abs is not None else 'sum of ' + cols}{once}" + (
-            f" where {where(t.where)}" if t.where else "")
+        return scaled(f"{'sum of |' + cols + '|' if t.sum_abs is not None else 'sum of ' + cols}{once}",
+                      t.times) + (f" where {where(t.where)}" if t.where else "")
 
     def where(groups: list[list[Cond]]) -> str:
         def cond(c: Cond) -> str:
@@ -507,6 +515,7 @@ def pack_brief(pack: Pack, roles: dict[str, str], concepts: list[str], grain: st
     for r, expr in pack.derived.items():   # with_derived adds these to the frame code reads
         if r not in roles and expr[0] in roles and expr[2] in roles:
             how = (f"days from {named[expr[2]]} to {named[expr[0]]} (same day = 0)" if expr[1] == "days"
+                   else f"exact hours from {named[expr[2]]} to {named[expr[0]]}" if expr[1] == "hours"
                    else f"{named[expr[0]]} {'×' if expr[1] == '*' else '−'} {named[expr[2]]}")
             lines.append(f"Column {pack.roles[r].headers[0]} is in the data for you: {how}. Use it; "
                          "never compute your own, and never report a KPI as if it were a column.")
@@ -630,7 +639,8 @@ def first_questions(pack: Pack, roles: dict[str, str], df: pd.DataFrame | None =
         if n == "year":   # 13 complete months, by the one coverage rule answers use
             from agents.utils import _local, cut_partial
             date = roles.get(pack.date_role)
-            t = _local(pd.to_datetime(df[date], errors="coerce")).dropna() if date else None
+            from connectors.base import as_times
+            t = _local(as_times(df[date])).dropna() if date else None
             if t is None or t.empty:
                 return False
             months = t.groupby(t.dt.to_period("M")).size().sort_index()

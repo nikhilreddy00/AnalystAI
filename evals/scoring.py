@@ -434,23 +434,15 @@ _NUM = re.compile(r"-?\d[\d,]*\.?\d*")
 _SCALE = {"k": 1e3, "thousand": 1e3, "m": 1e6, "mn": 1e6, "million": 1e6, "b": 1e9, "bn": 1e9,
           "billion": 1e9}
 _MAGNITUDE = re.compile(r"(?:(k|mn|m|bn|b)\b|[ \u00a0](thousand|million|billion)\b)", re.I)
-_ISO_TIME = re.compile(r"\d{4}-\d\d-\d\d[T ]\d\d:\d\d(?::\d\d(?:\.\d+)?)?Z?")
-_MONTHS = r"(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|June?|July?|Aug(?:ust)?|Sept?(?:ember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)"
-_MONTH_DAY = re.compile(r"\b" + _MONTHS + r"\b\.?\s+\d{1,2}"
-                        r"(?:st|nd|rd|th)?\b(?![.,]\d|\s*(?:%|percent))", re.I)
 _UNIT_WORDS = {"%": r"(?:%|percent\b|per cent\b|pct\b)"}
-_SLASH_DATE = re.compile(r"\b(?:\d{1,2}/\d{1,2}/\d{2,4}|\d{4}/\d{1,2}/\d{1,2})\b")
-_DAY_MONTH = re.compile(r"\b\d{1,2}(?:st|nd|rd|th)?\s+" + _MONTHS + r"\b\.?\s+\d{4}\b", re.I)
 
 
 def answer_numbers(session: AnalysisSession, unit: str | None = None,
                    report: bool = False) -> list[float]:
-    """Absolute values of the numbers in the answer, dates removed first (2026-01-22 is not 22),
-    with magnitudes applied ('$4.1M' is 4,100,000). With `unit`, only numbers written with it
-    ('12.6%', '12.6 percent', '**12.6**%')."""
-    text = _MONTH_DAY.sub(" ", _ISO_TIME.sub(" ", _SLASH_DATE.sub(" ", _DAY_MONTH.sub(
-        " ", report_text(session) if report else answer_text(session)))))
-    text = without_dates(text, True).replace("\u2212", "-")
+    """Absolute values of the numbers in the answer, dates and clock times removed first
+    (2026-01-22 is not 22) by the product's one stripper, with magnitudes applied ('$4.1M' is
+    4,100,000). With `unit`, only numbers written with it ('12.6%', '12.6 percent', '**12.6**%')."""
+    text = without_dates(report_text(session) if report else answer_text(session), True)
     unit_re = None if unit is None else re.compile(
         r"\**\s?" + _UNIT_WORDS.get(unit, re.escape(unit)), re.I)
     out = []

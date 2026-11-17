@@ -1,0 +1,11 @@
+id: intake-iot-04
+category: clear
+pipeline: production
+source:
+  dataset: machine_readings
+  seed: 1
+overview_done: true
+question: "What is the Cpk of the line C temperature?"
+expect:
+  ask: true
+rationale: "Domain 7: capability needs specification limits the data doesn't give: unsupported, ask."

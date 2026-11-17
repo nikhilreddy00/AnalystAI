@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from .pack import (KPI, KPIValue, Measured, MeasuredBy, Pack, Term, Unavailable, Within,
+from .pack import (KPI, KPIValue, TERM_OPS, Measured, MeasuredBy, Pack, Term, Unavailable, Within,
                    _column, _day, _meets, _snapshot_column, and_list, normalize_header, pack_for,
                    snapshot_role, spell_terms)
 from .detect import main_currency, row_kinds
@@ -12,7 +12,7 @@ from .spell import (SPELL_PERIODS, _ended, _in_force, _spell_events, _started, h
                     spell_view, term_rows)
 from .spell import window as spell_window_of
 from .ledger import _ledger_term
-from .columns import rate_values, scale_of
+from .columns import derived_roles, rate_values, scale_of
 
 
 def follow_up_complete(pack: Pack, name: str, df: pd.DataFrame, roles: dict[str, str]):
@@ -307,21 +307,43 @@ def _kpi_value(df, kinds, roles, pack, kpi: KPI, by):
         if present is not None:
             kinds.attrs["present"] = present
     num = _side(df, kinds, roles, pack, kpi, kpi.num, by)
-    if isinstance(num, Unavailable) or kpi.den is None:
+    if kpi.den is None:
         return num
     den = _side(df, kinds, roles, pack, kpi, kpi.den, by)
+    if isinstance(num, Unavailable):   # a column the data lacks outranks rows it lacks (P4)
+        structural = ("role_missing", "end_date_missing")
+        return den if isinstance(den, Unavailable) and den.reason in structural \
+            and num.reason not in structural else num
     if isinstance(den, Unavailable):
         return den
     if by:
-        den = den.where(den != 0)
-        return (num / den).dropna()
-    return Unavailable("zero_denominator") if not den or pd.isna(den) else num / den
+        base = den.reindex(num.index)
+        zero = num[(base == 0) & num.notna()]   # said apart, never a 0 or a missing bar (F9)
+        out = (num / den.where(den != 0)).dropna()
+        out.attrs["zero"] = {k: float(v) for k, v in zero.items()}
+        return out
+    if not den or pd.isna(den):
+        return Unavailable("zero_denominator", zero=float(num) if num and pd.notna(num) else None)
+    return num / den
 
 
-def unavailable_words(u: Unavailable, pack: Pack) -> str:
+def zero_note(kpi: KPI, zero: tuple, fmt) -> str:
+    """THE sentence for a ratio's groups whose base is 0, in the KPI's words ('S07: no failure
+    in 1,240 h'), else generic ones; '' when there are none."""
+    said = [(g, n) for g, n in zero if kpi.zero_words and n]   # nothing either side: not measurable
+    rest = [g for g, n in zero if (g, n) not in said]
+    return ("".join([" " + "; ".join(f"{g}: {kpi.zero_words.format(num=fmt(n))}" for g, n in said) + "."]
+                    if said else [])
+            + (" Not measurable, its base is 0: " + ", ".join(str(g) for g in rest) + "." if rest else ""))
+
+
+def unavailable_words(u: Unavailable, pack: Pack, kpi: KPI | None = None) -> str:
     """THE clause saying why a figure is unavailable ('the data has no end date, so customers
-    who left can't be counted'), in the pack's words; every answer and tile says it this way."""
+    who left can't be counted'), in the pack's words; every answer and tile says it this way.
+    A 0 base under a numerator is said in the KPI's zero_words ('no failure in 1,546 hours')."""
     from guardrails import SMALL_CELL
+    if u.reason == "zero_denominator" and u.zero and kpi is not None and kpi.zero_words:
+        return kpi.zero_words.format(num=kpi.written(f"{u.zero:,.0f}"))
     named = and_list([r.replace("_", " ") for r in u.roles])
     s = pack.spell
     return {
@@ -377,6 +399,10 @@ def measure(df: pd.DataFrame, roles: dict[str, str], pack: Pack, name: str,
         raise KeyError(f"{pack.domain} has no KPI {name!r}")
     if df.empty:
         return Unavailable("no_rows")
+    if pack.derived:   # the analysis frame's derived columns, read the same way here
+        df, now = derived_roles(df, roles, pack)
+        full = None if full is None else derived_roles(full, roles, pack)[0]
+        roles = now
     if mixes(df, roles, kpi, by):   # car-years and house-years never add up
         return Unavailable("mixed_units")
     keep, _, _ = main_currency(df, roles)
@@ -405,12 +431,21 @@ def measure(df: pd.DataFrame, roles: dict[str, str], pack: Pack, name: str,
     if isinstance(value, Unavailable):
         return value
     if by:   # a group with no values is no group (a NaN would break the answer's JSON)
+        based = value.attrs.get("zero", {})   # a zero-base group is a small cell like any other,
+        # checked apart so the complement of a hidden value is another value, never a zero base
         hidden = small_groups(df, roles, pack, name, by, kinds.attrs["frame"], value.index, window, cut)
+        if based:
+            hidden += [g for g in small_groups(df, roles, pack, name, by, kinds.attrs["frame"],
+                                               list(based), window, cut) if g not in hidden]
+        zero = tuple((k, v) for k, v in based.items() if k not in hidden)
         value = value.drop(hidden, errors="ignore").dropna()
-        if len(value):
-            return MeasuredBy(value.astype(float), tuple(hidden))   # hidden: 'Not shown: …'
-        return Unavailable("small_cell" if hidden else
-                           "zero_denominator" if kpi.den is not None else "no_rows")
+        if len(value):   # hidden: 'Not shown: …'; zero: 'no failure in …'
+            return MeasuredBy(value.astype(float), tuple(hidden), zero)
+        if hidden:
+            return Unavailable("small_cell")
+        # every group's base is 0 (one machine that never failed): their numerator, said
+        return Unavailable("zero_denominator", zero=sum(v for _, v in zero) or None) \
+            if kpi.den is not None else Unavailable("no_rows")
     if full is not None and protected_value(df, full, roles, pack, name, window, cut):
         return Unavailable("small_cell")   # a protected group of < 11 people (pay, 6 people)
     return Unavailable("no_rows") if pd.isna(value) else Measured(float(value))
@@ -608,8 +643,9 @@ def used_terms(pack: Pack, kpi: KPI, roles: dict[str, str], side: str = "num") -
 
 def computable(pack: Pack, name: str, roles: dict[str, str]) -> bool:
     """The data has what this KPI needs, through every KPI it refers to (AOV needs orders, which
-    needs an order id)."""
+    needs an order id). A derived role is there when its expression's roles are (measure adds it)."""
     kpi = pack.kpi(name)
+    roles = {**{r: r for r, e in pack.derived.items() if e[0] in roles and e[2] in roles}, **roles}
 
     def has(t: Term) -> bool:
         return all(r in roles for r in t.roles()) and (not t.kpi or computable(pack, t.kpi, roles)) \
@@ -643,7 +679,7 @@ def kpi_measures(pack: Pack, name: str) -> set[str]:
     for t in (t for alt in [*kpi.num, *(kpi.den or [])] for t in alt):
         expr = t.sum if t.sum is not None else t.sum_abs
         out |= {t.nunique} if t.nunique else set(expr if isinstance(expr, list) else [expr]) - {
-            None, "*", "-", "days"} if expr is not None else set()
+            None, *TERM_OPS} if expr is not None else set()
         out |= {t.within.entity} if t.within else set()
         out |= {pack.spell.entity} if t.spell and pack.spell else set()
         out |= kpi_measures(pack, t.kpi) if t.kpi else set()
@@ -652,17 +688,19 @@ def kpi_measures(pack: Pack, name: str) -> set[str]:
 
 def kpi_roles(pack: Pack, name: str) -> set[str]:
     """Every role a KPI can read, through the KPIs it refers to; a spell term reads its whole
-    spell (start, end, the date it pays from, the as-of, the status that ends it undated)."""
+    spell (start, end, the date it pays from, the as-of, the status that ends it undated); every
+    term reads the status that decides its rows' kind (a cancelled work order counts nothing)."""
     kpi = pack.kpi(name)
     s = pack.spell
-    out: set[str] = set()
+    out: set[str] = {"status"} if pack.status_values else set()
     for alt in [*kpi.num, *(kpi.den or [])]:
         for t in alt:
             out |= set(t.roles()) | (kpi_roles(pack, t.kpi) if t.kpi else set())
             if t.spell:
                 out |= {r for r in (s.start, s.end, s.paid_from, s.as_of, snapshot_role(pack),
                                     "status") if r}
-    return out
+    # a derived role reads the roles it is made of (repair hours: the actual start and finish)
+    return out | {r for d, e in pack.derived.items() if d in out for r in (e[0], e[2])}
 
 
 def counted(pack: Pack, role: str) -> bool:

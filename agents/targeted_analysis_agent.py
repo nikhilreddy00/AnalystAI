@@ -41,6 +41,7 @@ from agents.utils import (
     weekly_cadence,
     year_earlier,
 )
+from connectors.base import as_times
 from agents.visualization_agent import (
     VizContext,
     _format_value,
@@ -87,6 +88,7 @@ from domain_pack import (
     computable,
     Unavailable,
     unavailable_words,
+    zero_note,
     defaults_pack,
     describe_kpi,
     main_currency,
@@ -197,6 +199,11 @@ def run_targeted_analysis(session: AnalysisSession) -> TargetedResponse:
                                                "Ask without a period (the whole data)"])
     if handler is handle_kpi:
         extra = {"full": full, "intent": intent}
+    metric = params.metric_column or (params.target_columns[:1] or [None])[0] if params else None
+    if intent == QuestionIntent.OUTLIER_SCAN and params and \
+            _one_series_measure(conventions, contract, params, metric, df):
+        # one series' process reading: its outliers are the days beyond its control limits
+        handler, params = handle_time_series, params.model_copy(update={"metric_column": metric})
     response = handler(df, params, contract, ctx=ctx, **extra)
     if handler is handle_kpi and response.answer_text and not response.unanswerable_reason:
         response.answer_text += _also_named(full, params, contract, pack, session.task_plan.raw_query)
@@ -211,12 +218,15 @@ def run_targeted_analysis(session: AnalysisSession) -> TargetedResponse:
 def _also_named(df: pd.DataFrame, params: TargetedParams, contract: DataContract, pack, question: str) -> str:
     """The other KPIs the question names ('What is our MRR and how many paying customers?'),
     each overall, in its own words: an answer gives every figure asked for (Domain 6 E2E gate:
-    one of two was given). domain_pack.named_kpis decides which, as intake does."""
+    one of two was given). domain_pack.named_kpis decides which, as intake does. A named value
+    ('OEE and MTBF for M08') is that value's rows, as the answer's own KPI is (mutation gate)."""
     roles = {r: c for r, c in contract.roles.items() if c in df.columns}
-    out = []
+    out, cut, whole = [], (), df   # beside the whole data a small protected group stays hidden
+    if named := _named_group(df, params):
+        df, cut = df[df[params.segment_column].astype(str) == named], (params.segment_column,)
     group = params.group_by or params.segment_column
     if group and additive(pack, params.kpi) and _TOTAL_WORDS.search(question or "") and \
-            isinstance(v := measure(df, roles, pack, params.kpi), Measured):   # 'total billings, by type'
+            isinstance(v := measure(df, roles, pack, params.kpi, full=whole, cut=cut), Measured):   # 'total billings, by type'
         k = pack.kpi(params.kpi)
         _, currency, _ = main_currency(df, roles)
         kind = {"money": "currency", "percent": "percent", "count": "count"}.get(k.unit, "number")
@@ -227,9 +237,9 @@ def _also_named(df: pd.DataFrame, params: TargetedParams, contract: DataContract
         if name == params.kpi or not computable(pack, name, roles):
             continue
         k = pack.kpi(name)
-        v = measure(df, roles, pack, name)
+        v = measure(df, roles, pack, name, full=whole, cut=cut)
         if isinstance(v, Unavailable):   # asked for: said why, never left out (C5)
-            out.append(f"{k.label}: unavailable, {unavailable_words(v, pack)}.")
+            out.append(f"{k.label}: unavailable, {unavailable_words(v, pack, k)}.")
             continue
         v = v.value
         _, currency, _ = main_currency(df, roles)
@@ -609,7 +619,10 @@ def handle_time_series(df: pd.DataFrame, params: TargetedParams, contract: DataC
     asked = asked if asked in {"sum", "mean", "median", "count", "min", "max"} else None
     agg = effective_agg(contract, metric, asked) or "sum"   # "balance at month end": each account's last
     conventions = defaults_pack(contract)   # a domain's conventions only on a strong match
-    freq = (params.frequency or (_default_freq(df[date], agg) if conventions else "M")).upper()
+    spc = _one_series_measure(conventions, contract, params, metric, df)
+    agg = "mean" if spc else agg   # an individuals chart reads each day's mean reading
+    freq = (params.frequency or ("D" if spc else _default_freq(df[date], agg) if conventions
+                                 else "M")).upper()
     if freq not in {"D", "W", "M", "Q", "Y"}:
         freq = "M"
     if agg in ("last", "first") and freq == "D":
@@ -625,7 +638,7 @@ def handle_time_series(df: pd.DataFrame, params: TargetedParams, contract: DataC
         avg_week = ""
         rows, kept = rows_for(df, contract, metric)   # a domain's money: the rows its chart counts
         s = rows[[date, metric, *extra]].copy()
-        s[date] = _local(pd.to_datetime(s[date], errors="coerce"))
+        s[date] = _local(as_times(s[date]))
         s = s.dropna(subset=[date, metric])
         if s.empty:
             raise ValueError("no valid (date, metric) rows after coercion")
@@ -671,7 +684,9 @@ def handle_time_series(df: pd.DataFrame, params: TargetedParams, contract: DataC
     pct = pct_change(last, first)
     direction = "up" if last > first else ("down" if last < first else "flat")
     scope = f" for {params.segment_column} {group}" if group is not None else ""
-    size = f" {abs(pct):.1f}%" if pct is not None else f" ({_num(first)} → {_num(last)})"
+    # a process reading (°C) has no true zero: its change is in its own units, never a percent
+    size = f" by {_num(abs(last - first))} ({_num(first)} → {_num(last)})" if spc else \
+        f" {abs(pct):.1f}%" if pct is not None else f" ({_num(first)} → {_num(last)})"
     answer = (
         f"{metric}{avg_week}{scope} trended {direction}{size} from {series.index[0].date()} to "
         f"{series.index[-1].date()} (freq={freq}, agg={_agg_name(agg, True)})."
@@ -685,7 +700,8 @@ def handle_time_series(df: pd.DataFrame, params: TargetedParams, contract: DataC
         # "How did X change last month?" asks about the latest step, not the whole range.
         step = pct_change(series.iloc[-1], series.iloc[-2])
         answer += (f" Latest period ({series.index[-1].date()}) vs the one before: "
-                   + (f"{step:+.1f}% " if step is not None else "")
+                   + (f"{series.iloc[-1] - series.iloc[-2]:+,.2f} " if spc else
+                      f"{step:+.1f}% " if step is not None else "")
                    + f"({_num(series.iloc[-2])} → {_num(series.iloc[-1])}).")
     answer += partial
     chart = _chart(
@@ -694,6 +710,32 @@ def handle_time_series(df: pd.DataFrame, params: TargetedParams, contract: DataC
         y_label=_with_unit(_of(agg, metric, True), metric, contract) + avg_week,
         source="time_series",
     )
+    if spc and freq == "D":   # one series' continuous measure: its control chart (Domain 7, F8)
+        limits = control_limits(series)
+        if isinstance(limits, str):
+            answer += f" No control limits: {limits}."
+        else:
+            cl, ucl, lcl = limits
+            chart.reference_lines = [{"value": round(v, 4), "label": k, "axis": "y"}
+                                     for k, v in (("UCL", ucl), ("CL", cl), ("LCL", lcl))]
+            after = series[series.index >= _baseline_end(series)]
+            above, below = after[after > ucl], after[after < lcl]
+            answer += (f" Control limits (an individuals chart of daily means; centre and limits "
+                       f"from the first {BASELINE_DAYS} days, x̄ ± 3·MR̄/1.128): CL {_num(cl)}, "
+                       f"UCL {_num(ucl)}, LCL {_num(lcl)}; after them {len(above)} days above the "
+                       f"upper limit" + (f" (first {above.index[0].date()})" if len(above) else "")
+                       + f" and {len(below)} below the lower one. These are control limits from the "
+                       "process itself, not specification limits; readings close in time are alike, "
+                       "so points outside come more often than 3 sigma suggests.")
+        # what the chart can't show: a stuck instrument reads as a steady process, a silent
+        # day is no point (the moving range spans it)
+        same = series[series.diff().eq(0)]
+        if len(same):
+            answer += (f" {len(same)} day{'s repeat' if len(same) != 1 else ' repeats'} the day before's "
+                       f"identical daily mean (first {same.index[0].date()}): a stuck instrument?")
+        missing = len(pd.date_range(series.index.min(), series.index.max(), freq="D")) - len(series)
+        if missing:
+            answer += f" {missing} day{'s' if missing != 1 else ''} without readings."
     code = _code(f"df.set_index(pd.to_datetime(df[{date!r}]))[{metric!r}].resample({freq!r})",
                  agg, metric, contract, over=f"pd.Grouper(key={date!r}, freq={freq!r})")
     if kept:
@@ -707,9 +749,45 @@ def handle_time_series(df: pd.DataFrame, params: TargetedParams, contract: DataC
     return TargetedResponse(intent=QuestionIntent.TIME_SERIES, answer_text=answer, chart_configs=[chart])
 
 
+BASELINE_DAYS = 30   # phase I: the days the centre and limits are estimated on
+
+
+def _baseline_end(series: pd.Series) -> pd.Timestamp:
+    return series.index[0] + pd.Timedelta(days=BASELINE_DAYS)
+
+
+def _one_series_measure(pack, contract: DataContract, params: TargetedParams, metric: str,
+                        df: pd.DataFrame) -> bool:
+    """A continuous measure (the pack's stuck_hours roles) of ONE named series (its series_key):
+    a process reading over time, read on a control chart."""
+    if pack is None or not pack.series_key or _named_group(df, params) is None:
+        return False
+    return params.segment_column == contract.roles.get(pack.series_key) and metric in {
+        contract.roles.get(r) for r in pack.stuck_hours}
+
+
+def control_limits(series: pd.Series) -> tuple[float, float, float] | str:
+    """(CL, UCL, LCL) of an individuals chart on its first BASELINE_DAYS calendar days: x̄ ±
+    3·MR̄/d2, d2 = 1.128 for moving ranges of 2 (NIST/SEMATECH 6.3.2); else why there are none.
+    A day repeating the day before's mean (a stuck instrument) is no process point: left out."""
+    raw = series[series.index < _baseline_end(series)]
+    if len(raw) < 20:
+        return f"only {len(raw)} days to estimate them from (20 at least)"
+    if float(raw.diff().abs().mean()) == 0:
+        return "no variation from day to day in the first days (a stuck instrument?)"
+    base = raw[~raw.diff().eq(0)]
+    if len(base) < 20:
+        return (f"only {len(base)} of the first days differ from the day before (20 at least; "
+                "a stuck instrument?)")
+    mr = float(base.diff().abs().mean())
+    cl = float(base.mean())
+    return cl, cl + 3 * mr / 1.128, cl - 3 * mr / 1.128
+
+
 def _lead_and_last(order: pd.Series) -> str:
-    """The highest and the lowest group of a ranking, saying so when groups tie. The pooled
-    small-groups bucket is never named (guardrails.rankable)."""
+    """The highest and the lowest group of a ranking, saying so when groups tie; of 5 groups or
+    fewer, the ones between too ("each line?", e2e-86). The pooled small-groups bucket is never
+    named (guardrails.rankable)."""
     order = order[[rankable(k) for k in order.index]] if any(rankable(k) for k in order.index) else order
 
     def names(at) -> str:
@@ -722,6 +800,8 @@ def _lead_and_last(order: pd.Series) -> str:
         return f"all {len(order)} groups are at {_num(top)}"
     lead = names(top)
     lead += f" tie at {_num(top)}" if (order == top).sum() > 1 else f" leads at {_num(top)}"
+    if len(order) <= 5:
+        lead += "".join(f"; '{g}' at {_num(v)}" for g, v in order.items() if top != v != low)
     return f"{lead}; {names(low)} is lowest at {_num(low)}" if (order == low).sum() == 1 else \
         f"{lead}; {names(low)} are lowest at {_num(low)}"
 
@@ -979,7 +1059,7 @@ def _week_anchor(dates: pd.Series, contract: DataContract | None = None) -> str:
     week-ending date; daily data: the domain's calendar week (retail: Sun–Sat), else ISO weeks.
     Never the export's last weekday (a bucket that moved with every refresh)."""
     if weekly_cadence(dates):
-        last = pd.to_datetime(dates, errors="coerce").max()
+        last = as_times(pd.Series(dates)).max()
         return f"W-{['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'][last.weekday()]}"
     pack = pack_for(contract.domain) if contract is not None else None
     return f"W-{pack.week_ends if pack else 'SUN'}"
@@ -1001,15 +1081,18 @@ def _missing(pack, kpi: str, roles: dict) -> str:
             if f := pack.columns.get(n):   # a column the product builds: what it builds it from
                 inputs = [x for x in [*f.times, *f.over] if x not in f.optional]
                 return f"{n.replace('_', ' ')} (or " + " and ".join(x.replace("_", " ") for x in inputs) + ")"
+            if n not in pack.roles and (sub := pack.kpi(n)):   # a KPI it builds on: its label
+                return sub.phrase
             return n.replace("_", " ")
         return sorted(said(n) for n in need)
 
-    sides = []
-    for alts in (k.num, k.den or []):
-        options = [lacks(a) for a in alts]
-        if options and all(options):   # no alternative works: say each one's gap
-            sides.append(", or ".join(dict.fromkeys(" and ".join(o) for o in options)))
-    return " and ".join(sides) or "other columns"
+    gaps = [options for alts in (k.num, k.den or []) if (options := [lacks(a) for a in alts])
+            and all(options)]   # no alternative works: say each one's gap
+    words = [w for o in gaps for w in o[0]] if gaps and all(len(o) == 1 for o in gaps) else []
+    if len(set(words)) < len(words):   # one way each side, a word on both: said once (MTTR)
+        return " and ".join(dict.fromkeys(words))
+    return " and ".join(", or ".join(dict.fromkeys(" and ".join(o) for o in options))
+                        for options in gaps) or "other columns"
 
 
 def _summed_kpi(pack, contract: DataContract, params: TargetedParams, df: pd.DataFrame) -> str | None:
@@ -1037,12 +1120,12 @@ def stores_note(contract: DataContract, df: pd.DataFrame, date: str | None,
     store = contract.roles.get(pack.location_role) if pack and pack.location_role else None
     if not (store and date and store in df.columns and date in df.columns):
         return ""
-    t = _local(pd.to_datetime(df[date], errors="coerce"))
+    t = _local(as_times(df[date]))
     span = t.groupby(df[store]).agg(["min", "max"])
     lo, hi = t.min(), t.max()
     if compared:   # from the earlier window's start to the later one's end
-        lo = _local(pd.to_datetime(compared[0][date], errors="coerce")).min()
-        hi = _local(pd.to_datetime(compared[1][date], errors="coerce")).max()
+        lo = _local(as_times(compared[0][date])).min()
+        hi = _local(as_times(compared[1][date])).max()
     month = pd.Timedelta(days=28)
     active = span[(span["max"] >= lo) & (span["min"] <= hi)]   # stores trading in the span
     changed = int(((active["min"] > lo + month) | (active["max"] < hi - month)).sum())
@@ -1075,7 +1158,7 @@ def _percent_axis(chart: ChartConfig, kind: str, key: str) -> None:
 
 def _as_of(rows: pd.DataFrame, date: str) -> str:
     """'as of 31 Oct 2026': a state's date, the newest snapshot in these rows."""
-    t = _local(pd.to_datetime(rows[date], format="mixed", errors="coerce")).max()
+    t = _local(as_times(rows[date])).max()
     return f"as of {t:%-d %b %Y}" if pd.notna(t) else ""
 
 
@@ -1215,7 +1298,7 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
         if isinstance(got, Unavailable):   # its own reason, never a guess from the pack (C5)
             return _unanswerable(intent, f"{kpi.phrase} can't be shown by {group}: "
                                  + (f"every group has fewer than {SMALL_CELL} people"
-                                    if got.reason == "small_cell" else unavailable_words(got, pack)),
+                                    if got.reason == "small_cell" else unavailable_words(got, pack, kpi)),
                                  ["Ask without the group", "Ask about a longer period"])
         by, hidden = got.values, list(got.hidden)   # the groups measure suppressed: one list
         asc = (params.order or "desc").lower() == "asc"
@@ -1234,7 +1317,9 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
         else:
             answer = (f"{kpi.label} by {group}{where}: {lead} {'lowest' if asc else 'leads'} at "
                       f"{fmt(named.iloc[0])}" + (f", {tail} at {fmt(named.iloc[-1])}." if len(named) > 1 else "."))
-        answer += hidden_note(hidden, bool(protected_by))
+        # groups not drawn (hidden, a zero base) are said by the chart too, never vanished (F9)
+        notes = hidden_note(hidden, bool(protected_by)) + zero_note(kpi, got.zero, fmt)
+        answer += notes
         said = pack.spell.words.moved if spelled else ""
         if said and kpi.unit == "money" and any(t.move in MOVES for t in spell_terms(pack, kpi.name)):
             # a customer who changed group moved between the groups' bridges (GLOSSARY Move)
@@ -1263,7 +1348,7 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
             now = measure(rows, roles, pack, kpi.name, by=group, full=all_rows, cut=cut)
             gone = next((v for v in (prior, now) if isinstance(v, Unavailable)), None)
             if why or gone:
-                answer += f" No year-earlier comparison: {why or unavailable_words(gone, pack)}."
+                answer += f" No year-earlier comparison: {why or unavailable_words(gone, pack, kpi)}."
             elif lead in (prior := prior.values).index and lead in (now := now.values).index:
                 # a 0 a year earlier is said: change() names the zero base (C5)
                 same = f" On the same days ({days}) {lead} was {fmt(now[lead])};" if same_days else ""
@@ -1275,7 +1360,7 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
                        x_key=group, y_keys=[kpi.label], x_label=group, y_label=kpi.label,
                        source="kpi")
         _percent_axis(chart, kind, kpi.label)
-        _why(chart, ctx, "targeted:kpi→ranked bars", f"{kpi.label} per {group}, ranked. {how}",
+        _why(chart, ctx, "targeted:kpi→ranked bars", f"{kpi.label} per {group}, ranked.{notes} {how}",
              group, kpi.label, "sum" if kpi.den is None and not spelled else "none", len(df))
         return TargetedResponse(intent=intent, answer_text=answer + f" How: {how}",
                                 chart_configs=[chart],   # every group's value, not only the ends
@@ -1298,7 +1383,7 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
         # the whole data's buckets, so the period before and a year earlier exist for the window
         # a spell series has its own axis (month-ends from its first date): rows are not dated in it
         t = spell_covered(pack, all_rows, roles) if spelled else \
-            _local(pd.to_datetime(full[date], errors="coerce"))
+            _local(as_times(full[date]))
         rule = _week_anchor(t, contract) if freq == "W" else freq
         # a spell series reads the filtered part (Support's headcount, never the company's)
         frame = df.assign(_period=pd.Series(pd.NaT, index=df.index).astype(f"period[{rule}]")) \
@@ -1309,7 +1394,7 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
         got = measure(frame, roles, pack, kpi.name, by="_period", full=all_rows, window=win, cut=cut)
         if isinstance(got, Unavailable):
             return _unanswerable(intent, f"{kpi.phrase} can't be computed over time here: "
-                                 f"{unavailable_words(got, pack)}", [f"{kpi.label} overall"])
+                                 f"{unavailable_words(got, pack, kpi)}", [f"{kpi.label} overall"])
         series = got.values.sort_index()
         unit = ""
         if freq == "M" and flow and weekly and additive(pack, kpi.name):   # weekly sums by month:
@@ -1319,7 +1404,7 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
         # the data's edges are the whole file's (a named value's first row is not its start)
         # the data's edges are the whole file's; a spell's are its month-ends to the as-of
         covered = t if all_rows is full or spelled else \
-            _local(pd.to_datetime(all_rows[date], errors="coerce"))
+            _local(as_times(all_rows[date]))
         uncut = series
         whole, note = _cut_partial(series, covered, freq, rule if freq == "W" else None,
                                    runout_months(contract))
@@ -1371,6 +1456,14 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
             # a spell series has its own periods: never '(12 months to …)' above a series of years
             answer = f"{kpi.label}{unit} by {'week' if freq == 'W' else 'period'}{'' if spelled else where}{by_month}: latest " \
                      f"{name(latest)} {fmt(series.iloc[-1])}"
+            if not params.frequency and not (state or spelled):
+                # "What is our MTTR?": a flow or ratio asked with no grain and no period is its
+                # value over the data first, then its latest period (Domain 7 smoke run)
+                over = measure(df, roles, pack, kpi.name, full=all_rows, window=win, cut=cut)
+                if isinstance(over, Measured):
+                    t = as_times(frame[date]).dropna() if date else None
+                    span = f" ({t.min():%d %b %Y} to {t.max():%d %b %Y})" if t is not None and len(t) else ""
+                    answer = f"{kpi.label}{where}{span}: {fmt(over.value)}. " + answer
             def base(v) -> bool:   # a value to compare against (0% is one; $0 or less: no % change)
                 return v is not None and not pd.isna(v) and (kind == "percent" or pct_change(1.0, v) is not None)
 
@@ -1421,7 +1514,7 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
         hidden = got.reason == "small_cell"
         return _unanswerable(intent, (f"{kpi.phrase}{where} isn't shown: " if hidden else
                                       f"{kpi.phrase} can't be computed from these rows: ")
-                             + unavailable_words(got, pack),
+                             + unavailable_words(got, pack, kpi),
                              ["Ask about a larger group" if hidden else "Ask about a longer period"])
     value = got.value
     answer = f"{kpi.label}{where}: {fmt(value)}." + carry + _arriving(contract, all_rows, date, params)
@@ -1447,7 +1540,7 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
         rows, days, same_days = current_window(full, date, params.period_start, params.period_end, weekly)
         now = measure(rows, roles, pack, kpi.name, full=all_rows, cut=cut)   # the same days as the year-earlier window
         gone = next((v for v in (prior, now) if isinstance(v, Unavailable)), None)
-        why = why or (unavailable_words(gone, pack) if gone else "")
+        why = why or (unavailable_words(gone, pack, kpi) if gone else "")
         # both measured: compared, a $0 year earlier included (change() names the zero base, C5)
         both = not why and prior is not None
         prior, now = (prior.value, now.value) if both else (None, None)
@@ -1479,7 +1572,7 @@ def _arriving(contract: DataContract, full: pd.DataFrame, date: str | None, para
     months = runout_months(contract)
     if not months or not date or not (params.period_start or params.period_end):
         return ""
-    last = _local(pd.to_datetime(full[date], errors="coerce")).max()
+    last = _local(as_times(full[date])).max()
     since = last.to_period("M") - months + 1
     hi = period_window(full, date, params.period_start, params.period_end)[1]
     if pd.isna(last) or hi < since.start_time:

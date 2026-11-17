@@ -36,6 +36,7 @@ import io
 import json
 import logging
 import re
+import unicodedata
 from collections import Counter
 from dataclasses import dataclass, field
 
@@ -52,6 +53,8 @@ from agents.utils import partial_last_month, pii_columns
 from agents.visualization_agent import classify_columns
 from domain_pack import (Pack, filled_statuses, layout_columns, main_currency, pack_for, row_kinds,
                          words)
+from domain_pack.columns import derived_roles
+from domain_pack.kpi import MeasuredBy, computable, kpi_measures, measure
 from guardrails import (
     UNKNOWN_LABEL,
     is_pii_column,
@@ -162,6 +165,118 @@ def _code_like(s: pd.Series) -> bool:
         return False
     v = s.dropna().astype(str).str.strip()
     return len(v) > 0 and v.str.match(_LEADING_ZERO_RE).mean() >= 0.1
+
+
+def _unit_code(unit: str) -> str:
+    """A unit as its letters: compatibility forms unfolded (℉ is °F), case, spaces and dots
+    ignored, a 'degrees' spelled out read as 'deg' ('degrees F' is degF)."""
+    s = re.sub(r"[\s.]+", "", unicodedata.normalize("NFKC", str(unit))).lower()
+    return re.sub(r"^degrees?", "deg", s)
+
+
+def _unlisted(df: pd.DataFrame, ctx: CleanContext) -> list[tuple[str, str, int]]:
+    """(column, reason, rows) for each role whose every value the pack's words should name (its
+    statuses, and the roles it declares `closed_words`: a work type is corrective or preventive)
+    whose values include words no list knows: a work type 'Reactive' falls out of every figure
+    that names work types, a status no list holds is read as live. Said, never silent (C6: an
+    exact vocabulary misses a spelling). A list that selects on purpose (contingent workers)
+    is no closed vocabulary: its other values are by design."""
+    pack = ctx.pack
+    lists: dict[str, set[str]] = {"status": {w for ws in pack.status_values.values() for w in ws}}
+    uses: dict[str, list[str]] = {}
+    for k in pack.kpis:
+        for c in (c for alt in [*k.num, *(k.den or [])] for t in alt for g in t.where for c in g):
+            if c.in_ is not None and c.role in pack.closed_words:
+                lists.setdefault(c.role, set()).update(c.in_)
+                uses.setdefault(c.role, []).append(k.phrase)
+    out = []
+    for role, known in lists.items():
+        col = ctx.roles.get(role)
+        if col is None or col not in df.columns or not known:
+            continue
+        said = words(df[col].dropna())
+        unknown = df.loc[said.index][~said.isin(set(words(pd.Series(sorted(known)))))][col]
+        if unknown.empty:
+            continue
+        top = ", ".join(f"{v} ({n})" for v, n in unknown.astype(str).value_counts().head(3).items())
+        what = (f"left out of {', '.join(dict.fromkeys(uses[role]))}" if role in uses
+                else "read as counted (no status list holds them)")
+        out.append((col, f"{len(unknown)} rows have a {role.replace('_', ' ')} no word list of the pack names: "
+                    f"{top}: {what}.", len(unknown)))
+    return out
+
+
+def _series_columns(ctx: CleanContext) -> tuple[str, str] | None:
+    """(series, time) columns when the pack names a series key and the data has it, a time and
+    a continuous measure (a stuck_hours role): readings, never a shift report or an event log,
+    whose rows per asset and day are many by design."""
+    pack = ctx.pack
+    key = ctx.roles.get(pack.series_key) if pack and pack.series_key else None
+    time = ctx.roles.get(pack.date_role) if pack else None
+    measured = pack is not None and any(r in ctx.roles for r in pack.stuck_hours)
+    return (key, time) if measured and key and time and key in ctx.df.columns \
+        and time in ctx.df.columns else None
+
+
+def _hours(td) -> str:
+    return f"{td / pd.Timedelta(hours=1):,.0f} h"
+
+
+def _series_flags(df: pd.DataFrame, ctx: CleanContext, key: str, time: str) -> list[tuple[str, str, int]]:
+    """(strategy, reason, rows) for each per-series finding, examples named (3 at most). A gap
+    is more than 3× the series' usual interval (20 rows at least); a stuck run is one value
+    unchanged for the pack's stuck_hours (a continuous measure only)."""
+    t = pd.to_datetime(df[time], errors="coerce")
+    d = df.assign(_t=t).dropna(subset=["_t"]).sort_values([key, "_t"], kind="stable")
+    out = []
+    # a row whose readings were all blanked (a Bad flag, a code) is no second value at its time
+    measured = [c for r in ctx.pack.stuck_hours if (c := ctx.roles.get(r)) in d.columns]
+    d_valid = d[d[measured].notna().any(axis=1)] if measured else d
+    clash = d_valid.duplicated([key, "_t"], keep=False).reindex(d.index, fill_value=False)
+    # a clock change repeats one local hour for EVERY series at once (local times written
+    # without their offset); a double write hits one series: shared by half of them (2+) = a fold
+    pairs = d.loc[clash, [key, "_t"]].drop_duplicates()
+    per_time = pairs.groupby("_t")[key].nunique()
+    folds = per_time.index[(per_time >= 2) & (per_time >= d_valid[key].nunique() / 2)]
+    own = pairs[~pairs["_t"].isin(folds)]
+    if n := len(own):
+        named = ", ".join(f"{k} at {v:%Y-%m-%d %H:%M}" for k, v in own.head(3).itertuples(index=False))
+        out.append(("series_clash", f"{n} time{'s' if n != 1 else ''} of one {key} with two different "
+                    f"rows ({named}): both kept, check them at the source.", n))
+    if len(folds):
+        named = ", ".join(f"{v:%Y-%m-%d %H:%M}" for v in folds[:3])
+        out.append(("series_clock_change", f"{len(folds)} local time{'s' if len(folds) != 1 else ''} "
+                    f"({named}) repeat for every {key}: the hour a clock change repeats, its offset "
+                    "dropped. Both readings are kept; durations across it can be an hour off.",
+                    int(pairs['_t'].isin(folds).sum())))
+    gaps, stuck = [], []
+    for k, g in d.groupby(key, sort=True):
+        step = g["_t"].diff()
+        usual = step[step > pd.Timedelta(0)].median()
+        if len(g) >= 20 and pd.notna(usual):
+            for i in step.index[step > 3 * usual]:
+                gaps.append(f"{k} {g.at[i, '_t'] - step[i]:%Y-%m-%d %H:%M} to {g.at[i, '_t']:%Y-%m-%d %H:%M} "
+                            f"({_hours(step[i])})")
+        for role, h in ctx.pack.stuck_hours.items():
+            col = ctx.roles.get(role)
+            if col not in g.columns:
+                continue
+            v = g[col]
+            run = (v != v.shift()).cumsum()
+            for _, r in g[v.notna()].groupby(run[v.notna()]):
+                span = r["_t"].iloc[-1] - r["_t"].iloc[0]
+                if span >= pd.Timedelta(hours=h):
+                    stuck.append(f"{k} {role.replace('_', ' ')} at {r[col].iloc[0]:g} for {_hours(span)} "
+                                 f"from {r['_t'].iloc[0]:%Y-%m-%d %H:%M}")
+    if gaps:
+        out.append(("series_gap", f"{len(gaps)} silence{'s' if len(gaps) != 1 else ''} longer than 3× "
+                    f"the usual interval ({'; '.join(gaps[:3])}): a dropout, or a source that writes "
+                    "only on change. Nothing is filled in.", len(gaps)))
+    if stuck:
+        out.append(("series_stuck", f"{len(stuck)} value{'s' if len(stuck) != 1 else ''} unchanged for "
+                    f"hours ({'; '.join(stuck[:3])}): a stuck sensor reads as a steady process. Kept.",
+                    len(stuck)))
+    return out
 
 
 def _whole_orders(flat: pd.DataFrame, dup: pd.Series, order: str) -> set:
@@ -308,6 +423,69 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
                 log(col, "sentinel_null", "numeric_sentinel",
                     f"{n} values coded {', '.join(f'{c:g}' for c in found)} (the export's 'unknown', "
                     f"not a real {role.replace('_', ' ')}) read as missing.", n, pct, _null_pct(df[col]))
+        for flag, rule in ctx.pack.invalid_when.items():   # a value its own flag calls no measurement
+            fcol = ctx.roles.get(flag)
+            if fcol is None:
+                continue
+            said = words(df[fcol])   # a flag by its first word: 'Bad - Sensor Failure' is bad
+
+            def first(listed: list[str]) -> pd.Series:
+                return pd.concat([said.eq(w) | said.str.startswith(w + " ")
+                                  for w in words(pd.Series(listed))], axis=1).any(axis=1)
+            bad = first(rule.values)
+            for role in rule.blanks:
+                col = ctx.roles.get(role)
+                if col is None or not (hit := bad & df[col].notna()).any():
+                    continue
+                n, pct = int(hit.sum()), _null_pct(df[col])
+                df[col] = df[col].mask(hit)
+                log(col, "sentinel_null", "invalid_flag",
+                    f"{n} {role.replace('_', ' ')} values on {int(bad.sum())} row"
+                    f"{'s' if int(bad.sum()) != 1 else ''} its {fcol} marks invalid "
+                    f"({', '.join(rule.values)}) read as missing; the rows are kept.", n, pct,
+                    _null_pct(df[col]))
+            if rule.doubtful and (n := int(first(rule.doubtful).sum())):
+                log(fcol, "flag", "doubtful_flag", f"{n} rows marked {', '.join(rule.doubtful)}: "
+                    "kept and counted.", n)
+        for role, rule in ctx.pack.units.items():   # one unit per measure, by each row's unit
+            col, ucol = ctx.roles.get(role), ctx.roles.get(rule.unit_role)
+            if col is None or ucol is None or not pd.api.types.is_numeric_dtype(df[col]):
+                continue
+            code = df[ucol].astype("string").map(_unit_code, na_action="ignore")
+            done = code.eq(_unit_code(rule.to)).fillna(False)   # a row is converted once
+            for unit, (scale, offset) in rule.convert.items():
+                row = code.eq(_unit_code(unit)).fillna(False) & ~done
+                done |= row
+                hit = row & df[col].notna()   # a blank value (a Bad reading) keeps no old unit
+                if (scale, offset) != (1, 0) and (n := int(hit.sum())):   # (1, 0): a name of `to`
+                    pct = _null_pct(df[col])
+                    df[col] = df[col].mask(hit, df[col] * scale + offset)
+                    log(col, "type_coerce", "unit_converted",
+                        f"{n} {role.replace('_', ' ')} values in {unit} (their {ucol}) converted to "
+                        f"{rule.to}: × {scale:g} {'+' if offset >= 0 else '−'} {abs(offset):g}.",
+                        n, pct, _null_pct(df[col]))
+                if m := int(row.sum()):
+                    upct = _null_pct(df[ucol])
+                    df[ucol] = df[ucol].mask(row, rule.to)
+                    log(ucol, "type_coerce", "unit_converted",
+                        f"{m} rows' unit changed from {unit} to {rule.to}, with their values.", m, upct, upct)
+            # a unit no conversion knows (°R): its values are never averaged with the others; nor a
+            # blank unit in a column that holds another unit than `to` (is the row °F or °C?)
+            same = {_unit_code(rule.to)} | {_unit_code(u) for u, (s, o) in rule.convert.items() if (s, o) == (1, 0)}
+            blank = code.fillna("").eq("")
+            mixed = bool((~blank & ~code.isin(same).fillna(False)).any())
+            odd = (~blank | mixed) & ~done & df[col].notna()
+            if n := int(odd.sum()):
+                pct = _null_pct(df[col])
+                seen = df.loc[odd, ucol].fillna("").astype(str).replace("", "(blank)")
+                top = ", ".join(f"{v} ({k})" for v, k in seen.value_counts().head(3).items())
+                df[col] = df[col].mask(odd)
+                log(col, "sentinel_null", "unknown_unit",
+                    f"{n} {role.replace('_', ' ')} values in a unit with no conversion to {rule.to} "
+                    f"({top}) read as missing, never averaged with the rest; the rows are kept.",
+                    n, pct, _null_pct(df[col]))
+        for col, reason, n in _unlisted(df, ctx):   # a value no pack word knows: said (C6)
+            log(col, "flag", "unlisted_values", reason, n)
         for role, rule in ctx.pack.signed_by.items():   # an unsigned amount and its Dr/Cr
             col, ind = ctx.roles.get(role), ctx.roles.get(rule.indicator)
             if col is None or ind is None or not pd.api.types.is_numeric_dtype(df[col]) \
@@ -379,7 +557,12 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
             log("*", "flag", "repeated_rows", f"{n_dup} rows repeat another row exactly; kept, as "
                 "a second scan of an item is a real sale.", n_dup)
             n_dup = 0
-    if n_dup and keys and not ctx.deidentified:
+    series = _series_columns(ctx)
+    if n_dup and series and not ctx.deidentified:   # one series' reading written twice: a copy
+        df = df[~dup]
+        log("*", "drop_duplicates", "exact", f"Removed {n_dup} exact double writes (the same "
+            f"{series[0]}, {series[1]} and every value).", n_dup, removed=n_dup)
+    elif n_dup and keys and not ctx.deidentified:
         df = df[~dup]
         log("*", "drop_duplicates", "exact", f"Removed {n_dup} exact duplicate rows "
             f"(same {keys[0]} and every other value).", n_dup, removed=n_dup)
@@ -389,6 +572,12 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
                "there is no ID column to tell a copy from a repeated record")
         log("*", "flag", "repeated_rows", f"{n_dup} rows repeat another row exactly; kept, as "
             f"{why}.", n_dup)
+
+    # 5a. One series at a time (a sensor's readings): a time with two values, a silence, a value
+    #     stuck for hours. Flagged and kept: which value is right is the source's call.
+    if series and not ctx.deidentified:
+        for strategy, reason, n in _series_flags(df, ctx, *series):
+            log(series[0], "flag", strategy, reason, n)
 
     # 5b. Order-level fields on an order's first line only (the layout, seen in the data, not
     #     guessed from the domain): carried down the order.
@@ -510,17 +699,28 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
         if other:
             log(roles["currency"], "flag", "other_currency", f"{other} rows in other currencies "
                 f"than {currency}; kept, left out of money totals.", other)
+        # a derived role (repair hours) is checked on the same derivation every KPI reads
+        view, vroles = derived_roles(df, roles, ctx.pack, signed=True)
         for role, bounds in ctx.pack.ranges.items():
-            col = roles.get(role)
-            if col is None or not pd.api.types.is_numeric_dtype(df[col]):
+            col = vroles.get(role)
+            if col is None or not pd.api.types.is_numeric_dtype(view[col]):
                 continue
-            s = df[col]
+            s = view[col]
             bad = pd.Series(False, index=df.index)
             for op, v in bounds.items():
                 bad |= {"gt": s <= v, "ge": s < v, "lt": s >= v, "le": s > v}[op]
             if n := int(bad.sum()):
                 log(col, "flag", "out_of_range", f"{n} values outside the valid range "
                     f"({', '.join(f'{op} {v:g}' for op, v in bounds.items())}); kept, check them.", n)
+        for k in (k for k in ctx.pack.kpis if k.max is not None and computable(ctx.pack, k.name, roles)):
+            # each row's own ratio (one shift's performance), on the KPI's one definition
+            got = measure(df.reset_index(drop=True).assign(_row=range(len(df))), roles, ctx.pack,
+                          k.name, by="_row")
+            if isinstance(got, MeasuredBy) and (n := int((got.values > k.max).sum())):
+                col = next(roles[r] for r in sorted(kpi_measures(ctx.pack, k.name)) if r in roles)
+                log(col, "flag", "kpi_over_max",
+                    f"{n} row{'s' if n != 1 else ''} with {k.label} over {k.max:.0%}"
+                    + (f": {k.max_words}" if k.max_words else "") + "; kept, never capped.", n)
 
     rows_before, rows_after = len(before), len(df)
     for rule, reason in (
