@@ -324,11 +324,15 @@ def test_a_shift_over_100_percent_performance_is_flagged_never_capped():
 
 
 def test_each_rows_ratio_over_its_max_is_flagged_and_a_ratio_at_the_max_is_not():
-    """Worked by hand: 100 run minutes each; performance = ideal cycle s × total ÷ 60 ÷ 100."""
+    """Worked by hand: 100 run minutes each; performance = ideal cycle s × total ÷ 60 ÷ 100. Filed
+    under the numerator's column the words blame, never the first role alphabetically (review
+    2026-11-17: 'Changeover (min) kpi_over_max')."""
     from agents.cleaning_agent import CleanContext, clean
-    cols = ["planned_minutes", "unplanned_downtime", "total_count", "ideal_cycle_s", "good_count"]
+    cols = ["planned_minutes", "unplanned_downtime", "changeover", "total_count", "ideal_cycle_s",
+            "good_count"]
 
     def flags(rows, pack=IOT):
+        rows = [[r[0], r[1], 0, *r[2:]] for r in rows]   # no changeover
         _, audit = clean(CleanContext(df=pd.DataFrame(rows, columns=cols), ids=set(), dates=set(),
                                       targets=set(), drop_high_null=False, pack=pack,
                                       roles={c: c for c in cols}))

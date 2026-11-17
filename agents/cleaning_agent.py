@@ -718,7 +718,9 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
             got = measure(df.reset_index(drop=True).assign(_row=range(len(df))), roles, ctx.pack,
                           k.name, by="_row")
             if isinstance(got, MeasuredBy) and (n := int((got.values > k.max).sum())):
-                col = next(roles[r] for r in sorted(kpi_measures(ctx.pack, k.name)) if r in roles)
+                # the numerator's column (the ideal cycle a performance over 100% blames)
+                col = next(roles[r] for r in sorted(kpi_measures(ctx.pack, k.name, num_only=True))
+                           if r in roles)
                 log(col, "flag", "kpi_over_max",
                     f"{n} row{'s' if n != 1 else ''} with {k.label} over {k.max:.0%}"
                     + (f": {k.max_words}" if k.max_words else "") + "; kept, never capped.", n)
