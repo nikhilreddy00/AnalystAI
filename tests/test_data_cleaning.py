@@ -180,10 +180,12 @@ def test_dates_epoch_seconds():
     assert out.iloc[0].year == 2024
 
 
-def test_dates_epoch_millis_not_parsed():
+def test_dates_epoch_millis_are_parsed_as_ingestion_types_them():
+    """Review 2026-11-17: ingestion typed epoch milliseconds as dates and cleaning left them
+    numbers (one epoch rule now, connectors.base.epoch_times)."""
     s = pd.Series([1718928000000, 1718928060000, 1718928120000])
-    out = detect_dates_aggressive(s)
-    assert out is None
+    assert [str(t) for t in detect_dates_aggressive(s)] == [
+        "2024-06-21 00:00:00", "2024-06-21 00:01:00", "2024-06-21 00:02:00"]
 
 
 def test_dates_rejects_non_dates():

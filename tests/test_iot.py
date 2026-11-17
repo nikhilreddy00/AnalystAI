@@ -213,11 +213,12 @@ def test_epoch_seconds_are_their_dates_never_1970():
     assert [str(t)[:13] for t in as_times(secs)] == ["2026-02-28 21", "2026-02-28 22", "NaT", "2026-03-31 21"]
     assert as_times(secs.astype("Int64").astype(str).replace("<NA>", None)).iloc[0] == as_times(secs).iloc[0]
     assert as_times(pd.Series([3, 5, 7])).isna().all()   # small counts are no epoch
-    # epoch seconds are [1e9, 1e10) on 80% of the numbers at least; the rest are NaT
-    assert [str(t) for t in as_times(pd.Series([1e9] * 4 + [5.0]))] == ["2001-09-09 01:46:40"] * 4 + ["NaT"]
-    assert [str(t) for t in as_times(pd.Series([9999999999.0] * 4 + [1e10]))] == \
-        ["2286-11-20 17:46:39"] * 4 + ["NaT"]
-    assert as_times(pd.Series([1e10] + [9999999999.0] * 3 + [5.0])).isna().all()   # 3 of 5
+    # epoch seconds are [9e8, 2.2e9) on 80% of the numbers at least (ingestion's typing range,
+    # review 2026-11-17); the rest are NaT
+    assert [str(t) for t in as_times(pd.Series([9e8] * 4 + [5.0]))] == ["1998-07-09 16:00:00"] * 4 + ["NaT"]
+    assert [str(t) for t in as_times(pd.Series([2.2e9 - 1] * 4 + [2.2e9]))] == \
+        ["2039-09-18 23:06:39"] * 4 + ["NaT"]
+    assert as_times(pd.Series([2.2e9] + [2.2e9 - 1] * 3 + [5.0])).isna().all()   # 3 of 5
     from agents.targeted_analysis_agent import handle_time_series
     from connectors.csv_connector import CSVConnector
     from orchestrator.state import ConnectorConfig, ConnectorType, TargetedParams

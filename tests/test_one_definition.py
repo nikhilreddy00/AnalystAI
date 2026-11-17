@@ -527,6 +527,28 @@ def test_the_pack_reads_times_through_the_loads_one_rule():
     assert as_times(parsed) is parsed
 
 
+def test_one_epoch_rule_and_text_with_no_year_is_no_date():
+    """Domain 7 review: ingestion typed epoch milliseconds as dates while as_times and cleaning
+    read seconds only (every answer said 'Could not build time series'), and as_times read a
+    machine id beside dates as 1 Jan of year 1 (D7-06's bug, back through the one rule)."""
+    from agents.data_cleaning import detect_dates_aggressive
+    from agents.ingestion_agent import infer_role
+    from connectors.base import as_times
+    secs = pd.Series([1_790_000_000, 1_790_003_600, 1_790_007_200] * 5)
+    want = [str(t) for t in pd.to_datetime(secs, unit="s")]
+    for s in (secs, secs * 1000):
+        assert [str(t) for t in as_times(s)] == want
+        assert [str(t) for t in detect_dates_aggressive(s)] == want
+        assert infer_role(s, "timestamp")[0] == "date"
+    text = pd.Series(["2026-01-05", "2026-01-06", "M01"])
+    assert [str(t) for t in as_times(text)] == ["2026-01-05 00:00:00", "2026-01-06 00:00:00", "NaT"]
+    assert [str(t) for t in as_times(pd.Series(["21-Jun-2026", "Jan"]))] == ["2026-06-21 00:00:00", "NaT"]
+    rx = re.compile(r"\bto_datetime\(")
+    for f in ("agents/cleaning_agent.py",):   # the per-series checks read the load's rule
+        assert not [i for i, line in enumerate((ROOT / f).read_text().splitlines(), 1)
+                    if rx.search(line) and not line.lstrip().startswith("#")], f
+
+
 def test_no_reader_rebuilds_the_window_from_its_span():
     """5.7b-2 (C2, PR1-02): the window's start was rebuilt outside spell.py: the ledger's cohort
     starts by period and its moves' start, the story's year-earlier window, the targeted
