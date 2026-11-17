@@ -77,7 +77,7 @@ def as_times(s: pd.Series) -> pd.Series:
     dates are NaT. Already-parsed columns come back as they are."""
     if pd.api.types.is_datetime64_any_dtype(s):
         return s
-    parsed = parse_text_dates(s, 0.0) if s.notna().any() else None
+    parsed = parse_text_dates(s, 0.0)   # all blank: None (no value looks like a date)
     return parsed if parsed is not None else pd.Series(pd.NaT, index=s.index, dtype="datetime64[ns]")
 
 

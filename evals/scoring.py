@@ -443,7 +443,6 @@ def answer_numbers(session: AnalysisSession, unit: str | None = None,
     (2026-01-22 is not 22) by the product's one stripper, with magnitudes applied ('$4.1M' is
     4,100,000). With `unit`, only numbers written with it ('12.6%', '12.6 percent', '**12.6**%')."""
     text = without_dates(report_text(session) if report else answer_text(session), True)
-    text = text.replace("−", "-")
     unit_re = None if unit is None else re.compile(
         r"\**\s?" + _UNIT_WORDS.get(unit, re.escape(unit)), re.I)
     out = []
