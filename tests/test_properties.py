@@ -687,6 +687,19 @@ def test_d_the_product_equals_the_reference(book, pack, roles, spec, data):
         assert got == pytest.approx({str(s): v for s, v in ref[f"{k}_by_segment"].items() if v}), k
 
 
+def test_d_a_log_of_cancelled_orders_counts_no_assets():
+    """Full suite (CI profile): a log whose only order is cancelled has no counted row, so its
+    assets are unknown, never 0 (C5: 0 only where the kind exists); the reference said 0."""
+    from evals.reference_kpis import reference
+    df = pd.DataFrame({"reportdate": pd.to_datetime(["2026-01-01"]), "assetnum": ["P1"],
+                       "wonum": ["W0"], "worktype": ["CM"], "status": ["CAN"],
+                       "actstart": pd.to_datetime(["2026-01-01"]), "actfinish": [pd.NaT]})
+    roles = {"date": "reportdate", "asset": "assetnum", "work_order": "wonum", "work_type": "worktype",
+             "status": "status", "actual_start": "actstart", "actual_finish": "actfinish"}
+    assert reference("book_iot_work_orders", df)["assets"] is None
+    assert dp.compute_kpi(df, roles, dp.pack_for("iot"), "assets") is None
+
+
 def test_d_nobody_paying_at_the_as_of_is_0_mrr_not_unavailable():
     """c0 started and ended on 1 Jun 2023, the as-of: nobody pays then, a known $0."""
     df = pd.DataFrame({"customer_id": ["c0"], "created": pd.to_datetime(["2023-06-01"]),

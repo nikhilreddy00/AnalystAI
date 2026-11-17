@@ -612,7 +612,8 @@ def wo_kpis(df: pd.DataFrame, c: dict) -> dict:
     return {"corrective_wos": float(len(corrective)) if has["corrective"] else None,
             "open_wos": float(len(opened)) if has["open"] else None,
             "pm_share": len(preventive) / len(seen) if seen and has["preventive"] else None,
-            "mttr": hours / len(repaired) if repaired else None, "assets": float(len(assets))}
+            "mttr": hours / len(repaired) if repaired else None,
+            "assets": float(len(assets)) if live else None}
 
 
 IOT = {   # dataset or book → (KPI function, its columns)
