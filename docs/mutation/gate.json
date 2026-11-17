@@ -277,6 +277,10 @@
    }
   ]
  },
+ "domain_pack/columns.py::derived_roles": {
+  "equivalents": [],
+  "hash": "10fc55e3d221d2ad"
+ },
  "domain_pack/columns.py::pack_columns": {
   "equivalents": [],
   "hash": "f9ad34f904bfc0da"
@@ -309,6 +313,10 @@
   ],
   "hash": "ce5e7821f4397a7b"
  },
+ "domain_pack/columns.py::with_derived": {
+  "equivalents": [],
+  "hash": "bde71c77d88b7363"
+ },
  "domain_pack/kpi.py::_kpi_value": {
   "equivalents": [
    {
@@ -317,7 +325,8 @@
     "old": "base = den.reindex(num.index)",
     "reason": "num and den are built over the same groups (_term reindexes both to the KPI's groups), so their indexes are equal"
    }
-  ]
+  ],
+  "hash": "b7cf798130850853"
  },
  "domain_pack/kpi.py::_term": {
   "equivalents": [
@@ -330,6 +339,10 @@
   ],
   "hash": "c44482d43d599a73"
  },
+ "domain_pack/kpi.py::computable": {
+  "equivalents": [],
+  "hash": "bcd14fb09d358025"
+ },
  "domain_pack/kpi.py::kpi_measures": {
   "equivalents": [
    {
@@ -338,7 +351,12 @@
     "old": "None, *TERM_OPS} if expr is not None else set()",
     "reason": "with expr None the set is {None} minus a set holding None: empty, as set() is"
    }
-  ]
+  ],
+  "hash": "a57d457c84c21c0e"
+ },
+ "domain_pack/kpi.py::kpi_roles": {
+  "equivalents": [],
+  "hash": "4bb039540023616a"
  },
  "domain_pack/kpi.py::measure": {
   "equivalents": [
@@ -348,7 +366,8 @@
     "old": "return MeasuredBy(value.astype(float), tuple(hidden), zero)",
     "reason": "astype(None) gives float64 as astype(float) does (checked)"
    }
-  ]
+  ],
+  "hash": "22536a36f754c37e"
  },
  "domain_pack/kpi.py::zero_note": {
   "equivalents": [
@@ -358,7 +377,8 @@
     "old": "return (\"\".join([\" \" + \"; \".join(f\"{g}: {kpi.zero_words.format(num=fmt(n))}\" for g, n in said) + \".\"]",
     "reason": "the joiner of a one-element list is never written"
    }
-  ]
+  ],
+  "hash": "58ba7589a5f26e93"
  },
  "domain_pack/pack.py::_column": {
   "equivalents": [
@@ -413,7 +433,16 @@
     "old": "return text if times == 1 else f\"{text} ÷ {n}\" if n > 1 and abs(n * times - 1) < 1e-9 \\",
     "reason": "an exact 1e-9 error of 1/N in floating point does not occur: < and <= decide alike"
    }
-  ]
+  ],
+  "hash": "ac65192c6ae246e6"
+ },
+ "domain_pack/story.py::first_questions": {
+  "equivalents": [],
+  "hash": "9658cea9faad84fb"
+ },
+ "domain_pack/story.py::pack_brief": {
+  "equivalents": [],
+  "hash": "e8896d16d8f03fdf"
  },
  "domain_pack/story.py::unit_said": {
   "equivalents": [
@@ -424,6 +453,10 @@
     "reason": "the \\b anchors leave a non-word character or a string edge on both sides, so no unit word's boundary changes"
    }
   ]
+ },
+ "evals/scoring.py::answer_numbers": {
+  "equivalents": [],
+  "hash": "92391a203273c399"
  },
  "evals/scoring.py::score_quality": {
   "equivalents": [],
