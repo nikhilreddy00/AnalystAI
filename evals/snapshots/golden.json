@@ -3880,7 +3880,7 @@
    }
   },
   "iot-3": {
-   "context": "681431558920dde6",
+   "context": "265bf5063495827d",
    "roles": {
     "failure": {
      "date": false,
@@ -3915,6 +3915,427 @@
     "vibration": {
      "date": false,
      "dtype": "float64",
+     "id": false,
+     "metric": true
+    }
+   }
+  },
+  "iot-4": {
+   "context": "149f9e6734948f66",
+   "roles": {
+    "Changeover (min)": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Failures": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Good Count": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Ideal Cycle Time (s)": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Line": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Machine": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Operator": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Planned Minutes": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Production Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Scrap Count": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Shift": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Shift End": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Shift Start": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Stops": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Total Count": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Unplanned Downtime (min)": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    }
+   }
+  },
+  "iot-5": {
+   "context": "8382bfe92bbf3c61",
+   "roles": {
+    "ACTFINISH": {
+     "date": true,
+     "dtype": "datetime64[us, UTC]",
+     "id": false,
+     "metric": false
+    },
+    "ACTSTART": {
+     "date": true,
+     "dtype": "datetime64[us, UTC]",
+     "id": false,
+     "metric": false
+    },
+    "ASSETNUM": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "FAILURECODE": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "REPORTDATE": {
+     "date": true,
+     "dtype": "datetime64[us, UTC]",
+     "id": false,
+     "metric": false
+    },
+    "REPORTEDBY": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "STATUS": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "WONUM": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "WORKTYPE": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "iot-6": {
+   "context": "4233ccea4dfbff99",
+   "roles": {
+    "Changeover (min)": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Failures": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Good Count": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Ideal Cycle Time (s)": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Line": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Machine": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Operator": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Planned Minutes": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Production Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Scrap Count": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Shift": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Shift End": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Shift Start": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Stops": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Total Count": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Unplanned Downtime (min)": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    }
+   }
+  },
+  "iot-7": {
+   "context": "e92cd15d6953d4a0",
+   "roles": {
+    "Alarm": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Line": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Pressure (bar)": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Quality": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Sensor": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Temp Unit": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Temperature": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Timestamp": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Vibration (mm/s)": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    }
+   }
+  },
+  "iot-8": {
+   "context": "82af5c5364afa6af",
+   "roles": {
+    "Changeover (min)": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Failures": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Good Count": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Ideal Cycle Time (s)": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Line": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Machine": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Operator": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Planned Minutes": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Production Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Scrap Count": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Shift": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Shift End": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Shift Start": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Stops": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Total Count": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Unplanned Downtime (min)": {
+     "date": false,
+     "dtype": "int64",
      "id": false,
      "metric": true
     }
@@ -7220,8 +7641,8 @@
    "standard_code": "d1ed489eb498be01"
   },
   "claims-1": {
-   "answers": "812311259cbd63c6",
-   "answers_by_group": "3cd853f791319823",
+   "answers": "c6daa656e00a1a8a",
+   "answers_by_group": "c70ce6b9503d4da6",
    "audit": "97b038a26679e754",
    "chart": "58a60fe3f95043a5",
    "contract": "83e71124fa47b400",
@@ -7231,8 +7652,8 @@
    "standard_code": "a269a35749c7ee4c"
   },
   "claims-2": {
-   "answers": "dc3071f166e327c3",
-   "answers_by_group": "be8917c90d985652",
+   "answers": "98d27287cb02c345",
+   "answers_by_group": "9b1c2be513c234fd",
    "audit": "4042c82194682bba",
    "chart": "f0257268e6bd5ef2",
    "contract": "aab0a1671a27a8e4",
@@ -7242,8 +7663,8 @@
    "standard_code": "491be602575b3901"
   },
   "claims-3": {
-   "answers": "b14bd4f26cea5f5f",
-   "answers_by_group": "bc51eda0752fd662",
+   "answers": "f83ec4fcad582bee",
+   "answers_by_group": "7195ff173688227e",
    "audit": "55e177075427cd0a",
    "chart": "9e6f2836e7818ea4",
    "contract": "2a73298043953aaf",
@@ -7253,8 +7674,8 @@
    "standard_code": "42dafc04eca73055"
   },
   "employees-1": {
-   "answers": "64a1107cb43edf4f",
-   "answers_by_group": "fc91d7b0105d2d06",
+   "answers": "311529b884ba99af",
+   "answers_by_group": "227b07a137b0c23b",
    "audit": "677e4c49a6999b2e",
    "chart": "773fb9a9a9b6b498",
    "contract": "bf7e59aa7c3d3166",
@@ -7264,8 +7685,8 @@
    "standard_code": "033527e0b0285610"
   },
   "employees-2": {
-   "answers": "785c38a8f2a05979",
-   "answers_by_group": "bb57df36e1d223aa",
+   "answers": "1cee26f04791c17b",
+   "answers_by_group": "5a10262a6cf960c5",
    "audit": "c1bef2d7ef36e7d8",
    "chart": "0a1881399edb7096",
    "contract": "3e7c3f778708b425",
@@ -7275,8 +7696,8 @@
    "standard_code": "033527e0b0285610"
   },
   "employees-3": {
-   "answers": "3f35fc5d795ef193",
-   "answers_by_group": "aaad8042fd10e016",
+   "answers": "38d68aa2536b41e5",
+   "answers_by_group": "675094a79febd439",
    "audit": "8e8d6e439592357c",
    "chart": "34c904fe9d21a475",
    "contract": "c8e326802721940c",
@@ -7319,8 +7740,8 @@
    "standard_code": "b70474da424113d2"
   },
   "health_claims-1": {
-   "answers": "e53c7730b372e12d",
-   "answers_by_group": "5e9855a4c4f94b8b",
+   "answers": "22d6f8f8a6850664",
+   "answers_by_group": "7b47ed6eab3fe740",
    "audit": "90b4ead0545a9e96",
    "chart": "a6fd26ab3750f27f",
    "contract": "7801033731c2bf9f",
@@ -7330,8 +7751,8 @@
    "standard_code": "c478b06389b95606"
   },
   "hr_roster-1": {
-   "answers": "28627d06773362c1",
-   "answers_by_group": "e2f17f247957d430",
+   "answers": "26daba68cff3bc2f",
+   "answers_by_group": "c94050be1c9d29eb",
    "audit": "2cbd18ffb7e212b3",
    "chart": "9da14161615a1b71",
    "contract": "584853a42bb160c5",
@@ -7341,8 +7762,8 @@
    "standard_code": "033527e0b0285610"
   },
   "hr_roster_onerow-1": {
-   "answers": "28627d06773362c1",
-   "answers_by_group": "e2f17f247957d430",
+   "answers": "26daba68cff3bc2f",
+   "answers_by_group": "c94050be1c9d29eb",
    "audit": "7f0642a8cd3ee557",
    "chart": "8d0df1bf208611f5",
    "contract": "963e14ec2b95254f",
@@ -7374,8 +7795,8 @@
    "standard_code": "cf64b33c3bf82f8a"
   },
   "loan_tape-1": {
-   "answers": "bb014230652760d6",
-   "answers_by_group": "845078981087c808",
+   "answers": "ea470b4d2bd4889b",
+   "answers_by_group": "db767118e661ddfb",
    "audit": "abf6b4caadc5b941",
    "chart": "a5ab37873d58659b",
    "contract": "98cdca58e380729a",
@@ -7395,9 +7816,20 @@
    "kpis": "71813cd26804cae1",
    "standard_code": "c1dbe582cc1a123c"
   },
+  "machine_readings-1": {
+   "answers": "b4649902141a331e",
+   "answers_by_group": "c3310e65548fd673",
+   "audit": "cdccf3e2853a67eb",
+   "chart": "8ff0bf551e0fad29",
+   "contract": "f03d1e5a1ca1ca4d",
+   "extras": "8a2a8624a4d937bc",
+   "frame": "9d94d8cfef032cc1",
+   "kpis": "849f7e4135566ef6",
+   "standard_code": "7b8439e8f221f623"
+  },
   "mixed_dates-1": {
-   "answers": "061185aea05e8e7d",
-   "answers_by_group": "98a17fa8f3587de7",
+   "answers": "d00216d220e8c33d",
+   "answers_by_group": "b75f1a1bd7fe30c8",
    "audit": "28cff6c17ceec4ca",
    "chart": "e5225aee5d9d762d",
    "contract": "5fd443c79840b02a",
@@ -7407,8 +7839,8 @@
    "standard_code": "14548731b9ba7a37"
   },
   "mixed_dates-2": {
-   "answers": "a236aaeeca0fd404",
-   "answers_by_group": "149ba44378405672",
+   "answers": "10f24a401390a004",
+   "answers_by_group": "f020565284d86e2e",
    "audit": "69446804432236c1",
    "chart": "7c27543752c2e6d2",
    "contract": "01b75d5eb0951402",
@@ -7440,8 +7872,8 @@
    "standard_code": "ffe1838906928144"
   },
   "saas_accounts-1": {
-   "answers": "912dacf8d903c9fd",
-   "answers_by_group": "de886d816557bb2a",
+   "answers": "b0b31de20c9d9b5a",
+   "answers_by_group": "9f722cbf47f654c5",
    "audit": "2788606a0737ccb2",
    "chart": "be4babed1dc057e5",
    "contract": "7f29334093fe9316",
@@ -7451,8 +7883,8 @@
    "standard_code": "1424d1ef9455814e"
   },
   "saas_accounts-2": {
-   "answers": "1d90fe67bf24aec3",
-   "answers_by_group": "578c97c5bad9bb1b",
+   "answers": "eb7f87b03eec2386",
+   "answers_by_group": "360239e5002c3072",
    "audit": "f0d419699e925878",
    "chart": "7526ccbaf995380e",
    "contract": "0de8b7206bff4bc8",
@@ -7462,8 +7894,8 @@
    "standard_code": "f7d14552594adafb"
   },
   "saas_accounts-3": {
-   "answers": "03c8b5ffcca808ad",
-   "answers_by_group": "d5d204335b4c487e",
+   "answers": "3206fbc5040c877c",
+   "answers_by_group": "7d446924ddf42e2f",
    "audit": "01bf973ae627836f",
    "chart": "2361f67d93a910a5",
    "contract": "18d1841c7398b581",
@@ -7484,8 +7916,8 @@
    "standard_code": "0ee49edba9c1c61c"
   },
   "saas_mrr_snapshots-1": {
-   "answers": "57ca076741b3b93d",
-   "answers_by_group": "f709bbdef7a19001",
+   "answers": "88a4f1ecd7d7e689",
+   "answers_by_group": "25db9dc99929f9fc",
    "audit": "265e6aeef5e75240",
    "chart": "6e6ebd720e15559f",
    "contract": "49a9bc63510682e9",
@@ -7495,8 +7927,8 @@
    "standard_code": "440e68413b3a4664"
   },
   "saas_subscriptions-1": {
-   "answers": "c4b9e61a01ec501b",
-   "answers_by_group": "1af0a0f6c6fc58e7",
+   "answers": "e1d7bc05c8e0aebd",
+   "answers_by_group": "eb60756a78ffc6c5",
    "audit": "50cff910045230b8",
    "chart": "32dda0321a6c25cf",
    "contract": "41481d969337a280",
@@ -7506,8 +7938,8 @@
    "standard_code": "033527e0b0285610"
   },
   "sales-1": {
-   "answers": "35416c8547d73a4b",
-   "answers_by_group": "e7df497bc06c1610",
+   "answers": "144d4f4a2861e732",
+   "answers_by_group": "1854cfa4ff956eb3",
    "audit": "e8c98298b33dbf45",
    "chart": "616a313b81ef5db2",
    "contract": "6c698807825cfc15",
@@ -7517,8 +7949,8 @@
    "standard_code": "bbe2b82d8e33f785"
   },
   "sales-2": {
-   "answers": "7c1bd6f804b0dfa8",
-   "answers_by_group": "62bf4650be94272f",
+   "answers": "e5eea001fb14ca28",
+   "answers_by_group": "c76cfb8a2656c840",
    "audit": "304b15f33669c1a3",
    "chart": "1174208937e5cb41",
    "contract": "ff9979adf9f27440",
@@ -7528,8 +7960,8 @@
    "standard_code": "fee403963049ab6f"
   },
   "sales-3": {
-   "answers": "0622f0336fefcc7b",
-   "answers_by_group": "3732ddef922951b8",
+   "answers": "127a6010449c1246",
+   "answers_by_group": "849c14f37ab2efbc",
    "audit": "ba102c91ad26e3a2",
    "chart": "5041dd03a3bdd777",
    "contract": "2ca773f2d23c0091",
@@ -7539,8 +7971,8 @@
    "standard_code": "8e5bd4d2a66c6649"
   },
   "sales-4": {
-   "answers": "cfc06509607b630f",
-   "answers_by_group": "756b0bc047761227",
+   "answers": "e098eff8b952dccb",
+   "answers_by_group": "89a30bca0d2ac5d7",
    "audit": "8860921dacec6320",
    "chart": "76d4943d2125afbb",
    "contract": "ae7ecddef0de1135",
@@ -7550,8 +7982,8 @@
    "standard_code": "41269d51cdf3aa75"
   },
   "sales-5": {
-   "answers": "3769d0d4ac4ebf3d",
-   "answers_by_group": "01bb560d2d7bb66a",
+   "answers": "d4a39ea4628ecc26",
+   "answers_by_group": "900ddc5a7afe784c",
    "audit": "090bbe3a9e3679a1",
    "chart": "9ad903e6b80ae1e4",
    "contract": "1cb7a02ac9862e94",
@@ -7561,37 +7993,70 @@
    "standard_code": "d6f4d85593fbc881"
   },
   "sensor_readings-1": {
-   "answers": "81e124a16926e26b",
-   "answers_by_group": "6f5ec80afbf8171f",
-   "audit": "3800f941a25b8241",
+   "answers": "ac293bc4def507d2",
+   "answers_by_group": "97ea74f4161e5b9f",
+   "audit": "237be25dd9f65fe2",
    "chart": "07791d54b55ad119",
-   "contract": "cca1c6c1582db95b",
+   "contract": "b5de90b7b32267b8",
    "extras": "f117f9bcd6342acf",
    "frame": "013c91348e9d42f9",
-   "kpis": "59e0dc2d79d26d2a",
+   "kpis": "f83e5223ffd25d5d",
    "standard_code": "02ae724303df8cf1"
   },
   "sensor_readings-2": {
-   "answers": "8b29b48354e31b00",
-   "answers_by_group": "c554ab926c612f9a",
-   "audit": "fc8bd306b60dad34",
+   "answers": "30125ca982877508",
+   "answers_by_group": "7922efc96378b9fb",
+   "audit": "809cd32fe881a2f8",
    "chart": "965d1ab6f0c7de3b",
-   "contract": "1d0d538b1e170f3f",
+   "contract": "13671844bccc2e9b",
    "extras": "97e645fe3dd3e6e3",
    "frame": "4ed0440f761fe8c5",
-   "kpis": "d1815839d19056c8",
+   "kpis": "7240fdab1512ff9e",
    "standard_code": "b079c1cdbb2166da"
   },
   "sensor_readings-3": {
-   "answers": "12ba1acfc95ae1e9",
-   "answers_by_group": "a177a1d0985cee24",
-   "audit": "772418e3cbfbc8d5",
+   "answers": "82210bedf18f2992",
+   "answers_by_group": "f2a3f59214e6589d",
+   "audit": "55384851521dee72",
    "chart": "f8d9a0dd4f46b968",
-   "contract": "858c5d4a20f01f94",
+   "contract": "59c6903ae333a949",
    "extras": "405c2fbf338d73d7",
    "frame": "cd25b71d8f14cafb",
-   "kpis": "2458f185de90e648",
+   "kpis": "041e8fcff663bb7b",
    "standard_code": "af749a4c3ec7157e"
+  },
+  "shift_production-1": {
+   "answers": "f8c9dec1d9e0d1c2",
+   "answers_by_group": "117d3ecedf8ec5ea",
+   "audit": "658cc87094ea1e56",
+   "chart": "5baf6e27fd730bdb",
+   "contract": "a50aa17dda18428c",
+   "extras": "6c4df7f0c0f38628",
+   "frame": "6ec7a4af5e46f020",
+   "kpis": "e5c692f122c5df41",
+   "standard_code": "c35fdfbaeb52cf08"
+  },
+  "shift_production-2": {
+   "answers": "f8c9dec1d9e0d1c2",
+   "answers_by_group": "117d3ecedf8ec5ea",
+   "audit": "95c0fab567f1ee09",
+   "chart": "5baf6e27fd730bdb",
+   "contract": "43739e55392a97c0",
+   "extras": "5d26a889692737b5",
+   "frame": "a9eb6d4566cedc91",
+   "kpis": "66ee94f6fdd5b846",
+   "standard_code": "06ecf24e2eec907f"
+  },
+  "shift_production-3": {
+   "answers": "f8c9dec1d9e0d1c2",
+   "answers_by_group": "117d3ecedf8ec5ea",
+   "audit": "e5f9d7777f47dd1f",
+   "chart": "5baf6e27fd730bdb",
+   "contract": "dcd93d7893a27f8a",
+   "extras": "18a6474275bbfc77",
+   "frame": "495c90479c4413c9",
+   "kpis": "c2af234ee5199d45",
+   "standard_code": "3ddb2c6e976f62e7"
   },
   "shipments-1": {
    "answers": "7c838419be005b84",
@@ -7677,8 +8142,8 @@
    "standard_code": "033527e0b0285610"
   },
   "store_weeks-1": {
-   "answers": "817286a74ba33d9a",
-   "answers_by_group": "2d796bcf2426acff",
+   "answers": "430bdf47cc270e0c",
+   "answers_by_group": "6d171321f754f66a",
    "audit": "cd0f656c436b50ba",
    "chart": "0663feafcd63f721",
    "contract": "01c5a18e419a8e07",
@@ -7686,6 +8151,16 @@
    "frame": "bf63dc2df2530326",
    "kpis": "314674c2a2cb8e7a",
    "standard_code": "82a900b8187a87cb"
+  },
+  "work_orders-1": {
+   "answers": "4f53cda18c2baa0c",
+   "answers_by_group": "4f53cda18c2baa0c",
+   "audit": "c0ad7cdac76927ff",
+   "contract": "2d030a66a01a6e3f",
+   "extras": "efebc0e607448272",
+   "frame": "37f305e71574ce95",
+   "kpis": "17ebf366d0f4a1a0",
+   "standard_code": "033527e0b0285610"
   }
  },
  "e2e": {
@@ -13442,6 +13917,596 @@
      "metric": false
     }
    }
+  },
+  "e2e-83": {
+   "roles": {
+    "Changeover (min)": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Failures": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Good Count": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Ideal Cycle Time (s)": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Line": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Machine": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Operator": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Planned Minutes": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Production Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Scrap Count": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Shift": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Shift End": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Shift Start": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Stops": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Total Count": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Unplanned Downtime (min)": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    }
+   }
+  },
+  "e2e-84": {
+   "roles": {
+    "Changeover (min)": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Failures": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Good Count": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Ideal Cycle Time (s)": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Line": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Machine": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Operator": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Planned Minutes": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Production Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Scrap Count": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Shift": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Shift End": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Shift Start": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Stops": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Total Count": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Unplanned Downtime (min)": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    }
+   }
+  },
+  "e2e-85": {
+   "roles": {
+    "ACTFINISH": {
+     "date": true,
+     "dtype": "datetime64[us, UTC]",
+     "id": false,
+     "metric": false
+    },
+    "ACTSTART": {
+     "date": true,
+     "dtype": "datetime64[us, UTC]",
+     "id": false,
+     "metric": false
+    },
+    "ASSETNUM": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "FAILURECODE": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "REPORTDATE": {
+     "date": true,
+     "dtype": "datetime64[us, UTC]",
+     "id": false,
+     "metric": false
+    },
+    "REPORTEDBY": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "STATUS": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "WONUM": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "WORKTYPE": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "e2e-86": {
+   "roles": {
+    "Alarm": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Line": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Pressure (bar)": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Quality": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Sensor": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Temp Unit": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Temperature": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Timestamp": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Vibration (mm/s)": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    }
+   }
+  },
+  "e2e-87": {
+   "roles": {
+    "Changeover (min)": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Failures": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Good Count": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Ideal Cycle Time (s)": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Line": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Machine": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Operator": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Planned Minutes": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Production Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Scrap Count": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Shift": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Shift End": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Shift Start": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Stops": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Total Count": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Unplanned Downtime (min)": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    }
+   }
+  },
+  "e2e-88": {
+   "roles": {
+    "Alarm": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Line": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Pressure (bar)": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Quality": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Sensor": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Temp Unit": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Temperature": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Timestamp": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Vibration (mm/s)": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    }
+   }
+  },
+  "e2e-89": {
+   "roles": {
+    "ACTFINISH": {
+     "date": true,
+     "dtype": "datetime64[us, UTC]",
+     "id": false,
+     "metric": false
+    },
+    "ACTSTART": {
+     "date": true,
+     "dtype": "datetime64[us, UTC]",
+     "id": false,
+     "metric": false
+    },
+    "ASSETNUM": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "FAILURECODE": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "REPORTDATE": {
+     "date": true,
+     "dtype": "datetime64[us, UTC]",
+     "id": false,
+     "metric": false
+    },
+    "REPORTEDBY": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "STATUS": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "WONUM": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "WORKTYPE": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "e2e-90": {
+   "roles": {
+    "Alarm": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Line": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Pressure (bar)": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Quality": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Sensor": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Temp Unit": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Temperature": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Timestamp": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Vibration (mm/s)": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    }
+   }
   }
  },
  "insight": {
@@ -16812,6 +17877,207 @@
      "dtype": "str",
      "id": false,
      "metric": false
+    }
+   }
+  },
+  "ins-51-iot-shift-overview": {
+   "context": "633a568074aced0d",
+   "roles": {
+    "Changeover (min)": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Failures": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Good Count": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Ideal Cycle Time (s)": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Line": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Machine": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Operator": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Planned Minutes": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Production Date": {
+     "date": true,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Scrap Count": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Shift": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Shift End": {
+     "date": true,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Shift Start": {
+     "date": true,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Stops": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Total Count": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Unplanned Downtime (min)": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    }
+   }
+  },
+  "ins-52-iot-readings-overview": {
+   "context": "e505cd7b48248327",
+   "roles": {
+    "Alarm": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Line": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Pressure (bar)": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Quality": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Sensor": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Temp Unit": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Temperature": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Timestamp": {
+     "date": true,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Vibration (mm/s)": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    }
+   }
+  },
+  "ins-53-iot-sensor-drift": {
+   "context": "d50f0b4839835198",
+   "roles": {
+    "failure": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "line": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "reading_time": {
+     "date": true,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "sensor_id": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "temperature": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "vibration": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
     }
    }
   }
@@ -24170,6 +25436,385 @@
      "dtype": "datetime64[us]",
      "id": false,
      "metric": false
+    }
+   }
+  },
+  "intake-iot-01": {
+   "context": "eb17d4a00d1dccf9",
+   "roles": {
+    "Changeover (min)": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Failures": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Good Count": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Ideal Cycle Time (s)": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Line": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Machine": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Operator": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Planned Minutes": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Production Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Scrap Count": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Shift": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Shift End": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Shift Start": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Stops": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Total Count": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Unplanned Downtime (min)": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    }
+   }
+  },
+  "intake-iot-02": {
+   "context": "934674e15cdbb1f5",
+   "roles": {
+    "Changeover (min)": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Failures": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Good Count": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Ideal Cycle Time (s)": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Line": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Machine": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Operator": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Planned Minutes": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Production Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Scrap Count": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Shift": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Shift End": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Shift Start": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Stops": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Total Count": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Unplanned Downtime (min)": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    }
+   }
+  },
+  "intake-iot-03": {
+   "context": "02c16e7d6f527b78",
+   "roles": {
+    "ACTFINISH": {
+     "date": true,
+     "dtype": "datetime64[us, UTC]",
+     "id": false,
+     "metric": false
+    },
+    "ACTSTART": {
+     "date": true,
+     "dtype": "datetime64[us, UTC]",
+     "id": false,
+     "metric": false
+    },
+    "ASSETNUM": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "FAILURECODE": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "REPORTDATE": {
+     "date": true,
+     "dtype": "datetime64[us, UTC]",
+     "id": false,
+     "metric": false
+    },
+    "REPORTEDBY": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "STATUS": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "WONUM": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "WORKTYPE": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "intake-iot-04": {
+   "context": "37867b2ca023fce7",
+   "roles": {
+    "Alarm": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Line": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Pressure (bar)": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Quality": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Sensor": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Temp Unit": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Temperature": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Timestamp": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Vibration (mm/s)": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    }
+   }
+  },
+  "intake-iot-05": {
+   "context": "d451f543cc60325d",
+   "roles": {
+    "Alarm": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Line": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Pressure (bar)": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Quality": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Sensor": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Temp Unit": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Temperature": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Timestamp": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Vibration (mm/s)": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
     }
    }
   },

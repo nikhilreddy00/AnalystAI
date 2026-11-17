@@ -261,6 +261,18 @@ the 12-month cohort, never a monthly rate × 12; trials, paused and test account
 invoice lines, never MRR; no LTV, CAC payback or benchmark verdicts; 11 analysis cases k=3, 7 E2E
 cases (CSV, Excel, JSON, Postgres in a non-default schema), 14 intake cases;
 `docs/baselines/phase5_7_saas.md`).
+
+IoT / manufacturing, not yet passing every run: one E2E case (e2e-89, a work-order overview) failed
+2 of 2 runs because the model's own code counted cancelled orders' failure codes (ledger D7-19,
+open). What passes: an MES shift report's OEE pooled over planned time, never a mean of shift
+OEEs, with availability, performance (over 100% flagged as a wrong ideal cycle, never capped)
+and first-pass quality; MTBF on run hours with its failure count, "no failure in N hours" for a
+machine that never failed; a CMMS log's MTTR from actual start to finish, open and cancelled
+work orders out and said; historian readings as levels, never summed: Bad readings and sentinels
+blanked, °F rows converted, stuck sensors, dropouts, duplicates and a clock change's repeated
+hour flagged; a control chart for one sensor; operators protected, machines never people; no
+benchmark verdicts, Cpk or failure prediction; 8 analysis cases k=3, 11 E2E cases (CSV, Excel,
+JSON), 5 intake cases; `docs/baselines/phase5_7_iot.md`.
 <!-- domains:end -->
 
 Each domain ships a sample semantic layer in `semantic_layers/`. A file whose columns match one

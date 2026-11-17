@@ -389,3 +389,21 @@ def test_mttr_reads_finished_corrective_orders_in_exact_hours():
     work; a repair across the 25 Oct 2026 clock change is 2.75 h in UTC. (2.75 + 1) / 2."""
     assert dp.compute_kpi(_wos(), WO_ROLES, IOT, "mttr") == 1.875
     assert dp.compute_kpi(_wos(), WO_ROLES, IOT, "corrective_wos") == 3   # W1, W2, W4; W5 cancelled
+
+
+@pytest.mark.xfail(strict=True, reason="D7-19 (Open): a count by group the model's code writes reads "
+                   "every row; standard_stats replaces a level's totals and means, never a count, so "
+                   "e2e-89's failure codes counted 22 cancelled orders (333, truth 311)")
+def test_a_models_count_by_group_reads_the_counted_rows():
+    from agents.analysis_agent import model_frame, standard_stats
+    from orchestrator.state import AnalysisTask
+    from tests.test_oracle import _built
+    _, df, contract, _ = _built("work_orders")
+    framed, _ = model_frame(df, contract)
+    every = framed.groupby("FAILURECODE")["WONUM"].count()
+    raw = {"segments": [{"segment_column": "FAILURECODE", "metric_column": "WONUM", "aggregation": "count",
+                         "results": [{"name": k, "value": float(v)} for k, v in every.items()]}]}
+    standard_stats(raw, df, contract, AnalysisTask(raw_query="overview", target_metrics=[],
+                                                   segments=["FAILURECODE"], analysis_types=["segmentation"]))
+    seg = next(s for s in raw["segments"] if s["segment_column"] == "FAILURECODE")
+    assert sum(r["value"] for r in seg["results"]) == 311
