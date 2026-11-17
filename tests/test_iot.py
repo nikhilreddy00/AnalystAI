@@ -119,6 +119,13 @@ def test_an_outlier_scan_of_one_sensors_reading_is_its_control_chart():
     assert "Control limits" not in text   # no named series: the scan, as before
 
 
+def test_what_a_kpi_lacks_is_said_with_each_column_once():
+    """domain_diff: 'MTTR needs repair hours and work type and repair hours and work order and
+    work type' (its two sides repeated their columns)."""
+    from agents.targeted_analysis_agent import _missing
+    assert _missing(IOT, "mttr", {"asset": "a"}) == "repair hours and work type and work order"
+
+
 def test_a_machine_id_is_no_date_filter():
     """Browser read (mock stack): the dashboard offered 'Machine' as a date range; pandas reads
     'M01' as 00:00:01 on 1 Jan of year 1. Columns are dated by the load's one rule (F2)."""

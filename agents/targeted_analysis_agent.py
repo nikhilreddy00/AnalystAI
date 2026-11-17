@@ -1061,12 +1061,13 @@ def _missing(pack, kpi: str, roles: dict) -> str:
             return n.replace("_", " ")
         return sorted(said(n) for n in need)
 
-    sides = []
-    for alts in (k.num, k.den or []):
-        options = [lacks(a) for a in alts]
-        if options and all(options):   # no alternative works: say each one's gap
-            sides.append(", or ".join(dict.fromkeys(" and ".join(o) for o in options)))
-    return " and ".join(sides) or "other columns"
+    gaps = [options for alts in (k.num, k.den or []) if (options := [lacks(a) for a in alts])
+            and all(options)]   # no alternative works: say each one's gap
+    words = [w for o in gaps for w in o[0]] if gaps and all(len(o) == 1 for o in gaps) else []
+    if len(set(words)) < len(words):   # one way each side, a word on both: said once (MTTR)
+        return " and ".join(dict.fromkeys(words))
+    return " and ".join(", or ".join(dict.fromkeys(" and ".join(o) for o in options))
+                        for options in gaps) or "other columns"
 
 
 def _summed_kpi(pack, contract: DataContract, params: TargetedParams, df: pd.DataFrame) -> str | None:
