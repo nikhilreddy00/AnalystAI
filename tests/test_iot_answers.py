@@ -64,7 +64,7 @@ def test_a_worked_control_chart_states_its_limits_and_the_days_outside():
 def test_a_day_on_a_limit_is_not_beyond_it():
     """A point exactly on UCL or LCL is inside: only strictly beyond counts."""
     base = [10.0, 12.0] * 15
-    _, ucl, lcl = control_limits(pd.Series(base))
+    _, ucl, lcl = control_limits(pd.Series(base, index=pd.date_range("2026-08-01", periods=30)))
     text = _series(base + [ucl, lcl]).answer_text
     assert "after them 0 days above the upper limit and 0 below the lower one." in text, text
 
@@ -196,6 +196,35 @@ def test_a_rate_of_a_part_with_none_of_its_rows_is_zero_when_the_data_has_them()
     text, _ = answer("b2b_invoices", "time_series", "What is the return rate?", kpi="return_rate",
                      segment_column="StockCode", segment_value="34241")
     assert text.startswith(f"Return rate, 34241 ({sold.min():%d %b %Y} to {sold.max():%d %b %Y}): 0.0%."), text
+
+
+def test_the_baseline_is_thirty_calendar_days_without_stuck_days():
+    """Spec review (F8): the baseline was the first 30 points with data, so a 10-day silence
+    pulled later days in; a stuck day (the day before's mean again) shrank MR̄. 20 days
+    alternating 10/12 (x̄ 11, MR̄ 2), days 1–10 silent, two stuck 12s, then 100s from day 30."""
+    days = [d for d in range(40) if not 1 <= d <= 10]
+    values = [100.0 if d >= 30 else (10.0 if i % 2 == 0 else 12.0) for i, d in enumerate(days)]
+    s = pd.Series(values, index=pd.Timestamp("2026-08-01") + pd.to_timedelta(days, unit="D"))
+    s = pd.concat([s, pd.Series([12.0, 12.0], index=[pd.Timestamp("2026-08-30 06:00"),
+                                                     pd.Timestamp("2026-08-30 12:00")])]).sort_index()
+    cl, ucl, lcl = control_limits(s)
+    assert (round(cl, 6), round(ucl, 6), round(lcl, 6)) == (11.0, 16.319149, 5.680851)
+
+
+def test_one_machine_with_no_failures_says_its_run_time_never_a_zero_base():
+    """S-b (spec review): a filter to M08 (never failed) said 'its base is 0'; MTBF there is a
+    lower bound: no failure in its run hours. Asked alone and as a tile on the filtered part."""
+    from domain_pack import pack_for, unavailable_words
+    from domain_pack.kpi import measure
+    _, clean, contract, _ = _built("shift_production")
+    m08 = clean.query("Machine == 'M08'")
+    run = (m08["Planned Minutes"] - m08["Unplanned Downtime (min)"] - m08["Changeover (min)"]).sum() / 60
+    text, _ = answer("shift_production", "segment_compare", "MTBF for M08", kpi="mtbf",
+                     segment_column="Machine", segment_value="M08")
+    assert f"no failure in {run:,.0f} hours of run time" in text and "base is 0" not in text, text
+    iot = pack_for("iot")
+    got = measure(m08, contract.roles, iot, "mtbf", by="Machine")
+    assert unavailable_words(got, iot, iot.kpi("mtbf")) == f"no failure in {run:,.0f} hours of run time"
 
 
 def test_a_protected_group_of_five_gets_no_overall_value():

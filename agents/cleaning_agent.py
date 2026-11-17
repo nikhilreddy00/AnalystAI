@@ -54,6 +54,7 @@ from agents.visualization_agent import classify_columns
 from domain_pack import (Pack, filled_statuses, layout_columns, main_currency, pack_for, row_kinds,
                          words)
 from domain_pack.columns import derived_roles
+from domain_pack.kpi import MeasuredBy, computable, kpi_measures, measure
 from guardrails import (
     UNKNOWN_LABEL,
     is_pii_column,
@@ -711,6 +712,15 @@ def clean(ctx: CleanContext) -> tuple[pd.DataFrame, CleaningAudit]:
             if n := int(bad.sum()):
                 log(col, "flag", "out_of_range", f"{n} values outside the valid range "
                     f"({', '.join(f'{op} {v:g}' for op, v in bounds.items())}); kept, check them.", n)
+        for k in (k for k in ctx.pack.kpis if k.max is not None and computable(ctx.pack, k.name, roles)):
+            # each row's own ratio (one shift's performance), on the KPI's one definition
+            got = measure(df.reset_index(drop=True).assign(_row=range(len(df))), roles, ctx.pack,
+                          k.name, by="_row")
+            if isinstance(got, MeasuredBy) and (n := int((got.values > k.max).sum())):
+                col = next(roles[r] for r in sorted(kpi_measures(ctx.pack, k.name)) if r in roles)
+                log(col, "flag", "kpi_over_max",
+                    f"{n} row{'s' if n != 1 else ''} with {k.label} over {k.max:.0%}"
+                    + (f": {k.max_words}" if k.max_words else "") + "; kept, never capped.", n)
 
     rows_before, rows_after = len(before), len(df)
     for rule, reason in (

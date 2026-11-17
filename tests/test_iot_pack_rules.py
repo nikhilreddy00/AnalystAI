@@ -26,6 +26,36 @@ SCALED = BANK.replace("kpis:\n", """kpis:
 BANK_ROLES = {r: r for r in ("account_id", "amount", "txn_date", "quantity", "status")}
 
 
+@pytest.mark.parametrize("name, extra", [
+    ("retail_lines", {"UOM": ["each", "case"]}),        # a unit of measure is no temperature unit
+    ("b2b_invoices", {"Unit": ["EA", "CS"]}),
+    ("card_ledger", {"Currency": ["USD", "EUR"]}),      # a currency is never converted
+    ("loan_tape", {"Units": ["USD", "USD"]}),
+])
+def test_another_domains_unit_column_is_never_read_as_a_reading_unit(name, extra):
+    """Spec review (U1 negatives): iot's temp_unit headers (uom, unit, units) never pull a retail
+    or banking file into the iot pack, and their values are never converted."""
+    from domain_pack.detect import detect
+    from evals.datagen import make
+    from tests.test_dashboard_filters import DATASETS_BY_PACK
+    df, _ = make(name, 1)
+    df = df.assign(**{c: (v * len(df))[:len(df)] for c, v in extra.items()})
+    domain, _, _ = detect(df, {c for c in df.columns if "date" in c.lower()})
+    assert domain != "iot" and name in DATASETS_BY_PACK[domain]   # no iot pack: no units rule
+
+
+def test_stops_are_never_failures():
+    """Spec (step 4): stops, micro-stops and downtime events are no failures: MTBF over stops
+    would read every short stop as a breakdown."""
+    from domain_pack.detect import detect
+    from evals.datagen import make
+    df, _ = make("shift_production", 1)
+    assert detect(df, {"Production Date"})[1].get("failures") == "Failures"   # the control
+    for col in ("Stops", "Stop Count", "Downtime Events"):
+        domain, roles, _ = detect(df.rename(columns={"Failures": col}), {"Production Date"})
+        assert domain == "iot" and "failures" not in roles, (col, roles)
+
+
 @pytest.mark.parametrize("name, said", [
     ("deposits", "Sum of amount"),               # times 1: no multiplier at all
     ("tenth", "Sum of amount ÷ 10"),            # 0.1 = 1/10

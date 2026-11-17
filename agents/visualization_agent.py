@@ -1194,7 +1194,7 @@ def pack_kpis(df: pd.DataFrame, contract: DataContract | None,
         kind = {"money": "currency", "percent": "percent", "count": "count"}.get(k.unit, "number")
         unit = money if kind == "currency" else None
         if isinstance(v, Unavailable):   # the part can't support it: said, never a 0 or a gap
-            tiles.append(KPI(label=k.label, value=UNAVAILABLE, context=unavailable_words(v, pack),
+            tiles.append(KPI(label=k.label, value=UNAVAILABLE, context=unavailable_words(v, pack, k),
                              recipe=KPIRecipe(kind="pack", kpi=k.name, format_kind=kind,
                                               **_unit_fields(kind, unit)),
                              how=describe_kpi(pack, k.name, roles, present)))

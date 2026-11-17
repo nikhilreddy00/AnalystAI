@@ -322,7 +322,9 @@ def _kpi_value(df, kinds, roles, pack, kpi: KPI, by):
         out = (num / den.where(den != 0)).dropna()
         out.attrs["zero"] = {k: float(v) for k, v in zero.items()}
         return out
-    return Unavailable("zero_denominator") if not den or pd.isna(den) else num / den
+    if not den or pd.isna(den):
+        return Unavailable("zero_denominator", zero=float(num) if num and pd.notna(num) else None)
+    return num / den
 
 
 def zero_note(kpi: KPI, zero: tuple, fmt) -> str:
@@ -335,10 +337,13 @@ def zero_note(kpi: KPI, zero: tuple, fmt) -> str:
             + (" Not measurable, its base is 0: " + ", ".join(str(g) for g in rest) + "." if rest else ""))
 
 
-def unavailable_words(u: Unavailable, pack: Pack) -> str:
+def unavailable_words(u: Unavailable, pack: Pack, kpi: KPI | None = None) -> str:
     """THE clause saying why a figure is unavailable ('the data has no end date, so customers
-    who left can't be counted'), in the pack's words; every answer and tile says it this way."""
+    who left can't be counted'), in the pack's words; every answer and tile says it this way.
+    A 0 base under a numerator is said in the KPI's zero_words ('no failure in 1,546 hours')."""
     from guardrails import SMALL_CELL
+    if u.reason == "zero_denominator" and u.zero and kpi is not None and kpi.zero_words:
+        return kpi.zero_words.format(num=kpi.written(f"{u.zero:,.0f}"))
     named = and_list([r.replace("_", " ") for r in u.roles])
     s = pack.spell
     return {
@@ -436,8 +441,11 @@ def measure(df: pd.DataFrame, roles: dict[str, str], pack: Pack, name: str,
         value = value.drop(hidden, errors="ignore").dropna()
         if len(value):   # hidden: 'Not shown: …'; zero: 'no failure in …'
             return MeasuredBy(value.astype(float), tuple(hidden), zero)
-        return Unavailable("small_cell" if hidden else
-                           "zero_denominator" if kpi.den is not None else "no_rows")
+        if hidden:
+            return Unavailable("small_cell")
+        # every group's base is 0 (one machine that never failed): their numerator, said
+        return Unavailable("zero_denominator", zero=sum(v for _, v in zero) or None) \
+            if kpi.den is not None else Unavailable("no_rows")
     if full is not None and protected_value(df, full, roles, pack, name, window, cut):
         return Unavailable("small_cell")   # a protected group of < 11 people (pay, 6 people)
     return Unavailable("no_rows") if pd.isna(value) else Measured(float(value))

@@ -327,7 +327,10 @@ class KPI(_Strict):
     unit_word: str | None = None  # a number's unit, written after it ("3.72 days")
     # a ratio's words for a group whose base is 0, {num} its numerator ("no failure in {num} h")
     zero_words: str | None = None
-    tile: bool = False            # one of the domain's KPI tiles (when computable)
+    # a ratio no row can exceed (performance ≤ 1): a row over it is flagged in cleaning, never capped
+    max: float | None = None
+    max_words: str | None = None   # what a row over `max` likely means, said with the flag
+    tile: bool = False          # one of the domain's KPI tiles (when computable)
     # "latest": a state at a date (outstanding balance, accounts, NPL): each snapshot_key's latest
     # row in the period, of any kind, THEN the kind / currency / where filters (a loan charged off
     # this month is out, never its last month's balance)
@@ -773,9 +776,11 @@ class MeasuredBy:
 class Unavailable:
     """A figure the data can't support, with its reason (GLOSSARY: Unavailable); `roles`: the
     pack roles it is about (never column names: the answer says them in the pack's words).
-    Never shown as a 0."""
+    Never shown as a 0. `zero`: a ratio's numerator over its 0 base (run hours with no failure),
+    said in the KPI's zero_words."""
     reason: Reason
     roles: tuple[str, ...] = ()
+    zero: float | None = None
 
     def __post_init__(self):
         if self.reason not in get_args(Reason):

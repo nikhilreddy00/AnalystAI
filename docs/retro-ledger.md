@@ -219,6 +219,9 @@ One row per audit, gate, browser or retro finding, so recurrences per class can 
 | D7-11 | C0 | D7 | A control chart read a stuck sensor's days as process points and spanned silent days unsaid (audit pass 1) | The answer names days repeating the day before's mean and days without readings | `tests/test_iot.py::test_a_blanked_reading_is_no_clash_and_the_control_chart_names_stuck_and_silent_days` | 0 |
 | D7-12 | C0 | D7 | A Bad reading (blanked) beside a Good one at the same time was called a clash (audit pass 1); pass 2: a sensor with only vibration was no series (readings were temperature and pressure), and a clock change was weighed against series with no reading left | Clashes read rows with a reading left; every continuous reading is in `stuck_hours`; the clock-change share counts series with a reading | `tests/test_iot.py::test_a_blanked_reading_is_no_clash_and_the_control_chart_names_stuck_and_silent_days`; `tests/test_iot.py::test_audit_pass_2_negative_spans_blank_units_and_vibration_only_series` | 1 |
 | D7-13 | C0 | D7 | Open: two sites on fixed offsets an hour apart are read as one place across a clock change (the load's DST pair rule since D1), so different instants share one wall time (audit pass 1) | Open | `tests/test_iot.py::test_two_fixed_offsets_an_hour_apart_in_june_are_two_instants` | 0 |
+| D7-14 | C5 | D7 | A filter to one machine that never failed said MTBF's "base is 0": a lower bound (no failure in its run hours) read as unknown; only groups beside measured ones were said (spec review, S-b) | `Unavailable.zero` carries the numerator over a 0 base; `unavailable_words` says it in the KPI's `zero_words` for answers and tiles | `tests/test_iot_answers.py::test_one_machine_with_no_failures_says_its_run_time_never_a_zero_base` | 0 |
+| D7-15 | C5 | D7 | A shift over 100% performance (a wrong ideal cycle) was planted and counted by the truth but said nowhere (spec review, T12) | A KPI's `max` flags each row's own ratio over it in cleaning (`kpi_over_max`), on the KPI's one definition; never capped | `tests/test_iot.py::test_a_shift_over_100_percent_performance_is_flagged_never_capped` | 0 |
+| D7-16 | C1 | D7 | The control chart's baseline was the first 30 points with data, not 30 days: a silence pulled later days in, and stuck days shrank MR̄ (spec review, F8) | `control_limits` reads 30 calendar days and leaves out days repeating the day before's mean | `tests/test_iot_answers.py::test_the_baseline_is_thirty_calendar_days_without_stuck_days` | 0 |
 | D7-03 | C5 | D7 | A ratio whose denominator's column is missing said "no rows of the kind it counts" (its numerator was judged first): a missing column read as missing rows (P4 on the work-order book) | `_kpi_value`: a structural reason of the denominator (role or end date missing) outranks a data reason of the numerator | `tests/test_properties.py::test_p4_a_kpi_without_a_role_it_needs_is_unavailable_never_0` | 0 |
 | D7-04 | C1 | D7 | `kpi_roles` left out the status that decides a row's kind and a derived role's sources, so a KPI changed when a column it "doesn't read" was blanked (a cancelled order counted; MTTR from no finish) | `kpi_roles` adds the status of packs with row kinds and each derived role's source roles | `tests/test_properties.py::test_p4_a_blank_column_a_kpi_doesnt_read_changes_nothing`; `tests/test_iot.py::test_a_kpi_reads_the_status_that_kinds_its_rows_and_its_derived_roles_sources` | 0 |
 | D7-05 | C1 | D7 | A derived role (repair hours) lived only in the analysis frame: `measure` and `computable` never saw it, so MTTR was never a tile, an answer or an intake match | `columns.derived_roles` is THE derivation, read by `with_derived`, `measure` and `computable` | `tests/test_iot.py::test_a_derived_role_counts_as_present_wherever_a_kpi_is_judged_computable`; `tests/test_reference.py::test_the_reference_equals_the_product_on_every_spell_dataset` | 0 |
@@ -287,11 +290,11 @@ One row per audit, gate, browser or retro finding, so recurrences per class can 
 | class | rows | unenforced | recurrences |
 |---|---|---|---|
 | C0 | 102 | 40 | 21 |
-| C1 | 32 | 8 | 19 |
+| C1 | 33 | 8 | 19 |
 | C2 | 32 | 6 | 4 |
 | C3 | 3 | 0 | 0 |
 | C4 | 2 | 0 | 1 |
-| C5 | 16 | 4 | 6 |
+| C5 | 18 | 4 | 6 |
 | C6 | 17 | 4 | 10 |
 | C7 | 13 | 4 | 3 |
 | C8 | 4 | 0 | 3 |

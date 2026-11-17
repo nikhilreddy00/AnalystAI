@@ -236,7 +236,7 @@ def _also_named(df: pd.DataFrame, params: TargetedParams, contract: DataContract
         k = pack.kpi(name)
         v = measure(df, roles, pack, name)
         if isinstance(v, Unavailable):   # asked for: said why, never left out (C5)
-            out.append(f"{k.label}: unavailable, {unavailable_words(v, pack)}.")
+            out.append(f"{k.label}: unavailable, {unavailable_words(v, pack, k)}.")
             continue
         v = v.value
         _, currency, _ = main_currency(df, roles)
@@ -715,7 +715,7 @@ def handle_time_series(df: pd.DataFrame, params: TargetedParams, contract: DataC
             cl, ucl, lcl = limits
             chart.reference_lines = [{"value": round(v, 4), "label": k, "axis": "y"}
                                      for k, v in (("UCL", ucl), ("CL", cl), ("LCL", lcl))]
-            after = series.iloc[BASELINE_DAYS:]
+            after = series[series.index >= _baseline_end(series)]
             above, below = after[after > ucl], after[after < lcl]
             answer += (f" Control limits (an individuals chart of daily means; centre and limits "
                        f"from the first {BASELINE_DAYS} days, x̄ ± 3·MR̄/1.128): CL {_num(cl)}, "
@@ -749,6 +749,10 @@ def handle_time_series(df: pd.DataFrame, params: TargetedParams, contract: DataC
 BASELINE_DAYS = 30   # phase I: the days the centre and limits are estimated on
 
 
+def _baseline_end(series: pd.Series) -> pd.Timestamp:
+    return series.index[0] + pd.Timedelta(days=BASELINE_DAYS)
+
+
 def _one_series_measure(pack, contract: DataContract, params: TargetedParams, metric: str,
                         df: pd.DataFrame) -> bool:
     """A continuous measure (the pack's stuck_hours roles) of ONE named series (its series_key):
@@ -760,14 +764,19 @@ def _one_series_measure(pack, contract: DataContract, params: TargetedParams, me
 
 
 def control_limits(series: pd.Series) -> tuple[float, float, float] | str:
-    """(CL, UCL, LCL) of an individuals chart on its first BASELINE_DAYS points: x̄ ± 3·MR̄/d2,
-    d2 = 1.128 for moving ranges of 2 (NIST/SEMATECH 6.3.2); else why there are none."""
-    base = series.iloc[:BASELINE_DAYS]
-    if len(base) < 20:
-        return f"only {len(base)} days to estimate them from (20 at least)"
-    mr = float(base.diff().abs().mean())
-    if mr == 0:
+    """(CL, UCL, LCL) of an individuals chart on its first BASELINE_DAYS calendar days: x̄ ±
+    3·MR̄/d2, d2 = 1.128 for moving ranges of 2 (NIST/SEMATECH 6.3.2); else why there are none.
+    A day repeating the day before's mean (a stuck instrument) is no process point: left out."""
+    raw = series[series.index < _baseline_end(series)]
+    if len(raw) < 20:
+        return f"only {len(raw)} days to estimate them from (20 at least)"
+    if float(raw.diff().abs().mean()) == 0:
         return "no variation from day to day in the first days (a stuck instrument?)"
+    base = raw[~raw.diff().eq(0)]
+    if len(base) < 20:
+        return (f"only {len(base)} of the first days differ from the day before (20 at least; "
+                "a stuck instrument?)")
+    mr = float(base.diff().abs().mean())
     cl = float(base.mean())
     return cl, cl + 3 * mr / 1.128, cl - 3 * mr / 1.128
 
@@ -1283,7 +1292,7 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
         if isinstance(got, Unavailable):   # its own reason, never a guess from the pack (C5)
             return _unanswerable(intent, f"{kpi.phrase} can't be shown by {group}: "
                                  + (f"every group has fewer than {SMALL_CELL} people"
-                                    if got.reason == "small_cell" else unavailable_words(got, pack)),
+                                    if got.reason == "small_cell" else unavailable_words(got, pack, kpi)),
                                  ["Ask without the group", "Ask about a longer period"])
         by, hidden = got.values, list(got.hidden)   # the groups measure suppressed: one list
         asc = (params.order or "desc").lower() == "asc"
@@ -1331,7 +1340,7 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
             now = measure(rows, roles, pack, kpi.name, by=group, full=all_rows, cut=cut)
             gone = next((v for v in (prior, now) if isinstance(v, Unavailable)), None)
             if why or gone:
-                answer += f" No year-earlier comparison: {why or unavailable_words(gone, pack)}."
+                answer += f" No year-earlier comparison: {why or unavailable_words(gone, pack, kpi)}."
             elif lead in (prior := prior.values).index and lead in (now := now.values).index:
                 # a 0 a year earlier is said: change() names the zero base (C5)
                 same = f" On the same days ({days}) {lead} was {fmt(now[lead])};" if same_days else ""
@@ -1377,7 +1386,7 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
         got = measure(frame, roles, pack, kpi.name, by="_period", full=all_rows, window=win, cut=cut)
         if isinstance(got, Unavailable):
             return _unanswerable(intent, f"{kpi.phrase} can't be computed over time here: "
-                                 f"{unavailable_words(got, pack)}", [f"{kpi.label} overall"])
+                                 f"{unavailable_words(got, pack, kpi)}", [f"{kpi.label} overall"])
         series = got.values.sort_index()
         unit = ""
         if freq == "M" and flow and weekly and additive(pack, kpi.name):   # weekly sums by month:
@@ -1497,7 +1506,7 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
         hidden = got.reason == "small_cell"
         return _unanswerable(intent, (f"{kpi.phrase}{where} isn't shown: " if hidden else
                                       f"{kpi.phrase} can't be computed from these rows: ")
-                             + unavailable_words(got, pack),
+                             + unavailable_words(got, pack, kpi),
                              ["Ask about a larger group" if hidden else "Ask about a longer period"])
     value = got.value
     answer = f"{kpi.label}{where}: {fmt(value)}." + carry + _arriving(contract, all_rows, date, params)
@@ -1523,7 +1532,7 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
         rows, days, same_days = current_window(full, date, params.period_start, params.period_end, weekly)
         now = measure(rows, roles, pack, kpi.name, full=all_rows, cut=cut)   # the same days as the year-earlier window
         gone = next((v for v in (prior, now) if isinstance(v, Unavailable)), None)
-        why = why or (unavailable_words(gone, pack) if gone else "")
+        why = why or (unavailable_words(gone, pack, kpi) if gone else "")
         # both measured: compared, a $0 year earlier included (change() names the zero base, C5)
         both = not why and prior is not None
         prior, now = (prior.value, now.value) if both else (None, None)

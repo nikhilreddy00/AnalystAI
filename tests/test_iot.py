@@ -294,6 +294,19 @@ def test_audit_pass_2_negative_spans_blank_units_and_vibration_only_series():
     assert _built("machine_readings")   # the stock readings still read as before (other tests)
 
 
+def test_a_shift_over_100_percent_performance_is_flagged_never_capped():
+    """T12 (spec review): performance over 100% means a wrong ideal cycle. The planted shift is
+    said in cleaning and kept: the pooled figure still reads its real numbers."""
+    from agents.cleaning_agent import CleanContext, clean as run
+    from tests.test_oracle import _built
+    _, clean, contract, truth = _built("shift_production")
+    _, audit = run(CleanContext(df=clean, ids=set(), dates=set(), targets=set(),
+                                drop_high_null=False, pack=IOT, roles=contract.roles))
+    flags = [d for d in audit.decisions if d.strategy == "kpi_over_max"]
+    assert [d.rows_affected for d in flags] == [truth["over_100_performance_rows"]] == [1]
+    assert "Performance rate over 100%" in flags[0].reason and "ideal cycle" in flags[0].reason
+
+
 def test_a_machine_id_is_no_date_filter():
     """Browser read (mock stack): the dashboard offered 'Machine' as a date range; pandas reads
     'M01' as 00:00:01 on 1 Jan of year 1. Columns are dated by the load's one rule (F2)."""

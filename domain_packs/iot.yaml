@@ -119,9 +119,10 @@ derived: {repair_hours: [actual_finish, hours, actual_start]}
 
 overview_groups: [production_line, asset, shift, work_type]
 overview_kpis: [oee, availability, good_count, mtbf, mttr, corrective_wos, assets, alarms]
-protected_roles: [operator]
+protected_roles: [operator, reported_by]
 role_caveats:
   operator: "Operators are people: figures by operator describe the work, never rank the people, and groups of fewer than 11 operators are not shown."
+  reported_by: "Reporters are people: figures by who reported a work order describe the work, never rank the people, and groups of fewer than 11 people are not shown."
   temperature: "A reading is a level: it is averaged over the period (each reading counts once; not time-weighted), never summed."
 row_labels: {sale: counted rows, cancel: cancelled work orders}
 row_flags:
@@ -143,7 +144,8 @@ kpis:
      den: [[{sum: planned_minutes}]]}
   - {name: availability, label: Availability, unit: percent, tile: true,
      num: [[{kpi: run_minutes}]], den: [[{sum: planned_minutes}]]}
-  - {name: performance, label: Performance rate, unit: percent, tile: true,
+  - {name: performance, label: Performance rate, unit: percent, tile: true, max: 1,
+     max_words: "the ideal cycle time is likely wrong (set too long)",
      num: [[{sum: [ideal_cycle_s, "*", total_count], times: 0.016666666666666666}]],
      den: [[{kpi: run_minutes}]]}
   - {name: quality_rate, label: Quality (first-pass yield), unit: percent, tile: true,
@@ -216,7 +218,7 @@ unsupported:
   time_to_restore: "the time from the report to the finish, which includes the wait before work starts; MTTR here is actual start to actual finish"
 
 caveats:
-  read_as_domain: "Read as manufacturing data ({kpis}). Ratios pool their parts (OEE and availability over planned production time, summed over shifts and machines before dividing), so a line's figure pools its machines' time; MTBF is run time per failure and assumes a constant failure rate; MTTR runs from actual start to actual finish of finished repairs. Readings are averaged, not time-weighted."
+  read_as_domain: "Read as manufacturing data ({kpis}). Ratios pool their parts (OEE and availability over planned production time, summed over shifts and machines before dividing), so a line's figure pools its machines' time; MTBF is run time per failure and assumes a constant failure rate; MTTR runs from actual start to actual finish of finished repairs, so repairs still open are not in it and it can read low. Readings are averaged, not time-weighted. Times are read in the zone they are written in (a file mixing offsets is read in UTC)."
   read_as_domain_weak: "Read as manufacturing data because it has {roles} columns; if these are not machine readings, shift reports or work orders, the manufacturing figures here don't apply."
   repeated_rows_kept: "{n} rows repeat another row exactly and were kept."
   partial_last_period: "{label} is partial (data through the {through}) and is left out of period comparisons."
