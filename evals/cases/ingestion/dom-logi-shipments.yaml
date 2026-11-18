@@ -1,0 +1,54 @@
+id: dom-logi-shipments
+category: domain
+dataset:
+  name: tms_shipments
+  seed: 1
+roles:
+  Shipment ID: id
+  Tracking Number: id
+  Carrier: category
+  Mode: category
+  Origin City: category
+  Dest City: category
+  Ship Date: date
+  Promised Date: date
+  Delivered At: date
+  Status: category
+  Weight: metric
+  Weight UOM: category
+  Linehaul: metric
+  Fuel Surcharge: metric
+  Accessorials: metric
+  Total Charge: metric
+  Currency: category
+  Consignee Name: category
+  Consignee Phone: category
+pii:
+  Tracking Number: identifier
+  Consignee Name: name
+  Consignee Phone: phone
+traps:
+- Tracking Number
+- Weight UOM
+- Delivered At
+expect_domain: logistics
+expect_roles:
+  date: Ship Date
+  promised_date: Promised Date
+  delivered: Delivered At
+  shipment: Shipment ID
+  carrier: Carrier
+  mode: Mode
+  origin: Origin City
+  destination: Dest City
+  status: Status
+  currency: Currency
+  consignee: Consignee Name
+  freight_cost: Total Charge
+  linehaul: Linehaul
+  fuel_surcharge: Fuel Surcharge
+  accessorials: Accessorials
+  weight: Weight
+  weight_uom: Weight UOM
+label_note: 'Domain 8 TMS export (T7, T11): a tracking number, consignee names and phones are personal data; the
+  weight''s unit is a column of its own; the delivery date is blank while a shipment is in transit.'

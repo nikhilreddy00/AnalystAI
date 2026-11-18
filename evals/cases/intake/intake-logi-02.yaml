@@ -1,0 +1,17 @@
+id: intake-logi-02
+category: clear
+pipeline: production
+source:
+  dataset: dock_appointments
+  seed: 1
+overview_done: true
+question: "What's our on-time rate by carrier?"
+expect:
+  ask: false
+  intent_any:
+  - segment_compare
+  - top_n
+  - time_series
+  params:
+    kpi: on_time_arrival
+rationale: "Domain 8 (RT-7): the same words on a dock log mean arrival by the appointment time; never ask for a promised date."

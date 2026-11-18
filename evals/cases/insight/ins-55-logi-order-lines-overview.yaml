@@ -1,0 +1,38 @@
+id: ins-55-logi-order-lines-overview
+domain: logistics
+category: straightforward
+label_note: 'Domain 8 fulfilment lines: OTIF by order (65.1%) named with its level, below OTIF by line (85.4%);
+  unit fill over released lines; Columbus DC late most often, described, never caused.'
+dataset:
+  name: order_lines
+  seed: 1
+question: Give me an overview of this dataset.
+entity:
+- order line
+- order lines
+plan:
+  target_metrics:
+  - Qty Shipped
+  - Qty Ordered
+  segments:
+  - Warehouse
+  analysis_types:
+  - eda
+  - segmentation
+findings:
+- kind: segment
+  segment_column: Warehouse
+  metric: Qty Shipped
+  aggregation: sum
+- kind: segment
+  segment_column: Carrier
+  metric: Qty Ordered
+  aggregation: sum
+expect:
+  must_mention:
+  - OTIF
+  - order
+  must_not_match:
+  - \b(?:world[- ]class|best[- ]in[- ]class|industry (?:average|standard|benchmark))\b
+  - \b(?:Columbus|Dallas|Reno)\b[^.]{0,40}\b(?:caus(?:es|ed)|is to blame|is at fault)\b
+  - net sales|order value|\bMRR\b|readmission|loss ratio|headcount|attrition|\bNPL\b|\bOEE\b

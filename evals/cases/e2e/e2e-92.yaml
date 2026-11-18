@@ -1,0 +1,28 @@
+id: e2e-92
+domain: logistics
+source: xlsx
+dataset:
+  name: order_lines
+  seed: 1
+question: Give me an overview of this dataset.
+overview_done: false
+trap: true
+checks:
+- kind: number_in_answer
+  truth_key: otif_order
+  rel_tol: 0.003
+  scales: &pct
+  - - 1
+    - null
+  - - 100
+    - '%'
+hard_rules:
+- charts_lint_clean
+- charts_have_rationale
+- non_empty_or_error
+- insight_grounded
+- insight_dates_in_range
+- executive_no_jargon
+- claims_cite_evidence
+label_note: 'Domain 8 fulfilment lines (T13-T16; Excel): OTIF by order 65.1% (every delivered line on time and in
+  full), below OTIF by line 85.4%; open lines not judged, cancelled lines out.'

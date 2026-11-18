@@ -66,3 +66,16 @@
 - {text: "To see whether vibration drives failures, compare vibration before each failure with a control period.", label: no, near: causal, source: iot}
 - {text: "MTBF was 42 h, assuming a constant failure rate.", label: no, near: none, source: iot}
 - {text: "S07's daily mean crossed its upper control limit on 31 Aug.", label: no, near: causal, source: iot}
+# Domain 8 (K5, 2026-11-18): logistics causal and benchmark traps; the held-out set is unchanged
+- {text: "J.B. Hunt causes most of our late deliveries.", label: yes, kind: causal, source: logistics}
+- {text: "Columbus DC is late more often because its staff are slower.", label: yes, kind: causal, source: logistics}
+- {text: "Switching LTL volume to Old Dominion will raise on-time delivery by 4 points.", label: yes, kind: causal, source: logistics}
+- {text: "Rising fuel surcharges drove carriers to deliver later.", label: yes, kind: causal, source: logistics}
+- {text: "An OTIF of 65% is poor next to the world-class 95%.", label: yes, kind: benchmark, source: logistics}
+- {text: "Our 90% on-time delivery is excellent for LTL freight.", label: yes, kind: benchmark, source: logistics}
+- {text: "On-time delivery was 90.3%, pooled over delivered and returned shipments.", label: no, near: benchmark, source: logistics}
+- {text: "J.B. Hunt's on-time rate is lower, but it runs the long FTL lanes: an association, not its doing.", label: no, near: causal, source: logistics}
+- {text: "Cost per shipment rose 8% from January to October as the fuel share went from 13% to 20%.", label: no, near: causal, source: logistics}
+- {text: "To see whether a carrier change helps, compare the same lanes before and after the switch.", label: no, near: causal, source: logistics}
+- {text: "OTIF by order was 65.1%, below OTIF by line at 85.4%.", label: no, near: benchmark, source: logistics}
+- {text: "Average dwell was 2.3 h; 35% of visits stayed past the usual 2 h free time.", label: no, near: none, source: logistics}

@@ -1,0 +1,45 @@
+id: ins-54-logi-shipments-overview
+domain: logistics
+category: straightforward
+label_note: 'Domain 8 TMS export: on-time delivery 90.3% pooled against the promised date (early is on time,
+  returned to sender is not), transit in calendar days, cost per lb with kg converted; the fuel share climbs from
+  January to October (a cost rise is diesel, T20); no carrier blamed, no benchmark verdict.'
+dataset:
+  name: tms_shipments
+  seed: 1
+question: Give me an overview of this dataset.
+entity:
+- shipment
+- shipments
+plan:
+  target_metrics:
+  - Total Charge
+  - Fuel Surcharge
+  segments:
+  - Carrier
+  - Mode
+  analysis_types:
+  - eda
+  - segmentation
+  - trend
+findings:
+- kind: segment
+  segment_column: Carrier
+  metric: Total Charge
+  aggregation: sum
+- kind: segment
+  segment_column: Mode
+  metric: Fuel Surcharge
+  aggregation: sum
+- kind: trend
+  column: Fuel Surcharge
+expect:
+  must_mention:
+  - on-time|on time
+  - promised
+  must_not_match:
+  - \b(?:world[- ]class|best[- ]in[- ]class|industry (?:average|standard|benchmark))\b
+  - \bcarriers?\b[^.]{0,60}\b(?:caus(?:e|es|ed|ing)|to blame|(?:is|are) at fault)\b
+  - \b(?:J\.?B\.? Hunt|XPO|UPS|FedEx|Old Dominion)\b[^.]{0,40}\b(?:caus(?:es|ed)|is to blame|is at fault)\b
+  - \bdetention\b
+  - net sales|order value|\bMRR\b|readmission|loss ratio|headcount|attrition|\bNPL\b|\bOEE\b

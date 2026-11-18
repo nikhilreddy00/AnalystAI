@@ -3230,10 +3230,13 @@ def _tms_truth(df: pd.DataFrame) -> dict:
         "on_time_rate": float(on_time.sum() / base.sum()),
         "on_time_by_carrier": by_carrier.to_dict(),
         "shipments_by_carrier": d[base].groupby("Carrier").size().to_dict(),
+        "on_time_by_carrier_ltl": d[base & (df["Mode"] == "LTL")].groupby("Carrier")["_ot"].mean().to_dict(),
         "on_time_rate_past_due_late": float(on_time.sum() / (base | past_due).sum()),       # L1
         "on_time_by_carrier_past_due_late": d[base | past_due].groupby("Carrier")["_ot"].mean().to_dict(),
         "past_due_open": int(past_due.sum()), "open_shipments": int(open_.sum()),
-        "returned": int(returned.sum()), "cancelled": int((~live).sum()),
+        "returned": int(returned.sum()), "cancelled": int((df["Status"] == "Cancelled").sum()),
+        "other_currency_rows": int((df["Currency"] != "USD").sum()),
+        "kg_rows": int((df["Weight UOM"] == "KG").sum()),
         "early_deliveries": int((delivered & has_promise & (deliv.dt.normalize() < promised)).sum()),
         "no_promise": int((delivered & ~has_promise).sum()),
         "delivered_no_date": int((live & (df["Status"] == "Delivered") & deliv.isna()).sum()),
@@ -3424,7 +3427,7 @@ def _dock_truth(df: pd.DataFrame) -> dict:
         "on_time_arrival_by_carrier": d[arrived].groupby("Carrier")["_ot"].mean().to_dict(),
         "visits_over_2h": float((valid & (dwell > 2)).sum() / valid.sum()),
         "no_shows": int((df["Status"] == "No-show").sum()), "visits": int(live.sum()),
-        "negative_dwells": int((live & (dwell < 0)).sum()),
+        "negative_dwells": int((live & (dwell < 0)).sum()), "cancelled": int((~live).sum()),
         "overnight_dwell_hours": float(dwell[df["Departed At"] == "2026-07-15 07:11"].iloc[0]),
         # naive twins
         "naive_with_15min_grace": float((arrived & (arr <= appt + pd.Timedelta(minutes=15))).sum()

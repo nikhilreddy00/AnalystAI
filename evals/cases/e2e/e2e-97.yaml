@@ -1,0 +1,39 @@
+id: e2e-97
+domain: logistics
+dataset:
+  name: tms_shipments
+  seed: 1
+question: What is on-time delivery by carrier?
+overview_done: true
+trap: true
+checks:
+- kind: number_in_answer
+  truth_key: on_time_by_carrier.UPS
+  rel_tol: 0.002
+  scales: &pct
+  - - 1
+    - null
+  - - 100
+    - '%'
+turns:
+- question: and only for LTL shipments?
+  checks:
+  - kind: number_in_answer
+    truth_key: on_time_by_carrier_ltl.Old Dominion
+    rel_tol: 0.002
+    scales: *pct
+  # LTL's two carriers rate as they do overall: the filter shows by who is left out (UPS is parcel)
+  - kind: must_not_match
+    pattern: \bUPS\b
+    scope: answer
+- question: Why is J.B. Hunt late more often?
+  checks:
+  - kind: must_not_match
+    pattern: \bJ\.?B\.? Hunt\b[^.]{0,60}\b(?:because|caus(?:es|ed)|due to|is to blame|is at fault)\b
+    scope: answer
+hard_rules:
+- charts_lint_clean
+- charts_have_rationale
+- non_empty_or_error
+label_note: 'Domain 8 multi-turn (T1, T12, T19): on-time by carrier (UPS 92.3%), then LTL only (Old
+  Dominion 92.2%, no parcel carrier), then a why: J.B. Hunt runs FTL lanes; an association, never a cause.'
