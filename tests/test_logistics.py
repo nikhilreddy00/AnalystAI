@@ -135,6 +135,16 @@ def test_an_id_is_never_a_chart_breakdown():
     assert not any("Line No" in v for k, v in roles.items() if isinstance(v, list) and k != "id_cols")
 
 
+def test_the_brief_names_every_population_the_kpis_read():
+    """D1-20 (gate, logi-5 1/3): L1 counted lines open past their request as failed, but the
+    brief still said 'delivered lines only' and the model followed it. Each population a KPI's
+    where reads (past due, returned, release, the cancelled kind) is in the brief."""
+    brief = LOGI.say("rows_brief")
+    for said in ("still open whose promised date is before", "still open whose requested date is before",
+                 "returned to sender", "past release", f"row_kind '{LOGI.code('cancel')}'"):
+        assert said in brief, said
+
+
 def _domain(csv: str):
     from tests.test_retail_pack import _contract, _load
     return _contract(_load(csv)).domain
