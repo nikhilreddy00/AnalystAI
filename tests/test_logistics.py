@@ -248,6 +248,43 @@ def test_late_counts_equal_the_truth():
     assert arrived == pytest.approx(round((1 - truth["on_time_arrival"]) * (truth["visits"] - truth["no_shows"])))
 
 
+@pytest.mark.parametrize("q,want", [("What percent of shipments were late?", "on_time_delivery"),
+                                     ("Share of late deliveries by carrier", "on_time_delivery"),
+                                     ("% of trucks arrived late", "on_time_arrival")])
+def test_a_share_of_late_ones_is_the_rate_never_the_count(q, want):
+    """Audit pass 2 (C6): 'what percent of shipments were late' got the count 285. A shared
+    'percent of' rule moved three finished domains' contexts and was backed out; the pack's
+    longer phrase names the rate."""
+    assert [c for c, _ in dp.glossary_hits(LOGI, q, [])][:1] == [want]
+
+
+@pytest.mark.parametrize("name", ["tms_shipments", "order_lines", "dock_appointments"])
+def test_dates_written_with_a_zone_read_as_their_naive_twin(name):
+    """Audit pass 2: zoned ship, promise and delivery dates read the same tiles."""
+    from tests.test_oracle import tiles
+    assert tiles(name, transform="zoned") == pytest.approx(tiles(name))
+
+
+@pytest.mark.xfail(strict=True, reason="D8-03 (Open): the spell code compares zoned HR dates with a "
+                   "naive as-of; pre-existing on main (it crashed in cleaning's as-of before)")
+def test_an_hr_roster_with_zoned_dates_reads_as_its_naive_twin():
+    from tests.test_oracle import tiles
+    assert tiles("hr_roster", transform="zoned") == pytest.approx(tiles("hr_roster"))
+
+
+def test_a_day_span_never_loses_a_row_across_zones():
+    """Audit pass 2: ship and promise in −05:00 and a delivery in UTC at 02:00 the next day:
+    each side normalized in its own zone made slack −1 and days late 0, so the shipment fell
+    out of both sides of on-time. Each day is its writer's calendar day: one day late."""
+    df = _ships(("S0", "2026-01-01T09:00:00-05:00", "2026-01-03T00:00:00-05:00", "2026-01-04T02:00:00Z", "Delivered"),
+                ("S1", "2026-01-01T09:00:00-05:00", "2026-01-03T00:00:00-05:00", "2026-01-05T10:00:00Z", "Delivered"))
+    assert dp.compute_kpi(df, SHIP, LOGI, "on_time_delivery") == 0.0
+    assert dp.compute_kpi(df, SHIP, LOGI, "late_shipments") == 2.0
+    brief = "\n".join(dp.pack_brief(LOGI, DOCK, []))   # the brief says how each span counts
+    assert "exact hours from arrived to departed" in brief and "(same day = 0)" in "\n".join(
+        dp.pack_brief(LOGI, SHIP_DUE, []))
+
+
 def _domain(csv: str):
     from tests.test_retail_pack import _contract, _load
     return _contract(_load(csv)).domain

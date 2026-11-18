@@ -10,6 +10,7 @@ here, so `import domain_pack` and `from domain_pack import x` keep working; the 
 too, for the tests that pin them (`_in_force`, `_MEMO` …). Patch the loader at domain_pack.pack.
 """
 from .pack import (  # noqa: F401
+    wall_times,
     KPIValue,
     Measured,
     MeasuredBy,

@@ -167,7 +167,7 @@ kind_codes: {cancel: cancelled}
 row_flags:
   cancel: "cancelled shipments, lines or appointments: left out of every count and rate"
 text:
-  rows_brief: "First keep only row_kind 'sale' rows: cancelled ones (row_kind 'cancelled') and other currencies are in no figure, counts and cost per lb included (a cancelled shipment keeps its weight at $0). Ratios pool their parts: on-time, OTIF, fill and cost per lb are Σ numerator ÷ Σ denominator over those rows, never a mean of per-shipment, per-lane or per-carrier ratios. On-time delivery = shipments delivered on or before the promised date (dates as written: local; an early delivery is on time) ÷ (shipments delivered + returned to sender + shipments still open whose promised date is before the data's last ship date: those are late); open ones not yet due are not in it. OTIF (line) = lines delivered by the requested date AND shipped in full (shipped ≥ ordered) ÷ (lines delivered + lines still open whose requested date is before the data's last order date: those failed); OTIF (order) = orders whose every such line is OTIF ÷ orders with at least one such line. Unit fill = Σ shipped ÷ Σ ordered and line fill = lines shipped in full ÷ lines, over lines that have left the warehouse or were backordered (lines still open, allocated, released, picked or packed are not judged yet). Cost per lb = Σ cost ÷ Σ pounds over rows with a weight in a stated unit (kg × 2.20462). Transit = delivered − ship date in calendar days. Dwell = departed − arrived in hours, averaged per visit, never summed."
+  rows_brief: "First keep only row_kind 'sale' rows: cancelled ones (row_kind 'cancelled') and other currencies are in no figure, counts and cost per lb included (a cancelled shipment keeps its weight at $0). Ratios pool their parts: on-time, OTIF, fill and cost per lb are Σ numerator ÷ Σ denominator over those rows, never a mean of per-shipment, per-lane or per-carrier ratios. On-time delivery = shipments delivered on or before the promised date (dates as written: local; an early delivery is on time) ÷ (shipments delivered + returned to sender + shipments still open whose promised date is before the data's last ship date: those are late); open ones not yet due are not in it. OTIF (line) = lines delivered by the requested date AND shipped in full (shipped ≥ ordered) ÷ (lines delivered + lines still open whose requested date is before the data's last order date: those failed); OTIF (order) = orders whose every such line is OTIF ÷ orders with at least one such line. Unit fill = Σ shipped ÷ Σ ordered and line fill = lines shipped in full ÷ lines, over lines that have left the warehouse or were backordered (lines still open, pending, allocated, released, picked or packed are not judged yet). Cost per lb = Σ cost ÷ Σ pounds over rows with a weight in a stated unit (kg × 2.20462). Transit = delivered − ship date in calendar days. Dwell = departed − arrived in hours, averaged per visit, never summed."
   grain_line: "One row is one shipment, one order line or one dock visit: count shipments, orders or visits as distinct {key}, never rows."
   unsupported_alternatives: "I can answer with what the data has: on-time delivery, transit days and cost per shipment or per lb by carrier, mode or lane; OTIF and fill rates by warehouse; or dwell and on-time arrival by facility. Which would help?"
   kpis_default: its shipment, order-line or dock-visit columns
@@ -265,7 +265,7 @@ kpis:
      num: [[{nunique: shipment, where: [[{role: status, in: *returned}]]}]]}
   # "how many …?": a count, never the whole count or the rate (audit pass 1, C6)
   - {name: late_shipments, label: Late shipments, unit: count,
-     says: "Delivered after the promised date, or still open past it as of the data's last ship date.",
+     says: "Delivered after the promised date, or still open past it as of the data's last ship date; returned to sender ({returned_shipments}) are counted apart, though on-time delivery counts them as late.",
      num: [[{nunique: shipment, where: [[{role: days_late, gt: 0}, {role: transit_days, ge: 0}],
                                         [{role: past_due_days, gt: 0}, {role: status, in: *undelivered}]]}]]}
   - {name: late_arrivals, label: Late arrivals, unit: count,
@@ -283,9 +283,14 @@ kpis:
 
 glossary:
   on_time_delivery: [on-time delivery, on time delivery, on-time delivery rate, otd, delivery performance,
-                     on-time rate, on time rate, on-time %, on time %, late rate, share delivered late]
+                     on-time rate, on time rate, on-time %, on time %, late rate, share delivered late,
+                     late delivery rate, late shipment rate,
+                     # a share of late ones is the rate, never the count (audit pass 2)
+                     percent of shipments were late, percentage of late shipments,
+                     percent of late shipments, share of late shipments, share of late deliveries,
+                     percentage of shipments late, "% of shipments late", "% of late shipments"]
   late_shipments: [late shipments, late deliveries, shipments are late, shipments were late,
-                   shipments late, delivered late, number of late shipments]
+                   shipments late, delivered late, number of late shipments, deliveries were late]
   avg_transit_days: [transit time, transit days, average transit time, days in transit, delivery time,
                      delivery days]
   cost_per_shipment: [cost per shipment, freight cost per shipment, average shipping cost, cost per load]
@@ -299,11 +304,13 @@ glossary:
   avg_dwell: [dwell, dwell time, average dwell, time at the dock, turn time, time on site]
   # the bare words too: on a dock log they mean arrival (the KPI the data computes wins, RT-7)
   on_time_arrival: [on-time arrival, on time arrival, arrival on time, appointment compliance,
-                    on-time rate, on time rate, on-time %, on time %]
+                    on-time rate, on time rate, on-time %, on time %, late rate, late arrival rate,
+                    percent of trucks arrived late, share of trucks arrived late, share of late arrivals,
+                    "% of trucks arrived late", percentage of late arrivals]
   late_arrivals: [late arrivals, late trucks, arrived late, trucks arrived late, trucks were late]
   visits_over_2h: [detention, detention rate, visits over 2 hours, long dwell, over free time]
   no_shows: [no-shows, no shows, missed appointments]
-  visits: [dock visits, appointments, number of appointments, trucks]
+  visits: [dock visits, appointments, number of appointments, dock appointments]
   open_shipments: [open shipments, in transit, shipments in transit, undelivered shipments]
   returned_shipments: [returned to sender, returns to sender, rts, refused shipments, returned shipments,
                        shipments were returned, shipments returned]

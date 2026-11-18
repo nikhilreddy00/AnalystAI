@@ -788,7 +788,7 @@ def _as_of_dated(df: pd.DataFrame, ctx) -> pd.DataFrame:
     the last month is judged against the as-of, never against a column's own last hire (Domain 5
     audits: 'data through Dec 2026', 'Mar 2026 is partial' on a file that runs to Oct). A row
     dated the as-of stands for it."""
-    from domain_pack import has_spell, spell_as_of
+    from domain_pack import has_spell, spell_as_of, wall_times
     if not ctx.pack or not ctx.strong or not has_spell(ctx.pack, ctx.roles):
         return df
     as_of = spell_as_of(ctx.pack, df, ctx.roles)
@@ -796,7 +796,8 @@ def _as_of_dated(df: pd.DataFrame, ctx) -> pd.DataFrame:
              and pd.api.types.is_datetime64_any_dtype(df[ctx.roles[r]])]
     if as_of is None or not dated:
         return df
-    out = df.assign(**{c: df[c].where(df[c] <= as_of) for c in dated})
+    # a zoned date is compared as written (audit, Domain 8: HR dates in '…Z' crashed here)
+    out = df.assign(**{c: df[c].where(wall_times(df[c]) <= as_of) for c in dated})
     edge = pd.DataFrame({c: pd.Series([as_of], dtype=out[c].dtype) for c in dated})   # the as-of
     return pd.concat([out, edge], ignore_index=True)
 

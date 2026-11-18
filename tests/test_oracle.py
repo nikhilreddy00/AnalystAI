@@ -340,8 +340,17 @@ def _one_snapshot(df: pd.DataFrame) -> pd.DataFrame:
     return df[df[col] == df[col].max()].reset_index(drop=True)
 
 
+def _zoned(df: pd.DataFrame) -> pd.DataFrame:
+    """Every '… Date' column written as UTC ISO strings ('2026-01-05T00:00:00Z'), the way an
+    API export writes them (audit, Domain 8: HR dates in this form crashed cleaning)."""
+    cols = [c for c in df.columns if str(c).lower().endswith("date")]
+    return df.assign(**{c: pd.to_datetime(df[c], errors="coerce").dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+                        for c in cols})
+
+
 TRANSFORMS = {"shuffle": _shuffle, "overlap": _overlap, "synonyms": _synonyms, "canonical": _canonical,
-              "presigned": _presigned, "next_bill": _next_bill, "one_snapshot": _one_snapshot}
+              "presigned": _presigned, "next_bill": _next_bill, "one_snapshot": _one_snapshot,
+              "zoned": _zoned}
 
 
 def builtin_on(built, targets: list[str], segments: list[str]) -> dict:
