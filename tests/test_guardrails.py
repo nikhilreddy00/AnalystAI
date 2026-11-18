@@ -101,6 +101,33 @@ def test_shop_floor_people_are_personal_data_and_machines_are_not(col, values, p
     assert (got[0] if got else None) == pii
 
 
+@pytest.mark.parametrize("col, values, pii", [
+    # Domain 8: a carrier, warehouse or facility is a business or a place, never a person's name
+    ("carrier_name", ["FedEx Freight", "Old Dominion"], None),
+    ("warehouse_name", ["Reno DC"], None), ("facility_name", ["Dallas Cross-Dock"], None),
+    ("dc_name", ["DC 4"], None), ("hub_name", ["Memphis"], None), ("terminal_name", ["ATL"], None),
+    ("depot_name", ["North"], None), ("dock_name", ["Dock 3"], None), ("yard_name", ["Yard B"], None),
+    # a parcel's tracking number identifies its recipient once linked (research §5, DPD notice)
+    ("tracking_number", ["1Z999AA10123456784", "1Z999AA10123456785"], "identifier"),
+    ("Tracking No", ["794644790138"], "identifier"), ("awb", ["176-12345675"], "identifier"),
+    ("waybill_number", ["JD014600003456789012"], "identifier"),
+    # the people at either end: a consignee, whoever signed for it
+    ("consignee", ["Maria Gomez", "Tom Brady"], "name"), ("signed_by", ["J SMITH", "Ann Lee"], "name"),
+    ("received_by", ["Kim Moss", "Raj Patel"], "name"), ("signer", ["Ann Lee"], "name"),
+    ("driver_name", ["Raj Patel"], "name"), ("license_plate", ["7ABC123"], "vehicle"),
+    # negatives: B2B consignees are companies; trailers, SCACs, PRO / BOL numbers, doors are data
+    ("consignee", ["Acme Corp", "Globex Inc"], None), ("ship_to", ["Acme Corp", "Initech LLC"], None),
+    ("trailer_number", ["53-1042", "53-2210"], None), ("scac", ["ODFL", "FXFE", "SAIA"], None),
+    ("pro_number", ["0123456789"], None), ("bol_number", ["BOL-778812"], None),
+    ("door", ["D12", "D07"], None), ("tracking_events", [3, 5], None),
+    # another domain's carrier (an insurer) stays a company
+    ("carrier_name", ["Travelers", "Chubb"], None),
+])
+def test_logistics_people_and_parcels_are_personal_data_and_carriers_are_not(col, values, pii):
+    got = g.pii_kind(col, values)
+    assert (got[0] if got else None) == pii
+
+
 def test_pii_masking():
     assert g.is_pii_column("customer_email") and g.is_pii_column("customer_name")
     assert not g.is_pii_column("region") and not g.is_pii_column("units")
