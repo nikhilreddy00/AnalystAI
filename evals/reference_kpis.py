@@ -640,6 +640,18 @@ LOG_RETURNED = {"returned to sender", "return to sender", "rts", "returned", "re
 LOG_OPEN = {"in transit", "intransit", "out for delivery", "picked up", "exception",
             "delivery exception", "delayed", "tendered", "booked", "dispatched", "pending"}
 LOG_UNRELEASED = {"open", "pending", "allocated", "released", "picked", "packed"}
+LOG_UNDELIVERED = {"in transit", "intransit", "out for delivery", "picked up", "exception",
+                   "delivery exception", "delayed", "tendered", "booked", "dispatched", "pending",
+                   "shipped", "partially shipped", "backordered", "back ordered", "short shipped",
+                   "open", "allocated", "released", "picked", "packed"}
+
+
+def _as_of(df: pd.DataFrame, col: str):
+    """The data's last day on its time axis, not after today (U1: what 'past due' is judged at)."""
+    today = pd.Timestamp(os.environ.get("ANALYSTAI_TODAY") or pd.Timestamp.today()).normalize()
+    days = pd.to_datetime(df[col], errors="coerce").dt.normalize()
+    days = days[days <= today]
+    return days.max() if days.notna().any() else None
 LOG_NO_SHOW = {"no show", "no-show", "noshow", "missed"}
 _LB = {"lb": 1.0, "lbs": 1.0, "l": 1.0, "pound": 1.0, "pounds": 1.0, "kg": 2.20462, "kgs": 2.20462,
        "k": 2.20462, "kilogram": 2.20462, "kilograms": 2.20462, "oz": 0.0625, "ounce": 0.0625,
@@ -660,6 +672,7 @@ def shipment_kpis(df: pd.DataFrame, c: dict) -> dict:
     Σ cost ÷ Σ lb over rows with a weight in a known unit. Cancelled rows count nowhere."""
     on, base, transit, ids, open_, ret = set(), set(), {}, set(), set(), set()
     late, cost, wcost, lb = {}, 0.0, 0.0, 0.0
+    as_of = _as_of(df, c["ship"])
     for _, r in df.iterrows():
         st = _w(r[c["status"]])
         if st in LOG_CANCELLED:
@@ -680,6 +693,8 @@ def shipment_kpis(df: pd.DataFrame, c: dict) -> dict:
                     late[sid] = late.get(sid, 0) + (deliv - prom).days
         if prom is not None and st in LOG_RETURNED:
             base.add(sid)
+        if prom is not None and as_of is not None and st in LOG_UNDELIVERED and prom < as_of:
+            base.add(sid)   # U1: still open after its promise: late
         cost += _n(r[c["cost"]])
         w, unit = _n(r[c["weight"]]), _LB.get(_w(r[c["uom"]]))
         if w > 0 and unit:
@@ -703,6 +718,7 @@ def order_line_kpis(df: pd.DataFrame, c: dict) -> dict:
     ok_lines, deliv_lines, orders, order_ok = set(), set(), set(), {}
     shipped = ordered = 0.0
     released, full = set(), set()
+    as_of = _as_of(df, c["date"])
     for _, r in df.iterrows():
         st = _w(r[c["status"]])
         if st in LOG_CANCELLED:
@@ -716,6 +732,9 @@ def order_line_kpis(df: pd.DataFrame, c: dict) -> dict:
             ok = deliv <= req and is_full
             ok_lines |= {line} if ok else set()
             order_ok[order] = order_ok.get(order, True) and ok
+        elif req is not None and as_of is not None and st in LOG_UNDELIVERED and req < as_of:
+            deliv_lines.add(line)   # U1: still open after its requested date: it failed
+            order_ok[order] = False
         if st not in LOG_UNRELEASED:
             released.add(line)
             full |= {line} if is_full else set()
@@ -758,6 +777,7 @@ LOGISTICS = {
                                        "cost": "total_charge", "weight": "weight",
                                        "uom": "weight_uom"}),
     "book_order_lines": (order_line_kpis, {"line": "order_line_id", "order": "order_id",
+                                           "date": "order_date",
                                            "status": "status", "delivered": "delivered_date",
                                            "promised": "requested_date", "ordered": "qty_ordered",
                                            "shipped": "qty_shipped"}),

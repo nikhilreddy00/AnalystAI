@@ -26,7 +26,10 @@ Domain words (ALOS, readmission, NPL …) live in `domain_packs/<domain>.yaml`, 
 - **As-of date** — the date spell figures are measured at: a report date in the data, else the
   latest snapshot, else the latest start or end date not after today. Dates after it are not
   yet events. Flows and rates read the 12 months to it unless a period is asked. A month label's
-  as-of is that month's end, never after today.
+  as-of is that month's end, never after today. Data with no spells: the latest day of its time
+  axis (the last ship or order date), not after today. Always judged on the whole data.
+- **Past due** — still open after its promised date, as of the as-of date: late, never left out
+  of an on-time rate (a shipment in transit two days after its promise has already missed it).
 - **Window** — the span a flow or rate reads: (its start, its end]; the 12 months to the as-of,
   or an asked period, cut to the shorter span since the first date the data knows a state
   (snapshots: from the first snapshot, its month-end included; spells: the day before the first

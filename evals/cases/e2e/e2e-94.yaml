@@ -7,7 +7,7 @@ question: What is on-time delivery by carrier?
 overview_done: true
 checks:
 - kind: number_in_answer
-  truth_key: on_time_by_carrier.FedEx Freight
+  truth_key: on_time_by_carrier.UPS
   rel_tol: 0.002
   scales: &pct
   - - 1
@@ -18,4 +18,5 @@ hard_rules:
 - charts_lint_clean
 - charts_have_rationale
 - non_empty_or_error
-label_note: 'Domain 8 (T1): each carrier''s own pooled on-time rate; FedEx Freight 88.8%.'
+label_note: 'Domain 8 (T1, U1): each carrier''s own pooled on-time rate, open shipments past their promise
+  counted late; UPS 93.7% (FedEx Freight equals the overall 88.9%, so it can''t show a by-carrier answer).'

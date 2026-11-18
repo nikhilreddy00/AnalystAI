@@ -9,9 +9,11 @@ checks:
 - kind: number_in_answer
   truth_key: dwell_by_facility.Columbus DC
   rel_tol: 0.01
+  unit: hours
 - kind: must_not_number
   truth_key: naive_dwell_with_negatives
   rel_tol: 0.0005
+  unit: hours
   scope: answer
 hard_rules:
 - charts_lint_clean

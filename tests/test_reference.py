@@ -200,6 +200,7 @@ def test_the_references_word_lists_are_the_packs():
         set(cond(logi, "open_shipments").in_), set(cond(logi, "returned_shipments").in_),
         set(cond(logi, "no_shows").in_))
     assert R.LOG_UNRELEASED == set(logi.kpi("unit_fill").num[0][0].where[0][0].not_in)
+    assert R.LOG_UNDELIVERED == set(logi.kpi("on_time_delivery").den[0][0].where[3][1].in_)
     assert R.LOG_CANCELLED == set(logi.status_values["cancel"])
     assert R._LB == {k.lower(): v[0] for k, v in logi.units["weight"].convert.items()}
 

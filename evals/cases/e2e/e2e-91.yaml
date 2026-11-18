@@ -31,5 +31,6 @@ hard_rules:
 - insight_dates_in_range
 - executive_no_jargon
 - claims_cite_evidence
-label_note: 'Domain 8 TMS export (T1, T3, T6, T19): on-time delivery 90.3% pooled (early is on time, returned to
-  sender is not), never the 87.8% mean of carriers'' rates; no carrier blamed from observational data.'
+label_note: 'Domain 8 TMS export (T1, T3, T6, T19, U1): on-time delivery 88.9% pooled (early is on time; returned
+  to sender and open past the promise are late), never the 84.7% mean of carriers'' rates; no carrier blamed
+  from observational data.'

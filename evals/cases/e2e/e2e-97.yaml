@@ -15,6 +15,11 @@ checks:
     - null
   - - 100
     - '%'
+- kind: must_not_number
+  truth_key: naive_mean_of_carrier_rates
+  rel_tol: 0.002
+  scales: *pct
+  scope: answer
 turns:
 - question: and only for LTL shipments?
   checks:
@@ -35,5 +40,5 @@ hard_rules:
 - charts_lint_clean
 - charts_have_rationale
 - non_empty_or_error
-label_note: 'Domain 8 multi-turn (T1, T12, T19): on-time by carrier (UPS 92.3%), then LTL only (Old
-  Dominion 92.2%, no parcel carrier), then a why: J.B. Hunt runs FTL lanes; an association, never a cause.'
+label_note: 'Domain 8 multi-turn (T1, T12, T19): on-time by carrier (UPS 93.7%), then LTL only (Old
+  Dominion 92.5%, no parcel carrier), then a why: J.B. Hunt runs FTL lanes; an association, never a cause.'

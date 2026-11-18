@@ -5,6 +5,7 @@ from __future__ import annotations
 import pandas as pd
 
 from .pack import (KPI, KPIValue, TERM_OPS, Cond, Measured, MeasuredBy, Pack, Term, Unavailable, Within,
+                   operands,
                    _column, _day, _meets, _snapshot_column, and_list, normalize_header, pack_for,
                    snapshot_role, spell_terms)
 from .detect import main_currency, row_kinds
@@ -192,9 +193,9 @@ def _inputs(pack: Pack, role: str, roles: dict[str, str]) -> list[str] | None:
     """A derived role's two input roles when the product computed it here (its column is named
     after its first header and both inputs are in the data); None for a column of the data's."""
     expr = pack.derived.get(role)
-    if expr and expr[0] in roles and expr[2] in roles and \
+    if expr and all(o in roles for o in operands(pack, expr)) and \
             roles.get(role) == pack.roles[role].headers[0]:
-        return [expr[0], expr[2]]
+        return operands(pack, expr)
     return None
 
 
@@ -419,7 +420,7 @@ def measure(df: pd.DataFrame, roles: dict[str, str], pack: Pack, name: str,
     if df.empty:
         return Unavailable("no_rows")
     if pack.derived:   # the analysis frame's derived columns, read the same way here
-        df, now = derived_roles(df, roles, pack)
+        df, now = derived_roles(df, roles, pack, whole=full)
         full = None if full is None else derived_roles(full, roles, pack)[0]
         roles = now
     if mixes(df, roles, kpi, by):   # car-years and house-years never add up
@@ -664,7 +665,8 @@ def computable(pack: Pack, name: str, roles: dict[str, str]) -> bool:
     """The data has what this KPI needs, through every KPI it refers to (AOV needs orders, which
     needs an order id). A derived role is there when its expression's roles are (measure adds it)."""
     kpi = pack.kpi(name)
-    roles = {**{r: r for r, e in pack.derived.items() if e[0] in roles and e[2] in roles}, **roles}
+    roles = {**{r: r for r, e in pack.derived.items() if all(o in roles for o in operands(pack, e))},
+             **roles}
 
     def has(t: Term) -> bool:
         return all(r in roles for r in t.roles()) and (not t.kpi or computable(pack, t.kpi, roles)) \
@@ -719,7 +721,7 @@ def kpi_roles(pack: Pack, name: str) -> set[str]:
                 out |= {r for r in (s.start, s.end, s.paid_from, s.as_of, snapshot_role(pack),
                                     "status") if r}
     # a derived role reads the roles it is made of (repair hours: the actual start and finish)
-    return out | {r for d, e in pack.derived.items() if d in out for r in (e[0], e[2])}
+    return out | {r for d, e in pack.derived.items() if d in out for r in operands(pack, e)}
 
 
 def counted(pack: Pack, role: str) -> bool:

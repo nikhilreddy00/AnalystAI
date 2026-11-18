@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import pandas as pd
 
-from .pack import Pack, _column, expand_header, first_line_only, normalize_header, pack_for, words
+from .pack import (AS_OF, Pack, _column, data_as_of, expand_header, first_line_only,
+                   normalize_header, operands, pack_for, words)
 
 
 def filled_statuses(df: pd.DataFrame, pack: Pack, roles: dict[str, str], role: str) -> pd.Series:
@@ -191,15 +192,21 @@ def with_derived(df: pd.DataFrame, contract) -> tuple[pd.DataFrame, list[str]]:
 
 
 def derived_roles(df: pd.DataFrame, roles: dict[str, str], pack: Pack,
-                  signed: bool = False) -> tuple[pd.DataFrame, dict[str, str]]:
+                  signed: bool = False, whole: pd.DataFrame | None = None
+                  ) -> tuple[pd.DataFrame, dict[str, str]]:
     """THE derived roles (Pack.derived) the data lacks, added as columns named after each role's
     first header, and the roles with them: the analysis frame and every KPI read the same
     column (a repair's hours = actual finish − actual start). Never replaces a column.
     `signed`: a span ending before its start kept negative (the range check says it)."""
     for r, expr in pack.derived.items():
         name = pack.roles[r].headers[0]
-        if r in roles or name in df.columns or expr[0] not in roles or expr[2] not in roles:
+        if r in roles or name in df.columns or not all(o in roles for o in operands(pack, expr)):
             continue
-        df = df.assign(**{name: _column(df, roles, expr, signed)})
+        if expr[0] == AS_OF:   # the whole data's as-of on every row (a filter never moves it)
+            day = data_as_of(pack, df if whole is None else whole, roles)
+            col = _column(df.assign(_as_of=day), {**roles, AS_OF: "_as_of"}, expr, signed)
+        else:
+            col = _column(df, roles, expr, signed)
+        df = df.assign(**{name: col})
         roles = {**roles, r: name}
     return df, roles

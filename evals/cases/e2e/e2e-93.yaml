@@ -11,6 +11,7 @@ checks:
 - kind: number_in_answer
   truth_key: avg_dwell_hours
   rel_tol: 0.01
+  unit: hours
 - kind: must_not_number
   truth_key: naive_no_shows_as_late
   rel_tol: 0.002

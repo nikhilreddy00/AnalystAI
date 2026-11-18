@@ -158,6 +158,39 @@ def test_other_domains_with_a_logistics_word_are_not_logistics(csv):
     assert _domain(csv) != "logistics"
 
 
+def test_a_shipment_open_past_its_promise_is_late():
+    """U1 (research §2.1, trap 7): a delivered-only on-time rate overstates; a shipment still open
+    after its promised date, as of the data's last ship date, is late. Not yet due: out."""
+    from tests.test_oracle import _built
+    _, clean, contract, truth = _built("tms_shipments")
+    roles = {r: c for r, c in contract.roles.items() if c in clean.columns}
+    assert dp.compute_kpi(clean, roles, LOGI, "on_time_delivery") == pytest.approx(
+        truth["on_time_rate"], rel=1e-9)
+    assert truth["on_time_rate"] < truth["naive_open_left_out"]
+
+
+def test_an_order_line_open_past_its_request_fails_otif():
+    from tests.test_oracle import _built
+    _, clean, contract, truth = _built("order_lines")
+    roles = {r: c for r, c in contract.roles.items() if c in clean.columns}
+    got = {k: dp.compute_kpi(clean, roles, LOGI, k) for k in ("otif_line", "otif_order")}
+    assert got == pytest.approx({"otif_line": truth["otif_line"], "otif_order": truth["otif_order"]})
+    assert truth["otif_order"] < truth["naive_otif_order_delivered_only"]
+
+
+def test_a_filter_never_moves_the_as_of_date():
+    """RT-3: carrier A's last shipment left on 5 Jan, the data runs to 20 Jan: A's shipment due
+    10 Jan and still open is late as of the data, not 'not yet due' as of A's own rows."""
+    df = _ships(("A1", "2026-01-02", "2026-01-04", "2026-01-03", "Delivered"),
+                ("A2", "2026-01-05", "2026-01-10", None, "In Transit"),
+                ("B1", "2026-01-20", "2026-01-23", None, "In Transit"))
+    df["carrier"] = ["A", "A", "B"]
+    roles = {**SHIP, "carrier": "carrier"}
+    part = df[df["carrier"] == "A"]
+    assert dp.compute_kpi(part, roles, LOGI, "on_time_delivery", full=df) == 0.5
+    assert dp.compute_kpi(df, roles, LOGI, "on_time_delivery", by="carrier").to_dict() == {"A": 0.5}
+
+
 def test_a_kind_of_row_the_export_may_omit_is_still_unknown():
     """The other side of the rule: no open shipment anywhere is unknown (an export of delivered
     shipments only), never "0 open"."""

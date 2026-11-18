@@ -117,6 +117,7 @@ roles:
   dwell_hours:   {kind: number, additive: false, headers: [dwell_hours, dwell_time, dwell,
                                                            time_on_site, turn_time]}
   arrival_slack_hours: {kind: number, additive: false, headers: [hours_before_appointment]}
+  past_due_days: {kind: number, additive: false, headers: [days_past_due]}
 
 derived:
   transit_days: [delivered, days, date]
@@ -125,6 +126,8 @@ derived:
   short_qty: ["qty_shipped", "-", "qty_ordered"]     # < 0 short, > 0 over-shipped (signed)
   dwell_hours: [departed, hours, arrived]
   arrival_slack_hours: [date, hours, arrived]        # ≥ 0: arrived by the appointment
+  # > 0: still open after its promise, as of the data's last date (U1: late, never left out)
+  past_due_days: [as_of, days, promised_date]
 
 status_values:
   ok: [delivered, in transit, intransit, out for delivery, picked up, exception, delivery exception,
@@ -168,14 +171,22 @@ kpis:
   # on-time, transit, cost and count; an order-line export's OTIF and fill; a dock log's dwell.
   - {name: on_time_delivery, label: On-time delivery, unit: percent, tile: true,
      zero_words: "no shipment delivered yet",
-     says: "Delivered on or before the promised date (dates as written; an early delivery is on time); {returned_shipments} returned to sender count as not on time; {open_shipments} still open are not in it.",
+     says: "Delivered on or before the promised date (dates as written; an early delivery is on time); {returned_shipments} returned to sender and the shipments still open past their promised date (as of the data's last ship date) count as late; open ones not yet due are not in it.",
      num: [[{nunique: shipment, where: [[{role: slack_days, ge: 0}, {role: transit_days, ge: 0}]]}],
            [{sum: on_time_flag}]],
      den: [[{nunique: shipment, where: [[{role: slack_days, ge: 0}, {role: transit_days, ge: 0}],
                                         [{role: days_late, gt: 0}, {role: transit_days, ge: 0}],
                                         [{role: promised_date, not_in: []},
                                          {role: status, in: &returned [returned to sender,
-                                           return to sender, rts, returned, refused]}]]}],
+                                           return to sender, rts, returned, refused]}],
+                                        # U1: open past its promise is late (research §2.1)
+                                        [{role: past_due_days, gt: 0},
+                                         {role: status, in: &undelivered [in transit, intransit,
+                                           out for delivery, picked up, exception,
+                                           delivery exception, delayed, tendered, booked,
+                                           dispatched, pending, shipped, partially shipped,
+                                           backordered, back ordered, short shipped, open,
+                                           allocated, released, picked, packed]}]]}],
            [{nunique: shipment, where: [[{role: slack_days, ge: 0}, {role: transit_days, ge: 0}],
                                         [{role: days_late, gt: 0}, {role: transit_days, ge: 0}]]}],
            [{nunique: shipment}]]}
@@ -197,15 +208,19 @@ kpis:
            [{sum: weight_kg, times: 2.20462, where: [[{role: weight_kg, gt: 0}]]}]]}
   - {name: shipments, label: Shipments, unit: count, tile: true, num: [[{nunique: shipment}]]}
   - {name: otif_order, label: OTIF (orders), unit: percent, tile: true,
-     says: "An order counts when every delivered line arrived by its requested date and shipped in full; lines not yet delivered are not judged.",
-     num: [[{nunique: order, where: &delivered_line [[{role: slack_days, ge: 0}],
-                                                    [{role: days_late, gt: 0}]]},
+     says: "An order counts when every line due so far arrived by its requested date and shipped in full; a line still open past its requested date (as of the data's last order date) fails it, lines not yet due are not judged.",
+     num: [[{nunique: order, where: &judged_line [[{role: slack_days, ge: 0}],
+                                                 [{role: days_late, gt: 0}],
+                                                 [{role: past_due_days, gt: 0},
+                                                  {role: status, in: *undelivered}]]},
             {nunique: order, sign: -1, where: [[{role: days_late, gt: 0}],
-                                               [{role: short_qty, lt: 0}, {role: slack_days, ge: 0}]]}]],
-     den: [[{nunique: order, where: *delivered_line}]]}
+                                               [{role: short_qty, lt: 0}, {role: slack_days, ge: 0}],
+                                               [{role: past_due_days, gt: 0},
+                                                {role: status, in: *undelivered}]]}]],
+     den: [[{nunique: order, where: *judged_line}]]}
   - {name: otif_line, label: OTIF (lines), unit: percent, tile: true,
      num: [[{nunique: order_line_id, where: [[{role: slack_days, ge: 0}, {role: short_qty, ge: 0}]]}]],
-     den: [[{nunique: order_line_id, where: *delivered_line}]]}
+     den: [[{nunique: order_line_id, where: *judged_line}]]}
   - {name: unit_fill, label: Unit fill rate, unit: percent, tile: true,
      says: "Units shipped over units ordered, on lines past picking (open lines are not yet judged); over-shipped units count.",
      num: [[{sum: qty_shipped, where: [[{role: status, not_in: &unreleased [open, pending, allocated,

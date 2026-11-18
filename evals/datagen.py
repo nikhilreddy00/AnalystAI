@@ -3217,10 +3217,11 @@ def _tms_truth(df: pd.DataFrame) -> dict:
     on_time = delivered & has_promise & (deliv.dt.normalize() <= promised)
     late = delivered & has_promise & (deliv.dt.normalize() > promised)
     returned = live & has_promise & (df["Status"] == "Returned to Sender")
-    base = on_time | late | returned
-    as_of = max(ship.max(), deliv.max().normalize())
+    as_of = ship.max()   # the data's as-of: the last date of its time axis (the ship date)
     open_ = live & df["Status"].isin(["In Transit", "Exception"])
     past_due = open_ & has_promise & (promised < as_of)
+    seen = on_time | late | returned          # before U1: open shipments left out
+    base = seen | past_due                    # U1: open past its promise is late
     usd = live & (df["Currency"] == "USD")
     lb = df["Weight"].where(df["Weight UOM"].notna()) * df["Weight UOM"].map({"LB": 1.0, "KG": 2.20462})
     weighed = usd & (lb > 0)
@@ -3233,8 +3234,7 @@ def _tms_truth(df: pd.DataFrame) -> dict:
         "on_time_by_carrier": by_carrier.to_dict(),
         "shipments_by_carrier": d[base].groupby("Carrier").size().to_dict(),
         "on_time_by_carrier_ltl": d[base & (df["Mode"] == "LTL")].groupby("Carrier")["_ot"].mean().to_dict(),
-        "on_time_rate_past_due_late": float(on_time.sum() / (base | past_due).sum()),       # L1
-        "on_time_by_carrier_past_due_late": d[base | past_due].groupby("Carrier")["_ot"].mean().to_dict(),
+        "naive_open_left_out": float(on_time.sum() / seen.sum()),
         "past_due_open": int(past_due.sum()), "open_shipments": int(open_.sum()),
         "returned": int(returned.sum()), "cancelled": int((df["Status"] == "Cancelled").sum()),
         "other_currency_rows": int((df["Currency"] != "USD").sum()),
@@ -3263,7 +3263,7 @@ def _tms_truth(df: pd.DataFrame) -> dict:
                                             / df.loc[live, "Weight"].sum()),
     }
     assert t["on_time_rate"] - t["naive_mean_of_carrier_rates"] > 0.02                        # 1
-    assert t["on_time_rate_past_due_late"] < t["on_time_rate"] < t["naive_delivered_only"]   # 2, 6
+    assert t["on_time_rate"] < t["naive_open_left_out"] < t["naive_delivered_only"]          # 2, 6
     assert t["early_deliveries"] > 100 and t["negative_spans"] == 6                          # 3, 4
     assert t["fuel_share_oct"] > t["fuel_share_jan"] + 0.05                                   # 20
     assert abs(t["naive_cost_per_lb_all_rows"] - t["cost_per_lb"]) > 0.05 * t["cost_per_lb"]  # 7, 8
@@ -3324,7 +3324,8 @@ def make_order_lines(seed: int) -> tuple[pd.DataFrame, dict]:
     i2 = df.index[df["Order ID"] == o2]
     df.loc[i2, "Qty Shipped"] = df.loc[i2, "Qty Ordered"]
     df.loc[i2, "Delivered Date"] = df.loc[i2, "Requested Date"]
-    df.loc[i2[1], ["Status", "Delivered Date", "Qty Shipped"]] = ["Open", None, 0]          # pending
+    df.loc[i2[1], ["Status", "Delivered Date", "Qty Shipped", "Requested Date"]] = [        # pending:
+        "Open", None, 0, "2026-11-20"]                          # scheduled after the data ends
     return df, _order_lines_truth(df, o1, o2)
 
 
@@ -3335,17 +3336,22 @@ def _order_lines_truth(df: pd.DataFrame, past_due_order: str, pending_order: str
     delivered = live & deliv.notna()
     full = df["Qty Shipped"] >= df["Qty Ordered"]
     ok = delivered & (deliv <= req) & full
+    # U1: a line still open after its requested date, as of the last order date, has failed
+    past_due = live & deliv.isna() & (req < pd.to_datetime(df["Order Date"]).max())
+    judged = delivered | past_due
     released = live & ~df["Status"].isin(["Open"])
     d = df.assign(_ok=ok, _del=delivered)
-    per_order = d[delivered].groupby("Order ID")["_ok"].all()
+    per_order = d[judged].groupby("Order ID")["_ok"].all()
     d_rel = df[released]
     t = {
         "row_count": len(df), "pii_columns": [], "orders": int(df.loc[live, "Order ID"].nunique()),
-        "otif_line": float(ok.sum() / delivered.sum()),
+        "otif_line": float(ok.sum() / judged.sum()),
         "otif_order": float(per_order.mean()),
-        "otif_order_by_warehouse": d[delivered].groupby(["Warehouse", "Order ID"])["_ok"].all()
+        "past_due_lines": int(past_due.sum()),
+        "naive_otif_order_delivered_only": float(d[delivered].groupby("Order ID")["_ok"].all().mean()),
+        "otif_order_by_warehouse": d[judged].groupby(["Warehouse", "Order ID"])["_ok"].all()
                                     .groupby("Warehouse").mean().to_dict(),
-        "otif_line_by_warehouse": d[delivered].groupby("Warehouse")["_ok"].mean().to_dict(),
+        "otif_line_by_warehouse": d[judged].groupby("Warehouse")["_ok"].mean().to_dict(),
         "unit_fill": float(d_rel["Qty Shipped"].sum() / d_rel["Qty Ordered"].sum()),
         "unit_fill_by_warehouse": (d_rel.groupby("Warehouse")["Qty Shipped"].sum()
                                    / d_rel.groupby("Warehouse")["Qty Ordered"].sum()).to_dict(),

@@ -7,7 +7,8 @@ from typing import NamedTuple
 
 import pandas as pd
 
-from .pack import (CONDITIONS, Cond, DURATION_OPS, KPI, Maturity, Measured, MeasuredBy, Pack, ROW_KINDS,
+from .pack import (AS_OF, CONDITIONS, Cond, DURATION_OPS, KPI, Maturity, Measured, MeasuredBy, Pack,
+                   ROW_KINDS, operands,
                    ROW_KIND_COLUMN, Term, _column,
                    _day, _snapshot_column, and_list, defaults_pack, expand_header, normalize_header,
                    ordinal, roles_of, span_words, spell_terms)
@@ -264,8 +265,10 @@ def _ledger_story(pack: Pack, df: pd.DataFrame, roles: dict[str, str], w: Window
 
 
 def _expr_words(expr: list[str], roles: dict[str, str]) -> str:
-    """THE words for a two-role expression: 'days from A to B', 'A × B', 'A − B'."""
-    a, op, b = roles[expr[0]], expr[1], roles[expr[2]]
+    """THE words for a two-role expression: 'days from A to B', 'A × B', 'A − B'; the as-of
+    is the data's own date ('days from Promised Date to the data's last date')."""
+    a = "the data's last date" if expr[0] == AS_OF else roles[expr[0]]
+    op, b = expr[1], roles[expr[2]]
     return f"{op} from {b} to {a}" if op in DURATION_OPS else f"{a} {'×' if op == '*' else '−'} {b}"
 
 
@@ -279,7 +282,7 @@ def describe_kpi(pack: Pack, name: str, roles: dict[str, str],
     # a derived role (measure adds it) is named by what it is: 'hours from start to finish',
     # 'Qty Shipped − Qty Ordered'
     roles = {**{r: _expr_words(e, roles) for r, e in pack.derived.items()
-                if e[0] in roles and e[2] in roles}, **roles}
+                if all(o in roles for o in operands(pack, e))}, **roles}
 
     def scaled(text: str, times: float) -> str:   # ÷ 60 (minutes to hours), never '0.0166667 ×'
         n = round(1 / times) if times else 0
@@ -534,7 +537,8 @@ def pack_brief(pack: Pack, roles: dict[str, str], concepts: list[str], grain: st
         elif c in pack.unsupported:
             lines.append(f"{c}: needs {pack.unsupported[c]}; it cannot be computed here.")
     for r, expr in pack.derived.items():   # with_derived adds these to the frame code reads
-        if r not in roles and expr[0] in roles and expr[2] in roles:
+        if r not in roles and all(o in roles for o in operands(pack, expr)):
+            named = {**named, AS_OF: "the data's last date"}
             how = (f"days from {named[expr[2]]} to {named[expr[0]]} (same day = 0)" if expr[1] == "days"
                    else f"exact hours from {named[expr[2]]} to {named[expr[0]]}" if expr[1] == "hours"
                    else f"{named[expr[0]]} {'×' if expr[1] == '*' else '−'} {named[expr[2]]}")

@@ -16,6 +16,12 @@ checks:
     - null
   - - 100
     - '%'
+# U1: an order with a line still open past its requested date has failed; left out, OTIF reads high
+- kind: must_not_number
+  truth_key: naive_otif_order_delivered_only
+  rel_tol: 0.003
+  scales: *pct
+  scope: report
 hard_rules:
 - charts_lint_clean
 - charts_have_rationale
@@ -24,5 +30,5 @@ hard_rules:
 - insight_dates_in_range
 - executive_no_jargon
 - claims_cite_evidence
-label_note: 'Domain 8 fulfilment lines (T13-T16; Excel): OTIF by order 65.1% (every delivered line on time and in
-  full), below OTIF by line 85.4%; open lines not judged, cancelled lines out.'
+label_note: 'Domain 8 fulfilment lines (T13-T16, U1; Excel): OTIF by order 63.3% (every line due on time and in
+  full; a line open past its requested date fails), never 65.1% with those left out; by line 84.4%.'
