@@ -1,0 +1,1774 @@
+{
+ "meta": {
+  "suite": "insight",
+  "report": "insight-20261118T161651Z",
+  "k": 1,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "2d06624",
+  "started_at": "20261118T161651Z",
+  "only": "logi",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 2,
+  "runs": 2,
+  "pass_rate": 1.0,
+  "case_majority_pass_rate": 1.0,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "hard_rules_na": 0,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 1,
+  "runs_with_prose_rewritten": 0,
+  "runs_with_pii_guard_hit": 0,
+  "cost_per_question_usd": 0.033,
+  "latency_p50_s": 24.07,
+  "latency_p95_s": 26.65,
+  "hard_insight_grounded": 1.0,
+  "hard_insight_dates_in_range": 1.0,
+  "hard_executive_no_jargon": 1.0,
+  "hard_claims_cite_evidence": 1.0,
+  "hard_no_injection_echo": 1.0,
+  "recall": 1.0,
+  "must_not": 1.0,
+  "contradictions_named": null,
+  "hedged": null,
+  "no_causal_overreach": 1.0,
+  "holdout_pass_rate": null,
+  "pass_rate_by_category": {
+   "straightforward": 1.0
+  },
+  "by_domain": {
+   "logistics": {
+    "cases": 2,
+    "k_min": 1,
+    "k_max": 1,
+    "cases_passed_all_runs": 2,
+    "pass_rate": 1.0,
+    "hard_rule_violations": 0,
+    "hard_rules_na": 0,
+    "builtin_only_cases": [],
+    "model_dependent_passed": 0,
+    "model_dependent_cases": 0
+   }
+  }
+ },
+ "runs": {
+  "ins-54-logi-shipments-overview": [
+   {
+    "checks": [
+     {
+      "kind": "recall",
+      "ok": true,
+      "detail": "/on-time|on time/ found"
+     },
+     {
+      "kind": "recall",
+      "ok": true,
+      "detail": "/promised/ found"
+     },
+     {
+      "kind": "must_not",
+      "ok": true,
+      "detail": "/\\b(?:world[- ]class|best[- ]in[- ]class|industry (?:average|standard|benchmark))\\b/ absent"
+     },
+     {
+      "kind": "must_not",
+      "ok": true,
+      "detail": "/\\bcarriers?\\b[^.]{0,60}\\b(?:caus(?:e|es|ed|ing)|to blame|(?:is|are) at fault)\\b/ absent"
+     },
+     {
+      "kind": "must_not",
+      "ok": true,
+      "detail": "/\\b(?:J\\.?B\\.? Hunt|XPO|UPS|FedEx|Old Dominion)\\b[^.]{0,40}\\b(?:caus(?:es|ed)|is to blame|is at fault)\\b/ absent"
+     },
+     {
+      "kind": "must_not",
+      "ok": true,
+      "detail": "/\\bdetention\\b/ absent"
+     },
+     {
+      "kind": "must_not",
+      "ok": true,
+      "detail": "/net sales|order value|\\bMRR\\b|readmission|loss ratio|headcount|attrition|\\bNPL\\b|\\bOEE\\b/ absent"
+     },
+     {
+      "kind": "causal",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "insight_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "insight_dates_in_range",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "executive_no_jargon",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "claims_cite_evidence",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "straightforward",
+    "holdout": false,
+    "output": {
+     "report": {
+      "executive_summary": "This dataset covers 2,840 USD shipments across 5 carriers and 3 modes from January through October 2026, with an 88.9% on-time delivery rate, an average transit time of 3.05 days, and a cost per shipment of $247.72. The logistics dataset spans 10 months, tracking cost, timing, and carrier performance across FTL, LTL, and Parcel modes. Fuel surcharge and total charge both show wide spread across shipments, and 102 non-USD rows are excluded from all figures.",
+      "technical_findings": [
+       "Fuel Surcharge MoM: -1.9% (n = 2,840; high confidence: 2840 rows)",
+       "sum Total Charge by Carrier (5 groups) (n = 3,000; high confidence: 3000 rows)",
+       "sum Fuel Surcharge by Mode (3 groups) (n = 3,000; high confidence: 3000 rows)",
+       "Total Charge: median 205.70, mean 247.72, range 6.94 to 1,338.03 (n = 2,840; high confidence: 2840 rows)",
+       "Fuel Surcharge: median 32.98, mean 41.72, range 1.30 to 258.09 (n = 2,840; high confidence: 2840 rows)"
+      ],
+      "recommended_actions": [
+       {
+        "priority": 1,
+        "action": "Investigate the high-cost shipment outliers (up to $1,338.03) to determine whether they reflect legitimate lane or weight characteristics or data entry errors.",
+        "reasoning": "Reduces cost distortion in averages and flags potential billing anomalies.",
+        "metric_impact": "Reduces cost distortion in averages and flags potential billing anomalies."
+       },
+       {
+        "priority": 2,
+        "action": "Review LTL lane mix and fuel surcharge agreements, given LTL carries the largest fuel surcharge total across modes.",
+        "reasoning": "Identifies where fuel cost reduction or renegotiation would have the greatest effect.",
+        "metric_impact": "Identifies where fuel cost reduction or renegotiation would have the greatest effect."
+       },
+       {
+        "priority": 3,
+        "action": "Reconcile and include the 102 non-USD rows in a follow-up analysis to ensure cross-border or multi-currency shipments are not systematically excluded from performance tracking.",
+        "reasoning": "Ensures on-time rate and cost figures reflect the full shipment population.",
+        "metric_impact": "Ensures on-time rate and cost figures reflect the full shipment population."
+       }
+      ],
+      "anomaly_alerts": [
+       {
+        "title": "Weight: 7 extreme values",
+        "severity": "medium",
+        "description": "7 Weight values (0.2% of rows) are far outside the usual range. They were kept.",
+        "affected_metric": "Weight",
+        "suggested_investigation": "Verify the largest Weight values against the source records."
+       },
+       {
+        "title": "Linehaul: 11 extreme values",
+        "severity": "medium",
+        "description": "11 Linehaul values (0.4% of rows) are far outside the usual range. They were kept.",
+        "affected_metric": "Linehaul",
+        "suggested_investigation": "Verify the largest Linehaul values against the source records."
+       },
+       {
+        "title": "Fuel surcharge: 14 extreme values",
+        "severity": "medium",
+        "description": "14 Fuel Surcharge values (0.5% of rows) are far outside the usual range. They were kept.",
+        "affected_metric": "Fuel Surcharge",
+        "suggested_investigation": "Verify the largest Fuel Surcharge values against the source records."
+       },
+       {
+        "title": "Total charge: 11 extreme values",
+        "severity": "medium",
+        "description": "11 Total Charge values (0.4% of rows) are far outside the usual range. They were kept.",
+        "affected_metric": "Total Charge",
+        "suggested_investigation": "Verify the largest Total Charge values against the source records."
+       },
+       {
+        "title": "How these numbers are counted",
+        "severity": "low",
+        "description": "Read as logistics data (on-time delivery, average transit time, cost per shipment, cost per lb, shipments). Rates pool their parts (on-time, OTIF, fill and cost per lb are totals divided, never averages of per-shipment rates). On time means on or before the promised date, dates as written (local); an early delivery is on time. Transit is in calendar days from the ship date. Cost is in the main currency only. 62 cancelled rows are left out of every count and rate. The data covers 10 months, so month-over-month changes may be seasonal (a peak season); there is no same month last year to compare with. 102 rows in currencies other than USD are left out of every figure, counts and on-time rates too, so the figures side by side read the same shipments. A carrier's figures depend on its lanes, modes and shippers: a difference between carriers is an association, not the carrier's doing, and every rate is given with its number of shipments.",
+        "affected_metric": "",
+        "suggested_investigation": ""
+       }
+      ],
+      "proactive_questions": [
+       "Which carriers or lanes are driving the high-cost outlier shipments above $1,000 in total charge?",
+       "How does on-time delivery rate vary by carrier and mode, and are any combinations consistently below the overall 88.9%?",
+       "What do the 102 non-USD shipments represent in terms of origin, destination, or carrier, and how would including them change the overall figures?"
+      ],
+      "methodology_notes": "Cleaning (cleaning rules-v1): Parsed numbers or dates in 5 column(s). Merged label spelling variants in 1 column(s). Grouped missing labels as 'Unknown' in 1 column(s). Left missing values as missing in 2 column(s); nothing was imputed. Outliers flagged (kept) in: Fuel Surcharge, Linehaul, Total Charge, Weight. Final dataset: 3000 rows (started with 3000). Analysis (analysis v9) computed: eda, segment, trend. Descriptive statistics use the non-missing values of each column. Month-over-month compares calendar-month totals (means for rates and 0-1 flags).",
+      "executive_view": {
+       "headline": "This dataset covers 2,840 USD shipments across 5 carriers and 3 modes from January through October 2026, with an 88.9% on-time delivery rate, an average transit time of 3.05 days, and a cost per shipment of $247.72.",
+       "headline_evidence_ids": [
+        "clean:audit",
+        "eda:Total Charge"
+       ],
+       "paragraphs": [
+        {
+         "text": "The logistics dataset spans 10 months, tracking cost, timing, and carrier performance across FTL, LTL, and Parcel modes.",
+         "evidence_ids": [
+          "clean:audit"
+         ],
+         "typed": null
+        },
+        {
+         "text": "Fuel surcharge and total charge both show wide spread across shipments, and 102 non-USD rows are excluded from all figures.",
+         "evidence_ids": [
+          "eda:Fuel Surcharge",
+          "eda:Total Charge"
+         ],
+         "typed": null
+        }
+       ],
+       "findings": [
+        {
+         "text": "Total charge per shipment ranges from $6.94 to $1,338.03, with a median of $205.70 and a mean of $247.72, indicating a right-skewed distribution with some high-cost outliers.",
+         "evidence_ids": [
+          "eda:Total Charge"
+         ],
+         "typed": null
+        },
+        {
+         "text": "FedEx Freight accounts for the highest total charge among carriers at $200,941.87, while XPO is the lowest at $62,300.94.",
+         "evidence_ids": [
+          "seg:Carrier/Total Charge:sum"
+         ],
+         "typed": null
+        },
+        {
+         "text": "LTL mode carries the largest share of total fuel surcharge at $65,501.25, compared to $29,452.69 for Parcel and $23,539.43 for FTL.",
+         "evidence_ids": [
+          "seg:Mode/Fuel Surcharge:sum"
+         ],
+         "typed": null
+        },
+        {
+         "text": "Fuel surcharge fell 1.9% month-over-month from September to October 2026, though the data covers only 10 months with no prior-year comparison available.",
+         "evidence_ids": [
+          "trend:Fuel Surcharge:MoM"
+         ],
+         "typed": null
+        },
+        {
+         "text": "Total Total Charge: FedEx Freight (200,941.87) is higher than XPO (62,300.94).",
+         "evidence_ids": [
+          "seg:Carrier/Total Charge:sum"
+         ],
+         "typed": {
+          "kind": "comparison",
+          "evidence_id": "seg:Carrier/Total Charge:sum",
+          "cause": "",
+          "effect": "",
+          "metric": "Total Charge",
+          "verdict": "",
+          "source": "",
+          "a": "FedEx Freight",
+          "b": "XPO"
+         }
+        },
+        {
+         "text": "Total Fuel Surcharge: LTL (65,501.25) is higher than FTL (23,539.43).",
+         "evidence_ids": [
+          "seg:Mode/Fuel Surcharge:sum"
+         ],
+         "typed": {
+          "kind": "comparison",
+          "evidence_id": "seg:Mode/Fuel Surcharge:sum",
+          "cause": "",
+          "effect": "",
+          "metric": "Fuel Surcharge",
+          "verdict": "",
+          "source": "",
+          "a": "LTL",
+          "b": "FTL"
+         }
+        }
+       ],
+       "action_items": [
+        {
+         "action": "Investigate the high-cost shipment outliers (up to $1,338.03) to determine whether they reflect legitimate lane or weight characteristics or data entry errors.",
+         "expected_impact": "Reduces cost distortion in averages and flags potential billing anomalies.",
+         "evidence_ids": [
+          "eda:Total Charge"
+         ]
+        },
+        {
+         "action": "Review LTL lane mix and fuel surcharge agreements, given LTL carries the largest fuel surcharge total across modes.",
+         "expected_impact": "Identifies where fuel cost reduction or renegotiation would have the greatest effect.",
+         "evidence_ids": [
+          "seg:Mode/Fuel Surcharge:sum"
+         ]
+        },
+        {
+         "action": "Reconcile and include the 102 non-USD rows in a follow-up analysis to ensure cross-border or multi-currency shipments are not systematically excluded from performance tracking.",
+         "expected_impact": "Ensures on-time rate and cost figures reflect the full shipment population.",
+         "evidence_ids": [
+          "clean:audit"
+         ]
+        }
+       ]
+      },
+      "analyst_view": {
+       "methodology": "Cleaning (cleaning rules-v1): Parsed numbers or dates in 5 column(s). Merged label spelling variants in 1 column(s). Grouped missing labels as 'Unknown' in 1 column(s). Left missing values as missing in 2 column(s); nothing was imputed. Outliers flagged (kept) in: Fuel Surcharge, Linehaul, Total Charge, Weight. Final dataset: 3000 rows (started with 3000). Analysis (analysis v9) computed: eda, segment, trend. Descriptive statistics use the non-missing values of each column. Month-over-month compares calendar-month totals (means for rates and 0-1 flags).",
+       "statistical_notes": [
+        "Fuel Surcharge MoM: -1.9% (n = 2,840; high confidence: 2840 rows)",
+        "sum Total Charge by Carrier (5 groups) (n = 3,000; high confidence: 3000 rows)",
+        "sum Fuel Surcharge by Mode (3 groups) (n = 3,000; high confidence: 3000 rows)",
+        "Total Charge: median 205.70, mean 247.72, range 6.94 to 1,338.03 (n = 2,840; high confidence: 2840 rows)",
+        "Fuel Surcharge: median 32.98, mean 41.72, range 1.30 to 258.09 (n = 2,840; high confidence: 2840 rows)"
+       ],
+       "caveats": [
+        "All key metrics (on-time rate, transit time, cost per shipment, cost per lb) exclude 102 non-USD rows and 62 cancelled rows, so they reflect only the USD active shipment population.",
+        "Carrier-level totals reflect the lanes, modes, and volumes each carrier handles in this dataset; differences between carriers are associations, not evidence of carrier performance in isolation.",
+        "The dataset covers 10 months with no same-month prior-year data, so the October month-over-month fuel surcharge change may reflect seasonality rather than a trend.",
+        "Read as logistics data (on-time delivery, average transit time, cost per shipment, cost per lb, shipments). Rates pool their parts (on-time, OTIF, fill and cost per lb are totals divided, never averages of per-shipment rates). On time means on or before the promised date, dates as written (local); an early delivery is on time. Transit is in calendar days from the ship date. Cost is in the main currency only.",
+        "62 cancelled rows are left out of every count and rate.",
+        "The data covers 10 months, so month-over-month changes may be seasonal (a peak season); there is no same month last year to compare with.",
+        "102 rows in currencies other than USD are left out of every figure, counts and on-time rates too, so the figures side by side read the same shipments.",
+        "A carrier's figures depend on its lanes, modes and shippers: a difference between carriers is an association, not the carrier's doing, and every rate is given with its number of shipments.",
+        "Ship Date: Parsed as dates.",
+        "Promised Date: Parsed as dates.",
+        "Delivered At: Parsed as dates.",
+        "Weight: 837 weight values in kg (their Weight UOM) converted to lb: \u00d7 2.20462 + 0."
+       ],
+       "code_references": [
+        "df.groupby('Carrier')['Total Charge'].sum()",
+        "# rows: Only the rows the figures count in USD: 160 other rows left out.\n_period = pd.to_datetime(df['Ship Date'], format='mixed').dt.to_period('M'); df.groupby(_period)['Fuel Surcharge'].sum()",
+        "df.groupby('Mode')['Fuel Surcharge'].sum()"
+       ]
+      },
+      "additional_issues_note": "",
+      "generated_at": "2026-11-18T16:17:18.690016Z",
+      "memory_used": []
+     },
+     "bundle": {
+      "question": "Give me an overview of this dataset.",
+      "columns": [
+       "Shipment ID",
+       "Tracking Number",
+       "Carrier",
+       "Mode",
+       "Origin City",
+       "Dest City",
+       "Ship Date",
+       "Promised Date",
+       "Delivered At",
+       "Status",
+       "Weight",
+       "Weight UOM",
+       "Linehaul",
+       "Fuel Surcharge",
+       "Accessorials",
+       "Total Charge",
+       "Currency",
+       "Consignee Name",
+       "Consignee Phone"
+      ],
+      "evidence_ids": [
+       "clean:audit",
+       "trend:Fuel Surcharge:MoM",
+       "seg:Carrier/Total Charge:sum",
+       "seg:Mode/Fuel Surcharge:sum",
+       "eda:Total Charge",
+       "eda:Fuel Surcharge"
+      ],
+      "evidence": [
+       {
+        "id": "clean:audit",
+        "kind": "cleaning",
+        "claim": "Cleaning: 3000 \u2192 3000 rows, 14 logged changes",
+        "result_excerpt": "{\"rows_before\": 3000, \"rows_after\": 3000, \"decisions\": [[\"Ship Date\", \"type_coerce\", 3000, 0], [\"Promised Date\", \"type_coerce\", 2985, 0], [\"Delivered At\", \"type_coerce\", 2846, 0], [\"Weight\", \"type_coerce\", 837, 0], [\"Weight UOM\", \"type_coerce\", 837, 0], [\"Weight\", \"sentinel_null\", 5, 0], [\"Weight UOM\", \"normalize\", 837, 0], [\"Promised Date\", \"keep\", 0, 0], [\"Delivered At\", \"keep\", 0, 0], [\"Weight\"",
+        "row_count": 3000,
+        "confidence": "high",
+        "confidence_reason": "rule-based; every change below is logged",
+        "assumptions": [
+         "Ship Date: Parsed as dates.",
+         "Promised Date: Parsed as dates.",
+         "Delivered At: Parsed as dates.",
+         "Weight: 837 weight values in kg (their Weight UOM) converted to lb: \u00d7 2.20462 + 0.",
+         "Weight UOM: 837 rows' unit changed from kg to lb, with their values.",
+         "Weight: 5 weight values in a unit with no conversion to lb ((blank) (5)) read as missing, never averaged with the rest; the rows are kept.",
+         "Weight UOM: Merged spelling variants: 'lb' \u2192 'LB'.",
+         "Promised Date: 15 missing (0.5%), date: left as missing; totals and averages use the 2985 known rows.",
+         "Delivered At: Filled only for rows whose status needs it, so other rows are blank by design; 0.1% of those rows have no value. Kept as it is.",
+         "Weight: 5 missing (0.2%), number: left as missing; totals and averages use the 2995 known rows.",
+         "Weight UOM: 5 missing labels grouped as 'Unknown' (not guessed).",
+         "*: 62 cancelled shipments, lines or appointments: left out of every count and rate; kept in the data.",
+         "Currency: 102 rows in other currencies than USD; kept, left out of money totals.",
+         "transit_days: 6 values outside the valid range (ge 0); kept, check them."
+        ]
+       },
+       {
+        "id": "trend:Fuel Surcharge:MoM",
+        "kind": "trend",
+        "claim": "Fuel Surcharge MoM: -1.9%",
+        "result_excerpt": "{\"column\": \"Fuel Surcharge\", \"period\": \"MoM\", \"direction\": \"down\", \"pct_change\": -1.92, \"segment\": null}",
+        "row_count": 2840,
+        "confidence": "high",
+        "confidence_reason": "2840 rows",
+        "assumptions": []
+       },
+       {
+        "id": "seg:Carrier/Total Charge:sum",
+        "kind": "segment",
+        "claim": "sum Total Charge by Carrier (5 groups)",
+        "result_excerpt": "{\"segment_column\": \"Carrier\", \"metric_column\": \"Total Charge\", \"aggregation\": \"sum\", \"results\": [{\"name\": \"FedEx Freight\", \"value\": 200941.87}, {\"name\": \"J.B. Hunt\", \"value\": 76615.0}, {\"name\": \"Old Dominion\", \"value\": 180988.26}, {\"name\": \"UPS\", \"value\": 182665.04}, {\"name\": \"XPO\", \"value\": 62300.94}]}",
+        "row_count": 3000,
+        "confidence": "high",
+        "confidence_reason": "3000 rows",
+        "assumptions": []
+       },
+       {
+        "id": "seg:Mode/Fuel Surcharge:sum",
+        "kind": "segment",
+        "claim": "sum Fuel Surcharge by Mode (3 groups)",
+        "result_excerpt": "{\"segment_column\": \"Mode\", \"metric_column\": \"Fuel Surcharge\", \"aggregation\": \"sum\", \"results\": [{\"name\": \"FTL\", \"value\": 23539.43}, {\"name\": \"LTL\", \"value\": 65501.25}, {\"name\": \"Parcel\", \"value\": 29452.69}]}",
+        "row_count": 3000,
+        "confidence": "high",
+        "confidence_reason": "3000 rows",
+        "assumptions": []
+       },
+       {
+        "id": "eda:Total Charge",
+        "kind": "eda",
+        "claim": "Total Charge: median 205.70, mean 247.72, range 6.94 to 1,338.03",
+        "result_excerpt": "{\"mean\": 247.7152, \"std\": 167.4151, \"min\": 6.94, \"max\": 1338.03, \"median\": 205.7, \"count\": 2840}",
+        "row_count": 2840,
+        "confidence": "high",
+        "confidence_reason": "2840 rows",
+        "assumptions": []
+       },
+       {
+        "id": "eda:Fuel Surcharge",
+        "kind": "eda",
+        "claim": "Fuel Surcharge: median 32.98, mean 41.72, range 1.30 to 258.09",
+        "result_excerpt": "{\"mean\": 41.723, \"std\": 31.2014, \"min\": 1.3, \"max\": 258.09, \"median\": 32.98, \"count\": 2840}",
+        "row_count": 2840,
+        "confidence": "high",
+        "confidence_reason": "2840 rows",
+        "assumptions": []
+       }
+      ],
+      "date_first": [
+       2026,
+       1
+      ],
+      "date_last": [
+       2026,
+       11
+      ],
+      "n_months": 11,
+      "audit_summary": "Parsed numbers or dates in 5 column(s). Merged label spelling variants in 1 column(s). Grouped missing labels as 'Unknown' in 1 column(s). Left missing values as missing in 2 column(s); nothing was imputed. Outliers flagged (kept) in: Fuel Surcharge, Linehaul, Total Charge, Weight. Final dataset: 3000 rows (started with 3000).",
+      "chart_titles": [
+       "On-time delivery over time",
+       "On-time delivery by Carrier",
+       "Average transit time by Carrier",
+       "Cost per shipment by Carrier",
+       "total charge by carrier: FedEx Freight highest (200,941.87), XPO lowest (62,300.94)",
+       "fuel surcharge fell 1.9% in Oct 2026 vs Sep 2026",
+       "Total fuel surcharge by mode: LTL highest (65,501.25), FTL lowest (23,539.43)"
+      ],
+      "past_insights": [],
+      "corr_pairs": [],
+      "values": [
+       {
+        "eda_summary": {
+         "Total Charge": {
+          "mean": 247.7152,
+          "std": 167.4151,
+          "min": 6.94,
+          "max": 1338.03,
+          "median": 205.7,
+          "count": 2840
+         },
+         "Fuel Surcharge": {
+          "mean": 41.723,
+          "std": 31.2014,
+          "min": 1.3,
+          "max": 258.09,
+          "median": 32.98,
+          "count": 2840
+         }
+        },
+        "correlations": {},
+        "trends": [
+         {
+          "column": "Fuel Surcharge",
+          "period": "MoM",
+          "direction": "down",
+          "pct_change": -1.92,
+          "segment": null
+         }
+        ],
+        "segments": [
+         {
+          "segment_column": "Carrier",
+          "metric_column": "Total Charge",
+          "aggregation": "sum",
+          "results": [
+           {
+            "name": "FedEx Freight",
+            "value": 200941.87
+           },
+           {
+            "name": "J.B. Hunt",
+            "value": 76615.0
+           },
+           {
+            "name": "Old Dominion",
+            "value": 180988.26
+           },
+           {
+            "name": "UPS",
+            "value": 182665.04
+           },
+           {
+            "name": "XPO",
+            "value": 62300.94
+           }
+          ],
+          "label": null
+         },
+         {
+          "segment_column": "Mode",
+          "metric_column": "Fuel Surcharge",
+          "aggregation": "sum",
+          "results": [
+           {
+            "name": "FTL",
+            "value": 23539.43
+           },
+           {
+            "name": "LTL",
+            "value": 65501.25
+           },
+           {
+            "name": "Parcel",
+            "value": 29452.69
+           }
+          ],
+          "label": null
+         }
+        ],
+        "anomalies": [],
+        "statistical_tests": [],
+        "forecast_points": [],
+        "dtypes_summary": {},
+        "missing_pct": {
+         "Shipment ID": 0.0,
+         "Tracking Number": 0.0,
+         "Carrier": 0.0,
+         "Mode": 0.0,
+         "Origin City": 0.0,
+         "Dest City": 0.0,
+         "Ship Date": 0.0,
+         "Promised Date": 0.5,
+         "Delivered At": 5.13,
+         "Status": 0.0,
+         "Weight": 0.17,
+         "Weight UOM": 0.0,
+         "Linehaul": 0.0,
+         "Fuel Surcharge": 0.0,
+         "Accessorials": 0.0,
+         "Total Charge": 0.0,
+         "Currency": 0.0,
+         "Consignee Name": 0.0,
+         "Consignee Phone": 0.0
+        },
+        "kpis": [
+         {
+          "label": "On-time delivery",
+          "value": "88.9%",
+          "context": "USD only; 102 rows in other currencies left out",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "on_time_delivery",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "percent",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Distinct Shipment ID where days from Delivered At to Promised Date \u2265 0 and days from Ship Date to Delivered At \u2265 0, divided by distinct Shipment ID where days from Delivered At to Promised Date \u2265 0 and days from Ship Date to Delivered At \u2265 0 or days from Promised Date to Delivered At > 0 and days from Ship Date to Delivered At \u2265 0 or Promised Date has a value and Status is returned to sender / return to sender / rts / returned / refused or days from Promised Date to the data's last date > 0 and Status is in transit / out for delivery / picked up / exception / delivery exception / delayed / tendered / booked / dispatched / pending / shipped / partially shipped / backordered / short shipped / open / allocated / released / picked / packed; over counted rows (cancelled rows left out)."
+         },
+         {
+          "label": "Average transit time",
+          "value": "3.05 days",
+          "context": "USD only; 102 rows in other currencies left out",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "avg_transit_days",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "number",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Sum of days from Ship Date to Delivered At where days from Ship Date to Delivered At \u2265 0, divided by distinct Shipment ID where days from Ship Date to Delivered At \u2265 0; over counted rows (cancelled rows left out)."
+         },
+         {
+          "label": "Cost per shipment",
+          "value": "$247.72",
+          "context": "USD only; 102 rows in other currencies left out",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "cost_per_shipment",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "currency",
+           "currency": "USD",
+           "unit": null
+          },
+          "how": "Sum of Total Charge, divided by distinct Shipment ID; over counted rows (cancelled rows left out)."
+         },
+         {
+          "label": "Cost per lb",
+          "value": "$0.22",
+          "context": "USD only; 102 rows in other currencies left out",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "cost_per_lb",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "currency",
+           "currency": "USD",
+           "unit": null
+          },
+          "how": "Sum of Total Charge where Weight > 0 and Weight UOM has a value, divided by sum of Weight where Weight > 0 and Weight UOM has a value; over counted rows (cancelled rows left out)."
+         },
+         {
+          "label": "Shipments",
+          "value": "2,840",
+          "context": "USD only; 102 rows in other currencies left out",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "shipments",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "count",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Distinct Shipment ID; over counted rows (cancelled rows left out)."
+         }
+        ],
+        "pre_cleaning_missing_pct": {},
+        "unique_counts": {},
+        "skewness": {},
+        "target_correlations": {},
+        "target_col": null,
+        "column_roles_summary": {},
+        "column_units": {}
+       },
+       [
+        {
+         "claim": "Cleaning: 3000 \u2192 3000 rows, 14 logged changes",
+         "result_excerpt": "{\"rows_before\": 3000, \"rows_after\": 3000, \"decisions\": [[\"Ship Date\", \"type_coerce\", 3000, 0], [\"Promised Date\", \"type_coerce\", 2985, 0], [\"Delivered At\", \"type_coerce\", 2846, 0], [\"Weight\", \"type_coerce\", 837, 0], [\"Weight UOM\", \"type_coerce\", 837, 0], [\"Weight\", \"sentinel_null\", 5, 0], [\"Weight UOM\", \"normalize\", 837, 0], [\"Promised Date\", \"keep\", 0, 0], [\"Delivered At\", \"keep\", 0, 0], [\"Weight\", \"keep\", 0, 0], [\"Weight UOM\", \"fill_unknown\", 5, 0], [\"*\", \"flag\", 62, 0], [\"Currency\", \"flag\", 10",
+         "row_count": 3000,
+         "assumptions": [
+          "Ship Date: Parsed as dates.",
+          "Promised Date: Parsed as dates.",
+          "Delivered At: Parsed as dates.",
+          "Weight: 837 weight values in kg (their Weight UOM) converted to lb: \u00d7 2.20462 + 0.",
+          "Weight UOM: 837 rows' unit changed from kg to lb, with their values.",
+          "Weight: 5 weight values in a unit with no conversion to lb ((blank) (5)) read as missing, never averaged with the rest; the rows are kept.",
+          "Weight UOM: Merged spelling variants: 'lb' \u2192 'LB'.",
+          "Promised Date: 15 missing (0.5%), date: left as missing; totals and averages use the 2985 known rows.",
+          "Delivered At: Filled only for rows whose status needs it, so other rows are blank by design; 0.1% of those rows have no value. Kept as it is.",
+          "Weight: 5 missing (0.2%), number: left as missing; totals and averages use the 2995 known rows.",
+          "Weight UOM: 5 missing labels grouped as 'Unknown' (not guessed).",
+          "*: 62 cancelled shipments, lines or appointments: left out of every count and rate; kept in the data.",
+          "Currency: 102 rows in other currencies than USD; kept, left out of money totals.",
+          "transit_days: 6 values outside the valid range (ge 0); kept, check them."
+         ],
+         "confidence_reason": "rule-based; every change below is logged"
+        },
+        {
+         "claim": "Fuel Surcharge MoM: -1.9%",
+         "result_excerpt": "{\"column\": \"Fuel Surcharge\", \"period\": \"MoM\", \"direction\": \"down\", \"pct_change\": -1.92, \"segment\": null}",
+         "row_count": 2840,
+         "assumptions": [],
+         "confidence_reason": "2840 rows"
+        },
+        {
+         "claim": "sum Total Charge by Carrier (5 groups)",
+         "result_excerpt": "{\"segment_column\": \"Carrier\", \"metric_column\": \"Total Charge\", \"aggregation\": \"sum\", \"results\": [{\"name\": \"FedEx Freight\", \"value\": 200941.87}, {\"name\": \"J.B. Hunt\", \"value\": 76615.0}, {\"name\": \"Old Dominion\", \"value\": 180988.26}, {\"name\": \"UPS\", \"value\": 182665.04}, {\"name\": \"XPO\", \"value\": 62300.94}]}",
+         "row_count": 3000,
+         "assumptions": [],
+         "confidence_reason": "3000 rows"
+        },
+        {
+         "claim": "sum Fuel Surcharge by Mode (3 groups)",
+         "result_excerpt": "{\"segment_column\": \"Mode\", \"metric_column\": \"Fuel Surcharge\", \"aggregation\": \"sum\", \"results\": [{\"name\": \"FTL\", \"value\": 23539.43}, {\"name\": \"LTL\", \"value\": 65501.25}, {\"name\": \"Parcel\", \"value\": 29452.69}]}",
+         "row_count": 3000,
+         "assumptions": [],
+         "confidence_reason": "3000 rows"
+        },
+        {
+         "claim": "Total Charge: median 205.70, mean 247.72, range 6.94 to 1,338.03",
+         "result_excerpt": "{\"mean\": 247.7152, \"std\": 167.4151, \"min\": 6.94, \"max\": 1338.03, \"median\": 205.7, \"count\": 2840}",
+         "row_count": 2840,
+         "assumptions": [],
+         "confidence_reason": "2840 rows"
+        },
+        {
+         "claim": "Fuel Surcharge: median 32.98, mean 41.72, range 1.30 to 258.09",
+         "result_excerpt": "{\"mean\": 41.723, \"std\": 31.2014, \"min\": 1.3, \"max\": 258.09, \"median\": 32.98, \"count\": 2840}",
+         "row_count": 2840,
+         "assumptions": [],
+         "confidence_reason": "2840 rows"
+        }
+       ],
+       {
+        "decisions": [
+         {
+          "column": "Ship Date",
+          "operation": "type_coerce",
+          "strategy": "to_datetime",
+          "reason": "Parsed as dates.",
+          "rows_affected": 3000,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "Promised Date",
+          "operation": "type_coerce",
+          "strategy": "to_datetime",
+          "reason": "Parsed as dates.",
+          "rows_affected": 2985,
+          "before_null_pct": 0.5,
+          "after_null_pct": 0.5,
+          "rows_removed": 0
+         },
+         {
+          "column": "Delivered At",
+          "operation": "type_coerce",
+          "strategy": "to_datetime",
+          "reason": "Parsed as dates.",
+          "rows_affected": 2846,
+          "before_null_pct": 5.1,
+          "after_null_pct": 5.1,
+          "rows_removed": 0
+         },
+         {
+          "column": "Weight",
+          "operation": "type_coerce",
+          "strategy": "unit_converted",
+          "reason": "837 weight values in kg (their Weight UOM) converted to lb: \u00d7 2.20462 + 0.",
+          "rows_affected": 837,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "Weight UOM",
+          "operation": "type_coerce",
+          "strategy": "unit_converted",
+          "reason": "837 rows' unit changed from kg to lb, with their values.",
+          "rows_affected": 837,
+          "before_null_pct": 0.2,
+          "after_null_pct": 0.2,
+          "rows_removed": 0
+         },
+         {
+          "column": "Weight",
+          "operation": "sentinel_null",
+          "strategy": "unknown_unit",
+          "reason": "5 weight values in a unit with no conversion to lb ((blank) (5)) read as missing, never averaged with the rest; the rows are kept.",
+          "rows_affected": 5,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.2,
+          "rows_removed": 0
+         },
+         {
+          "column": "Weight UOM",
+          "operation": "normalize",
+          "strategy": "merge_variants",
+          "reason": "Merged spelling variants: 'lb' \u2192 'LB'.",
+          "rows_affected": 837,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "Promised Date",
+          "operation": "keep",
+          "strategy": "left_missing",
+          "reason": "15 missing (0.5%), date: left as missing; totals and averages use the 2985 known rows.",
+          "rows_affected": 0,
+          "before_null_pct": 0.5,
+          "after_null_pct": 0.5,
+          "rows_removed": 0
+         },
+         {
+          "column": "Delivered At",
+          "operation": "keep",
+          "strategy": "conditional",
+          "reason": "Filled only for rows whose status needs it, so other rows are blank by design; 0.1% of those rows have no value. Kept as it is.",
+          "rows_affected": 0,
+          "before_null_pct": 5.1,
+          "after_null_pct": 0.1,
+          "rows_removed": 0
+         },
+         {
+          "column": "Weight",
+          "operation": "keep",
+          "strategy": "left_missing",
+          "reason": "5 missing (0.2%), number: left as missing; totals and averages use the 2995 known rows.",
+          "rows_affected": 0,
+          "before_null_pct": 0.2,
+          "after_null_pct": 0.2,
+          "rows_removed": 0
+         },
+         {
+          "column": "Weight UOM",
+          "operation": "fill_unknown",
+          "strategy": "unknown_label",
+          "reason": "5 missing labels grouped as 'Unknown' (not guessed).",
+          "rows_affected": 5,
+          "before_null_pct": 0.2,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "*",
+          "operation": "flag",
+          "strategy": "cancel",
+          "reason": "62 cancelled shipments, lines or appointments: left out of every count and rate; kept in the data.",
+          "rows_affected": 62,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "Currency",
+          "operation": "flag",
+          "strategy": "other_currency",
+          "reason": "102 rows in other currencies than USD; kept, left out of money totals.",
+          "rows_affected": 102,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "transit_days",
+          "operation": "flag",
+          "strategy": "out_of_range",
+          "reason": "6 values outside the valid range (ge 0); kept, check them.",
+          "rows_affected": 6,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         }
+        ],
+        "rows_before": 3000,
+        "rows_after": 3000,
+        "columns_coerced": [
+         "Ship Date",
+         "Promised Date",
+         "Delivered At"
+        ],
+        "duplicates_removed": 0,
+        "outliers_flagged": [
+         "7 extreme outliers in Weight (0.2% of data, threshold: values > 6,794)",
+         "11 extreme outliers in Linehaul (0.4% of data, threshold: values > 710.15)",
+         "14 extreme outliers in Fuel Surcharge (0.5% of data, threshold: values > 164.00)",
+         "11 extreme outliers in Total Charge (0.4% of data, threshold: values > 908.74)"
+        ],
+        "high_null_columns": [],
+        "summary": "Parsed numbers or dates in 5 column(s). Merged label spelling variants in 1 column(s). Grouped missing labels as 'Unknown' in 1 column(s). Left missing values as missing in 2 column(s); nothing was imputed. Outliers flagged (kept) in: Fuel Surcharge, Linehaul, Total Charge, Weight. Final dataset: 3000 rows (started with 3000).",
+        "anomaly_report": {
+         "flags": [
+          {
+           "column": "Weight",
+           "extreme_count": 7,
+           "mild_count": 68,
+           "extreme_pct": 0.23372287145242068,
+           "lower_bound": -4875.223320000001,
+           "upper_bound": 6793.5549900000005,
+           "mild_lower_bound": -2374.7708250000005,
+           "mild_upper_bound": 4293.102495000001,
+           "used_log_transform": false,
+           "heavy_tailed": false,
+           "message": "7 extreme outliers in Weight (0.2% of data, threshold: values > 6,794)"
+          },
+          {
+           "column": "Linehaul",
+           "extreme_count": 11,
+           "mild_count": 106,
+           "extreme_pct": 0.36666666666666664,
+           "lower_bound": -386.99750000000006,
+           "upper_bound": 710.1475,
+           "mild_lower_bound": -151.89500000000004,
+           "mild_upper_bound": 475.045,
+           "used_log_transform": false,
+           "heavy_tailed": false,
+           "message": "11 extreme outliers in Linehaul (0.4% of data, threshold: values > 710.15)"
+          },
+          {
+           "column": "Fuel Surcharge",
+           "extreme_count": 14,
+           "mild_count": 104,
+           "extreme_pct": 0.46666666666666673,
+           "lower_bound": -90.9,
+           "upper_bound": 164.005,
+           "mild_lower_bound": -36.2775,
+           "mild_upper_bound": 109.3825,
+           "used_log_transform": false,
+           "heavy_tailed": false,
+           "message": "14 extreme outliers in Fuel Surcharge (0.5% of data, threshold: values > 164.00)"
+          },
+          {
+           "column": "Total Charge",
+           "extreme_count": 11,
+           "mild_count": 100,
+           "extreme_pct": 0.36666666666666664,
+           "lower_bound": -465.87250000000006,
+           "upper_bound": 908.7350000000001,
+           "mild_lower_bound": -171.31375000000003,
+           "mild_upper_bound": 614.17625,
+           "used_log_transform": false,
+           "heavy_tailed": false,
+           "message": "11 extreme outliers in Total Charge (0.4% of data, threshold: values > 908.74)"
+          }
+         ],
+         "methodology_note": "",
+         "eligible_columns": [
+          "Weight",
+          "Linehaul",
+          "Fuel Surcharge",
+          "Total Charge"
+         ],
+         "skipped_columns": {
+          "Shipment ID": "constant or unsupported",
+          "Tracking Number": "constant or unsupported",
+          "Carrier": "non-numeric",
+          "Mode": "non-numeric",
+          "Origin City": "non-numeric",
+          "Dest City": "non-numeric",
+          "Ship Date": "datetime column",
+          "Promised Date": "datetime column",
+          "Delivered At": "datetime column",
+          "Status": "non-numeric",
+          "Weight UOM": "binary column (only 2 values)",
+          "Accessorials": "ordinal (low-cardinality numeric, e.g. Likert/class)",
+          "Currency": "binary column (only 2 values)",
+          "Consignee Name": "non-numeric",
+          "Consignee Phone": "constant or unsupported"
+         }
+        },
+        "skipped_columns": [],
+        "date_ranges": {
+         "Ship Date": [
+          "2026-01-05",
+          "2026-10-31",
+          10
+         ],
+         "Promised Date": [
+          "2026-01-08",
+          "2026-11-04",
+          11
+         ],
+         "Delivered At": [
+          "2026-01-07",
+          "2026-11-04",
+          11
+         ]
+        },
+        "grain": "aggregate",
+        "partial_months": {
+         "Promised Date": [
+          "2026-11",
+          4
+         ],
+         "Delivered At": [
+          "2026-11",
+          4
+         ]
+        },
+        "main_currency": "USD",
+        "spell_story": [],
+        "window_span": {}
+       },
+       [
+        "On-time delivery over time",
+        "On-time delivery by Carrier",
+        "Average transit time by Carrier",
+        "Cost per shipment by Carrier",
+        "total charge by carrier: FedEx Freight highest (200,941.87), XPO lowest (62,300.94)",
+        "fuel surcharge fell 1.9% in Oct 2026 vs Sep 2026",
+        "Total fuel surcharge by mode: LTL highest (65,501.25), FTL lowest (23,539.43)"
+       ],
+       [
+        3000,
+        19,
+        11
+       ],
+       [
+        2026
+       ],
+       [
+        "Read as logistics data (on-time delivery, average transit time, cost per shipment, cost per lb, shipments). Rates pool their parts (on-time, OTIF, fill and cost per lb are totals divided, never averages of per-shipment rates). On time means on or before the promised date, dates as written (local); an early delivery is on time. Transit is in calendar days from the ship date. Cost is in the main currency only.",
+        "62 cancelled rows are left out of every count and rate.",
+        "The data covers 10 months, so month-over-month changes may be seasonal (a peak season); there is no same month last year to compare with.",
+        "102 rows in currencies other than USD are left out of every figure, counts and on-time rates too, so the figures side by side read the same shipments.",
+        "A carrier's figures depend on its lanes, modes and shippers: a difference between carriers is an association, not the carrier's doing, and every rate is given with its number of shipments."
+       ]
+      ]
+     }
+    },
+    "domain": "logistics",
+    "latency_s": 26.94,
+    "cost_usd": 0.03255,
+    "llm_calls": 2,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"headline\": {\n    \"text\": \"This dataset covers 2,840 USD shipments across 5 carriers and 3 modes from January through October 2026, with an 88.9% on-time delivery rate, an average transit time of 3.05 days, and a cost per shipment of $247.72.\",\n    \"evidence\": [\"clean:audit\", \"eda:Total Charge\"]\n  },\n  \"summary\": [\n    {\n      \"text\": \"The logistics dataset spans 10 months, tracking cost, timing, and carrier performance across FTL, LTL, and Parcel modes.\",\n      \"evidence\": [\"clean:audit\"]\n    },\n    {\n      \"text\": \"Fuel surcharge and total charge both show wide spread across shipments, and 102 non-USD rows are excluded from all figures.\",\n      \"evidence\": [\"eda:Fuel Surcharge\", \"eda:Total Charge\"]\n    }\n  ],\n  \"findings\": [\n    {\n      \"text\": \"Total charge per shipment ranges from $6.94 to $1,338.03, with a median of $205.70 and a mean of $247.72, indicating a right-skewed distribution with some high-cost outliers.\",\n      \"evidence\": [\"eda:Total Charge\"]\n    },\n    {\n      \"text\": \"FedEx Freight accounts for the highest total charge among carriers at $200,941.87, while XPO is the lowest at $62,300.94.\",\n      \"evidence\": [\"seg:Carrier/Total Charge:sum\"]\n    },\n    {\n      \"text\": \"LTL mode carries the largest share of total fuel surcharge at $65,501.25, compared to $29,452.69 for Parcel and $23,539.43 for FTL.\",\n      \"evidence\": [\"seg:Mode/Fuel Surcharge:sum\"]\n    },\n    {\n      \"text\": \"Fuel surcharge fell 1.9% month-over-month from September to October 2026, though the data covers only 10 months with no prior-year comparison available.\",\n      \"evidence\": [\"trend:Fuel Surcharge:MoM\"]\n    }\n  ],\n  \"claims\": [\n    {\n      \"kind\": \"comparison\",\n      \"metric\": \"Total Charge\",\n      \"a\": \"FedEx Freight\",\n      \"b\": \"XPO\",\n      \"evidence_id\": \"seg:Carrier/Total Charge:sum\"\n    },\n    {\n      \"kind\": \"comparison\",\n      \"metric\": \"Fuel Surcharge\",\n      \"a\": \"LTL\",\n      \"b\": \"FTL\",\n      \"evidence_id\": \"seg:Mode/Fuel Surcharge:sum\"\n    }\n  ],\n  \"actions\": [\n    {\n      \"action\": \"Investigate the high-cost shipment outliers (up to $1,338.03) to determine whether they reflect legitimate lane or weight characteristics or data entry errors.\",\n      \"impact\": \"Reduces cost distortion in averages and flags potential billing anomalies.\",\n      \"evidence\": [\"eda:Total Charge\"]\n    },\n    {\n      \"action\": \"Review LTL lane mix and fuel surcharge agreements, given LTL carries the largest fuel surcharge total across modes.\",\n      \"impact\": \"Identifies where fuel cost reduction or renegotiation would have the greatest effect.\",\n      \"evidence\": [\"seg:Mode/Fuel Surcharge:sum\"]\n    },\n    {\n      \"action\": \"Reconcile and include the 102 non-USD rows in a follow-up analysis to ensure cross-border or multi-currency shipments are not systematically excluded from performance tracking.\",\n      \"impact\": \"Ensures on-time rate and cost figures reflect the full shipment population.\",\n      \"evidence\": [\"clean:audit\"]\n    }\n  ],\n  \"caveats\": [\n    \"All key metrics (on-time rate, transit time, cost per shipment, cost per lb) exclude 102 non-USD rows and 62 cancelled rows, so they reflect only the USD active shipment population.\",\n    \"Carrier-level totals reflect the lanes, modes, and volumes each carrier handles in this dataset; differences between carriers are associations, not evidence of carrier performance in isolation.\",\n    \"The dataset covers 10 months with no same-month prior-year data, so the October month-over-month fuel surcharge change may reflect seasonality rather than a trend.\"\n  ],\n  \"questions\": [\n    \"Which carriers or lanes are driving the high-cost outlier shipments above $1,000 in total charge?\",\n    \"How does on-time delivery rate vary by carrier and mode, and are any combinations consistently below the overall 88.9%?\",\n    \"What do the 102 non-USD shipments represent in terms of origin, destination, or carrier, and how would including them change the overall figures?\"\n  ]\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "{\"0\": \"neither\", \"1\": \"neither\", \"2\": \"neither\", \"3\": \"neither\", \"4\": \"neither\", \"5\": \"neither\", \"6\": \"neither\", \"7\": \"neither\", \"8\": \"neither\", \"9\": \"neither\", \"10\": \"neither\", \"11\": \"neither\", \"12\": \"neither\", \"13\": \"neither\", \"14\": \"neither\", \"15\": \"neither\", \"16\": \"neither\", \"17\": \"neither\", \"18\": \"neither\"}",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "ins-55-logi-order-lines-overview": [
+   {
+    "checks": [
+     {
+      "kind": "recall",
+      "ok": true,
+      "detail": "/OTIF/ found"
+     },
+     {
+      "kind": "recall",
+      "ok": true,
+      "detail": "/order/ found"
+     },
+     {
+      "kind": "must_not",
+      "ok": true,
+      "detail": "/\\b(?:world[- ]class|best[- ]in[- ]class|industry (?:average|standard|benchmark))\\b/ absent"
+     },
+     {
+      "kind": "must_not",
+      "ok": true,
+      "detail": "/\\b(?:Columbus|Dallas|Reno)\\b[^.]{0,40}\\b(?:caus(?:es|ed)|is to blame|is at fault)\\b/ absent"
+     },
+     {
+      "kind": "must_not",
+      "ok": true,
+      "detail": "/net sales|order value|\\bMRR\\b|readmission|loss ratio|headcount|attrition|\\bNPL\\b|\\bOEE\\b/ absent"
+     },
+     {
+      "kind": "causal",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "insight_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "insight_dates_in_range",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "executive_no_jargon",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "claims_cite_evidence",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "no_injection_echo",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "straightforward",
+    "holdout": false,
+    "output": {
+     "report": {
+      "executive_summary": "This logistics dataset covers 1,993 orders across 8 months (March\u2013October 2026), with a unit fill rate of 96.7% and an order-level OTIF of 63.3%. Because the data spans only 8 months with no prior-year equivalent, month-over-month changes may reflect seasonality rather than a trend.",
+      "technical_findings": [
+       "sum Qty Shipped by Warehouse (3 groups) (n = 6,025; high confidence: 6025 rows)",
+       "sum Qty Ordered by Carrier (3 groups) (n = 6,025; high confidence: 6025 rows)",
+       "Qty Shipped: median 23.00, mean 23.12, range 0 to 50.00 (n = 5,915; high confidence: 5915 rows)",
+       "Qty Ordered: median 24.00, mean 24.37, range 1.00 to 48.00 (n = 5,915; high confidence: 5915 rows)"
+      ],
+      "recommended_actions": [
+       {
+        "priority": 1,
+        "action": "Investigate the root causes of incomplete orders to understand why order-level OTIF (63.3%) lags line-level OTIF (84.4%)",
+        "reasoning": "Closing this gap would improve customer experience on full-order fulfilment",
+        "metric_impact": "Closing this gap would improve customer experience on full-order fulfilment"
+       },
+       {
+        "priority": 2,
+        "action": "Review Columbus DC's capacity and workload relative to Reno DC and Dallas DC",
+        "reasoning": "Columbus DC ships roughly half the volume of Reno DC; rebalancing could reduce strain on higher-volume sites",
+        "metric_impact": "Columbus DC ships roughly half the volume of Reno DC; rebalancing could reduce strain on higher-volume sites"
+       },
+       {
+        "priority": 3,
+        "action": "Extend the dataset to include a comparable prior-year period before drawing conclusions from month-over-month changes",
+        "reasoning": "Removes ambiguity between seasonal patterns and genuine performance shifts",
+        "metric_impact": "Removes ambiguity between seasonal patterns and genuine performance shifts"
+       }
+      ],
+      "anomaly_alerts": [
+       {
+        "title": "How these numbers are counted",
+        "severity": "low",
+        "description": "Read as logistics data (OTIF (orders), OTIF (lines), unit fill rate, line fill rate, orders). Rates pool their parts (on-time, OTIF, fill and cost per lb are totals divided, never averages of per-shipment rates). On time means on or before the promised date, dates as written (local); an early delivery is on time. Transit is in calendar days from the ship date. Cost is in the main currency only. 110 cancelled rows are left out of every count and rate. The data covers 8 months, so month-over-month changes may be seasonal (a peak season); there is no same month last year to compare with. A carrier's figures depend on its lanes, modes and shippers: a difference between carriers is an association, not the carrier's doing, and every rate is given with its number of shipments.",
+        "affected_metric": "",
+        "suggested_investigation": ""
+       }
+      ],
+      "proactive_questions": [
+       "Which warehouses or carriers account for the largest share of orders that miss the order-level OTIF threshold?",
+       "Is Columbus DC's lower shipped volume explained by the types of orders it handles, or does it point to a capacity or staffing constraint?",
+       "How does OTIF performance vary across the 8-month period \u2014 are there specific months where on-time or fill rates drop materially?"
+      ],
+      "methodology_notes": "Cleaning (cleaning rules-v1): Parsed numbers or dates in 3 column(s). Final dataset: 6025 rows (started with 6025). Analysis (analysis v9) computed: eda, segment. Descriptive statistics use the non-missing values of each column.",
+      "executive_view": {
+       "headline": "This logistics dataset covers 1,993 orders across 8 months (March\u2013October 2026), with a unit fill rate of 96.7% and an order-level OTIF of 63.3%.",
+       "headline_evidence_ids": [
+        "clean:audit",
+        "eda:Qty Shipped"
+       ],
+       "paragraphs": [
+        {
+         "text": "Because the data spans only 8 months with no prior-year equivalent, month-over-month changes may reflect seasonality rather than a trend.",
+         "evidence_ids": [
+          "clean:audit"
+         ],
+         "typed": null
+        }
+       ],
+       "findings": [
+        {
+         "text": "Order-level OTIF is 63.3% while line-level OTIF is 84.4% and unit fill rate is 96.7%, suggesting that full orders are harder to complete on time and in full than individual lines or units.",
+         "evidence_ids": [
+          "clean:audit"
+         ],
+         "typed": null
+        },
+        {
+         "text": "Reno DC shipped 60,150 units, Dallas DC shipped 48,273, and Columbus DC shipped 28,325, making Reno the highest-volume warehouse by a wide margin.",
+         "evidence_ids": [
+          "seg:Warehouse/Qty Shipped:sum"
+         ],
+         "typed": null
+        },
+        {
+         "text": "Quantity ordered is spread fairly evenly across the three carriers: UPS at 49,908, FedEx Freight at 47,562, and Old Dominion at 46,672.",
+         "evidence_ids": [
+          "seg:Carrier/Qty Ordered:sum"
+         ],
+         "typed": null
+        },
+        {
+         "text": "Typical order lines run from 1 to 48 units ordered and 0 to 50 units shipped, with medians of 24 and 23 respectively across 5,915 rows with quantity data.",
+         "evidence_ids": [
+          "eda:Qty Ordered",
+          "eda:Qty Shipped"
+         ],
+         "typed": null
+        },
+        {
+         "text": "Total Qty Shipped: Reno DC (60,150.00) is higher than Columbus DC (28,325.00).",
+         "evidence_ids": [
+          "seg:Warehouse/Qty Shipped:sum"
+         ],
+         "typed": {
+          "kind": "comparison",
+          "evidence_id": "seg:Warehouse/Qty Shipped:sum",
+          "cause": "",
+          "effect": "",
+          "metric": "Qty Shipped",
+          "verdict": "",
+          "source": "",
+          "a": "Reno DC",
+          "b": "Columbus DC"
+         }
+        }
+       ],
+       "action_items": [
+        {
+         "action": "Investigate the root causes of incomplete orders to understand why order-level OTIF (63.3%) lags line-level OTIF (84.4%)",
+         "expected_impact": "Closing this gap would improve customer experience on full-order fulfilment",
+         "evidence_ids": [
+          "clean:audit"
+         ]
+        },
+        {
+         "action": "Review Columbus DC's capacity and workload relative to Reno DC and Dallas DC",
+         "expected_impact": "Columbus DC ships roughly half the volume of Reno DC; rebalancing could reduce strain on higher-volume sites",
+         "evidence_ids": [
+          "seg:Warehouse/Qty Shipped:sum"
+         ]
+        },
+        {
+         "action": "Extend the dataset to include a comparable prior-year period before drawing conclusions from month-over-month changes",
+         "expected_impact": "Removes ambiguity between seasonal patterns and genuine performance shifts",
+         "evidence_ids": [
+          "clean:audit"
+         ]
+        }
+       ]
+      },
+      "analyst_view": {
+       "methodology": "Cleaning (cleaning rules-v1): Parsed numbers or dates in 3 column(s). Final dataset: 6025 rows (started with 6025). Analysis (analysis v9) computed: eda, segment. Descriptive statistics use the non-missing values of each column.",
+       "statistical_notes": [
+        "sum Qty Shipped by Warehouse (3 groups) (n = 6,025; high confidence: 6025 rows)",
+        "sum Qty Ordered by Carrier (3 groups) (n = 6,025; high confidence: 6025 rows)",
+        "Qty Shipped: median 23.00, mean 23.12, range 0 to 50.00 (n = 5,915; high confidence: 5915 rows)",
+        "Qty Ordered: median 24.00, mean 24.37, range 1.00 to 48.00 (n = 5,915; high confidence: 5915 rows)"
+       ],
+       "caveats": [
+        "110 cancelled rows are excluded from all counts and rates; their characteristics are not reflected in any figure here.",
+        "Carrier-level differences reflect the lanes, modes and shippers each carrier handles, not carrier performance in isolation.",
+        "The 8-month window has no same-month prior-year baseline, so seasonal effects cannot be separated from trends.",
+        "1 sentence(s) stating a cause or grading a result against a norm were removed: this data shows neither a controlled test nor an outside benchmark.",
+        "Read as logistics data (OTIF (orders), OTIF (lines), unit fill rate, line fill rate, orders). Rates pool their parts (on-time, OTIF, fill and cost per lb are totals divided, never averages of per-shipment rates). On time means on or before the promised date, dates as written (local); an early delivery is on time. Transit is in calendar days from the ship date. Cost is in the main currency only.",
+        "110 cancelled rows are left out of every count and rate.",
+        "The data covers 8 months, so month-over-month changes may be seasonal (a peak season); there is no same month last year to compare with.",
+        "A carrier's figures depend on its lanes, modes and shippers: a difference between carriers is an association, not the carrier's doing, and every rate is given with its number of shipments.",
+        "Order Date: Parsed as dates.",
+        "Requested Date: Parsed as dates.",
+        "Delivered Date: Parsed as dates.",
+        "Delivered Date: Filled only for rows whose status needs it, so other rows are blank by design; 0% of those rows have no value. Kept as it is."
+       ],
+       "code_references": [
+        "df.groupby('Warehouse')['Qty Shipped'].sum()",
+        "df.groupby('Carrier')['Qty Ordered'].sum()"
+       ]
+      },
+      "additional_issues_note": "",
+      "generated_at": "2026-11-18T16:17:14.388382Z",
+      "memory_used": []
+     },
+     "bundle": {
+      "question": "Give me an overview of this dataset.",
+      "columns": [
+       "Order ID",
+       "Line No",
+       "Order Line ID",
+       "SKU",
+       "Order Date",
+       "Requested Date",
+       "Delivered Date",
+       "Qty Ordered",
+       "Qty Shipped",
+       "Status",
+       "Warehouse",
+       "Carrier",
+       "Ship To"
+      ],
+      "evidence_ids": [
+       "clean:audit",
+       "seg:Warehouse/Qty Shipped:sum",
+       "seg:Carrier/Qty Ordered:sum",
+       "eda:Qty Shipped",
+       "eda:Qty Ordered"
+      ],
+      "evidence": [
+       {
+        "id": "clean:audit",
+        "kind": "cleaning",
+        "claim": "Cleaning: 6025 \u2192 6025 rows, 6 logged changes",
+        "result_excerpt": "{\"rows_before\": 6025, \"rows_after\": 6025, \"decisions\": [[\"Order Date\", \"type_coerce\", 6025, 0], [\"Requested Date\", \"type_coerce\", 6025, 0], [\"Delivered Date\", \"type_coerce\", 5678, 0], [\"Delivered Date\", \"keep\", 0, 0], [\"*\", \"flag\", 110, 0], [\"shipped_minus_ordered\", \"flag\", 76, 0]]}",
+        "row_count": 6025,
+        "confidence": "high",
+        "confidence_reason": "rule-based; every change below is logged",
+        "assumptions": [
+         "Order Date: Parsed as dates.",
+         "Requested Date: Parsed as dates.",
+         "Delivered Date: Parsed as dates.",
+         "Delivered Date: Filled only for rows whose status needs it, so other rows are blank by design; 0% of those rows have no value. Kept as it is.",
+         "*: 110 cancelled shipments, lines or appointments: left out of every count and rate; kept in the data.",
+         "shipped_minus_ordered: 76 values outside the valid range (le 0); kept, check them."
+        ]
+       },
+       {
+        "id": "seg:Warehouse/Qty Shipped:sum",
+        "kind": "segment",
+        "claim": "sum Qty Shipped by Warehouse (3 groups)",
+        "result_excerpt": "{\"segment_column\": \"Warehouse\", \"metric_column\": \"Qty Shipped\", \"aggregation\": \"sum\", \"results\": [{\"name\": \"Columbus DC\", \"value\": 28325.0}, {\"name\": \"Dallas DC\", \"value\": 48273.0}, {\"name\": \"Reno DC\", \"value\": 60150.0}]}",
+        "row_count": 6025,
+        "confidence": "high",
+        "confidence_reason": "6025 rows",
+        "assumptions": []
+       },
+       {
+        "id": "seg:Carrier/Qty Ordered:sum",
+        "kind": "segment",
+        "claim": "sum Qty Ordered by Carrier (3 groups)",
+        "result_excerpt": "{\"segment_column\": \"Carrier\", \"metric_column\": \"Qty Ordered\", \"aggregation\": \"sum\", \"results\": [{\"name\": \"FedEx Freight\", \"value\": 47562.0}, {\"name\": \"Old Dominion\", \"value\": 46672.0}, {\"name\": \"UPS\", \"value\": 49908.0}]}",
+        "row_count": 6025,
+        "confidence": "high",
+        "confidence_reason": "6025 rows",
+        "assumptions": []
+       },
+       {
+        "id": "eda:Qty Shipped",
+        "kind": "eda",
+        "claim": "Qty Shipped: median 23.00, mean 23.12, range 0 to 50.00",
+        "result_excerpt": "{\"mean\": 23.1189, \"std\": 14.2338, \"min\": 0.0, \"max\": 50.0, \"median\": 23.0, \"count\": 5915}",
+        "row_count": 5915,
+        "confidence": "high",
+        "confidence_reason": "5915 rows",
+        "assumptions": []
+       },
+       {
+        "id": "eda:Qty Ordered",
+        "kind": "eda",
+        "claim": "Qty Ordered: median 24.00, mean 24.37, range 1.00 to 48.00",
+        "result_excerpt": "{\"mean\": 24.3689, \"std\": 13.7572, \"min\": 1.0, \"max\": 48.0, \"median\": 24.0, \"count\": 5915}",
+        "row_count": 5915,
+        "confidence": "high",
+        "confidence_reason": "5915 rows",
+        "assumptions": []
+       }
+      ],
+      "date_first": [
+       2026,
+       3
+      ],
+      "date_last": [
+       2026,
+       11
+      ],
+      "n_months": 9,
+      "audit_summary": "Parsed numbers or dates in 3 column(s). Final dataset: 6025 rows (started with 6025).",
+      "chart_titles": [
+       "OTIF (orders) over time",
+       "OTIF (orders) by Warehouse",
+       "Unit fill rate by Warehouse",
+       "Total qty shipped by warehouse: Reno DC highest (60,150.00), Columbus DC lowest (28,325.00)",
+       "Total qty ordered by carrier: UPS highest (49,908.00), Old Dominion lowest (46,672.00)"
+      ],
+      "past_insights": [],
+      "corr_pairs": [],
+      "values": [
+       {
+        "eda_summary": {
+         "Qty Shipped": {
+          "mean": 23.1189,
+          "std": 14.2338,
+          "min": 0.0,
+          "max": 50.0,
+          "median": 23.0,
+          "count": 5915
+         },
+         "Qty Ordered": {
+          "mean": 24.3689,
+          "std": 13.7572,
+          "min": 1.0,
+          "max": 48.0,
+          "median": 24.0,
+          "count": 5915
+         }
+        },
+        "correlations": {},
+        "trends": [],
+        "segments": [
+         {
+          "segment_column": "Warehouse",
+          "metric_column": "Qty Shipped",
+          "aggregation": "sum",
+          "results": [
+           {
+            "name": "Columbus DC",
+            "value": 28325.0
+           },
+           {
+            "name": "Dallas DC",
+            "value": 48273.0
+           },
+           {
+            "name": "Reno DC",
+            "value": 60150.0
+           }
+          ],
+          "label": null
+         },
+         {
+          "segment_column": "Carrier",
+          "metric_column": "Qty Ordered",
+          "aggregation": "sum",
+          "results": [
+           {
+            "name": "FedEx Freight",
+            "value": 47562.0
+           },
+           {
+            "name": "Old Dominion",
+            "value": 46672.0
+           },
+           {
+            "name": "UPS",
+            "value": 49908.0
+           }
+          ],
+          "label": null
+         }
+        ],
+        "anomalies": [],
+        "statistical_tests": [],
+        "forecast_points": [],
+        "dtypes_summary": {},
+        "missing_pct": {
+         "Order ID": 0.0,
+         "Line No": 0.0,
+         "Order Line ID": 0.0,
+         "SKU": 0.0,
+         "Order Date": 0.0,
+         "Requested Date": 0.0,
+         "Delivered Date": 5.76,
+         "Qty Ordered": 0.0,
+         "Qty Shipped": 0.0,
+         "Status": 0.0,
+         "Warehouse": 0.0,
+         "Carrier": 0.0,
+         "Ship To": 0.0
+        },
+        "kpis": [
+         {
+          "label": "OTIF (orders)",
+          "value": "63.3%",
+          "context": "",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "otif_order",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "percent",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Distinct Order ID where days from Delivered Date to Requested Date \u2265 0 or days from Requested Date to Delivered Date > 0 or days from Requested Date to the data's last date > 0 and Status is in transit / out for delivery / picked up / exception / delivery exception / delayed / tendered / booked / dispatched / pending / shipped / partially shipped / backordered / short shipped / open / allocated / released / picked / packed less distinct Order ID where days from Requested Date to Delivered Date > 0 or Qty Shipped \u2212 Qty Ordered < 0 and days from Delivered Date to Requested Date \u2265 0 or days from Requested Date to the data's last date > 0 and Status is in transit / out for delivery / picked up / exception / delivery exception / delayed / tendered / booked / dispatched / pending / shipped / partially shipped / backordered / short shipped / open / allocated / released / picked / packed, divided by distinct Order ID where days from Delivered Date to Requested Date \u2265 0 or days from Requested Date to Delivered Date > 0 or days from Requested Date to the data's last date > 0 and Status is in transit / out for delivery / picked up / exception / delivery exception / delayed / tendered / booked / dispatched / pending / shipped / partially shipped / backordered / short shipped / open / allocated / released / picked / packed; over counted rows (cancelled rows left out)."
+         },
+         {
+          "label": "OTIF (lines)",
+          "value": "84.4%",
+          "context": "",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "otif_line",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "percent",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Distinct Order Line ID where days from Delivered Date to Requested Date \u2265 0 and Qty Shipped \u2212 Qty Ordered \u2265 0, divided by distinct Order Line ID where days from Delivered Date to Requested Date \u2265 0 or days from Requested Date to Delivered Date > 0 or days from Requested Date to the data's last date > 0 and Status is in transit / out for delivery / picked up / exception / delivery exception / delayed / tendered / booked / dispatched / pending / shipped / partially shipped / backordered / short shipped / open / allocated / released / picked / packed; over counted rows (cancelled rows left out)."
+         },
+         {
+          "label": "Unit fill rate",
+          "value": "96.7%",
+          "context": "",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "unit_fill",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "percent",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Sum of Qty Shipped where Status is not open / pending / allocated / released / picked / packed, divided by sum of Qty Ordered where Status is not open / pending / allocated / released / picked / packed; over counted rows (cancelled rows left out)."
+         },
+         {
+          "label": "Line fill rate",
+          "value": "93.2%",
+          "context": "",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "line_fill",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "percent",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Distinct Order Line ID where Qty Shipped \u2212 Qty Ordered \u2265 0 and Status is not open / pending / allocated / released / picked / packed, divided by distinct Order Line ID where Status is not open / pending / allocated / released / picked / packed; over counted rows (cancelled rows left out)."
+         },
+         {
+          "label": "Orders",
+          "value": "1,993",
+          "context": "",
+          "recipe": {
+           "kind": "pack",
+           "column": null,
+           "kpi": "orders",
+           "target_column": null,
+           "segment_column": null,
+           "format_kind": "count",
+           "currency": null,
+           "unit": null
+          },
+          "how": "Distinct Order ID; over counted rows (cancelled rows left out)."
+         }
+        ],
+        "pre_cleaning_missing_pct": {},
+        "unique_counts": {},
+        "skewness": {},
+        "target_correlations": {},
+        "target_col": null,
+        "column_roles_summary": {},
+        "column_units": {}
+       },
+       [
+        {
+         "claim": "Cleaning: 6025 \u2192 6025 rows, 6 logged changes",
+         "result_excerpt": "{\"rows_before\": 6025, \"rows_after\": 6025, \"decisions\": [[\"Order Date\", \"type_coerce\", 6025, 0], [\"Requested Date\", \"type_coerce\", 6025, 0], [\"Delivered Date\", \"type_coerce\", 5678, 0], [\"Delivered Date\", \"keep\", 0, 0], [\"*\", \"flag\", 110, 0], [\"shipped_minus_ordered\", \"flag\", 76, 0]]}",
+         "row_count": 6025,
+         "assumptions": [
+          "Order Date: Parsed as dates.",
+          "Requested Date: Parsed as dates.",
+          "Delivered Date: Parsed as dates.",
+          "Delivered Date: Filled only for rows whose status needs it, so other rows are blank by design; 0% of those rows have no value. Kept as it is.",
+          "*: 110 cancelled shipments, lines or appointments: left out of every count and rate; kept in the data.",
+          "shipped_minus_ordered: 76 values outside the valid range (le 0); kept, check them."
+         ],
+         "confidence_reason": "rule-based; every change below is logged"
+        },
+        {
+         "claim": "sum Qty Shipped by Warehouse (3 groups)",
+         "result_excerpt": "{\"segment_column\": \"Warehouse\", \"metric_column\": \"Qty Shipped\", \"aggregation\": \"sum\", \"results\": [{\"name\": \"Columbus DC\", \"value\": 28325.0}, {\"name\": \"Dallas DC\", \"value\": 48273.0}, {\"name\": \"Reno DC\", \"value\": 60150.0}]}",
+         "row_count": 6025,
+         "assumptions": [],
+         "confidence_reason": "6025 rows"
+        },
+        {
+         "claim": "sum Qty Ordered by Carrier (3 groups)",
+         "result_excerpt": "{\"segment_column\": \"Carrier\", \"metric_column\": \"Qty Ordered\", \"aggregation\": \"sum\", \"results\": [{\"name\": \"FedEx Freight\", \"value\": 47562.0}, {\"name\": \"Old Dominion\", \"value\": 46672.0}, {\"name\": \"UPS\", \"value\": 49908.0}]}",
+         "row_count": 6025,
+         "assumptions": [],
+         "confidence_reason": "6025 rows"
+        },
+        {
+         "claim": "Qty Shipped: median 23.00, mean 23.12, range 0 to 50.00",
+         "result_excerpt": "{\"mean\": 23.1189, \"std\": 14.2338, \"min\": 0.0, \"max\": 50.0, \"median\": 23.0, \"count\": 5915}",
+         "row_count": 5915,
+         "assumptions": [],
+         "confidence_reason": "5915 rows"
+        },
+        {
+         "claim": "Qty Ordered: median 24.00, mean 24.37, range 1.00 to 48.00",
+         "result_excerpt": "{\"mean\": 24.3689, \"std\": 13.7572, \"min\": 1.0, \"max\": 48.0, \"median\": 24.0, \"count\": 5915}",
+         "row_count": 5915,
+         "assumptions": [],
+         "confidence_reason": "5915 rows"
+        }
+       ],
+       {
+        "decisions": [
+         {
+          "column": "Order Date",
+          "operation": "type_coerce",
+          "strategy": "to_datetime",
+          "reason": "Parsed as dates.",
+          "rows_affected": 6025,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "Requested Date",
+          "operation": "type_coerce",
+          "strategy": "to_datetime",
+          "reason": "Parsed as dates.",
+          "rows_affected": 6025,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "Delivered Date",
+          "operation": "type_coerce",
+          "strategy": "to_datetime",
+          "reason": "Parsed as dates.",
+          "rows_affected": 5678,
+          "before_null_pct": 5.8,
+          "after_null_pct": 5.8,
+          "rows_removed": 0
+         },
+         {
+          "column": "Delivered Date",
+          "operation": "keep",
+          "strategy": "conditional",
+          "reason": "Filled only for rows whose status needs it, so other rows are blank by design; 0% of those rows have no value. Kept as it is.",
+          "rows_affected": 0,
+          "before_null_pct": 5.8,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "*",
+          "operation": "flag",
+          "strategy": "cancel",
+          "reason": "110 cancelled shipments, lines or appointments: left out of every count and rate; kept in the data.",
+          "rows_affected": 110,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         },
+         {
+          "column": "shipped_minus_ordered",
+          "operation": "flag",
+          "strategy": "out_of_range",
+          "reason": "76 values outside the valid range (le 0); kept, check them.",
+          "rows_affected": 76,
+          "before_null_pct": 0.0,
+          "after_null_pct": 0.0,
+          "rows_removed": 0
+         }
+        ],
+        "rows_before": 6025,
+        "rows_after": 6025,
+        "columns_coerced": [
+         "Order Date",
+         "Requested Date",
+         "Delivered Date"
+        ],
+        "duplicates_removed": 0,
+        "outliers_flagged": [],
+        "high_null_columns": [],
+        "summary": "Parsed numbers or dates in 3 column(s). Final dataset: 6025 rows (started with 6025).",
+        "anomaly_report": {
+         "flags": [],
+         "methodology_note": "",
+         "eligible_columns": [
+          "Qty Ordered",
+          "Qty Shipped"
+         ],
+         "skipped_columns": {
+          "Order ID": "constant or unsupported",
+          "Line No": "ordinal (low-cardinality numeric, e.g. Likert/class)",
+          "Order Line ID": "constant or unsupported",
+          "SKU": "constant or unsupported",
+          "Order Date": "datetime column",
+          "Requested Date": "datetime column",
+          "Delivered Date": "datetime column",
+          "Status": "non-numeric",
+          "Warehouse": "non-numeric",
+          "Carrier": "non-numeric",
+          "Ship To": "non-numeric"
+         }
+        },
+        "skipped_columns": [],
+        "date_ranges": {
+         "Order Date": [
+          "2026-03-02",
+          "2026-10-31",
+          8
+         ],
+         "Requested Date": [
+          "2026-03-06",
+          "2026-11-20",
+          9
+         ],
+         "Delivered Date": [
+          "2026-03-04",
+          "2026-11-02",
+          9
+         ]
+        },
+        "grain": "aggregate",
+        "partial_months": {
+         "Requested Date": [
+          "2026-11",
+          20
+         ],
+         "Delivered Date": [
+          "2026-11",
+          2
+         ]
+        },
+        "main_currency": null,
+        "spell_story": [],
+        "window_span": {}
+       },
+       [
+        "OTIF (orders) over time",
+        "OTIF (orders) by Warehouse",
+        "Unit fill rate by Warehouse",
+        "Total qty shipped by warehouse: Reno DC highest (60,150.00), Columbus DC lowest (28,325.00)",
+        "Total qty ordered by carrier: UPS highest (49,908.00), Old Dominion lowest (46,672.00)"
+       ],
+       [
+        6025,
+        13,
+        9
+       ],
+       [
+        2026
+       ],
+       [
+        "Read as logistics data (OTIF (orders), OTIF (lines), unit fill rate, line fill rate, orders). Rates pool their parts (on-time, OTIF, fill and cost per lb are totals divided, never averages of per-shipment rates). On time means on or before the promised date, dates as written (local); an early delivery is on time. Transit is in calendar days from the ship date. Cost is in the main currency only.",
+        "110 cancelled rows are left out of every count and rate.",
+        "The data covers 8 months, so month-over-month changes may be seasonal (a peak season); there is no same month last year to compare with.",
+        "A carrier's figures depend on its lanes, modes and shippers: a difference between carriers is an association, not the carrier's doing, and every rate is given with its number of shipments."
+       ]
+      ]
+     }
+    },
+    "domain": "logistics",
+    "latency_s": 21.19,
+    "cost_usd": 0.03337,
+    "llm_calls": 2,
+    "truncated_calls": 0,
+    "rejections": [
+     "overreach_removed"
+    ],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"headline\": {\n    \"text\": \"This logistics dataset covers 1,993 orders across 8 months (March\u2013October 2026), with a unit fill rate of 96.7% and an order-level OTIF of 63.3%.\",\n    \"evidence\": [\"clean:audit\", \"eda:Qty Shipped\"]\n  },\n  \"summary\": [\n    {\n      \"text\": \"The dataset contains 6,025 order lines across three warehouses and three carriers, with strong unit fill performance but a notable gap between order-level and line-level OTIF rates.\",\n      \"evidence\": [\"clean:audit\", \"seg:Warehouse/Qty Shipped:sum\", \"seg:Carrier/Qty Ordered:sum\"]\n    },\n    {\n      \"text\": \"Because the data spans only 8 months with no prior-year equivalent, month-over-month changes may reflect seasonality rather than a trend.\",\n      \"evidence\": [\"clean:audit\"]\n    }\n  ],\n  \"findings\": [\n    {\n      \"text\": \"Order-level OTIF is 63.3% while line-level OTIF is 84.4% and unit fill rate is 96.7%, suggesting that full orders are harder to complete on time and in full than individual lines or units.\",\n      \"evidence\": [\"clean:audit\"]\n    },\n    {\n      \"text\": \"Reno DC shipped 60,150 units, Dallas DC shipped 48,273, and Columbus DC shipped 28,325, making Reno the highest-volume warehouse by a wide margin.\",\n      \"evidence\": [\"seg:Warehouse/Qty Shipped:sum\"]\n    },\n    {\n      \"text\": \"Quantity ordered is spread fairly evenly across the three carriers: UPS at 49,908, FedEx Freight at 47,562, and Old Dominion at 46,672.\",\n      \"evidence\": [\"seg:Carrier/Qty Ordered:sum\"]\n    },\n    {\n      \"text\": \"Typical order lines run from 1 to 48 units ordered and 0 to 50 units shipped, with medians of 24 and 23 respectively across 5,915 rows with quantity data.\",\n      \"evidence\": [\"eda:Qty Ordered\", \"eda:Qty Shipped\"]\n    }\n  ],\n  \"claims\": [\n    {\n      \"kind\": \"comparison\",\n      \"metric\": \"Qty Shipped\",\n      \"a\": \"Reno DC\",\n      \"b\": \"Columbus DC\",\n      \"evidence_id\": \"seg:Warehouse/Qty Shipped:sum\"\n    }\n  ],\n  \"actions\": [\n    {\n      \"action\": \"Investigate the root causes of incomplete orders to understand why order-level OTIF (63.3%) lags line-level OTIF (84.4%)\",\n      \"impact\": \"Closing this gap would improve customer experience on full-order fulfilment\",\n      \"evidence\": [\"clean:audit\"]\n    },\n    {\n      \"action\": \"Review Columbus DC's capacity and workload relative to Reno DC and Dallas DC\",\n      \"impact\": \"Columbus DC ships roughly half the volume of Reno DC; rebalancing could reduce strain on higher-volume sites\",\n      \"evidence\": [\"seg:Warehouse/Qty Shipped:sum\"]\n    },\n    {\n      \"action\": \"Extend the dataset to include a comparable prior-year period before drawing conclusions from month-over-month changes\",\n      \"impact\": \"Removes ambiguity between seasonal patterns and genuine performance shifts\",\n      \"evidence\": [\"clean:audit\"]\n    }\n  ],\n  \"caveats\": [\n    \"110 cancelled rows are excluded from all counts and rates; their characteristics are not reflected in any figure here.\",\n    \"Carrier-level differences reflect the lanes, modes and shippers each carrier handles, not carrier performance in isolation.\",\n    \"The 8-month window has no same-month prior-year baseline, so seasonal effects cannot be separated from trends.\"\n  ],\n  \"questions\": [\n    \"Which warehouses or carriers account for the largest share of orders that miss the order-level OTIF threshold?\",\n    \"Is Columbus DC's lower shipped volume explained by the types of orders it handles, or does it point to a capacity or staffing constraint?\",\n    \"How does OTIF performance vary across the 8-month period \u2014 are there specific months where on-time or fill rates drop materially?\"\n  ]\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "{\"0\": \"neither\", \"1\": \"verdict: strong on unit fill performance\", \"2\": \"neither\", \"3\": \"neither\", \"4\": \"neither\", \"5\": \"neither\", \"6\": \"neither\", \"7\": \"neither\", \"8\": \"neither\", \"9\": \"neither\", \"10\": \"neither\", \"11\": \"neither\", \"12\": \"neither\", \"13\": \"neither\", \"14\": \"neither\", \"15\": \"neither\", \"16\": \"neither\", \"17\": \"neither\", \"18\": \"neither\"}",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ]
+ }
+}

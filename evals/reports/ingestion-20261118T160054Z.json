@@ -1,0 +1,1141 @@
+{
+ "meta": {
+  "suite": "ingestion",
+  "report": "ingestion-20261118T160054Z",
+  "k": 1,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "377154e",
+  "started_at": "20261118T160054Z",
+  "only": "dom-logi-shipments",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 1,
+  "runs": 1,
+  "pass_rate": 1.0,
+  "case_majority_pass_rate": 1.0,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "hard_rules_na": 0,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 0,
+  "runs_with_prose_rewritten": 0,
+  "runs_with_pii_guard_hit": 0,
+  "cost_per_question_usd": 0,
+  "latency_p50_s": 2.86,
+  "latency_p95_s": 2.86,
+  "type_inference": 1.0,
+  "pii_recall": 1.0,
+  "over_masking": 0.0,
+  "load_fidelity": 1.0,
+  "typed_errors": null,
+  "hard_pii_canary": 0,
+  "hard_silent_misload": 0,
+  "hard_summary_grounded": 0,
+  "hard_source_evidence": 0,
+  "nondeterministic_cases": 0,
+  "holdout_pass_rate": null,
+  "pii_recall_by_kind": {
+   "identifier": 1.0,
+   "name": 1.0,
+   "phone": 1.0
+  },
+  "phi_recall": null,
+  "phi_planted_columns": 0,
+  "phi_over_masking": 0.0,
+  "phi_flag_accuracy": 1.0,
+  "domain_accuracy": 1.0
+ },
+ "runs": {
+  "dom-logi-shipments": [
+   {
+    "checks": [
+     {
+      "kind": "load",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "kind": "role",
+      "column": "Shipment ID",
+      "ok": true,
+      "detail": "id"
+     },
+     {
+      "kind": "role",
+      "column": "Tracking Number",
+      "ok": true,
+      "detail": "id"
+     },
+     {
+      "kind": "role",
+      "column": "Carrier",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "Mode",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "Origin City",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "Dest City",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "Ship Date",
+      "ok": true,
+      "detail": "date"
+     },
+     {
+      "kind": "role",
+      "column": "Promised Date",
+      "ok": true,
+      "detail": "date"
+     },
+     {
+      "kind": "role",
+      "column": "Delivered At",
+      "ok": true,
+      "detail": "date"
+     },
+     {
+      "kind": "role",
+      "column": "Status",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "Weight",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "role",
+      "column": "Weight UOM",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "Linehaul",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "role",
+      "column": "Fuel Surcharge",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "role",
+      "column": "Accessorials",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "role",
+      "column": "Total Charge",
+      "ok": true,
+      "detail": "metric"
+     },
+     {
+      "kind": "role",
+      "column": "Currency",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "Consignee Name",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "Consignee Phone",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "pii",
+      "column": "Tracking Number",
+      "pii": "identifier",
+      "ok": true,
+      "detail": "masked"
+     },
+     {
+      "kind": "overmask",
+      "column": "Delivered At",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "overmask",
+      "column": "Weight UOM",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "pii",
+      "column": "Consignee Name",
+      "pii": "name",
+      "ok": true,
+      "detail": "masked"
+     },
+     {
+      "kind": "pii",
+      "column": "Consignee Phone",
+      "pii": "phone",
+      "ok": true,
+      "detail": "masked"
+     },
+     {
+      "kind": "phi_flag",
+      "ok": true,
+      "detail": "phi=False"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Shipment ID",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Tracking Number",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Carrier",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Mode",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Origin City",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Dest City",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Ship Date",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Promised Date",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Delivered At",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Status",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Weight",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Weight UOM",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Linehaul",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Fuel Surcharge",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Accessorials",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Total Charge",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Currency",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Consignee Name",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Consignee Phone",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "domain",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "silent_misload",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "summary_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "source_evidence",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "domain",
+    "case": "dom-logi-shipments",
+    "holdout": false,
+    "contract_sha": "1e8ebf898c17a2ba",
+    "output": {
+     "contract": {
+      "source_type": "csv",
+      "row_count": 3000,
+      "column_count": 19,
+      "columns": [
+       {
+        "name": "Shipment ID",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "SH200000",
+         "SH200001",
+         "SH200002",
+         "SH200003",
+         "SH200004"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "named as an identifier ('Shipment ID')",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Tracking Number",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "named as an identifier ('Tracking Number')",
+        "pii": "identifier",
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Carrier",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Old Dominion",
+         "FedEx Freight",
+         "UPS",
+         "XPO",
+         "UPS"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Mode",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "LTL",
+         "LTL",
+         "Parcel",
+         "FTL",
+         "Parcel"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Origin City",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Reno",
+         "Columbus",
+         "Reno",
+         "Columbus",
+         "Columbus"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Dest City",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Seattle",
+         "Seattle",
+         "Seattle",
+         "Phoenix",
+         "Seattle"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Ship Date",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2026-08-19T00:00:00",
+         "2026-08-29T00:00:00",
+         "2026-08-10T00:00:00",
+         "2026-07-16T00:00:00",
+         "2026-05-28T00:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Promised Date",
+        "dtype": "datetime64[us]",
+        "nullable": true,
+        "sample_values": [
+         "2026-08-23T00:00:00",
+         "2026-09-02T00:00:00",
+         "2026-08-13T00:00:00",
+         "2026-07-19T00:00:00",
+         "2026-05-31T00:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.5,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Delivered At",
+        "dtype": "datetime64[us]",
+        "nullable": true,
+        "sample_values": [
+         "2026-08-17T00:00:00",
+         "2026-08-27T00:00:00",
+         "2026-08-08T00:00:00",
+         "2026-07-14T00:00:00",
+         "2026-05-26T00:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 5.13,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Status",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Delivered",
+         "Delivered",
+         "Delivered",
+         "Delivered",
+         "Delivered"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Weight",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         2080.7,
+         1220.6,
+         36.2,
+         1613.7,
+         31.1
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Weight UOM",
+        "dtype": "str",
+        "nullable": true,
+        "sample_values": [
+         "LB",
+         "LB",
+         "LB",
+         "LB",
+         "LB"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.17,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Linehaul",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         266.51,
+         167.94,
+         50.84,
+         211.61,
+         44.36
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Fuel Surcharge",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         67.69,
+         42.66,
+         12.91,
+         51.21,
+         9.67
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Accessorials",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         0.0,
+         0.0,
+         0.0,
+         75.0,
+         0.0
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Total Charge",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         334.2,
+         210.6,
+         63.75,
+         337.82,
+         54.03
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Currency",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "USD",
+         "USD",
+         "USD",
+         "USD",
+         "USD"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Consignee Name",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": "name",
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Consignee Phone",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": "phone",
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       }
+      ],
+      "sample_rows": [
+       {
+        "Shipment ID": "SH200000",
+        "Tracking Number": "[REDACTED]",
+        "Carrier": "Old Dominion",
+        "Mode": "LTL",
+        "Origin City": "Reno",
+        "Dest City": "Seattle",
+        "Ship Date": "2026-08-19T00:00:00",
+        "Promised Date": "2026-08-23T00:00:00",
+        "Delivered At": "2026-08-17T00:00:00",
+        "Status": "Delivered",
+        "Weight": 2080.7,
+        "Weight UOM": "LB",
+        "Linehaul": 266.51,
+        "Fuel Surcharge": 67.69,
+        "Accessorials": 0.0,
+        "Total Charge": 334.2,
+        "Currency": "USD",
+        "Consignee Name": "[REDACTED]",
+        "Consignee Phone": "[REDACTED]"
+       },
+       {
+        "Shipment ID": "SH200001",
+        "Tracking Number": "[REDACTED]",
+        "Carrier": "FedEx Freight",
+        "Mode": "LTL",
+        "Origin City": "Columbus",
+        "Dest City": "Seattle",
+        "Ship Date": "2026-08-29T00:00:00",
+        "Promised Date": "2026-09-02T00:00:00",
+        "Delivered At": "2026-08-27T00:00:00",
+        "Status": "Delivered",
+        "Weight": 1220.6,
+        "Weight UOM": "LB",
+        "Linehaul": 167.94,
+        "Fuel Surcharge": 42.66,
+        "Accessorials": 0.0,
+        "Total Charge": 210.6,
+        "Currency": "USD",
+        "Consignee Name": "[REDACTED]",
+        "Consignee Phone": "[REDACTED]"
+       },
+       {
+        "Shipment ID": "SH200002",
+        "Tracking Number": "[REDACTED]",
+        "Carrier": "UPS",
+        "Mode": "Parcel",
+        "Origin City": "Reno",
+        "Dest City": "Seattle",
+        "Ship Date": "2026-08-10T00:00:00",
+        "Promised Date": "2026-08-13T00:00:00",
+        "Delivered At": "2026-08-08T00:00:00",
+        "Status": "Delivered",
+        "Weight": 36.2,
+        "Weight UOM": "LB",
+        "Linehaul": 50.84,
+        "Fuel Surcharge": 12.91,
+        "Accessorials": 0.0,
+        "Total Charge": 63.75,
+        "Currency": "USD",
+        "Consignee Name": "[REDACTED]",
+        "Consignee Phone": "[REDACTED]"
+       },
+       {
+        "Shipment ID": "SH200003",
+        "Tracking Number": "[REDACTED]",
+        "Carrier": "XPO",
+        "Mode": "FTL",
+        "Origin City": "Columbus",
+        "Dest City": "Phoenix",
+        "Ship Date": "2026-07-16T00:00:00",
+        "Promised Date": "2026-07-19T00:00:00",
+        "Delivered At": "2026-07-14T00:00:00",
+        "Status": "Delivered",
+        "Weight": 1613.7,
+        "Weight UOM": "LB",
+        "Linehaul": 211.61,
+        "Fuel Surcharge": 51.21,
+        "Accessorials": 75.0,
+        "Total Charge": 337.82,
+        "Currency": "USD",
+        "Consignee Name": "[REDACTED]",
+        "Consignee Phone": "[REDACTED]"
+       },
+       {
+        "Shipment ID": "SH200004",
+        "Tracking Number": "[REDACTED]",
+        "Carrier": "UPS",
+        "Mode": "Parcel",
+        "Origin City": "Columbus",
+        "Dest City": "Seattle",
+        "Ship Date": "2026-05-28T00:00:00",
+        "Promised Date": "2026-05-31T00:00:00",
+        "Delivered At": "2026-05-26T00:00:00",
+        "Status": "Delivered",
+        "Weight": 31.1,
+        "Weight UOM": "LB",
+        "Linehaul": 44.36,
+        "Fuel Surcharge": 9.67,
+        "Accessorials": 0.0,
+        "Total Charge": 54.03,
+        "Currency": "USD",
+        "Consignee Name": "[REDACTED]",
+        "Consignee Phone": "[REDACTED]"
+       }
+      ],
+      "date_columns": [
+       "Ship Date",
+       "Promised Date",
+       "Delivered At"
+      ],
+      "id_columns": [
+       "Shipment ID",
+       "Tracking Number"
+      ],
+      "metric_columns": [
+       "Weight",
+       "Linehaul",
+       "Fuel Surcharge",
+       "Accessorials",
+       "Total Charge"
+      ],
+      "schema_summary": "3,000 rows \u00d7 19 columns. Dates: Ship Date from 2026-01-05 to 2026-10-31 (daily). Metrics: Weight, Linehaul, Fuel Surcharge, Accessorials, Total Charge. Identifiers: Shipment ID. Categories: Carrier, Mode, Origin City, Dest City, Status, Weight UOM, Currency. Personal data, masked before any model sees it: Tracking Number (identifier), Consignee Name (name), Consignee Phone (phone). Blank by the file's layout, not missing (filled only for the rows whose status needs one): Delivered At.",
+      "source_query": null,
+      "source_evidence": {
+       "id": "source:data",
+       "kind": "source",
+       "claim": "Loaded 3,000 rows \u00d7 19 columns from a CSV file.",
+       "code": "pd.read_csv(<uploaded file>, encoding='utf-8', sep=',')",
+       "result_excerpt": "{\"roles\": {\"id\": [\"Shipment ID\", \"Tracking Number\"], \"category\": [\"Carrier\", \"Mode\", \"Origin City\", \"Dest City\", \"Status\", \"Weight UOM\", \"Currency\", \"Consignee Name\", \"Consignee Phone\"], \"date\": [\"Ship Date\", \"Promised Date\", \"Delivered At\"], \"metric\": [\"Weight\", \"Linehaul\", \"Fuel Surcharge\", \"Accessorials\", \"Total Charge\"]}, \"personal_data\": {\"Tracking Number\": \"identifier\", \"Consignee Name\": \"name\", \"Consignee Phone\": \"phone\"}, \"fingerprint\": \"431d9f1bfa10de42\"}",
+       "row_count": 3000,
+       "confidence": "high",
+       "confidence_reason": "Read as-is: no layout guessing was needed.",
+       "assumptions": [
+        "3 columns hold personal data; their values are masked before any model sees them."
+       ]
+      },
+      "fingerprint": "431d9f1bfa10de42b79fde18942a854d94ea8c2b6a7a7e6f402115b288fc2f6d",
+      "pii_columns": [
+       "Tracking Number",
+       "Consignee Name",
+       "Consignee Phone"
+      ],
+      "phi": false,
+      "deidentification": [],
+      "deidentified": false,
+      "domain": "logistics",
+      "roles": {
+       "date": "Ship Date",
+       "promised_date": "Promised Date",
+       "delivered": "Delivered At",
+       "shipment": "Shipment ID",
+       "carrier": "Carrier",
+       "mode": "Mode",
+       "origin": "Origin City",
+       "destination": "Dest City",
+       "status": "Status",
+       "currency": "Currency",
+       "consignee": "Consignee Name",
+       "freight_cost": "Total Charge",
+       "linehaul": "Linehaul",
+       "fuel_surcharge": "Fuel Surcharge",
+       "accessorials": "Accessorials",
+       "weight": "Weight",
+       "weight_uom": "Weight UOM"
+      },
+      "domain_confidence": "strong"
+     },
+     "requests": [],
+     "loaded": {
+      "columns": [
+       "Shipment ID",
+       "Tracking Number",
+       "Carrier",
+       "Mode",
+       "Origin City",
+       "Dest City",
+       "Ship Date",
+       "Promised Date",
+       "Delivered At",
+       "Status",
+       "Weight",
+       "Weight UOM",
+       "Linehaul",
+       "Fuel Surcharge",
+       "Accessorials",
+       "Total Charge",
+       "Currency",
+       "Consignee Name",
+       "Consignee Phone"
+      ],
+      "rows": 3000,
+      "cells": [
+       [
+        2551,
+        "Shipment ID",
+        "SH202551"
+       ],
+       [
+        1910,
+        "Tracking Number",
+        "1Z0704040059784068"
+       ],
+       [
+        1533,
+        "Carrier",
+        "J.B. Hunt"
+       ],
+       [
+        809,
+        "Mode",
+        "FTL"
+       ],
+       [
+        923,
+        "Origin City",
+        "Reno"
+       ],
+       [
+        122,
+        "Dest City",
+        "Denver"
+       ],
+       [
+        225,
+        "Ship Date",
+        {
+         "ts": "2026-07-05T00:00:00"
+        }
+       ],
+       [
+        49,
+        "Promised Date",
+        {
+         "ts": "2026-04-06T00:00:00"
+        }
+       ],
+       [
+        525,
+        "Delivered At",
+        {
+         "ts": "2026-10-17T17:10:00"
+        }
+       ],
+       [
+        2439,
+        "Status",
+        "Delivered"
+       ],
+       [
+        1948,
+        "Weight",
+        66.0
+       ],
+       [
+        2738,
+        "Weight UOM",
+        "LB"
+       ],
+       [
+        1510,
+        "Linehaul",
+        214.26
+       ],
+       [
+        1819,
+        "Fuel Surcharge",
+        50.57
+       ],
+       [
+        2912,
+        "Accessorials",
+        35.0
+       ],
+       [
+        2188,
+        "Total Charge",
+        469.43
+       ],
+       [
+        1896,
+        "Currency",
+        "USD"
+       ],
+       [
+        1630,
+        "Consignee Name",
+        "Globex Inc"
+       ],
+       [
+        1679,
+        "Consignee Phone",
+        "+1 312 555 8998"
+       ],
+       [
+        2805,
+        "Shipment ID",
+        "SH202805"
+       ]
+      ]
+     },
+     "contract_sha": "1e8ebf898c17a2ba",
+     "phi": {
+      "flag": false,
+      "status": {
+       "Shipment ID": "kept",
+       "Tracking Number": "kept",
+       "Carrier": "kept",
+       "Mode": "kept",
+       "Origin City": "kept",
+       "Dest City": "kept",
+       "Ship Date": "kept",
+       "Promised Date": "kept",
+       "Delivered At": "kept",
+       "Status": "kept",
+       "Weight": "kept",
+       "Weight UOM": "kept",
+       "Linehaul": "kept",
+       "Fuel Surcharge": "kept",
+       "Accessorials": "kept",
+       "Total Charge": "kept",
+       "Currency": "kept",
+       "Consignee Name": "kept",
+       "Consignee Phone": "kept"
+      },
+      "contract": null
+     }
+    },
+    "latency_s": 2.86,
+    "cost_usd": 0,
+    "llm_calls": 0,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ]
+ }
+}

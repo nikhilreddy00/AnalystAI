@@ -273,6 +273,20 @@ blanked, °F rows converted, stuck sensors, dropouts, duplicates and a clock cha
 hour flagged; a control chart for one sensor; operators protected, machines never people; no
 benchmark verdicts, Cpk or failure prediction; 8 analysis cases k=3, 11 E2E cases (CSV, Excel,
 JSON), 5 intake cases; `docs/baselines/phase5_7_iot.md`.
+
+Logistics, not yet passing every run: the analysis model's own on-time-by-carrier code leaves out
+shipments still open past their promise (logi-4, 0 of 3 at the final re-measure; ledger D1-20),
+and a narrowing follow-up after an overview ("and only for LTL?") isn't carried by intake (e2e-97,
+2 of 2; D1-16). The product's own tiles, answers and dashboard are right on both. What passes: a
+TMS export's on-time delivery against the promised date (early is on time; returned to sender
+and shipments still open past their promise, as of the data's last ship date, are late; never a
+mean of carriers' rates), transit in calendar days, cost per shipment and per pound with kg
+converted by the row's unit and other currencies left out; fulfilment lines' OTIF by order and
+by line (a line open past its requested date fails its order), unit and line fill; dock visits'
+dwell in exact hours, on-time arrival with no-shows counted apart, visits over the usual 2 h free
+time (never called billed detention); consignees, signers, drivers, plates and tracking numbers
+masked, carriers and warehouses never people; no carrier blame or benchmark verdicts; 9 analysis
+cases k=3, 9 E2E cases (CSV, Excel, JSON), 6 intake cases; `docs/baselines/phase5_7_logistics.md`.
 <!-- domains:end -->
 
 Each domain ships a sample semantic layer in `semantic_layers/`. A file whose columns match one

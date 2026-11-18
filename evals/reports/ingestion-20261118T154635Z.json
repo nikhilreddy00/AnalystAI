@@ -1,0 +1,832 @@
+{
+ "meta": {
+  "suite": "ingestion",
+  "report": "ingestion-20261118T154635Z",
+  "k": 1,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "5faea59",
+  "started_at": "20261118T154635Z",
+  "only": "dom-logi-dock",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 1,
+  "runs": 1,
+  "pass_rate": 1.0,
+  "case_majority_pass_rate": 1.0,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "hard_rules_na": 0,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 0,
+  "runs_with_prose_rewritten": 0,
+  "runs_with_pii_guard_hit": 0,
+  "cost_per_question_usd": 0,
+  "latency_p50_s": 0.63,
+  "latency_p95_s": 0.63,
+  "type_inference": 1.0,
+  "pii_recall": 1.0,
+  "over_masking": 0.0,
+  "load_fidelity": 1.0,
+  "typed_errors": null,
+  "hard_pii_canary": 0,
+  "hard_silent_misload": 0,
+  "hard_summary_grounded": 0,
+  "hard_source_evidence": 0,
+  "nondeterministic_cases": 0,
+  "holdout_pass_rate": null,
+  "pii_recall_by_kind": {
+   "name": 1.0,
+   "vehicle": 1.0
+  },
+  "phi_recall": null,
+  "phi_planted_columns": 0,
+  "phi_over_masking": 0.0,
+  "phi_flag_accuracy": 1.0,
+  "domain_accuracy": 1.0
+ },
+ "runs": {
+  "dom-logi-dock": [
+   {
+    "checks": [
+     {
+      "kind": "load",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "kind": "role",
+      "column": "Appointment ID",
+      "ok": true,
+      "detail": "id"
+     },
+     {
+      "kind": "role",
+      "column": "Facility",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "Door",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "Carrier",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "Direction",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "Appointment Time",
+      "ok": true,
+      "detail": "date"
+     },
+     {
+      "kind": "role",
+      "column": "Arrived At",
+      "ok": true,
+      "detail": "date"
+     },
+     {
+      "kind": "role",
+      "column": "Departed At",
+      "ok": true,
+      "detail": "date"
+     },
+     {
+      "kind": "role",
+      "column": "Status",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "Driver Name",
+      "ok": true,
+      "detail": "category"
+     },
+     {
+      "kind": "role",
+      "column": "Trailer Number",
+      "ok": true,
+      "detail": "id"
+     },
+     {
+      "kind": "role",
+      "column": "License Plate",
+      "ok": true,
+      "detail": "id"
+     },
+     {
+      "kind": "overmask",
+      "column": "Door",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "pii",
+      "column": "Driver Name",
+      "pii": "name",
+      "ok": true,
+      "detail": "masked"
+     },
+     {
+      "kind": "overmask",
+      "column": "Trailer Number",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "pii",
+      "column": "License Plate",
+      "pii": "vehicle",
+      "ok": true,
+      "detail": "masked"
+     },
+     {
+      "kind": "phi_flag",
+      "ok": true,
+      "detail": "phi=False"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Appointment ID",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Facility",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Door",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Carrier",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Direction",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Appointment Time",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Arrived At",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Departed At",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Status",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Driver Name",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "Trailer Number",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "phi_keep",
+      "column": "License Plate",
+      "ok": true,
+      "detail": "kept"
+     },
+     {
+      "kind": "domain",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "silent_misload",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "summary_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "source_evidence",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "domain",
+    "case": "dom-logi-dock",
+    "holdout": false,
+    "contract_sha": "2882dc5cc151da65",
+    "output": {
+     "contract": {
+      "source_type": "csv",
+      "row_count": 1500,
+      "column_count": 12,
+      "columns": [
+       {
+        "name": "Appointment ID",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "AP70000",
+         "AP70001",
+         "AP70002",
+         "AP70003",
+         "AP70004"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "named as an identifier ('Appointment ID')",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Facility",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Reno DC",
+         "Reno DC",
+         "Reno DC",
+         "Columbus DC",
+         "Columbus DC"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Door",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "D04",
+         "D05",
+         "D09",
+         "D05",
+         "D01"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Carrier",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "XPO",
+         "Old Dominion",
+         "UPS",
+         "UPS",
+         "J.B. Hunt"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Direction",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Inbound",
+         "Outbound",
+         "Inbound",
+         "Inbound",
+         "Outbound"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Appointment Time",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2026-09-25T05:00:00",
+         "2026-10-04T16:30:00",
+         "2026-06-19T06:00:00",
+         "2026-07-14T20:30:00",
+         "2026-08-03T09:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Arrived At",
+        "dtype": "datetime64[us]",
+        "nullable": true,
+        "sample_values": [
+         "2026-09-25T04:19:00",
+         "2026-10-04T16:07:00",
+         "2026-06-19T05:06:00",
+         "2026-07-14T20:41:00",
+         "2026-08-03T09:01:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 9.4,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Departed At",
+        "dtype": "datetime64[us]",
+        "nullable": true,
+        "sample_values": [
+         "2026-09-25T03:39:00",
+         "2026-10-04T15:26:00",
+         "2026-06-19T04:24:00",
+         "2026-07-15T07:11:00",
+         "2026-08-28T21:37:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 9.4,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Status",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Completed",
+         "Completed",
+         "Completed",
+         "Completed",
+         "Completed"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Driver Name",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": "name",
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Trailer Number",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "53-6793",
+         "53-5519",
+         "53-4789",
+         "53-7929",
+         "53-8859"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "named as an identifier ('Trailer Number')",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "License Plate",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "unique codes, one per row",
+        "pii": "vehicle",
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       }
+      ],
+      "sample_rows": [
+       {
+        "Appointment ID": "AP70000",
+        "Facility": "Reno DC",
+        "Door": "D04",
+        "Carrier": "XPO",
+        "Direction": "Inbound",
+        "Appointment Time": "2026-09-25T05:00:00",
+        "Arrived At": "2026-09-25T04:19:00",
+        "Departed At": "2026-09-25T03:39:00",
+        "Status": "Completed",
+        "Driver Name": "[REDACTED]",
+        "Trailer Number": "53-6793",
+        "License Plate": "[REDACTED]"
+       },
+       {
+        "Appointment ID": "AP70001",
+        "Facility": "Reno DC",
+        "Door": "D05",
+        "Carrier": "Old Dominion",
+        "Direction": "Outbound",
+        "Appointment Time": "2026-10-04T16:30:00",
+        "Arrived At": "2026-10-04T16:07:00",
+        "Departed At": "2026-10-04T15:26:00",
+        "Status": "Completed",
+        "Driver Name": "[REDACTED]",
+        "Trailer Number": "53-5519",
+        "License Plate": "[REDACTED]"
+       },
+       {
+        "Appointment ID": "AP70002",
+        "Facility": "Reno DC",
+        "Door": "D09",
+        "Carrier": "UPS",
+        "Direction": "Inbound",
+        "Appointment Time": "2026-06-19T06:00:00",
+        "Arrived At": "2026-06-19T05:06:00",
+        "Departed At": "2026-06-19T04:24:00",
+        "Status": "Completed",
+        "Driver Name": "[REDACTED]",
+        "Trailer Number": "53-4789",
+        "License Plate": "[REDACTED]"
+       },
+       {
+        "Appointment ID": "AP70003",
+        "Facility": "Columbus DC",
+        "Door": "D05",
+        "Carrier": "UPS",
+        "Direction": "Inbound",
+        "Appointment Time": "2026-07-14T20:30:00",
+        "Arrived At": "2026-07-14T20:41:00",
+        "Departed At": "2026-07-15T07:11:00",
+        "Status": "Completed",
+        "Driver Name": "[REDACTED]",
+        "Trailer Number": "53-7929",
+        "License Plate": "[REDACTED]"
+       },
+       {
+        "Appointment ID": "AP70004",
+        "Facility": "Columbus DC",
+        "Door": "D01",
+        "Carrier": "J.B. Hunt",
+        "Direction": "Outbound",
+        "Appointment Time": "2026-08-03T09:00:00",
+        "Arrived At": "2026-08-03T09:01:00",
+        "Departed At": "2026-08-28T21:37:00",
+        "Status": "Completed",
+        "Driver Name": "[REDACTED]",
+        "Trailer Number": "53-8859",
+        "License Plate": "[REDACTED]"
+       }
+      ],
+      "date_columns": [
+       "Appointment Time",
+       "Arrived At",
+       "Departed At"
+      ],
+      "id_columns": [
+       "Appointment ID",
+       "Trailer Number",
+       "License Plate"
+      ],
+      "metric_columns": [],
+      "schema_summary": "1,500 rows \u00d7 12 columns. Dates: Appointment Time from 2026-06-01 to 2026-11-01 (daily). Identifiers: Appointment ID, Trailer Number. Categories: Facility, Door, Carrier, Direction, Status. Personal data, masked before any model sees it: Driver Name (name), License Plate (vehicle). Blank by the file's layout, not missing (filled only for the rows whose status needs one): Arrived At, Departed At.",
+      "source_query": null,
+      "source_evidence": {
+       "id": "source:data",
+       "kind": "source",
+       "claim": "Loaded 1,500 rows \u00d7 12 columns from a CSV file.",
+       "code": "pd.read_csv(<uploaded file>, encoding='utf-8', sep=',')",
+       "result_excerpt": "{\"roles\": {\"id\": [\"Appointment ID\", \"Trailer Number\", \"License Plate\"], \"category\": [\"Facility\", \"Door\", \"Carrier\", \"Direction\", \"Status\", \"Driver Name\"], \"date\": [\"Appointment Time\", \"Arrived At\", \"Departed At\"]}, \"personal_data\": {\"Driver Name\": \"name\", \"License Plate\": \"vehicle\"}, \"fingerprint\": \"8e957216ef8eed48\"}",
+       "row_count": 1500,
+       "confidence": "high",
+       "confidence_reason": "Read as-is: no layout guessing was needed.",
+       "assumptions": [
+        "2 columns hold personal data; their values are masked before any model sees them."
+       ]
+      },
+      "fingerprint": "8e957216ef8eed483bec7aebb078e5586ed89924f3515405959c7d343f310ada",
+      "pii_columns": [
+       "Driver Name",
+       "License Plate"
+      ],
+      "phi": false,
+      "deidentification": [],
+      "deidentified": false,
+      "domain": "logistics",
+      "roles": {
+       "date": "Appointment Time",
+       "arrived": "Arrived At",
+       "departed": "Departed At",
+       "appointment": "Appointment ID",
+       "carrier": "Carrier",
+       "facility": "Facility",
+       "door": "Door",
+       "direction": "Direction",
+       "status": "Status",
+       "driver": "Driver Name"
+      },
+      "domain_confidence": "strong"
+     },
+     "requests": [],
+     "loaded": {
+      "columns": [
+       "Appointment ID",
+       "Facility",
+       "Door",
+       "Carrier",
+       "Direction",
+       "Appointment Time",
+       "Arrived At",
+       "Departed At",
+       "Status",
+       "Driver Name",
+       "Trailer Number",
+       "License Plate"
+      ],
+      "rows": 1500,
+      "cells": [
+       [
+        1275,
+        "Appointment ID",
+        "AP71275"
+       ],
+       [
+        955,
+        "Facility",
+        "Columbus DC"
+       ],
+       [
+        766,
+        "Door",
+        "D12"
+       ],
+       [
+        404,
+        "Carrier",
+        "FedEx Freight"
+       ],
+       [
+        461,
+        "Direction",
+        "Inbound"
+       ],
+       [
+        61,
+        "Appointment Time",
+        {
+         "ts": "2026-10-02T17:00:00"
+        }
+       ],
+       [
+        112,
+        "Arrived At",
+        {
+         "ts": "2026-08-25T20:22:00"
+        }
+       ],
+       [
+        24,
+        "Departed At",
+        {
+         "ts": "2026-09-29T12:51:00"
+        }
+       ],
+       [
+        262,
+        "Status",
+        "Completed"
+       ],
+       [
+        1219,
+        "Driver Name",
+        "Lena Park"
+       ],
+       [
+        974,
+        "Trailer Number",
+        "53-2807"
+       ],
+       [
+        1369,
+        "License Plate",
+        "1CED523"
+       ],
+       [
+        755,
+        "Appointment ID",
+        "AP70755"
+       ],
+       [
+        909,
+        "Facility",
+        "Reno DC"
+       ],
+       [
+        1456,
+        "Door",
+        "D11"
+       ],
+       [
+        1094,
+        "Carrier",
+        "UPS"
+       ],
+       [
+        948,
+        "Direction",
+        "Inbound"
+       ],
+       [
+        815,
+        "Appointment Time",
+        {
+         "ts": "2026-10-04T10:30:00"
+        }
+       ],
+       [
+        839,
+        "Arrived At",
+        {
+         "ts": "2026-07-18T04:19:00"
+        }
+       ],
+       [
+        1402,
+        "Departed At",
+        {
+         "ts": "2026-07-13T20:04:00"
+        }
+       ]
+      ]
+     },
+     "contract_sha": "2882dc5cc151da65",
+     "phi": {
+      "flag": false,
+      "status": {
+       "Appointment ID": "kept",
+       "Facility": "kept",
+       "Door": "kept",
+       "Carrier": "kept",
+       "Direction": "kept",
+       "Appointment Time": "kept",
+       "Arrived At": "kept",
+       "Departed At": "kept",
+       "Status": "kept",
+       "Driver Name": "kept",
+       "Trailer Number": "kept",
+       "License Plate": "kept"
+      },
+      "contract": null
+     }
+    },
+    "latency_s": 0.63,
+    "cost_usd": 0,
+    "llm_calls": 0,
+    "truncated_calls": 0,
+    "rejections": [],
+    "passed": true
+   }
+  ]
+ }
+}
