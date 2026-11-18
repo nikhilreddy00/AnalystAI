@@ -437,7 +437,7 @@
  },
  "domain_pack/story.py::_glossary_matches": {
   "equivalents": [],
-  "hash": "515c0816bc795998"
+  "hash": "b9fabe6e88a03ed0"
  },
  "domain_pack/story.py::_ledger_story": {
   "equivalents": [
@@ -483,11 +483,19 @@
  },
  "domain_pack/story.py::glossary_hits": {
   "equivalents": [],
-  "hash": "587f75f58aa7fe65"
+  "hash": "c84ba6d24c158b88"
+ },
+ "domain_pack/story.py::named_kpis": {
+  "equivalents": [],
+  "hash": "1f093c7ca51a7602"
  },
  "domain_pack/story.py::pack_brief": {
   "equivalents": [],
   "hash": "951c056c92b35785"
+ },
+ "domain_pack/story.py::unit_clashes": {
+  "equivalents": [],
+  "hash": "32e6732ad64ca318"
  },
  "domain_pack/story.py::unit_said": {
   "equivalents": [
