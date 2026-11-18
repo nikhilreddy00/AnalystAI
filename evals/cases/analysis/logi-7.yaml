@@ -20,7 +20,9 @@ checks:
   planted: true
   segment: Mode
   truth_key: cost_per_lb_by_mode
-  rel_tol: 0.01
+  abs_tol: 0.003
+  scales:
+  - 1
 hard_rules:
 - no_unknown_columns
 - non_empty_or_error

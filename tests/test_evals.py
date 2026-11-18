@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import inspect
+
 import pandas as pd
 import pytest
 
-from evals import datagen
+from evals import datagen, scoring
 from evals.run import compare, estimate_usd, load_cases, rescore, summarize
 from evals.scoring import (
     ANALYSIS_CHECKS,
@@ -201,10 +203,15 @@ def test_every_case_is_well_formed():
         assert len({c["id"] for c in cases}) == len(cases)
         for c in cases:
             _, truth = datagen.make(c["dataset"]["name"], c["dataset"]["seed"])
-            for spec in c["checks"]:
+            for spec in [*c["checks"], *(s for t in c.get("turns", []) for s in t["checks"])]:
                 assert spec["kind"] in kinds, c["id"]
                 if "truth_key" in spec:
                     _truth_value(truth, spec["truth_key"])   # raises if the key is wrong
+                # Domain 8 smoke: a 'rel_tol' the scorer doesn't take failed a paid run in the
+                # harness ($0.05 lost); every argument binds to the scorer's own signature here
+                if fn := getattr(scoring, f"check_{spec['kind']}", None):
+                    args = {k: v for k, v in spec.items() if k not in ("kind", "planted")}
+                    inspect.signature(fn).bind_partial(**args)   # raises on an unknown one
 
 
 def _run(passed: bool, cost=0.01, latency=1.0) -> dict:

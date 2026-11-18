@@ -3131,7 +3131,9 @@ def _saas_invoices_truth(df: pd.DataFrame) -> dict:
 _CARRIERS = {"UPS": "Parcel", "FedEx Freight": "LTL", "Old Dominion": "LTL", "J.B. Hunt": "FTL",
              "XPO": "FTL"}
 _STD_DAYS = {"Parcel": 3, "LTL": 4, "FTL": 3}
-_LATE_P = {"UPS": 0.07, "FedEx Freight": 0.12, "Old Dominion": 0.06, "J.B. Hunt": 0.18, "XPO": 0.10}
+# T1: the big carriers are punctual, the small FTL ones late, so a mean of carriers' rates (each
+# weighed alike) sits well below the pooled rate
+_LATE_P = {"UPS": 0.04, "FedEx Freight": 0.10, "Old Dominion": 0.06, "J.B. Hunt": 0.30, "XPO": 0.22}
 _PEOPLE = ["Maria Gomez", "Tom Reyes", "Ann Lee", "Raj Patel", "Kim Moss", "Lena Park", "Omar Diaz",
            "Sara Cole", "Ben Ito", "Eva Novak"]
 _COMPANIES = ["Acme Corp", "Globex Inc", "Initech LLC", "Umbrella Co", "Stark Supply", "Wayne Retail"]
@@ -3152,7 +3154,7 @@ def make_tms_shipments(seed: int) -> tuple[pd.DataFrame, dict]:
     carriers = list(_CARRIERS)
     rows = []
     for i in range(3000):
-        carrier = carriers[int(rng.choice(5, p=[0.30, 0.20, 0.20, 0.15, 0.15]))]
+        carrier = carriers[int(rng.choice(5, p=[0.40, 0.25, 0.20, 0.08, 0.07]))]
         mode = _CARRIERS[carrier]
         ship = days[int(rng.integers(len(days)))]
         promised = ship + pd.Timedelta(days=_STD_DAYS[mode])
@@ -3260,7 +3262,7 @@ def _tms_truth(df: pd.DataFrame) -> dict:
         "naive_cost_per_lb_all_rows": float(df.loc[live, "Total Charge"].sum()
                                             / df.loc[live, "Weight"].sum()),
     }
-    assert abs(t["naive_mean_of_carrier_rates"] - t["on_time_rate"]) > 0.002                  # 1
+    assert t["on_time_rate"] - t["naive_mean_of_carrier_rates"] > 0.02                        # 1
     assert t["on_time_rate_past_due_late"] < t["on_time_rate"] < t["naive_delivered_only"]   # 2, 6
     assert t["early_deliveries"] > 100 and t["negative_spans"] == 6                          # 3, 4
     assert t["fuel_share_oct"] > t["fuel_share_jan"] + 0.05                                   # 20
