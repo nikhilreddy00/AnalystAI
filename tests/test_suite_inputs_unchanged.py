@@ -29,7 +29,8 @@ CHANGES: dict[str, dict[str, str]] = {
 # Domain 8 (logistics, 2026-11-18): the old `shipments` file reads as the new pack (K4, D3-31):
 # its contract, tiles (on-time from its flag, cost per lb from kg) and cleaning notes are logistics'
 CHANGES["deterministic"] |= {f"shipments-{s}": "Domain 8: read as logistics (K4)" for s in (1, 2, 3)}
-CHANGES["analysis"] |= {"logi-3": "Domain 8: read as logistics (K4): the pack's brief and tiles"}
+CHANGES["analysis"] |= {c: "Domain 8: read as logistics (K4): the pack's brief and tiles"
+                        for c in ("logi-1", "logi-3")}
 
 
 GOLDEN_NOW = json.loads(GOLDEN.read_text())

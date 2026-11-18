@@ -179,9 +179,8 @@ kpis:
      zero_words: "no shipment delivered yet",
      says: "Delivered on or before the promised date (dates as written; an early delivery is on time); {returned_shipments} returned to sender and the shipments still open past their promised date (as of the data's last ship date) count as late; open ones not yet due are not in it.",
      # with no status column open shipments can't be told apart: never a delivered-only rate
-     # (the file's own on-time flag, or unavailable)
-     num: [[{nunique: shipment, where: [[{role: slack_days, ge: 0}, {role: transit_days, ge: 0},
-                                         {role: status, not_in: []}]]}],
+     # (the file's own on-time flag, or unavailable: the last denominator needs the flag)
+     num: [[{nunique: shipment, where: [[{role: slack_days, ge: 0}, {role: transit_days, ge: 0}]]}],
            [{sum: on_time_flag}]],
      den: [[{nunique: shipment, where: [[{role: slack_days, ge: 0}, {role: transit_days, ge: 0}],
                                         [{role: days_late, gt: 0}, {role: transit_days, ge: 0}],
@@ -196,7 +195,7 @@ kpis:
                                            dispatched, pending, shipped, partially shipped,
                                            backordered, back ordered, short shipped, open,
                                            allocated, released, picked, packed]}]]}],
-           [{nunique: shipment}]]}
+           [{nunique: shipment, where: [[{role: on_time_flag, not_in: []}]]}]]}
   - {name: avg_transit_days, label: Average transit time, unit: number, unit_word: days, tile: true,
      says: "Calendar days from the ship date to delivery, over delivered shipments (business days are not counted apart).",
      num: [[{sum: transit_days, where: [[{role: transit_days, ge: 0}]]}]],
@@ -284,7 +283,8 @@ kpis:
 glossary:
   on_time_delivery: [on-time delivery, on time delivery, on-time delivery rate, otd, delivery performance,
                      on-time rate, on time rate, on-time %, on time %, late rate, share delivered late,
-                     late delivery rate, late shipment rate,
+                     late delivery rate, late shipment rate, deliver on time, delivers on time,
+                     delivered on time,
                      # a share of late ones is the rate, never the count (audit pass 2)
                      percent of shipments were late, percentage of late shipments,
                      percent of late shipments, share of late shipments, share of late deliveries,
@@ -295,12 +295,14 @@ glossary:
                      delivery days]
   cost_per_shipment: [cost per shipment, freight cost per shipment, average shipping cost, cost per load]
   cost_per_lb: [cost per lb, cost per pound, freight cost per pound, cost per weight]
-  shipments: [shipments, number of shipments, shipment count, loads]
+  # counts by phrases, never a bare noun: "share of shipments delivered on time" is the rate (e2e-34)
+  shipments: [number of shipments, shipment count, how many shipments, total shipments, shipment volume,
+              number of loads]
   otif_order: [otif, on time in full, on-time in-full, otif by order, order otif, perfect orders]
   otif_line: [line otif, otif by line, line-level otif]
   unit_fill: [fill rate, unit fill, unit fill rate, units filled, fill]
   line_fill: [line fill, line fill rate, lines filled complete]
-  orders: [orders, number of orders, order count]
+  orders: [number of orders, order count, how many orders, total orders]
   avg_dwell: [dwell, dwell time, average dwell, time at the dock, turn time, time on site]
   # the bare words too: on a dock log they mean arrival (the KPI the data computes wins, RT-7)
   on_time_arrival: [on-time arrival, on time arrival, arrival on time, appointment compliance,
@@ -310,7 +312,7 @@ glossary:
   late_arrivals: [late arrivals, late trucks, arrived late, trucks arrived late, trucks were late]
   visits_over_2h: [detention, detention rate, visits over 2 hours, long dwell, over free time]
   no_shows: [no-shows, no shows, missed appointments]
-  visits: [dock visits, appointments, number of appointments, dock appointments]
+  visits: [number of dock visits, number of appointments, how many appointments, total appointments]
   open_shipments: [open shipments, in transit, shipments in transit, undelivered shipments]
   returned_shipments: [returned to sender, returns to sender, rts, refused shipments, returned shipments,
                        shipments were returned, shipments returned]

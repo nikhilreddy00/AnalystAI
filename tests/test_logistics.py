@@ -285,6 +285,15 @@ def test_a_day_span_never_loses_a_row_across_zones():
         dp.pack_brief(LOGI, SHIP_DUE, []))
 
 
+def test_a_kpi_by_the_key_it_counts_is_its_overall_value_said():
+    """E2E gate (e2e-95): 'OTIF by order and by line' grouped OTIF by Order ID — one order per
+    group, 100% or 'not measurable' each. A KPI by the key it counts answers its overall value."""
+    from tests.test_oracle import answer
+    text, _ = answer("order_lines", "segment_compare", "What is OTIF by order?", kpi="otif_order",
+                     group_by="Order ID")
+    assert "63.3%" in text and "SO50000" not in text and "each group is one" in text
+
+
 def _domain(csv: str):
     from tests.test_retail_pack import _contract, _load
     return _contract(_load(csv)).domain
