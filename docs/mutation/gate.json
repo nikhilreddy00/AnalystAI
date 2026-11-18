@@ -211,7 +211,8 @@
     "old": "span = f\" ({t.min():%d %b %Y} to {t.max():%d %b %Y})\" if t is not None and len(t) else \"\"",
     "reason": "the series branch has a non-empty series built from dated rows, so t is never None or empty there"
    }
-  ]
+  ],
+  "hash": "d21a2a97c69a4faa"
  },
  "agents/targeted_analysis_agent.py::handle_time_series": {
   "equivalents": [
