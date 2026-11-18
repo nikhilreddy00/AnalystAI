@@ -1,0 +1,77 @@
+{
+ "meta": {
+  "suite": "analysis",
+  "report": "analysis-20261118T160123Z",
+  "k": 1,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "5eca834",
+  "started_at": "20261118T160123Z",
+  "only": "logi-7",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 1,
+  "runs": 1,
+  "pass_rate": 0.0,
+  "case_majority_pass_rate": 0.0,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "hard_rules_na": 0,
+  "errors": 1,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 0,
+  "runs_with_prose_rewritten": 0,
+  "runs_with_pii_guard_hit": 0,
+  "cost_per_question_usd": 0.0231,
+  "latency_p50_s": 27.59,
+  "latency_p95_s": 27.59,
+  "by_domain": {
+   "logistics": {
+    "cases": 1,
+    "k_min": 1,
+    "k_max": 1,
+    "cases_passed_all_runs": 0,
+    "pass_rate": 0.0,
+    "hard_rule_violations": 0,
+    "hard_rules_na": 0,
+    "builtin_only_cases": [],
+    "model_dependent_passed": 0,
+    "model_dependent_cases": 0
+   }
+  }
+ },
+ "runs": {
+  "logi-7": [
+   {
+    "checks": [
+     {
+      "kind": "harness",
+      "ok": false,
+      "detail": "TypeError: check_segment_value_truth() got an unexpected keyword argument 'rel_tol'"
+     }
+    ],
+    "hard": [],
+    "error": "harness: TypeError: check_segment_value_truth() got an unexpected keyword argument 'rel_tol'",
+    "output": null,
+    "category": "ratio",
+    "case": "logi-7",
+    "holdout": false,
+    "domain": "logistics",
+    "latency_s": 27.59,
+    "cost_usd": 0.02305,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```python\ntry:\n    active = df[\n        (df['row_kind'] != 'cancelled') &\n        (df['row_kind'] != 'cancel') &\n        (df['Currency'] == 'USD') &\n        (df['Weight'] > 0) &\n        (df['Weight UOM'].notna()) &\n        (df['Weight UOM'] != '')\n    ].copy()\n\n    modes = active.groupby('Mode').agg(\n        total_charge=('Total Charge', 'sum'),\n        total_weight=('Weight', 'sum')\n    ).reset_index()\n    modes['cost_per_lb'] = modes['total_charge'] / modes['total_weight']\n    modes_sorted = modes.sort_values('cost_per_lb', ascending=False).head(10)\n\n    result['segments'].append({\n        \"segment_column\": \"Mode\",\n        \"metric_column\": \"Total Charge\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"cost_per_lb\",\n        \"results\": [\n            {\"name\": str(row['Mode']), \"value\": round(float(row['cost_per_lb']), 6)}\n            for _, row in modes_sorted.iterrows()\n        ]\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Mode\",\n        \"metric_column\": \"Total Charge\",\n        \"aggregation\": \"sum\",\n        \"label\": \"total_freight_cost_usd\",\n        \"results\": [\n            {\"name\": str(row['Mode']), \"value\": round(float(row['total_charge']), 4)}\n            for _, row in modes_sorted.iterrows()\n        ]\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Mode\",\n        \"metric_column\": \"Weight\",\n        \"aggregation\": \"sum\",\n        \"label\": \"total_weight_lb\",\n        \"results\": [\n            {\"name\": str(row['Mode']), \"value\": round(float(row['total_weight']), 4)}\n            for _, row in modes_sorted.iterrows()\n        ]\n    })\n\n    result['assumptions'].append(\"cost_per_lb = sum(Total Charge) / sum(Weight) per Mode; cancelled and non-USD rows excluded; Weight > 0 and Weight UOM present required.\")\n    result['assumptions'].append(\"Weight UOM normalization applied upstream (889 rows unit-converted); sentinel nulls (5 rows) excluded via Weight > 0 filter.\")\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Mode\",\n        \"metric_column\": \"Total Charge\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"cost_per_lb\",\n        \"results\": [{\"name\": \"error\", \"value\": 0.0}]\n    })\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": false
+   }
+  ]
+ }
+}

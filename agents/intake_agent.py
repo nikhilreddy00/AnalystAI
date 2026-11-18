@@ -162,7 +162,7 @@ def domain_notes(contract: DataContract | None, message: str, spans: dict | None
     pack = pack_for(contract.domain) if contract else None
     if pack is None:
         return ""
-    hits = glossary_hits(pack, message, [c.name for c in contract.columns])
+    hits = glossary_hits(pack, message, [c.name for c in contract.columns], dict(contract.roles))
     period = _PERIOD_RE.search(message)
     if not hits and not period:
         return ""

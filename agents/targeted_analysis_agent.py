@@ -1244,6 +1244,13 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
         params = params.model_copy(update={"segment_column": None, "segment_value": None,
                                            "group_by": None if params.group_by == params.segment_column
                                            else params.group_by})
+    # "OTIF by order": a KPI grouped by the key it counts has one of it per group (each order
+    # 100% or not measurable): its overall value is the answer, said (E2E gate, Domain 8)
+    own = None
+    if params.group_by and params.group_by in {roles.get(t.nunique) for alt in [*kpi.num, *(kpi.den or [])]
+                                               for t in alt if t.nunique}:
+        own = params.group_by
+        params = params.model_copy(update={"group_by": None})
     # people (subscribers) at a date and the exits in a period are not the rows dated in it: an
     # asked period is a spell KPI's window (domain_pack.window); the caller never cut it
     spelled = bool(pack.spell and spell_terms(pack, kpi.name))
@@ -1389,7 +1396,9 @@ def handle_kpi(df: pd.DataFrame, params: TargetedParams, contract: DataContract,
         return TargetedResponse(intent=intent, answer_text=answer + f" How: {how}",
                                 chart_configs=[chart],   # every group's value, not only the ends
                                 table_data=[{group: str(k), kpi.label: fmt(v)} for k, v in by.items()])
-    carry = ""   # a note from the trend path when it hands one period to the value path below
+    # a note from the trend path when it hands one period to the value path below
+    carry = (f" By {own} each group is one {own}: {kpi.label} counts them, so this is its value "
+             f"over them all." if own else "")
     asked = bool(params.period_start or params.period_end)
     # a period with yoy, or with no frequency ("how were net sales in Q4 2025?"): its total,
     # against the same period a year earlier, below; a frequency asked: the trend in that window

@@ -1,0 +1,34 @@
+id: clean-logi-01-shipments
+dataset:
+  name: tms_shipments
+  seed: 1
+category: logistics
+expect_decisions:
+- column: '*'
+  operation: flag
+  strategy: cancel
+  truth_key: cancelled
+- column: Weight
+  operation: type_coerce
+  strategy: unit_converted
+  truth_key: kg_rows
+- column: Weight
+  operation: sentinel_null
+  strategy: unknown_unit
+- column: Currency
+  operation: flag
+  strategy: other_currency
+  truth_key: other_currency_rows
+- column: transit_days
+  operation: flag
+  strategy: out_of_range
+  truth_key: negative_spans
+forbid:
+- operation: fill_unknown
+  column: Delivered At
+- operation: fill_unknown
+  column: Promised Date
+- operation: drop_duplicates
+label_note: 'Domain 8 TMS export (T4, T5, T7, T8): cancelled shipments flagged and kept; KG rows converted to lb by
+  their unit, a blank unit read as no weight; CAD rows flagged; six deliveries dated before their ship date
+  flagged and kept; an in-transit shipment''s blank delivery date is the layout, never filled.'

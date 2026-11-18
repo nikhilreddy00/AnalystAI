@@ -1,0 +1,555 @@
+{
+ "meta": {
+  "suite": "intake",
+  "report": "intake-20261118T174128Z",
+  "k": 1,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "9887b07",
+  "started_at": "20261118T174128Z",
+  "only": "intake-logi",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 6,
+  "runs": 6,
+  "pass_rate": 1.0,
+  "case_majority_pass_rate": 1.0,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "hard_rules_na": 0,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 0,
+  "runs_with_prose_rewritten": 0,
+  "runs_with_pii_guard_hit": 0,
+  "cost_per_question_usd": 0.0068,
+  "latency_p50_s": 5.67,
+  "latency_p95_s": 6.88,
+  "intent_accuracy": 1.0,
+  "column_mapping": null,
+  "param_accuracy": 1.0,
+  "asks_when_ambiguous": null,
+  "no_ask_when_clear": 1.0,
+  "invented_columns_shipped": 0,
+  "model_invented_columns": 0,
+  "injections_followed": 0,
+  "first_run_pass_rate": null,
+  "holdout_pass_rate": null,
+  "pass_rate_by_category": {
+   "clear": 1.0
+  }
+ },
+ "runs": {
+  "intake-logi-01": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got segment_compare, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got on_time_delivery, want on_time_delivery"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "What's our on-time rate by carrier?",
+     "target_metrics": [
+      "Delivered At",
+      "Promised Date",
+      "Ship Date",
+      "Status"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Carrier"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [
+       "Delivered At",
+       "Promised Date",
+       "Ship Date",
+       "Status"
+      ],
+      "metric_column": null,
+      "date_column": null,
+      "segment_column": "Carrier",
+      "segment_value": null,
+      "group_by": "Carrier",
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": null,
+      "chart_type": null,
+      "kpi": "on_time_delivery",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 7.01,
+    "cost_usd": 0.00746,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"What's our on-time rate by carrier?\",\n  \"target_metrics\": [\"Delivered At\", \"Promised Date\", \"Ship Date\", \"Status\"],\n  \"timeframe\": null,\n  \"segments\": [\"Carrier\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [\"Delivered At\", \"Promised Date\", \"Ship Date\", \"Status\"],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": \"Carrier\",\n    \"segment_value\": null,\n    \"group_by\": \"Carrier\",\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": null,\n    \"chart_type\": null,\n    \"kpi\": \"on_time_delivery\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "intake-logi-02": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got segment_compare, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got on_time_arrival, want on_time_arrival"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "What's our on-time rate by carrier?",
+     "target_metrics": [
+      "Arrived At",
+      "Appointment Time"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Carrier"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": null,
+      "date_column": null,
+      "segment_column": "Carrier",
+      "segment_value": null,
+      "group_by": "Carrier",
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": null,
+      "chart_type": null,
+      "kpi": "on_time_arrival",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 5.76,
+    "cost_usd": 0.00619,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"What's our on-time rate by carrier?\",\n  \"target_metrics\": [\"Arrived At\", \"Appointment Time\"],\n  \"timeframe\": null,\n  \"segments\": [\"Carrier\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": \"Carrier\",\n    \"segment_value\": null,\n    \"group_by\": \"Carrier\",\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": null,\n    \"chart_type\": null,\n    \"kpi\": \"on_time_arrival\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "intake-logi-03": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got segment_compare, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got unit_fill, want unit_fill"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "What's the fill rate by warehouse?",
+     "target_metrics": [
+      "Qty Shipped",
+      "Qty Ordered"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Warehouse"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [
+       "Qty Shipped",
+       "Qty Ordered"
+      ],
+      "metric_column": null,
+      "date_column": null,
+      "segment_column": "Warehouse",
+      "segment_value": null,
+      "group_by": "Warehouse",
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": null,
+      "chart_type": null,
+      "kpi": "unit_fill",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 5.37,
+    "cost_usd": 0.00633,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "{\n  \"raw_query\": \"What's the fill rate by warehouse?\",\n  \"target_metrics\": [\"Qty Shipped\", \"Qty Ordered\"],\n  \"timeframe\": null,\n  \"segments\": [\"Warehouse\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [\"Qty Shipped\", \"Qty Ordered\"],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": \"Warehouse\",\n    \"segment_value\": null,\n    \"group_by\": \"Warehouse\",\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": null,\n    \"chart_type\": null,\n    \"kpi\": \"unit_fill\"\n  }\n}",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "intake-logi-04": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got time_series, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got otif_order, want otif_order"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "How is OTIF trending by month?",
+     "target_metrics": [
+      "Qty Ordered",
+      "Qty Shipped"
+     ],
+     "timeframe": null,
+     "segments": [],
+     "analysis_types": [
+      "eda",
+      "trend"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "time_series",
+     "targeted_params": {
+      "target_columns": [],
+      "metric_column": null,
+      "date_column": "Order Date",
+      "segment_column": null,
+      "segment_value": null,
+      "group_by": null,
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": "M",
+      "test_type": null,
+      "aggregation": null,
+      "chart_type": null,
+      "kpi": "otif_order",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 5.59,
+    "cost_usd": 0.00701,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"How is OTIF trending by month?\",\n  \"target_metrics\": [\"Qty Ordered\", \"Qty Shipped\"],\n  \"timeframe\": null,\n  \"segments\": [],\n  \"analysis_types\": [\"eda\", \"trend\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"time_series\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": null,\n    \"date_column\": \"Order Date\",\n    \"segment_column\": null,\n    \"segment_value\": null,\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": \"M\",\n    \"test_type\": null,\n    \"aggregation\": null,\n    \"chart_type\": null,\n    \"kpi\": \"otif_order\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "intake-logi-05": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=True, expected True"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "What's average transit time in business days by mode?",
+     "target_metrics": [
+      "Ship Date",
+      "Delivered At",
+      "Mode"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Mode"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": true,
+     "clarification_question": "Business days needs a holiday calendar: transit here is in calendar days, weekends included. I can answer with what the data has: on-time delivery, transit days and cost per shipment or per lb by carrier, mode or lane; OTIF and fill rates by warehouse; or dwell and on-time arrival by facility. Which would help?",
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [
+       "Ship Date",
+       "Delivered At",
+       "Mode"
+      ],
+      "metric_column": null,
+      "date_column": null,
+      "segment_column": "Mode",
+      "segment_value": null,
+      "group_by": "Mode",
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": "mean",
+      "chart_type": null,
+      "kpi": "avg_transit_days",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 6.47,
+    "cost_usd": 0.00774,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```json\n{\n  \"raw_query\": \"What's average transit time in business days by mode?\",\n  \"target_metrics\": [\"Ship Date\", \"Delivered At\", \"Mode\"],\n  \"timeframe\": null,\n  \"segments\": [\"Mode\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": true,\n  \"clarification_question\": \"The dataset stores transit time in calendar days (weekends included) \u2014 there's no business-day or holiday calendar attached. Would you like the breakdown by Mode using calendar days instead, or can you share a holiday calendar / country so we can convert to business days?\",\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [\"Ship Date\", \"Delivered At\", \"Mode\"],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": \"Mode\",\n    \"segment_value\": null,\n    \"group_by\": \"Mode\",\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"mean\",\n    \"chart_type\": null,\n    \"kpi\": \"avg_transit_days\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "intake-logi-06": [
+   {
+    "checks": [
+     {
+      "kind": "ask",
+      "ok": true,
+      "detail": "asked=False, expected False"
+     },
+     {
+      "kind": "intent",
+      "ok": true,
+      "detail": "got segment_compare, want ['segment_compare', 'top_n', 'time_series']"
+     },
+     {
+      "kind": "param",
+      "ok": true,
+      "detail": "kpi: got visits_over_2h, want visits_over_2h"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_invented_columns",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "category": "clear",
+    "holdout": false,
+    "first_run": false,
+    "output": {
+     "raw_query": "What's our detention rate by facility?",
+     "target_metrics": [
+      "Arrived At",
+      "Departed At"
+     ],
+     "timeframe": null,
+     "segments": [
+      "Facility"
+     ],
+     "analysis_types": [
+      "eda",
+      "segmentation"
+     ],
+     "output_format": "both",
+     "resume_from": null,
+     "clarification_needed": false,
+     "clarification_question": null,
+     "question_intent": "segment_compare",
+     "targeted_params": {
+      "target_columns": [
+       "Arrived At",
+       "Departed At"
+      ],
+      "metric_column": null,
+      "date_column": null,
+      "segment_column": "Facility",
+      "segment_value": null,
+      "group_by": "Facility",
+      "variant_column": null,
+      "n": null,
+      "order": null,
+      "frequency": null,
+      "test_type": null,
+      "aggregation": null,
+      "chart_type": null,
+      "kpi": "visits_over_2h",
+      "period_start": null,
+      "period_end": null,
+      "compare": null
+     }
+    },
+    "latency_s": 4.55,
+    "cost_usd": 0.00625,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "{\n  \"raw_query\": \"What's our detention rate by facility?\",\n  \"target_metrics\": [\"Arrived At\", \"Departed At\"],\n  \"timeframe\": null,\n  \"segments\": [\"Facility\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [\"Arrived At\", \"Departed At\"],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": \"Facility\",\n    \"segment_value\": null,\n    \"group_by\": \"Facility\",\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": null,\n    \"chart_type\": null,\n    \"kpi\": \"visits_over_2h\"\n  }\n}",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ]
+ }
+}

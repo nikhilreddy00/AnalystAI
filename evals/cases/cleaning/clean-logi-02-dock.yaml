@@ -1,0 +1,25 @@
+id: clean-logi-02-dock
+dataset:
+  name: dock_appointments
+  seed: 1
+category: logistics
+expect_decisions:
+- column: '*'
+  operation: flag
+  strategy: cancel
+  truth_key: cancelled
+- column: dwell_hours
+  operation: flag
+  strategy: out_of_range
+  truth_key: negative_dwells
+forbid:
+- operation: fill_unknown
+  column: Arrived At
+- operation: fill_unknown
+  column: Departed At
+- operation: flag
+  strategy: series_gap
+- operation: drop_duplicates
+label_note: 'Domain 8 dock log (T17): cancelled appointments flagged and kept; three departures before arrival
+  flagged and kept (no dwell); a no-show''s blank arrival is the layout, never filled; a dock log is no time
+  series.'

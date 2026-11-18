@@ -12,7 +12,8 @@ SETS = Path(__file__).resolve().parents[1] / "evals" / "cases" / "prose_judge"
 FROZEN = {
     "guide.md": "c19db456f5b2fb1fe19fd288c4571fbf8968c4feef065aad373ec976de46ff2e",
     # 2026-11-16, Domain 7 (K5): 14 IoT sentences appended before any run on them; held-out unchanged
-    "tuning.yaml": "ac2e49ad6761694be4a28a80a3ba8bda57469c97f89f0afc7a981023072a2814",
+    # 2026-11-18, Domain 8 (K5): 12 logistics sentences appended before any run on them
+    "tuning.yaml": "97cf8458c33b1e39a8a2d86f32dce56662966f3a8592ef83ae8e5d982263d872",
     "held_out.yaml": "1c772f34adbfacf159f6ce765d5cabdad77de2947a9737a37b429c7ca8e6c9ea",
     # 2026-11-16, before any v3 run: real report sentences judge v2 over-flagged (paid quality run)
     "tuning_reports.yaml": "a5d1917c0eb435c9d63969fd9ab9eac57eda1782712737f6ab518733517e8f35",

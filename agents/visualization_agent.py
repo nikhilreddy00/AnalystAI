@@ -2146,9 +2146,12 @@ def build_context(df: pd.DataFrame, task: AnalysisTask | None = None,
     # With a contract, its time axis (never a birth date; one rule with answers and the trend);
     # without one, the first datetime column.
     date = time_axis(contract, None, df) if contract is not None else (dates[0] if dates else None)
-    # an id is never a measure: the contract's id decision (values first), one rule with ingestion
+    # an id is never a measure nor a breakdown (D4-21: 'Line No 10 leads at 33%'): the
+    # contract's id decision (values first), one rule with ingestion
     ids = set(contract.id_columns) if contract is not None else set()
-    return VizContext(df=df, roles=roles, measures=measure_columns(df, roles) - ids,
+    roles = {k: [c for c in v if c not in ids] if isinstance(v, list) and k != "id_cols" else v
+             for k, v in roles.items()}
+    return VizContext(df=df, roles=roles, measures=measure_columns(df, roles),
                       date=date, task=task, findings=findings,
                       evidence={e.id: e for e in (findings.evidence if findings else [])},
                       narrative=narrative, contract=contract)

@@ -1,0 +1,367 @@
+# Logistics (Phase 5.7, domain 8): TMS / carrier shipment exports (one row per shipment), WMS /
+# OMS fulfilment lines (one row per order line: ordered and shipped quantities) and dock
+# appointments (one row per dock visit: appointment, arrival, departure).
+# Headers are normalized (domain_pack.normalize_header): lower case, "_" for spaces, units dropped.
+# Cited definitions and traps: docs/research/2026-11-18-logistics.md.
+domain: logistics
+
+# Strong: a shipment (its id, a carrier and a date), an order line's ordered and shipped
+# quantities, or a dock visit (an appointment, its arrival and departure). Each pairs a word no
+# other domain uses here with a second, independent signal.
+strong:
+  - {shipment: [shipment], carrier: [carrier, mode], when: [date, delivered, promised_date]}
+  - {order: [order], ordered: [qty_ordered], shipped: [qty_shipped]}
+  - {visit: [appointment], arrived: [arrived], departed: [departed]}
+signals:
+  - {shipment: [shipment], carrier: [carrier]}
+  - {ordered: [qty_ordered], shipped: [qty_shipped]}
+  - {arrived: [arrived], departed: [departed]}
+# Another domain's headers (all words in ONE header): retail, banking, healthcare, insurance, HR,
+# SaaS, IoT. Not sku / order / customer / revenue: fulfilment lines carry them.
+exclude_headers: [[balance], [loan], [dpd], [policy, id], [policyholder], [premium], [patient],
+                  [diagnosis], [drg], [employee, id], [payroll], [salary], [mrr], [arr],
+                  [subscription], [sensor], [wonum], [work, order], [temperature], [vibration]]
+abbreviations: {qty: quantity, appt: appointment, whse: warehouse, wh: warehouse, dt: date,
+                ts: timestamp, tstamp: timestamp, chg: charge, amt: amount, wt: weight}
+
+roles:
+  # The time role first: an order line's order date, else a shipment's ship date, else a dock
+  # visit's appointment. A promise is never the time axis.
+  date:          {kind: date, headers: [order_date, order_created_date, order_created, created_date,
+                                        ship_date, shipped_date, actual_ship_date, pickup_date,
+                                        actual_pickup_date, appointment_time, appointment_date,
+                                        appointment_datetime, scheduled_time, scheduled_arrival,
+                                        date]}
+  # The promise a delivery is judged against: the carrier's or seller's committed date, else the
+  # customer's requested date (research §2.1). An estimate (ETA) is no promise.
+  promised_date: {kind: date, headers: [promised_date, promise_date, promised_delivery_date,
+                                        committed_date, commit_date, committed_delivery_date,
+                                        requested_date, requested_delivery_date, request_date,
+                                        delivery_due_date, due_date, mabd, must_arrive_by_date]}
+  delivered:     {kind: date, headers: [delivered_at, delivered_date, delivery_date,
+                                        actual_delivery_date, actual_delivery, delivered_on,
+                                        delivery_datetime, actual_delivery_datetime, pod_date]}
+  arrived:       {kind: date, headers: [arrived_at, arrival_time, arrived, actual_arrival,
+                                        actual_arrival_time, check_in_time, checked_in_at,
+                                        gate_in, gate_in_time]}
+  departed:      {kind: date, headers: [departed_at, departure_time, departed, actual_departure,
+                                        actual_departure_time, check_out_time, checked_out_at,
+                                        gate_out, gate_out_time]}
+  shipment:      {kind: id, headers: [shipment_id, shipment, shipment_number, shipment_no, load_id,
+                                      load_number, load_no, load_num, load, shipment_num,
+                                      pro_number, pro, bol_number, bol, bill_of_lading]}
+  order:         {kind: id, headers: [order_id, order_number, order_no, sales_order,
+                                      sales_order_number, so_number, order]}
+  order_line_id: {kind: id, headers: [order_line_id, order_line_key, line_id, line_key,
+                                      line_item_id, order_line]}
+  # a line number restarting in each order (10, 20, 30): an identifier within its order, never a
+  # measure (D4-21) nor a breakdown ('Line No 10 leads at 33%')
+  line_number:   {kind: id, headers: [line_no, line_number, line_nbr, line_num, line_item_number]}
+  appointment:   {kind: id, headers: [appointment_id, appointment_number, appointment_no,
+                                      appointment, visit_id, dock_appointment_id]}
+  sku:           {kind: id, headers: [sku, item, item_id, item_number, product_id]}
+  carrier:       {kind: category, headers: [carrier, carrier_name, scac, carrier_scac,
+                                            carrier_code]}
+  mode:          {kind: category, headers: [mode, transport_mode, transportation_mode,
+                                            shipping_mode, ship_mode, mode_of_transport]}
+  service_level: {kind: category, headers: [service_level, service, service_type]}
+  origin:        {kind: category, headers: [origin, origin_city, ship_from_city, from_city]}
+  destination:   {kind: category, headers: [destination, dest_city, destination_city, ship_to_city,
+                                            to_city]}
+  lane:          {kind: category, headers: [lane, lane_id, lane_name]}
+  warehouse:     {kind: category, headers: [warehouse, warehouse_id, warehouse_name, dc,
+                                            distribution_center, fulfillment_center, ship_from]}
+  facility:      {kind: category, headers: [facility, facility_name, facility_id, location,
+                                            dock_location, site]}
+  door:          {kind: category, headers: [door, dock_door, door_number, door_no]}
+  direction:     {kind: category, headers: [direction, inbound_outbound, load_type,
+                                            appointment_type, in_out]}
+  status:        {kind: status, headers: [status, shipment_status, delivery_status, line_status,
+                                          order_line_status, appointment_status]}
+  currency:      {kind: currency, headers: [currency, currency_code, billed_currency]}
+  driver:        {kind: text, headers: [driver_name, driver, driver_id]}
+  consignee:     {kind: text, headers: [consignee_name, consignee, recipient_name, recipient]}
+  qty_ordered:   {kind: count, headers: [quantity_ordered, ordered_quantity, order_quantity,
+                                         units_ordered, cases_ordered, quantity_ord]}
+  qty_shipped:   {kind: count, headers: [quantity_shipped, shipped_quantity, ship_quantity,
+                                         units_shipped, cases_shipped, quantity_fulfilled,
+                                         fulfilled_quantity]}
+  freight_cost:  {kind: money, headers: [total_freight_cost, freight_cost, total_charge,
+                                         total_charges, total_cost, freight_charge,
+                                         freight_charges, shipping_cost, net_charge, cost,
+                                         total_freight]}
+  linehaul:      {kind: money, headers: [linehaul, linehaul_charge, base_freight, base_charge,
+                                         freight]}
+  fuel_surcharge: {kind: money, headers: [fuel_surcharge, fuel_charge, fsc, fuel]}
+  accessorials:  {kind: money, headers: [accessorials, accessorial_charges, accessorial_charge,
+                                         accessorial, accessorial_total, other_charges]}
+  # Weight: by the row's own unit column, else a unit-named header; a bare "weight" with no
+  # unit is no pounds (C7: values never decide a unit).
+  weight:        {kind: number, headers: [weight, gross_weight, actual_weight, shipment_weight,
+                                          total_weight]}
+  weight_uom:    {kind: category, headers: [weight_uom, weight_unit, weight_units, uom,
+                                            unit_of_weight]}
+  weight_lb:     {kind: number, headers: [weight_lb, weight_lbs, weight_pounds, gross_weight_lb,
+                                          gross_weight_lbs, lbs, pounds]}
+  weight_kg:     {kind: number, headers: [weight_kg, weight_kgs, gross_weight_kg, kg, kgs]}
+  # a per-shipment 0/1 flag: its mean is the on-time rate, its monthly sum no figure (golden, K4)
+  on_time_flag:  {kind: count, additive: false, headers: [on_time, on_time_flag, ontime, is_on_time]}
+  # Spans the product computes (derived below) unless the file has them already.
+  transit_days:  {kind: number, additive: false, headers: [transit_days, delivery_days,
+                                                           days_in_transit, transit_time_days,
+                                                           transit_time]}
+  slack_days:    {kind: number, additive: false, headers: [days_before_promise]}
+  days_late:     {kind: number, additive: false, headers: [days_late, late_days, delay_days,
+                                                           days_delayed]}
+  short_qty:     {kind: number, additive: false, headers: [shipped_minus_ordered]}
+  dwell_hours:   {kind: number, additive: false, headers: [dwell_hours, dwell_time, dwell,
+                                                           time_on_site, turn_time]}
+  arrival_slack_hours: {kind: number, additive: false, headers: [hours_before_appointment]}
+  past_due_days: {kind: number, additive: false, headers: [days_past_due]}
+  late_arrival_hours: {kind: number, additive: false, headers: [hours_late_to_appointment]}
+
+derived:
+  transit_days: [delivered, days, date]
+  slack_days: [promised_date, days, delivered]       # ≥ 0: on or before the promise
+  days_late: [delivered, days, promised_date]        # > 0: late (an early one is blank)
+  short_qty: ["qty_shipped", "-", "qty_ordered"]     # < 0 short, > 0 over-shipped (signed)
+  dwell_hours: [departed, hours, arrived]
+  arrival_slack_hours: [date, hours, arrived]        # ≥ 0: arrived by the appointment
+  # > 0: still open after its promise, as of the data's last date (U1: late, never left out)
+  past_due_days: [as_of, days, promised_date]
+  late_arrival_hours: [arrived, hours, date]          # > 0: arrived after the appointment
+
+status_values:
+  ok: [delivered, in transit, intransit, out for delivery, picked up, exception, delivery exception,
+       delayed, returned to sender, return to sender, rts, returned, refused, tendered, booked,
+       dispatched, pending, open, allocated, released, picked, packed, shipped, partially shipped,
+       backordered, back ordered, short shipped, closed, completed, complete, checked in,
+       checked out, arrived, at door, departed, scheduled, no show, no-show, noshow, missed]
+  cancel: [cancelled, canceled, cancel, void, voided]
+closed_words: [mode]
+units:
+  weight: {unit_role: weight_uom, to: lb,
+           # X12 210 L011 writes L / K (research §7); [1, 0] is another name of pounds
+           convert: {lb: [1, 0], lbs: [1, 0], l: [1, 0], pound: [1, 0], pounds: [1, 0],
+                     kg: [2.20462, 0], kgs: [2.20462, 0], k: [2.20462, 0], kilogram: [2.20462, 0],
+                     kilograms: [2.20462, 0], oz: [0.0625, 0], ounce: [0.0625, 0],
+                     ounces: [0.0625, 0]}}
+ranges: {transit_days: {ge: 0}, dwell_hours: {ge: 0}, short_qty: {le: 0}}
+# a delivered date is filled once a shipment is delivered; an arrival once the truck is in; an
+# in-transit shipment's or a no-show's blanks are the layout (D1-03)
+conditional_fields: {delivered: [delivered], arrived: [arrived, checked in, at door, departed,
+                                                       checked out, completed, complete],
+                     departed: [departed, checked out, completed, complete]}
+# the first a file has: OTIF by warehouse, dwell by facility, on-time by carrier
+overview_groups: [warehouse, facility, carrier, mode, direction]
+overview_kpis: [on_time_delivery, avg_transit_days, cost_per_shipment, otif_order, unit_fill,
+                avg_dwell, on_time_arrival]
+protected_roles: [driver]
+role_caveats:
+  driver: "Drivers are people: figures by driver describe the visits, never rank the people, and groups of fewer than 11 drivers are not shown."
+  carrier: "A carrier's figures depend on its lanes, modes and shippers: a difference between carriers is an association, not the carrier's doing, and every rate is given with its number of shipments."
+row_labels: {sale: counted rows, cancel: cancelled rows}
+# the frame's row_kind says the brief's word (gate: a model kept kind 'cancel' rows the brief
+# called 'cancelled', and a cancelled shipment's weight lowered cost per lb)
+kind_codes: {cancel: cancelled}
+row_flags:
+  cancel: "cancelled shipments, lines or appointments: left out of every count and rate"
+text:
+  rows_brief: "First keep only row_kind 'sale' rows: cancelled ones (row_kind 'cancelled') and other currencies are in no figure, counts and cost per lb included (a cancelled shipment keeps its weight at $0). Ratios pool their parts: on-time, OTIF, fill and cost per lb are Σ numerator ÷ Σ denominator over those rows, never a mean of per-shipment, per-lane or per-carrier ratios. On-time delivery = shipments delivered on or before the promised date (dates as written: local; an early delivery is on time) ÷ (shipments delivered + returned to sender + shipments still open whose promised date is before the data's last ship date: those are late); open ones not yet due are not in it. OTIF (line) = lines delivered by the requested date AND shipped in full (shipped ≥ ordered) ÷ (lines delivered + lines still open whose requested date is before the data's last order date: those failed); OTIF (order) = orders whose every such line is OTIF ÷ orders with at least one such line. Unit fill = Σ shipped ÷ Σ ordered and line fill = lines shipped in full ÷ lines, over lines that have left the warehouse or were backordered (lines still open, pending, allocated, released, picked or packed are not judged yet). Cost per lb = Σ cost ÷ Σ pounds over rows with a weight in a stated unit (kg × 2.20462). Transit = delivered − ship date in calendar days. Dwell = departed − arrived in hours, averaged per visit, never summed."
+  grain_line: "One row is one shipment, one order line or one dock visit: count shipments, orders or visits as distinct {key}, never rows."
+  unsupported_alternatives: "I can answer with what the data has: on-time delivery, transit days and cost per shipment or per lb by carrier, mode or lane; OTIF and fill rates by warehouse; or dwell and on-time arrival by facility. Which would help?"
+  kpis_default: its shipment, order-line or dock-visit columns
+  cancel_rule: cancelled (left out)
+kpis:
+  # The tile strip shows the first five a file supports, in this order: a shipment export's
+  # on-time, transit, cost and count; an order-line export's OTIF and fill; a dock log's dwell.
+  - {name: on_time_delivery, label: On-time delivery, unit: percent, tile: true,
+     zero_words: "no shipment delivered yet",
+     says: "Delivered on or before the promised date (dates as written; an early delivery is on time); {returned_shipments} returned to sender and the shipments still open past their promised date (as of the data's last ship date) count as late; open ones not yet due are not in it.",
+     # with no status column open shipments can't be told apart: never a delivered-only rate
+     # (the file's own on-time flag, or unavailable: the last denominator needs the flag)
+     num: [[{nunique: shipment, where: [[{role: slack_days, ge: 0}, {role: transit_days, ge: 0}]]}],
+           [{sum: on_time_flag}]],
+     den: [[{nunique: shipment, where: [[{role: slack_days, ge: 0}, {role: transit_days, ge: 0}],
+                                        [{role: days_late, gt: 0}, {role: transit_days, ge: 0}],
+                                        [{role: promised_date, not_in: []},
+                                         {role: status, in: &returned [returned to sender,
+                                           return to sender, rts, returned, refused]}],
+                                        # U1: open past its promise is late (research §2.1)
+                                        [{role: past_due_days, gt: 0},
+                                         {role: status, in: &undelivered [in transit, intransit,
+                                           out for delivery, picked up, exception,
+                                           delivery exception, delayed, tendered, booked,
+                                           dispatched, pending, shipped, partially shipped,
+                                           backordered, back ordered, short shipped, open,
+                                           allocated, released, picked, packed]}]]}],
+           [{nunique: shipment, where: [[{role: on_time_flag, not_in: []}]]}]]}
+  - {name: avg_transit_days, label: Average transit time, unit: number, unit_word: days, tile: true,
+     says: "Calendar days from the ship date to delivery, over delivered shipments (business days are not counted apart).",
+     num: [[{sum: transit_days, where: [[{role: transit_days, ge: 0}]]}]],
+     den: [[{nunique: shipment, where: [[{role: transit_days, ge: 0}]]}]]}
+  - {name: cost_per_shipment, label: Cost per shipment, unit: money, tile: true,
+     num: [[{sum: freight_cost}],
+           [{sum: linehaul}, {sum: fuel_surcharge, optional: true}, {sum: accessorials, optional: true}]],
+     den: [[{nunique: shipment}]]}
+  - {name: cost_per_lb, label: Cost per lb, unit: money, tile: true,
+     says: "Freight cost over shipped weight in pounds (kg converted at 2.20462), both over the shipments with a weight.",
+     num: [[{sum: freight_cost, where: [[{role: weight, gt: 0}, {role: weight_uom, not_in: []}]]}],
+           [{sum: freight_cost, where: [[{role: weight_lb, gt: 0}]]}],
+           [{sum: freight_cost, where: [[{role: weight_kg, gt: 0}]]}]],
+     den: [[{sum: weight, where: [[{role: weight, gt: 0}, {role: weight_uom, not_in: []}]]}],
+           [{sum: weight_lb, where: [[{role: weight_lb, gt: 0}]]}],
+           [{sum: weight_kg, times: 2.20462, where: [[{role: weight_kg, gt: 0}]]}]]}
+  - {name: shipments, label: Shipments, unit: count, tile: true, num: [[{nunique: shipment}]]}
+  - {name: otif_order, label: OTIF (orders), unit: percent, tile: true,
+     says: "An order counts when every line due so far arrived by its requested date and shipped in full; a line still open past its requested date (as of the data's last order date) fails it, lines not yet due are not judged.",
+     num: [[{nunique: order, where: &judged_line [[{role: slack_days, ge: 0}],
+                                                 [{role: days_late, gt: 0}],
+                                                 [{role: past_due_days, gt: 0},
+                                                  {role: status, in: *undelivered}]]},
+            {nunique: order, sign: -1, where: [[{role: days_late, gt: 0}],
+                                               [{role: short_qty, lt: 0}, {role: slack_days, ge: 0}],
+                                               [{role: past_due_days, gt: 0},
+                                                {role: status, in: *undelivered}]]}]],
+     den: [[{nunique: order, where: *judged_line}]]}
+  - {name: otif_line, label: OTIF (lines), unit: percent, tile: true,
+     num: [[{nunique: order_line_id, where: [[{role: slack_days, ge: 0}, {role: short_qty, ge: 0}]]}]],
+     den: [[{nunique: order_line_id, where: *judged_line}]]}
+  - {name: unit_fill, label: Unit fill rate, unit: percent, tile: true,
+     says: "Units shipped over units ordered, on lines that have left the warehouse or were backordered (lines still open, allocated, released, picked or packed are not judged yet); over-shipped units count.",
+     num: [[{sum: qty_shipped, where: [[{role: status, not_in: &unreleased [open, pending, allocated,
+                                                                         released, picked, packed]}]]}],
+           [{sum: qty_shipped}]],
+     den: [[{sum: qty_ordered, where: [[{role: status, not_in: *unreleased}]]}], [{sum: qty_ordered}]]}
+  - {name: line_fill, label: Line fill rate, unit: percent, tile: true,
+     num: [[{nunique: order_line_id, where: [[{role: short_qty, ge: 0}, {role: status, not_in: *unreleased}]]}],
+           [{nunique: order_line_id, where: [[{role: short_qty, ge: 0}]]}]],
+     den: [[{nunique: order_line_id, where: [[{role: status, not_in: *unreleased}]]}],
+           [{nunique: order_line_id}]]}
+  - {name: orders, label: Orders, unit: count, tile: true, num: [[{nunique: order}]]}
+  - {name: avg_dwell, label: Average dwell, unit: number, unit_word: hours, tile: true,
+     says: "Hours from arrival to departure per visit, loading and unloading included.",
+     num: [[{sum: dwell_hours, where: [[{role: dwell_hours, ge: 0}]]}]],
+     den: [[{nunique: appointment, where: [[{role: dwell_hours, ge: 0}]]}]]}
+  - {name: on_time_arrival, label: On-time arrival, unit: percent, tile: true,
+     says: "Arrived at or before the appointment time (no grace minutes); {no_shows} no-shows are counted apart, never as late.",
+     num: [[{nunique: appointment, where: [[{role: arrival_slack_hours, ge: 0}]]}]],
+     den: [[{nunique: appointment, where: [[{role: arrived, not_in: []}, {role: date, not_in: []}]]}]]}
+  - {name: visits_over_2h, label: Visits over 2 h at the dock, unit: percent, tile: true,
+     says: "Two hours is the usual free time for loading or unloading; a contract may set another, and this is no billed detention.",
+     num: [[{nunique: appointment, where: [[{role: dwell_hours, gt: 2}]]}]],
+     den: [[{nunique: appointment, where: [[{role: dwell_hours, ge: 0}]]}]]}
+  - {name: no_shows, label: No-shows, unit: count, tile: true,
+     num: [[{nunique: appointment, where: [[{role: status, in: [no show, no-show, noshow, missed]}]]}]]}
+  # every appointment not cancelled, no-shows included (they were booked)
+  - {name: visits, label: Dock appointments, unit: count, tile: true, num: [[{nunique: appointment}]]}
+  - {name: open_shipments, label: Open shipments, unit: count,
+     num: [[{nunique: shipment, where: [[{role: status, in: &open [in transit, intransit, out for delivery,
+                                                                 picked up, exception, delivery exception,
+                                                                 delayed, tendered, booked, dispatched,
+                                                                 pending]}]]}]]}
+  - {name: returned_shipments, label: Returned to sender, unit: count,
+     num: [[{nunique: shipment, where: [[{role: status, in: *returned}]]}]]}
+  # "how many …?": a count, never the whole count or the rate (audit pass 1, C6)
+  - {name: late_shipments, label: Late shipments, unit: count,
+     says: "Delivered after the promised date, or still open past it as of the data's last ship date; returned to sender ({returned_shipments}) are counted apart, though on-time delivery counts them as late.",
+     num: [[{nunique: shipment, where: [[{role: days_late, gt: 0}, {role: transit_days, ge: 0}],
+                                        [{role: past_due_days, gt: 0}, {role: status, in: *undelivered}]]}]]}
+  - {name: late_arrivals, label: Late arrivals, unit: count,
+     num: [[{nunique: appointment, where: [[{role: late_arrival_hours, gt: 0}]]}]]}
+  - {name: avg_days_late, label: Average days late, unit: number, unit_word: days,
+     num: [[{sum: days_late, where: [[{role: days_late, gt: 0}]]}]],
+     den: [[{nunique: shipment, where: [[{role: days_late, gt: 0}]]}]]}
+  - {name: fuel_share, label: Fuel share of freight cost, unit: percent,
+     num: [[{sum: fuel_surcharge}]],
+     den: [[{sum: freight_cost}],
+           [{sum: linehaul}, {sum: fuel_surcharge}, {sum: accessorials, optional: true}]]}
+  - {name: freight_spend, label: Freight spend, unit: money,
+     num: [[{sum: freight_cost}],
+           [{sum: linehaul}, {sum: fuel_surcharge, optional: true}, {sum: accessorials, optional: true}]]}
+
+glossary:
+  on_time_delivery: [on-time delivery, on time delivery, on-time delivery rate, otd, delivery performance,
+                     on-time rate, on time rate, on-time %, on time %, late rate, share delivered late,
+                     late delivery rate, late shipment rate, deliver on time, delivers on time,
+                     delivered on time,
+                     # a share of late ones is the rate, never the count (audit pass 2)
+                     percent of shipments were late, percentage of late shipments,
+                     percent of late shipments, share of late shipments, share of late deliveries,
+                     percentage of shipments late, "% of shipments late", "% of late shipments"]
+  late_shipments: [late shipments, late deliveries, shipments are late, shipments were late,
+                   shipments late, delivered late, number of late shipments, deliveries were late]
+  avg_transit_days: [transit time, transit days, average transit time, days in transit, delivery time,
+                     delivery days]
+  cost_per_shipment: [cost per shipment, freight cost per shipment, average shipping cost, cost per load]
+  cost_per_lb: [cost per lb, cost per pound, freight cost per pound, cost per weight]
+  # counts by phrases, never a bare noun: "share of shipments delivered on time" is the rate (e2e-34)
+  shipments: [number of shipments, shipment count, how many shipments, total shipments, shipment volume,
+              number of loads]
+  otif_order: [otif, on time in full, on-time in-full, otif by order, order otif, perfect orders]
+  # "OTIF by order and by line" asks for both levels, never a breakdown by line number (e2e-95)
+  otif_line: [line otif, otif by line, line-level otif, by line, at the line level, line level]
+  unit_fill: [fill rate, unit fill, unit fill rate, units filled, fill]
+  line_fill: [line fill, line fill rate, lines filled complete]
+  orders: [number of orders, order count, how many orders, total orders]
+  avg_dwell: [dwell, dwell time, average dwell, time at the dock, turn time, time on site]
+  # the bare words too: on a dock log they mean arrival (the KPI the data computes wins, RT-7)
+  on_time_arrival: [on-time arrival, on time arrival, arrival on time, appointment compliance,
+                    on-time rate, on time rate, on-time %, on time %, late rate, late arrival rate,
+                    percent of trucks arrived late, share of trucks arrived late, share of late arrivals,
+                    "% of trucks arrived late", percentage of late arrivals]
+  late_arrivals: [late arrivals, late trucks, arrived late, trucks arrived late, trucks were late]
+  visits_over_2h: [detention, detention rate, visits over 2 hours, long dwell, over free time]
+  no_shows: [no-shows, no shows, missed appointments]
+  visits: [number of dock visits, number of appointments, how many appointments, total appointments]
+  open_shipments: [open shipments, in transit, shipments in transit, undelivered shipments]
+  returned_shipments: [returned to sender, returns to sender, rts, refused shipments, returned shipments,
+                       shipments were returned, shipments returned]
+  avg_days_late: [days late, average delay, how late, average days late]
+  fuel_share: [fuel share, fuel surcharge share, fuel cost share]
+  freight_spend: [freight spend, freight cost, shipping cost, total freight, transportation cost]
+  business_days: [business days, working days, transit in business days]
+  perfect_order: [perfect order, perfect order index, perfect order rate]
+  tender_acceptance: [tender acceptance, tender rejection, routing guide compliance]
+  claims: [damage rate, claims rate, freight claims, damaged shipments]
+  eta: [predict delivery, eta prediction, when will it arrive, predicted delivery]
+  cwt: [cost per cwt, per hundredweight, per cwt]
+  on_time_pickup: [on-time pickup, on time pickup, pickup performance, missed pickups]
+  cycle_time: [order cycle time, lead time, order to delivery time, order-to-delivery]
+  yoy: [year over year, yoy, same period last year, vs last year, versus last year]
+definitions:
+  yoy: "Year over year compares a period with the same calendar period one year earlier (full periods only); with less than 13 months of data there is none."
+  cwt: "A hundredweight is 100 lb in the US (112 lb in the UK): cost per cwt is cost per lb × 100."
+unsupported:
+  business_days: "a holiday calendar: transit here is in calendar days, weekends included"
+  perfect_order: "documentation accuracy and damage-free delivery for each order; this data gives on time and in full only (OTIF)"
+  tender_acceptance: "the loads tendered to each carrier and whether each accepted; this data has only shipments that moved"
+  claims: "freight claims (damage or loss) per shipment; this data has none"
+  eta: "a validated transit-time model; this data only describes past deliveries"
+  on_time_pickup: "a scheduled pickup time beside the actual pickup; this data has the ship date only"
+  cycle_time: "the order date beside the delivery on the same rows; transit here runs from the ship date"
+
+caveats:
+  read_as_domain: "Read as logistics data ({kpis}). Rates pool their parts (on-time, OTIF, fill and cost per lb are totals divided, never averages of per-shipment rates). On time means on or before the promised date, dates as written (local); an early delivery is on time. Transit is in calendar days from the ship date. Cost is in the main currency only."
+  read_as_domain_weak: "Read as logistics data because it has {roles} columns; if these are not shipments, order lines or dock visits, the logistics figures here don't apply."
+  repeated_rows_kept: "{n} rows repeat another row exactly and were kept."
+  partial_last_period: "{label} is partial (data through the {through}) and is left out of period comparisons."
+  cancelled_excluded: "{n} cancelled rows are left out of every count and rate."
+  months_lt_13: "The data covers {months} months, so month-over-month changes may be seasonal (a peak season); there is no same month last year to compare with."
+  mixed_currency: "{n} rows in currencies other than {currency} are left out of every figure, counts and on-time rates too, so the figures side by side read the same shipments."
+
+never_say:
+  - {pattern: '\bcarriers?\b[^.]{0,60}\b(?:caus(?:e|es|ed|ing)|to blame|(?:is|are) at fault)\b',
+     reason: "blames a carrier from observational data: lanes, modes and shippers' own delays differ by carrier, so a gap is an association"}
+
+small_cell_nouns: [drivers, driver]
+
+first_questions:
+  - {q: "What is on-time delivery by carrier, with the number of shipments for each?", needs: [on_time_delivery, carrier]}
+  - {q: "How does average transit time compare by mode?", needs: [avg_transit_days, mode]}
+  - {q: "What is cost per lb by mode and carrier?", needs: [cost_per_lb, mode]}
+  - {q: "How has on-time delivery moved by month?", needs: [on_time_delivery]}
+  - {q: "What is OTIF by warehouse, by order and by line?", needs: [otif_order, warehouse]}
+  - {q: "How do unit fill and line fill compare by warehouse?", needs: [unit_fill, warehouse]}
+  - {q: "Which facilities have the longest average dwell?", needs: [avg_dwell, facility]}
+  - {q: "What share of trucks arrive on time for their appointment, by carrier?", needs: [on_time_arrival, carrier]}

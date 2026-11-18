@@ -1,0 +1,32 @@
+id: logi-4
+domain: logistics
+category: ratio
+pipeline: production
+dataset:
+  name: tms_shipments
+  seed: 1
+question: What is on-time delivery by carrier?
+task:
+  analysis_types:
+  - segmentation
+  target_metrics:
+  - Promised Date
+  - Delivered At
+  segments:
+  - Carrier
+checks:
+- kind: segment_value_truth
+  planted: true
+  segment: Carrier
+  truth_key: on_time_by_carrier
+  abs_tol: 0.005
+  scales:
+  - 1
+  - 100
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
+- numbers_grounded
+label_note: 'Domain 8 (T1, T3, T6): each carrier''s delivered on or before the promised date over its
+  delivered and returned shipments, pooled; early deliveries are on time, returned to sender are not;
+  never a mean.'

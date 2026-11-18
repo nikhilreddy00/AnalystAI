@@ -1,0 +1,34 @@
+id: e2e-92
+domain: logistics
+source: xlsx
+dataset:
+  name: order_lines
+  seed: 1
+question: Give me an overview of this dataset.
+overview_done: false
+trap: true
+checks:
+- kind: number_in_answer
+  truth_key: otif_order
+  rel_tol: 0.003
+  scales: &pct
+  - - 1
+    - null
+  - - 100
+    - '%'
+# U1: an order with a line still open past its requested date has failed; left out, OTIF reads high
+- kind: must_not_number
+  truth_key: naive_otif_order_delivered_only
+  rel_tol: 0.003
+  scales: *pct
+  scope: report
+hard_rules:
+- charts_lint_clean
+- charts_have_rationale
+- non_empty_or_error
+- insight_grounded
+- insight_dates_in_range
+- executive_no_jargon
+- claims_cite_evidence
+label_note: 'Domain 8 fulfilment lines (T13-T16, U1; Excel): OTIF by order 63.3% (every line due on time and in
+  full; a line open past its requested date fails), never 65.1% with those left out; by line 84.4%.'

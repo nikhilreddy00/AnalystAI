@@ -916,7 +916,14 @@ _THING_NAME_RE = re.compile(
     r"supplier|merchant|plan|model|event|job|app|domain|org|organization|channel|segment|"
     r"lineitem|line_item|"
     # Domain 7: plant-floor things (a machine, an asset, a historian tag)
-    r"machine|asset|equipment|line|sensor|tag|station|work_?center|plant|site)_names?$", re.I)
+    r"machine|asset|equipment|line|sensor|tag|station|work_?center|plant|site|"
+    # Domain 8: a carrier is a business, a warehouse or dock a place
+    r"carrier|warehouse|facility|dc|hub|terminal|depot|dock|yard)_names?$", re.I)
+# A parcel's tracking number or air waybill: personal data once linked to its recipient (research
+# 2026-11-18 §5: a carrier's own privacy notice lists the parcel number). Named, never valued; a
+# PRO or BOL number (B2B freight) is no person's. Anchored at the end: `tracking_events` is a count.
+_TRACKING_COL_RE = re.compile(
+    r"(?:^|_)(?:tracking|awb|air_?waybill|waybill)(?:_?(?:id|no|number|num|code))?$", re.I)
 # A column named for a person's role (`sales_rep`, `contact_owner`, `assigned_to`): PII only when
 # its values read as people (pii_kind checks), so `new_customer` (Yes/No) keeps its breakdowns.
 _ROLE_NOUNS = {"rep", "representative", "owner", "assignee", "assigned_to", "agent", "salesperson",
@@ -930,7 +937,9 @@ _ROLE_NOUNS = {"rep", "representative", "owner", "assignee", "assigned_to", "age
                # the shop floor and a CMMS work order (Domain 7)
                "operator", "supervisor", "reportedby", "reported_by", "changeby", "changed_by",
                "mechanic", "planner", "completedby", "completed_by", "inspector", "worker", "lead",
-               "lead_hand", "foreman", "login"}
+               "lead_hand", "foreman", "login",
+               # a shipment's people: who receives it, who signed for it (Domain 8)
+               "consignee", "signed_by", "received_by", "signer", "signatory"}
 # A CMMS login (Maximo's REPORTEDBY "JSMITH"): one capitalised token of letters, 4+ long, so a
 # rep code ("R12") stays data. Read only in a column named for a system user (an operator, a
 # lead or a shift lead holds names; "VERIZON", "WARM", "NIGHT" are categories), and only when 3
@@ -1091,7 +1100,8 @@ def _is_vin(text: str) -> bool:
 
 def is_pii_column(name: str) -> bool:
     name = _norm_name(name)
-    return bool(_VEHICLE_COL_RE.search(name)) or bool(_NATIONAL_ID_COL_RE.search(name)) or (
+    return bool(_VEHICLE_COL_RE.search(name)) or bool(_NATIONAL_ID_COL_RE.search(name)) \
+        or bool(_TRACKING_COL_RE.search(name)) or (
         bool(_PII_COL_RE.search(name)) and not _THING_NAME_RE.search(name))
 
 
@@ -1191,6 +1201,8 @@ def pii_kind(name: str, values: Iterable[Any]) -> tuple[str, str] | None:
         return "vehicle", f"the column name '{name}' marks a vehicle or licence identifier"
     if _NATIONAL_ID_COL_RE.search(norm):
         return "national_id", f"the column name '{name}' marks a national id or bank details"
+    if _TRACKING_COL_RE.search(norm):
+        return "identifier", f"the column name '{name}' marks a parcel's tracking number"
     if is_pii_column(name):
         kind = next((k for k, rx in _NAME_KINDS if re.search(rf"(?:^|_)(?:{rx})(?:$|_)", norm, re.I)),
                     "name")

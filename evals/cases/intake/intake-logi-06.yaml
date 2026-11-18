@@ -1,0 +1,17 @@
+id: intake-logi-06
+category: clear
+pipeline: production
+source:
+  dataset: dock_appointments
+  seed: 1
+overview_done: true
+question: "What's our detention rate by facility?"
+expect:
+  ask: false
+  intent_any:
+  - segment_compare
+  - top_n
+  - time_series
+  params:
+    kpi: visits_over_2h
+rationale: "Domain 8: detention here is the share of visits over the usual 2 h free time (no billed detention in the data)."

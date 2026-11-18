@@ -165,6 +165,75 @@ def iot_wo_books(draw) -> pd.DataFrame:
     return pd.DataFrame(rows, columns=list(WO_ROLES.values()))
 
 
+LOGI = dp.pack_for("logistics")
+SHIP_ROLES = {"date": "ship_date", "promised_date": "promised_date", "delivered": "delivered_at",
+              "shipment": "shipment_id", "carrier": "carrier", "mode": "mode", "status": "status",
+              "freight_cost": "total_charge", "weight": "weight", "weight_uom": "weight_uom"}
+LINE_ROLES = {"date": "order_date", "promised_date": "requested_date", "delivered": "delivered_date",
+              "order": "order_id", "order_line_id": "order_line_id", "warehouse": "warehouse",
+              "status": "status", "qty_ordered": "qty_ordered", "qty_shipped": "qty_shipped"}
+DOCK_ROLES = {"date": "appointment_time", "arrived": "arrived_at", "departed": "departed_at",
+              "appointment": "appointment_id", "facility": "facility", "carrier": "carrier",
+              "status": "status"}
+
+
+@st.composite
+def logistics_shipment_books(draw) -> pd.DataFrame:
+    """A shipment export: delivered early, on the day or late; open, returned or cancelled; a
+    blank promise; a delivery before the ship date (a typo: no span); weights in pounds (the
+    unit conversion is cleaning's, checked on the datasets)."""
+    rows = []
+    for i in range(draw(st.integers(1, 12))):
+        ship = _date(draw, "2026-01-01", "2026-10-31")
+        promised = ship + pd.Timedelta(days=draw(st.integers(1, 5)))
+        status = draw(st.sampled_from(["Delivered", "Delivered", "In Transit", "Returned to Sender",
+                                       "Cancelled"]))
+        deliv = ship + pd.Timedelta(days=draw(st.integers(-1, 8)), hours=draw(st.integers(0, 23)))
+        rows.append((ship, None if draw(st.integers(0, 9)) == 0 else promised,
+                     deliv if status == "Delivered" else pd.NaT, f"S{i}",
+                     draw(st.sampled_from(["UPS", "XPO", "ODFL"])),
+                     draw(st.sampled_from(["Parcel", "LTL"])), status,
+                     float(draw(st.integers(0, 900))), float(draw(st.integers(0, 2000))),
+                     draw(st.sampled_from(["LB", "lbs", None]))))
+    return pd.DataFrame(rows, columns=list(SHIP_ROLES.values()))
+
+
+@st.composite
+def logistics_line_books(draw) -> pd.DataFrame:
+    """An order-line export: orders of 1–3 lines, short, full or over-shipped, delivered by,
+    after or without a requested date, open (not yet released) or cancelled."""
+    rows = []
+    for o in range(draw(st.integers(1, 6))):
+        order_date = _date(draw, "2026-03-01", "2026-10-31")
+        requested = order_date + pd.Timedelta(days=draw(st.integers(1, 7)))
+        wh = draw(st.sampled_from(["Reno", "Dallas"]))
+        for ln in range(draw(st.integers(1, 3))):
+            status = draw(st.sampled_from(["Delivered", "Delivered", "Backordered", "Open", "Cancelled"]))
+            qty = draw(st.integers(1, 20))
+            shipped = 0 if status in ("Open", "Cancelled") else draw(st.integers(0, qty + 2))
+            deliv = requested + pd.Timedelta(days=draw(st.integers(-2, 3)))
+            rows.append((order_date, requested, deliv if status == "Delivered" else pd.NaT,
+                         f"O{o}", f"O{o}-{(ln + 1) * 10}", wh, status, qty, shipped))
+    return pd.DataFrame(rows, columns=list(LINE_ROLES.values()))
+
+
+@st.composite
+def logistics_dock_books(draw) -> pd.DataFrame:
+    """A dock log: arrivals early, on the minute or late; visits overnight; a departure before
+    the arrival (a typo: no dwell); no-shows and cancelled appointments."""
+    rows = []
+    for i in range(draw(st.integers(1, 12))):
+        appt = _date(draw, "2026-06-01", "2026-10-31") + pd.Timedelta(minutes=30 * draw(st.integers(10, 40)))
+        status = draw(st.sampled_from(["Completed", "Completed", "No-show", "Cancelled"]))
+        arr = appt + pd.Timedelta(minutes=draw(st.integers(-60, 60)))
+        dep = arr + pd.Timedelta(minutes=draw(st.integers(-30, 900)))
+        done = status == "Completed"
+        rows.append((appt, arr if done else pd.NaT, dep if done else pd.NaT, f"A{i}",
+                     draw(st.sampled_from(["Reno DC", "Dallas"])), draw(st.sampled_from(["UPS", "XPO"])),
+                     status))
+    return pd.DataFrame(rows, columns=list(DOCK_ROLES.values()))
+
+
 def _kpis(pack, roles, df) -> dict:
     return {k.name: dp.compute_kpi(df, roles, pack, k.name) for k in pack.kpis
             if dp.computable(pack, k.name, roles)}
@@ -402,6 +471,45 @@ def test_p2r_reads_ratios_the_iot_pack_has():
     assert set(RECOMPOSED) <= {k.name for k in IOT.kpis if k.den}
 
 
+@pytest.mark.parametrize("book,roles,by", [(logistics_shipment_books(), SHIP_ROLES, "carrier"),
+                                           (logistics_line_books(), LINE_ROLES, "warehouse"),
+                                           (logistics_dock_books(), DOCK_ROLES, "facility")])
+@given(data=st.data())
+def test_p2_logistics_counts_by_group_add_up_to_the_total(book, roles, by, data):
+    _check_partition(LOGI, roles, data.draw(book), by)
+
+
+# Ratios of sums (T1: on-time is never a mean of carriers' rates). OTIF by order is left out by
+# name: its numerator subtracts the orders with a failing line, its own D reference checks it.
+RECOMPOSED_LOGI = ["on_time_delivery", "avg_transit_days", "cost_per_shipment", "cost_per_lb",
+                   "avg_days_late", "otif_line", "unit_fill", "line_fill", "avg_dwell",
+                   "on_time_arrival", "visits_over_2h"]
+
+
+@pytest.mark.parametrize("book,roles,by", [(logistics_shipment_books(), SHIP_ROLES, "carrier"),
+                                           (logistics_line_books(), LINE_ROLES, "warehouse"),
+                                           (logistics_dock_books(), DOCK_ROLES, "facility")])
+@given(data=st.data())
+def test_p2r_a_logistics_ratio_is_its_parts_summed_then_divided(book, roles, by, data):
+    df = data.draw(book)
+    checked = 0
+    for name in (n for n in RECOMPOSED_LOGI if dp.computable(LOGI, n, roles)):
+        whole, p = dp.compute_kpi(df, roles, LOGI, name), _ratio_parts(LOGI, name)
+        num, den = (dp.compute_kpi(df, roles, p, f"_{s}", by=by) for s in ("num", "den"))
+        if den is None or den.sum() == 0 or whole is None:
+            assert whole is None and (num is None or den is None or den.sum() == 0), name
+            continue
+        # a count by group keeps only the groups it counts (no 0 rows): none counted is 0 here
+        got = 0.0 if num is None else num.sum()
+        assert whole == pytest.approx(got / den.sum(), rel=1e-9), name
+        checked += 1
+    assume(checked)
+
+
+def test_p2r_reads_ratios_the_logistics_pack_has():
+    assert set(RECOMPOSED_LOGI) <= {k.name for k in LOGI.kpis if k.den}
+
+
 @given(hr_snapshot_books())
 def test_p2_hr_snapshots_by_department_add_up_to_the_total(df):
     _check_partition(HR, SNAP_ROLES, df, "department")
@@ -412,8 +520,11 @@ def test_p2_hr_snapshots_by_department_add_up_to_the_total(df):
 BOOKS = [(mrr_books(), SAAS, MRR_ROLES), (subscription_lists(), SAAS, LIST_ROLES),
          (hr_rosters(), HR, HR_ROLES), (hr_snapshot_books(), HR, SNAP_ROLES),
          # appended last: the slices above (P1, P3 money, P5) index the first four
-         (iot_shift_books(), IOT, SHIFT_ROLES), (iot_wo_books(), IOT, WO_ROLES)]
-SHAPES = ["mrr_export", "subscription_list", "roster", "snapshots", "shift_report", "work_orders"]
+         (iot_shift_books(), IOT, SHIFT_ROLES), (iot_wo_books(), IOT, WO_ROLES),
+         (logistics_shipment_books(), LOGI, SHIP_ROLES), (logistics_line_books(), LOGI, LINE_ROLES),
+         (logistics_dock_books(), LOGI, DOCK_ROLES)]
+SHAPES = ["mrr_export", "subscription_list", "roster", "snapshots", "shift_report", "work_orders",
+          "shipments", "order_lines", "dock_visits"]
 
 
 # ── The property hook (5.7b-3): every pack's shapes run P1–P5 ──────────────────────────────────
@@ -422,7 +533,9 @@ SHAPES = ["mrr_export", "subscription_list", "roster", "snapshots", "shift_repor
 SHAPES_BY_PACK = {"saas": ["mrr_export", "subscription_list"], "hr": ["roster", "snapshots"],
                   # P1 (a bridge) and P5 (a spell window) have no IoT reading: no stock/flow
                   # identity and no spell; readings have no KPI to generate (nunique/sum tiles)
-                  "iot": ["shift_report", "work_orders"]}
+                  "iot": ["shift_report", "work_orders"],
+                  # P1 and P5 have no logistics reading either (no stock/flow, no spell)
+                  "logistics": ["shipments", "order_lines", "dock_visits"]}
 # Packs with no generator yet: their datasets run tier (b), the oracle and the golden only. The
 # list only shrinks (lower the count with it) and is empty before v0.1 (ROADMAP Phase 6).
 NO_GENERATOR_YET = {"retail", "banking", "healthcare", "insurance"}
@@ -439,7 +552,7 @@ def test_every_pack_registers_its_shapes_or_is_a_known_gap():
     from tests.test_dashboard_filters import DATASETS_BY_PACK
     packs = {p.domain for p in dp.load_packs()}
     assert _unregistered(packs, DATASETS_BY_PACK, SHAPES_BY_PACK, NO_GENERATOR_YET) == []
-    assert _unregistered({"logistics"}, DATASETS_BY_PACK, SHAPES_BY_PACK, NO_GENERATOR_YET) == ["logistics"]
+    assert _unregistered({"education"}, DATASETS_BY_PACK, SHAPES_BY_PACK, NO_GENERATOR_YET) == ["education"]
     assert len(NO_GENERATOR_YET) == NO_GENERATOR_COUNT and NO_GENERATOR_YET <= packs
     assert not NO_GENERATOR_YET & set(SHAPES_BY_PACK)
     for domain, shapes in SHAPES_BY_PACK.items():
@@ -669,7 +782,9 @@ def test_tier_b_money_in_another_scale_scales_money_kpis_only(name, k):
 @pytest.mark.parametrize("book,pack,roles,spec", [   # broken runs too: the cadence is declared (C7)
     (*BOOKS[0], "book_mrr_export"), (*BOOKS[1], "book_subscription_list"),
     (*BOOKS[2], "book_roster"), (*BOOKS[3], "book_hr_snapshots"),
-    (*BOOKS[4], "book_iot_shifts"), (*BOOKS[5], "book_iot_work_orders")], ids=SHAPES)
+    (*BOOKS[4], "book_iot_shifts"), (*BOOKS[5], "book_iot_work_orders"),
+    (*BOOKS[6], "book_shipments"), (*BOOKS[7], "book_order_lines"), (*BOOKS[8], "book_dock_visits")],
+    ids=SHAPES)
 @given(data=st.data())
 def test_d_the_product_equals_the_reference(book, pack, roles, spec, data):
     from evals.reference_kpis import reference

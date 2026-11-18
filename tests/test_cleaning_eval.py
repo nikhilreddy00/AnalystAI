@@ -24,8 +24,8 @@ def _perfect(rec: pd.DataFrame, exp: pd.DataFrame) -> dict:
 
 
 def test_suite_shape():
-    assert len(CASES) == 25 and len(PACK_CASES) == 16   # 5.7 banking: +2, insurance: +2, hr: +2, iot: +2
-    assert len({c["id"] for c in ALL}) == 41
+    assert len(CASES) == 25 and len(PACK_CASES) == 18   # 5.7 banking: +2, insurance: +2, hr: +2, iot: +2, logistics: +2
+    assert len({c["id"] for c in ALL}) == 43
     assert sum(c["id"].endswith("holdout") for c in CASES) == 5
     assert all(c.get("label_note") for c in CASES)
 

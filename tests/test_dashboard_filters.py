@@ -271,6 +271,7 @@ DATASETS_BY_PACK = {
     "saas": ["saas_subscriptions", "saas_mrr_snapshots", "saas_invoices", "subscriptions",
              "saas_accounts"],
     "iot": ["shift_production", "work_orders", "machine_readings", "sensor_readings"],
+    "logistics": ["tms_shipments", "order_lines", "dock_appointments", "shipments"],
 }
 PACK_DATASETS = [n for names in DATASETS_BY_PACK.values() for n in names]
 

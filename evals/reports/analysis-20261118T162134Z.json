@@ -1,0 +1,1640 @@
+{
+ "meta": {
+  "suite": "analysis",
+  "report": "analysis-20261118T162134Z",
+  "k": 3,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "6063f7c",
+  "started_at": "20261118T162134Z",
+  "only": "logi-5",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 1,
+  "runs": 3,
+  "pass_rate": 1.0,
+  "case_majority_pass_rate": 1.0,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "hard_rules_na": 6,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 0,
+  "runs_with_prose_rewritten": 0,
+  "runs_with_pii_guard_hit": 0,
+  "cost_per_question_usd": 0.033,
+  "latency_p50_s": 28.45,
+  "latency_p95_s": 29.83,
+  "numeric_accuracy": 1.0,
+  "insight_recall": 1.0,
+  "false_finding_rate": 0.0,
+  "verifiable_claims": 42,
+  "by_domain": {
+   "logistics": {
+    "cases": 1,
+    "k_min": 3,
+    "k_max": 3,
+    "cases_passed_all_runs": 1,
+    "pass_rate": 1.0,
+    "hard_rule_violations": 0,
+    "hard_rules_na": 6,
+    "builtin_only_cases": [],
+    "model_dependent_passed": 1,
+    "model_dependent_cases": 1,
+    "numeric_accuracy": 1.0,
+    "insight_recall": 1.0,
+    "false_finding_rate": 0.0,
+    "verifiable_claims": 42,
+    "model_dependent_quality": {
+     "numeric_accuracy": 1.0,
+     "insight_recall": 1.0,
+     "false_finding_rate": 0.0,
+     "verifiable_claims": 42
+    }
+   }
+  }
+ },
+ "runs": {
+  "logi-5": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value_truth",
+      "ok": true,
+      "detail": "ok (Order ID)",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     },
+     {
+      "rule": "pii_exits",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 12,
+     "details": []
+    },
+    "builtin_only": false,
+    "pii_exits": {
+     "rule": "pii_exits",
+     "ok": true,
+     "na": true,
+     "detail": "n/a: no planted PII"
+    },
+    "pii_canary_hits": 0,
+    "pii_model_hits": 0,
+    "pii_planted": 0,
+    "output": {
+     "eda_summary": {
+      "Qty Ordered": {
+       "mean": 24.3689,
+       "std": 13.7572,
+       "min": 1.0,
+       "max": 48.0,
+       "median": 24.0,
+       "count": 5915
+      },
+      "Qty Shipped": {
+       "mean": 23.1189,
+       "std": 14.2338,
+       "min": 0.0,
+       "max": 50.0,
+       "median": 23.0,
+       "count": 5915
+      }
+     },
+     "correlations": {},
+     "trends": [],
+     "segments": [
+      {
+       "segment_column": "Warehouse",
+       "metric_column": "Order ID",
+       "aggregation": "ratio",
+       "results": [
+        {
+         "name": "Reno DC",
+         "value": 0.725882
+        },
+        {
+         "name": "Dallas DC",
+         "value": 0.599707
+        },
+        {
+         "name": "Columbus DC",
+         "value": 0.493857
+        }
+       ],
+       "label": "otif_order"
+      },
+      {
+       "segment_column": "Warehouse",
+       "metric_column": "Order ID",
+       "aggregation": "ratio",
+       "results": [
+        {
+         "name": "Overall",
+         "value": 0.6328
+        }
+       ],
+       "label": "otif_order_overall"
+      }
+     ],
+     "anomalies": [],
+     "statistical_tests": [],
+     "forecast_points": [],
+     "distributions": {
+      "Qty Ordered": [
+       {
+        "label": "(0.953, 5.7]",
+        "count": 636
+       },
+       {
+        "label": "(5.7, 10.4]",
+        "count": 621
+       },
+       {
+        "label": "(10.4, 15.1]",
+        "count": 649
+       },
+       {
+        "label": "(15.1, 19.8]",
+        "count": 501
+       },
+       {
+        "label": "(19.8, 24.5]",
+        "count": 613
+       },
+       {
+        "label": "(24.5, 29.2]",
+        "count": 662
+       },
+       {
+        "label": "(29.2, 33.9]",
+        "count": 505
+       },
+       {
+        "label": "(33.9, 38.6]",
+        "count": 638
+       },
+       {
+        "label": "(38.6, 43.3]",
+        "count": 611
+       },
+       {
+        "label": "(43.3, 48.0]",
+        "count": 589
+       }
+      ],
+      "Qty Shipped": [
+       {
+        "label": "(-0.05, 5.0]",
+        "count": 953
+       },
+       {
+        "label": "(5.0, 10.0]",
+        "count": 616
+       },
+       {
+        "label": "(10.0, 15.0]",
+        "count": 625
+       },
+       {
+        "label": "(15.0, 20.0]",
+        "count": 597
+       },
+       {
+        "label": "(20.0, 25.0]",
+        "count": 585
+       },
+       {
+        "label": "(25.0, 30.0]",
+        "count": 596
+       },
+       {
+        "label": "(30.0, 35.0]",
+        "count": 584
+       },
+       {
+        "label": "(35.0, 40.0]",
+        "count": 597
+       },
+       {
+        "label": "(40.0, 45.0]",
+        "count": 533
+       },
+       {
+        "label": "(45.0, 50.0]",
+        "count": 339
+       }
+      ],
+      "Status": [
+       {
+        "label": "Delivered",
+        "count": 5678
+       },
+       {
+        "label": "Open",
+        "count": 116
+       },
+       {
+        "label": "Cancelled",
+        "count": 110
+       },
+       {
+        "label": "Shipped",
+        "count": 62
+       },
+       {
+        "label": "Backordered",
+        "count": 59
+       }
+      ],
+      "Warehouse": [
+       {
+        "label": "Reno DC",
+        "count": 2639
+       },
+       {
+        "label": "Dallas DC",
+        "count": 2147
+       },
+       {
+        "label": "Columbus DC",
+        "count": 1239
+       }
+      ],
+      "Carrier": [
+       {
+        "label": "UPS",
+        "count": 2066
+       },
+       {
+        "label": "Old Dominion",
+        "count": 1995
+       },
+       {
+        "label": "FedEx Freight",
+        "count": 1964
+       }
+      ],
+      "Ship To": [
+       {
+        "label": "Initech LLC",
+        "count": 1017
+       },
+       {
+        "label": "Wayne Retail",
+        "count": 1016
+       },
+       {
+        "label": "Globex Inc",
+        "count": 1015
+       },
+       {
+        "label": "Stark Supply",
+        "count": 1015
+       },
+       {
+        "label": "Acme Corp",
+        "count": 997
+       },
+       {
+        "label": "Umbrella Co",
+        "count": 965
+       }
+      ]
+     },
+     "code_executed": "import pandas as pd\nimport numpy as np\nimport json\nfrom scipy import stats as scipy_stats\n\ndf = pd.read_csv('/data/df.csv')\n\nresult = {\n    \"eda_summary\": {},\n    \"correlations\": {},\n    \"trends\": [],\n    \"segments\": [],\n    \"anomalies\": [],\n    \"statistical_tests\": [],\n    \"forecast_points\": [],\n    \"distributions\": {},\n    \"head_preview\": [],\n    \"dtypes_summary\": {},\n    \"missing_pct\": {},\n    \"assumptions\": [],\n}\n\ntry:\n    sale_df = df[df['row_kind'] == 'sale'].copy()\n\n    for col in ['Delivered Date', 'Requested Date', 'Order Date']:\n        sale_df[col] = pd.to_datetime(sale_df[col], errors='coerce')\n\n    last_order_date = sale_df['Order Date'].max()\n\n    open_statuses = [\n        'in transit', 'out for delivery', 'picked up', 'exception',\n        'delivery exception', 'delayed', 'tendered', 'booked', 'dispatched',\n        'pending', 'shipped', 'partially shipped', 'backordered',\n        'short shipped', 'open', 'allocated', 'released', 'picked', 'packed'\n    ]\n    sale_df['_status_lower'] = sale_df['Status'].str.lower().str.strip()\n\n    # OTIF line eligibility: delivered lines + open lines whose requested date < last_order_date\n    delivered_mask = sale_df['_status_lower'] == 'delivered'\n    open_mask = sale_df['_status_lower'].isin(open_statuses)\n    past_due_open_mask = open_mask & (sale_df['days_past_due'] > 0)\n\n    eligible_lines = sale_df[delivered_mask | past_due_open_mask].copy()\n\n    # OTIF line: delivered on time (days_before_promise >= 0) AND shipped in full (shipped_minus_ordered >= 0)\n    eligible_lines['_otif_line'] = (\n        (eligible_lines['days_before_promise'] >= 0) &\n        (eligible_lines['shipped_minus_ordered'] >= 0)\n    )\n\n    # OTIF order: orders where every eligible line is OTIF / orders with at least one eligible line\n    order_otif = eligible_lines.groupby('Order ID')['_otif_line'].agg(['all', 'count']).reset_index()\n    order_otif.columns = ['Order ID', '_all_otif', '_line_count']\n\n    # Merge warehouse back to order level (use first warehouse per order from eligible lines)\n    order_warehouse = eligible_lines.groupby('Order ID')['Warehouse'].first().reset_index()\n    order_otif = order_otif.merge(order_warehouse, on='Order ID', how='left')\n\n    # Overall OTIF order\n    total_eligible_orders = len(order_otif)\n    total_otif_orders = order_otif['_all_otif'].sum()\n    overall_otif = float(total_otif_orders) / float(total_eligible_orders) if total_eligible_orders > 0 else float('nan')\n\n    # Per-warehouse OTIF order\n    wh_results = []\n    for wh, grp in order_otif.groupby('Warehouse'):\n        n_eligible = len(grp)\n        n_otif = grp['_all_otif'].sum()\n        rate = float(n_otif) / float(n_eligible) if n_eligible > 0 else float('nan')\n        wh_results.append({\"name\": str(wh), \"value\": round(rate, 6)})\n\n    wh_results_sorted = sorted(wh_results, key=lambda x: x['value'], reverse=True)\n\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Order ID\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"otif_order\",\n        \"results\": wh_results_sorted\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Order ID\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"otif_order_overall\",\n        \"results\": [{\"name\": \"Overall\", \"value\": round(overall_otif, 6)}]\n    })\n\n    result['assumptions'].append(\n        \"OTIF (order): eligible = delivered lines + open lines with days_past_due > 0; \"\n        \"order is OTIF only if every eligible line is on-time AND shipped in full.\"\n    )\n    result['assumptions'].append(\n        f\"Last order date used for days_past_due window: {last_order_date.date()}.\"\n    )\n    result['assumptions'].append(\n        \"Cancelled rows (row_kind='cancelled') excluded; only row_kind='sale' rows used.\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Order ID\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"otif_order_error\",\n        \"results\": [{\"name\": \"error\", \"value\": float('nan')}]\n    })\n    result['assumptions'].append(f\"OTIF segmentation failed: {str(e)}\")\n\n# \u2500\u2500\u2500 Guaranteed EDA + chart distributions + briefing (always runs) \u2500\u2500\u2500\n\ntry:\n    _head_df = df.head(5).replace({float('nan'): None})\n    result['head_preview'] = _head_df.to_dict('records')\nexcept Exception:\n    pass\n\ntry:\n    result['dtypes_summary'] = {str(k): str(v) for k, v in df.dtypes.items()}\n    result['non_null'] = {str(k): int(v) for k, v in df.notna().sum().items()}\n    result['n_rows'] = int(len(df))\nexcept Exception:\n    pass\n\ntry:\n    _miss = df.isna().mean() * 100\n    result['missing_pct'] = {str(k): round(float(v), 2) for k, v in _miss.items()}\nexcept Exception:\n    pass\n\ntry:\n    if 'Qty Ordered' in df.columns and pd.api.types.is_numeric_dtype(df['Qty Ordered']):\n        _s = df['Qty Ordered'].dropna()\n        if len(_s) > 0 and 'Qty Ordered' not in result['eda_summary']:\n            result['eda_summary']['Qty Ordered'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Qty Shipped' in df.columns and pd.api.types.is_numeric_dtype(df['Qty Shipped']):\n        _s = df['Qty Shipped'].dropna()\n        if len(_s) > 0 and 'Qty Shipped' not in result['eda_summary']:\n            result['eda_summary']['Qty Shipped'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Qty Ordered' in df.columns and pd.api.types.is_numeric_dtype(df['Qty Ordered']):\n        _col_data = df['Qty Ordered'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Qty Ordered'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Qty Shipped' in df.columns and pd.api.types.is_numeric_dtype(df['Qty Shipped']):\n        _col_data = df['Qty Shipped'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Qty Shipped'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Status' in df.columns:\n        _vc = df['Status'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Status'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Warehouse' in df.columns:\n        _vc = df['Warehouse'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Warehouse'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Carrier' in df.columns:\n        _vc = df['Carrier'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Carrier'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Ship To' in df.columns:\n        _vc = df['Ship To'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Ship To'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\nprint(json.dumps(result, default=str))",
+     "figures_base64": [],
+     "head_preview": [
+      {
+       "Order ID": "SO50000",
+       "Line No": 10,
+       "Order Line ID": "SO50000-10",
+       "SKU": "SKU-0077",
+       "Order Date": "2026-06-25",
+       "Requested Date": "2026-06-28",
+       "Delivered Date": "2026-06-26",
+       "Qty Ordered": 40,
+       "Qty Shipped": 40,
+       "Status": "Delivered",
+       "Warehouse": "Columbus DC",
+       "Carrier": "FedEx Freight",
+       "Ship To": "Umbrella Co",
+       "row_kind": "sale",
+       "transit_days": 1.0,
+       "days_before_promise": 2.0,
+       "days_late": null,
+       "shipped_minus_ordered": 0,
+       "days_past_due": 125.0
+      },
+      {
+       "Order ID": "SO50001",
+       "Line No": 10,
+       "Order Line ID": "SO50001-10",
+       "SKU": "SKU-0046",
+       "Order Date": "2026-03-22",
+       "Requested Date": "2026-03-29",
+       "Delivered Date": "2026-03-29",
+       "Qty Ordered": 40,
+       "Qty Shipped": 40,
+       "Status": "Delivered",
+       "Warehouse": "Dallas DC",
+       "Carrier": "UPS",
+       "Ship To": "Initech LLC",
+       "row_kind": "sale",
+       "transit_days": 7.0,
+       "days_before_promise": 0.0,
+       "days_late": 0.0,
+       "shipped_minus_ordered": 0,
+       "days_past_due": 216.0
+      },
+      {
+       "Order ID": "SO50001",
+       "Line No": 20,
+       "Order Line ID": "SO50001-20",
+       "SKU": "SKU-0014",
+       "Order Date": "2026-03-22",
+       "Requested Date": "2026-03-29",
+       "Delivered Date": null,
+       "Qty Ordered": 44,
+       "Qty Shipped": 0,
+       "Status": "Backordered",
+       "Warehouse": "Dallas DC",
+       "Carrier": "UPS",
+       "Ship To": "Wayne Retail",
+       "row_kind": "sale",
+       "transit_days": null,
+       "days_before_promise": null,
+       "days_late": null,
+       "shipped_minus_ordered": -44,
+       "days_past_due": 216.0
+      },
+      {
+       "Order ID": "SO50001",
+       "Line No": 30,
+       "Order Line ID": "SO50001-30",
+       "SKU": "SKU-0039",
+       "Order Date": "2026-03-22",
+       "Requested Date": "2026-03-29",
+       "Delivered Date": "2026-03-27",
+       "Qty Ordered": 36,
+       "Qty Shipped": 36,
+       "Status": "Delivered",
+       "Warehouse": "Dallas DC",
+       "Carrier": "UPS",
+       "Ship To": "Wayne Retail",
+       "row_kind": "sale",
+       "transit_days": 5.0,
+       "days_before_promise": 2.0,
+       "days_late": null,
+       "shipped_minus_ordered": 0,
+       "days_past_due": 216.0
+      },
+      {
+       "Order ID": "SO50002",
+       "Line No": 10,
+       "Order Line ID": "SO50002-10",
+       "SKU": "SKU-0104",
+       "Order Date": "2026-06-12",
+       "Requested Date": "2026-06-17",
+       "Delivered Date": "2026-06-17",
+       "Qty Ordered": 22,
+       "Qty Shipped": 22,
+       "Status": "Delivered",
+       "Warehouse": "Reno DC",
+       "Carrier": "FedEx Freight",
+       "Ship To": "Initech LLC",
+       "row_kind": "sale",
+       "transit_days": 5.0,
+       "days_before_promise": 0.0,
+       "days_late": 0.0,
+       "shipped_minus_ordered": 0,
+       "days_past_due": 136.0
+      }
+     ],
+     "dtypes_summary": {
+      "Order ID": "object",
+      "Line No": "int64",
+      "Order Line ID": "object",
+      "SKU": "object",
+      "Order Date": "object",
+      "Requested Date": "object",
+      "Delivered Date": "object",
+      "Qty Ordered": "int64",
+      "Qty Shipped": "int64",
+      "Status": "object",
+      "Warehouse": "object",
+      "Carrier": "object",
+      "Ship To": "object",
+      "row_kind": "object",
+      "transit_days": "float64",
+      "days_before_promise": "float64",
+      "days_late": "float64",
+      "shipped_minus_ordered": "int64",
+      "days_past_due": "float64"
+     },
+     "missing_pct": {
+      "Order ID": 0.0,
+      "Line No": 0.0,
+      "Order Line ID": 0.0,
+      "SKU": 0.0,
+      "Order Date": 0.0,
+      "Requested Date": 0.0,
+      "Delivered Date": 5.76,
+      "Qty Ordered": 0.0,
+      "Qty Shipped": 0.0,
+      "Status": 0.0,
+      "Warehouse": 0.0,
+      "Carrier": 0.0,
+      "Ship To": 0.0,
+      "row_kind": 0.0,
+      "transit_days": 5.76,
+      "days_before_promise": 14.66,
+      "days_late": 63.04,
+      "shipped_minus_ordered": 0.0,
+      "days_past_due": 2.57
+     },
+     "kpis": [],
+     "pre_cleaning_missing_pct": {},
+     "unique_counts": {},
+     "sample_values_per_col": {},
+     "skewness": {},
+     "target_correlations": {},
+     "target_col": null,
+     "column_roles_summary": {},
+     "column_units": {},
+     "evidence": [
+      {
+       "id": "seg:Warehouse/Order ID:ratio:otif_order",
+       "kind": "segment",
+       "claim": "otif_order (from Order ID) by Warehouse (3 groups)",
+       "code": "try:\n    sale_df = df[df['row_kind'] == 'sale'].copy()\n\n    for col in ['Delivered Date', 'Requested Date', 'Order Date']:\n        sale_df[col] = pd.to_datetime(sale_df[col], errors='coerce')\n\n    last_order_date = sale_df['Order Date'].max()\n\n    open_statuses = [\n        'in transit', 'out for delivery', 'picked up', 'exception',\n        'delivery exception', 'delayed', 'tendered', 'booked', 'dispatched',\n        'pending', 'shipped', 'partially shipped', 'backordered',\n        'short shipped', 'open', 'allocated', 'released', 'picked', 'packed'\n    ]\n    sale_df['_status_lower'] = sale_df['Status'].str.lower().str.strip()\n\n    # OTIF line eligibility: delivered lines + open lines whose requested date < last_order_date\n    delivered_mask = sale_df['_status_lower'] == 'delivered'\n    open_mask = sale_df['_status_lower'].isin(open_statuses)\n    past_due_open_mask = open_mask & (sale_df['days_past_due'] > 0)\n\n    eligible_lines = sale_df[delivered_mask | past_due_open_mask].copy()\n\n    # OTIF line: delivered on time (days_before_promise >= 0) AND shipped in full (shipped_minus_ordered >= 0)\n    eligible_lines['_otif_line'] = (\n        (eligible_lines['days_before_promise'] >= 0) &\n        (eligible_lines['shipped_minus_ordered'] >= 0)\n    )\n\n    # OTIF order: orders where every eligible line is OTIF / orders with at least one eligible line\n    order_otif = eligible_lines.groupby('Order ID')['_otif_line'].agg(['all', 'count']).reset_index()\n    order_otif.columns = ['Order ID', '_all_otif', '_line_count']\n\n    # Merge warehouse back to order level (use first warehouse per order from eligible lines)\n    order_warehouse = eligible_lines.groupby('Order ID')['Warehouse'].first().reset_index()\n    order_otif = order_otif.merge(order_warehouse, on='Order ID', how='left')\n\n    # Overall OTIF order\n    total_eligible_orders = len(order_otif)\n    total_otif_orders = order_otif['_all_otif'].sum()\n    overall_otif = float(total_otif_orders) / float(total_eligible_orders) if total_eligible_orders > 0 else float('nan')\n\n    # Per-warehouse OTIF order\n    wh_results = []\n    for wh, grp in order_otif.groupby('Warehouse'):\n        n_eligible = len(grp)\n        n_otif = grp['_all_otif'].sum()\n        rate = float(n_otif) / float(n_eligible) if n_eligible > 0 else float('nan')\n        wh_results.append({\"name\": str(wh), \"value\": round(rate, 6)})\n\n    wh_results_sorted = sorted(wh_results, key=lambda x: x['value'], reverse=True)\n\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Order ID\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"otif_order\",\n        \"results\": wh_results_sorted\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Order ID\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"otif_order_overall\",\n        \"results\": [{\"name\": \"Overall\", \"value\": round(overall_otif, 6)}]\n    })\n\n    result['assumptions'].append(\n        \"OTIF (order): eligible = delivered lines + open lines with days_past_due > 0; \"\n        \"order is OTIF only if every eligible line is on-time AND shipped in full.\"\n    )\n    result['assumptions'].append(\n        f\"Last order date used for days_past_due window: {last_order_date.date()}.\"\n    )\n    result['assumptions'].append(\n        \"Cancelled rows (row_kind='cancelled') excluded; only row_kind='sale' rows used.\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Order ID\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"otif_order_error\",\n        \"results\": [{\"name\": \"error\", \"value\": float('nan')}]\n    })\n    result['assumptions'].append(f\"OTIF segmentation failed: {str(e)}\")",
+       "result_excerpt": "{\"segment_column\": \"Warehouse\", \"metric_column\": \"Order ID\", \"aggregation\": \"ratio\", \"results\": [{\"name\": \"Reno DC\", \"value\": 0.725882}, {\"name\": \"Dallas DC\", \"value\": 0.599707}, {\"name\": \"Columbus DC\", \"value\": 0.493857}], \"label\": \"otif_order\"}",
+       "row_count": 6025,
+       "confidence": "high",
+       "confidence_reason": "6025 rows",
+       "assumptions": []
+      },
+      {
+       "id": "seg:Warehouse/Order ID:ratio:otif_order_overall",
+       "kind": "segment",
+       "claim": "otif_order_overall (from Order ID) by Warehouse (1 groups)",
+       "code": "try:\n    sale_df = df[df['row_kind'] == 'sale'].copy()\n\n    for col in ['Delivered Date', 'Requested Date', 'Order Date']:\n        sale_df[col] = pd.to_datetime(sale_df[col], errors='coerce')\n\n    last_order_date = sale_df['Order Date'].max()\n\n    open_statuses = [\n        'in transit', 'out for delivery', 'picked up', 'exception',\n        'delivery exception', 'delayed', 'tendered', 'booked', 'dispatched',\n        'pending', 'shipped', 'partially shipped', 'backordered',\n        'short shipped', 'open', 'allocated', 'released', 'picked', 'packed'\n    ]\n    sale_df['_status_lower'] = sale_df['Status'].str.lower().str.strip()\n\n    # OTIF line eligibility: delivered lines + open lines whose requested date < last_order_date\n    delivered_mask = sale_df['_status_lower'] == 'delivered'\n    open_mask = sale_df['_status_lower'].isin(open_statuses)\n    past_due_open_mask = open_mask & (sale_df['days_past_due'] > 0)\n\n    eligible_lines = sale_df[delivered_mask | past_due_open_mask].copy()\n\n    # OTIF line: delivered on time (days_before_promise >= 0) AND shipped in full (shipped_minus_ordered >= 0)\n    eligible_lines['_otif_line'] = (\n        (eligible_lines['days_before_promise'] >= 0) &\n        (eligible_lines['shipped_minus_ordered'] >= 0)\n    )\n\n    # OTIF order: orders where every eligible line is OTIF / orders with at least one eligible line\n    order_otif = eligible_lines.groupby('Order ID')['_otif_line'].agg(['all', 'count']).reset_index()\n    order_otif.columns = ['Order ID', '_all_otif', '_line_count']\n\n    # Merge warehouse back to order level (use first warehouse per order from eligible lines)\n    order_warehouse = eligible_lines.groupby('Order ID')['Warehouse'].first().reset_index()\n    order_otif = order_otif.merge(order_warehouse, on='Order ID', how='left')\n\n    # Overall OTIF order\n    total_eligible_orders = len(order_otif)\n    total_otif_orders = order_otif['_all_otif'].sum()\n    overall_otif = float(total_otif_orders) / float(total_eligible_orders) if total_eligible_orders > 0 else float('nan')\n\n    # Per-warehouse OTIF order\n    wh_results = []\n    for wh, grp in order_otif.groupby('Warehouse'):\n        n_eligible = len(grp)\n        n_otif = grp['_all_otif'].sum()\n        rate = float(n_otif) / float(n_eligible) if n_eligible > 0 else float('nan')\n        wh_results.append({\"name\": str(wh), \"value\": round(rate, 6)})\n\n    wh_results_sorted = sorted(wh_results, key=lambda x: x['value'], reverse=True)\n\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Order ID\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"otif_order\",\n        \"results\": wh_results_sorted\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Order ID\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"otif_order_overall\",\n        \"results\": [{\"name\": \"Overall\", \"value\": round(overall_otif, 6)}]\n    })\n\n    result['assumptions'].append(\n        \"OTIF (order): eligible = delivered lines + open lines with days_past_due > 0; \"\n        \"order is OTIF only if every eligible line is on-time AND shipped in full.\"\n    )\n    result['assumptions'].append(\n        f\"Last order date used for days_past_due window: {last_order_date.date()}.\"\n    )\n    result['assumptions'].append(\n        \"Cancelled rows (row_kind='cancelled') excluded; only row_kind='sale' rows used.\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Order ID\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"otif_order_error\",\n        \"results\": [{\"name\": \"error\", \"value\": float('nan')}]\n    })\n    result['assumptions'].append(f\"OTIF segmentation failed: {str(e)}\")",
+       "result_excerpt": "{\"segment_column\": \"Warehouse\", \"metric_column\": \"Order ID\", \"aggregation\": \"ratio\", \"results\": [{\"name\": \"Overall\", \"value\": 0.6328}], \"label\": \"otif_order_overall\"}",
+       "row_count": 6025,
+       "confidence": "high",
+       "confidence_reason": "6025 rows",
+       "assumptions": []
+      },
+      {
+       "id": "eda:Qty Ordered",
+       "kind": "eda",
+       "claim": "Qty Ordered: median 24.00, mean 24.37, range 1.00 to 48.00",
+       "code": "try:\n    sale_df = df[df['row_kind'] == 'sale'].copy()\n\n    for col in ['Delivered Date', 'Requested Date', 'Order Date']:\n        sale_df[col] = pd.to_datetime(sale_df[col], errors='coerce')\n\n    last_order_date = sale_df['Order Date'].max()\n\n    open_statuses = [\n        'in transit', 'out for delivery', 'picked up', 'exception',\n        'delivery exception', 'delayed', 'tendered', 'booked', 'dispatched',\n        'pending', 'shipped', 'partially shipped', 'backordered',\n        'short shipped', 'open', 'allocated', 'released', 'picked', 'packed'\n    ]\n    sale_df['_status_lower'] = sale_df['Status'].str.lower().str.strip()\n\n    # OTIF line eligibility: delivered lines + open lines whose requested date < last_order_date\n    delivered_mask = sale_df['_status_lower'] == 'delivered'\n    open_mask = sale_df['_status_lower'].isin(open_statuses)\n    past_due_open_mask = open_mask & (sale_df['days_past_due'] > 0)\n\n    eligible_lines = sale_df[delivered_mask | past_due_open_mask].copy()\n\n    # OTIF line: delivered on time (days_before_promise >= 0) AND shipped in full (shipped_minus_ordered >= 0)\n    eligible_lines['_otif_line'] = (\n        (eligible_lines['days_before_promise'] >= 0) &\n        (eligible_lines['shipped_minus_ordered'] >= 0)\n    )\n\n    # OTIF order: orders where every eligible line is OTIF / orders with at least one eligible line\n    order_otif = eligible_lines.groupby('Order ID')['_otif_line'].agg(['all', 'count']).reset_index()\n    order_otif.columns = ['Order ID', '_all_otif', '_line_count']\n\n    # Merge warehouse back to order level (use first warehouse per order from eligible lines)\n    order_warehouse = eligible_lines.groupby('Order ID')['Warehouse'].first().reset_index()\n    order_otif = order_otif.merge(order_warehouse, on='Order ID', how='left')\n\n    # Overall OTIF order\n    total_eligible_orders = len(order_otif)\n    total_otif_orders = order_otif['_all_otif'].sum()\n    overall_otif = float(total_otif_orders) / float(total_eligible_orders) if total_eligible_orders > 0 else float('nan')\n\n    # Per-warehouse OTIF order\n    wh_results = []\n    for wh, grp in order_otif.groupby('Warehouse'):\n        n_eligible = len(grp)\n        n_otif = grp['_all_otif'].sum()\n        rate = float(n_otif) / float(n_eligible) if n_eligible > 0 else float('nan')\n        wh_results.append({\"name\": str(wh), \"value\": round(rate, 6)})\n\n    wh_results_sorted = sorted(wh_results, key=lambda x: x['value'], reverse=True)\n\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Order ID\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"otif_order\",\n        \"results\": wh_results_sorted\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Order ID\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"otif_order_overall\",\n        \"results\": [{\"name\": \"Overall\", \"value\": round(overall_otif, 6)}]\n    })\n\n    result['assumptions'].append(\n        \"OTIF (order): eligible = delivered lines + open lines with days_past_due > 0; \"\n        \"order is OTIF only if every eligible line is on-time AND shipped in full.\"\n    )\n    result['assumptions'].append(\n        f\"Last order date used for days_past_due window: {last_order_date.date()}.\"\n    )\n    result['assumptions'].append(\n        \"Cancelled rows (row_kind='cancelled') excluded; only row_kind='sale' rows used.\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Order ID\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"otif_order_error\",\n        \"results\": [{\"name\": \"error\", \"value\": float('nan')}]\n    })\n    result['assumptions'].append(f\"OTIF segmentation failed: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 24.3689, \"std\": 13.7572, \"min\": 1.0, \"max\": 48.0, \"median\": 24.0, \"count\": 5915}",
+       "row_count": 5915,
+       "confidence": "high",
+       "confidence_reason": "5915 rows",
+       "assumptions": []
+      },
+      {
+       "id": "eda:Qty Shipped",
+       "kind": "eda",
+       "claim": "Qty Shipped: median 23.00, mean 23.12, range 0 to 50.00",
+       "code": "try:\n    sale_df = df[df['row_kind'] == 'sale'].copy()\n\n    for col in ['Delivered Date', 'Requested Date', 'Order Date']:\n        sale_df[col] = pd.to_datetime(sale_df[col], errors='coerce')\n\n    last_order_date = sale_df['Order Date'].max()\n\n    open_statuses = [\n        'in transit', 'out for delivery', 'picked up', 'exception',\n        'delivery exception', 'delayed', 'tendered', 'booked', 'dispatched',\n        'pending', 'shipped', 'partially shipped', 'backordered',\n        'short shipped', 'open', 'allocated', 'released', 'picked', 'packed'\n    ]\n    sale_df['_status_lower'] = sale_df['Status'].str.lower().str.strip()\n\n    # OTIF line eligibility: delivered lines + open lines whose requested date < last_order_date\n    delivered_mask = sale_df['_status_lower'] == 'delivered'\n    open_mask = sale_df['_status_lower'].isin(open_statuses)\n    past_due_open_mask = open_mask & (sale_df['days_past_due'] > 0)\n\n    eligible_lines = sale_df[delivered_mask | past_due_open_mask].copy()\n\n    # OTIF line: delivered on time (days_before_promise >= 0) AND shipped in full (shipped_minus_ordered >= 0)\n    eligible_lines['_otif_line'] = (\n        (eligible_lines['days_before_promise'] >= 0) &\n        (eligible_lines['shipped_minus_ordered'] >= 0)\n    )\n\n    # OTIF order: orders where every eligible line is OTIF / orders with at least one eligible line\n    order_otif = eligible_lines.groupby('Order ID')['_otif_line'].agg(['all', 'count']).reset_index()\n    order_otif.columns = ['Order ID', '_all_otif', '_line_count']\n\n    # Merge warehouse back to order level (use first warehouse per order from eligible lines)\n    order_warehouse = eligible_lines.groupby('Order ID')['Warehouse'].first().reset_index()\n    order_otif = order_otif.merge(order_warehouse, on='Order ID', how='left')\n\n    # Overall OTIF order\n    total_eligible_orders = len(order_otif)\n    total_otif_orders = order_otif['_all_otif'].sum()\n    overall_otif = float(total_otif_orders) / float(total_eligible_orders) if total_eligible_orders > 0 else float('nan')\n\n    # Per-warehouse OTIF order\n    wh_results = []\n    for wh, grp in order_otif.groupby('Warehouse'):\n        n_eligible = len(grp)\n        n_otif = grp['_all_otif'].sum()\n        rate = float(n_otif) / float(n_eligible) if n_eligible > 0 else float('nan')\n        wh_results.append({\"name\": str(wh), \"value\": round(rate, 6)})\n\n    wh_results_sorted = sorted(wh_results, key=lambda x: x['value'], reverse=True)\n\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Order ID\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"otif_order\",\n        \"results\": wh_results_sorted\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Order ID\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"otif_order_overall\",\n        \"results\": [{\"name\": \"Overall\", \"value\": round(overall_otif, 6)}]\n    })\n\n    result['assumptions'].append(\n        \"OTIF (order): eligible = delivered lines + open lines with days_past_due > 0; \"\n        \"order is OTIF only if every eligible line is on-time AND shipped in full.\"\n    )\n    result['assumptions'].append(\n        f\"Last order date used for days_past_due window: {last_order_date.date()}.\"\n    )\n    result['assumptions'].append(\n        \"Cancelled rows (row_kind='cancelled') excluded; only row_kind='sale' rows used.\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Order ID\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"otif_order_error\",\n        \"results\": [{\"name\": \"error\", \"value\": float('nan')}]\n    })\n    result['assumptions'].append(f\"OTIF segmentation failed: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 23.1189, \"std\": 14.2338, \"min\": 0.0, \"max\": 50.0, \"median\": 23.0, \"count\": 5915}",
+       "row_count": 5915,
+       "confidence": "high",
+       "confidence_reason": "5915 rows",
+       "assumptions": []
+      }
+     ]
+    },
+    "domain": "logistics",
+    "latency_s": 27.44,
+    "cost_usd": 0.03138,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```python\ntry:\n    sale_df = df[df['row_kind'] == 'sale'].copy()\n\n    for col in ['Delivered Date', 'Requested Date', 'Order Date']:\n        sale_df[col] = pd.to_datetime(sale_df[col], errors='coerce')\n\n    last_order_date = sale_df['Order Date'].max()\n\n    open_statuses = [\n        'in transit', 'out for delivery', 'picked up', 'exception',\n        'delivery exception', 'delayed', 'tendered', 'booked', 'dispatched',\n        'pending', 'shipped', 'partially shipped', 'backordered',\n        'short shipped', 'open', 'allocated', 'released', 'picked', 'packed'\n    ]\n    sale_df['_status_lower'] = sale_df['Status'].str.lower().str.strip()\n\n    # OTIF line eligibility: delivered lines + open lines whose requested date < last_order_date\n    delivered_mask = sale_df['_status_lower'] == 'delivered'\n    open_mask = sale_df['_status_lower'].isin(open_statuses)\n    past_due_open_mask = open_mask & (sale_df['days_past_due'] > 0)\n\n    eligible_lines = sale_df[delivered_mask | past_due_open_mask].copy()\n\n    # OTIF line: delivered on time (days_before_promise >= 0) AND shipped in full (shipped_minus_ordered >= 0)\n    eligible_lines['_otif_line'] = (\n        (eligible_lines['days_before_promise'] >= 0) &\n        (eligible_lines['shipped_minus_ordered'] >= 0)\n    )\n\n    # OTIF order: orders where every eligible line is OTIF / orders with at least one eligible line\n    order_otif = eligible_lines.groupby('Order ID')['_otif_line'].agg(['all', 'count']).reset_index()\n    order_otif.columns = ['Order ID', '_all_otif', '_line_count']\n\n    # Merge warehouse back to order level (use first warehouse per order from eligible lines)\n    order_warehouse = eligible_lines.groupby('Order ID')['Warehouse'].first().reset_index()\n    order_otif = order_otif.merge(order_warehouse, on='Order ID', how='left')\n\n    # Overall OTIF order\n    total_eligible_orders = len(order_otif)\n    total_otif_orders = order_otif['_all_otif'].sum()\n    overall_otif = float(total_otif_orders) / float(total_eligible_orders) if total_eligible_orders > 0 else float('nan')\n\n    # Per-warehouse OTIF order\n    wh_results = []\n    for wh, grp in order_otif.groupby('Warehouse'):\n        n_eligible = len(grp)\n        n_otif = grp['_all_otif'].sum()\n        rate = float(n_otif) / float(n_eligible) if n_eligible > 0 else float('nan')\n        wh_results.append({\"name\": str(wh), \"value\": round(rate, 6)})\n\n    wh_results_sorted = sorted(wh_results, key=lambda x: x['value'], reverse=True)\n\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Order ID\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"otif_order\",\n        \"results\": wh_results_sorted\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Order ID\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"otif_order_overall\",\n        \"results\": [{\"name\": \"Overall\", \"value\": round(overall_otif, 6)}]\n    })\n\n    result['assumptions'].append(\n        \"OTIF (order): eligible = delivered lines + open lines with days_past_due > 0; \"\n        \"order is OTIF only if every eligible line is on-time AND shipped in full.\"\n    )\n    result['assumptions'].append(\n        f\"Last order date used for days_past_due window: {last_order_date.date()}.\"\n    )\n    result['assumptions'].append(\n        \"Cancelled rows (row_kind='cancelled') excluded; only row_kind='sale' rows used.\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Order ID\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"otif_order_error\",\n        \"results\": [{\"name\": \"error\", \"value\": float('nan')}]\n    })\n    result['assumptions'].append(f\"OTIF segmentation failed: {str(e)}\")\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value_truth",
+      "ok": true,
+      "detail": "ok (Order ID)",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     },
+     {
+      "rule": "pii_exits",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 12,
+     "details": []
+    },
+    "builtin_only": false,
+    "pii_exits": {
+     "rule": "pii_exits",
+     "ok": true,
+     "na": true,
+     "detail": "n/a: no planted PII"
+    },
+    "pii_canary_hits": 0,
+    "pii_model_hits": 0,
+    "pii_planted": 0,
+    "output": {
+     "eda_summary": {
+      "Qty Ordered": {
+       "mean": 24.3689,
+       "std": 13.7572,
+       "min": 1.0,
+       "max": 48.0,
+       "median": 24.0,
+       "count": 5915
+      },
+      "Qty Shipped": {
+       "mean": 23.1189,
+       "std": 14.2338,
+       "min": 0.0,
+       "max": 50.0,
+       "median": 23.0,
+       "count": 5915
+      }
+     },
+     "correlations": {},
+     "trends": [],
+     "segments": [
+      {
+       "segment_column": "Warehouse",
+       "metric_column": "Order ID",
+       "aggregation": "ratio",
+       "results": [
+        {
+         "name": "Reno DC",
+         "value": 0.725882
+        },
+        {
+         "name": "Dallas DC",
+         "value": 0.599707
+        },
+        {
+         "name": "Columbus DC",
+         "value": 0.493857
+        }
+       ],
+       "label": "otif_order"
+      },
+      {
+       "segment_column": "Warehouse",
+       "metric_column": "Order ID",
+       "aggregation": "ratio",
+       "results": [
+        {
+         "name": "Overall",
+         "value": 0.6328
+        }
+       ],
+       "label": "otif_order_overall"
+      }
+     ],
+     "anomalies": [],
+     "statistical_tests": [],
+     "forecast_points": [],
+     "distributions": {
+      "Qty Ordered": [
+       {
+        "label": "(0.953, 5.7]",
+        "count": 636
+       },
+       {
+        "label": "(5.7, 10.4]",
+        "count": 621
+       },
+       {
+        "label": "(10.4, 15.1]",
+        "count": 649
+       },
+       {
+        "label": "(15.1, 19.8]",
+        "count": 501
+       },
+       {
+        "label": "(19.8, 24.5]",
+        "count": 613
+       },
+       {
+        "label": "(24.5, 29.2]",
+        "count": 662
+       },
+       {
+        "label": "(29.2, 33.9]",
+        "count": 505
+       },
+       {
+        "label": "(33.9, 38.6]",
+        "count": 638
+       },
+       {
+        "label": "(38.6, 43.3]",
+        "count": 611
+       },
+       {
+        "label": "(43.3, 48.0]",
+        "count": 589
+       }
+      ],
+      "Qty Shipped": [
+       {
+        "label": "(-0.05, 5.0]",
+        "count": 953
+       },
+       {
+        "label": "(5.0, 10.0]",
+        "count": 616
+       },
+       {
+        "label": "(10.0, 15.0]",
+        "count": 625
+       },
+       {
+        "label": "(15.0, 20.0]",
+        "count": 597
+       },
+       {
+        "label": "(20.0, 25.0]",
+        "count": 585
+       },
+       {
+        "label": "(25.0, 30.0]",
+        "count": 596
+       },
+       {
+        "label": "(30.0, 35.0]",
+        "count": 584
+       },
+       {
+        "label": "(35.0, 40.0]",
+        "count": 597
+       },
+       {
+        "label": "(40.0, 45.0]",
+        "count": 533
+       },
+       {
+        "label": "(45.0, 50.0]",
+        "count": 339
+       }
+      ],
+      "Status": [
+       {
+        "label": "Delivered",
+        "count": 5678
+       },
+       {
+        "label": "Open",
+        "count": 116
+       },
+       {
+        "label": "Cancelled",
+        "count": 110
+       },
+       {
+        "label": "Shipped",
+        "count": 62
+       },
+       {
+        "label": "Backordered",
+        "count": 59
+       }
+      ],
+      "Warehouse": [
+       {
+        "label": "Reno DC",
+        "count": 2639
+       },
+       {
+        "label": "Dallas DC",
+        "count": 2147
+       },
+       {
+        "label": "Columbus DC",
+        "count": 1239
+       }
+      ],
+      "Carrier": [
+       {
+        "label": "UPS",
+        "count": 2066
+       },
+       {
+        "label": "Old Dominion",
+        "count": 1995
+       },
+       {
+        "label": "FedEx Freight",
+        "count": 1964
+       }
+      ],
+      "Ship To": [
+       {
+        "label": "Initech LLC",
+        "count": 1017
+       },
+       {
+        "label": "Wayne Retail",
+        "count": 1016
+       },
+       {
+        "label": "Globex Inc",
+        "count": 1015
+       },
+       {
+        "label": "Stark Supply",
+        "count": 1015
+       },
+       {
+        "label": "Acme Corp",
+        "count": 997
+       },
+       {
+        "label": "Umbrella Co",
+        "count": 965
+       }
+      ]
+     },
+     "code_executed": "import pandas as pd\nimport numpy as np\nimport json\nfrom scipy import stats as scipy_stats\n\ndf = pd.read_csv('/data/df.csv')\n\nresult = {\n    \"eda_summary\": {},\n    \"correlations\": {},\n    \"trends\": [],\n    \"segments\": [],\n    \"anomalies\": [],\n    \"statistical_tests\": [],\n    \"forecast_points\": [],\n    \"distributions\": {},\n    \"head_preview\": [],\n    \"dtypes_summary\": {},\n    \"missing_pct\": {},\n    \"assumptions\": [],\n}\n\ntry:\n    sale_df = df[df['row_kind'] == 'sale'].copy()\n\n    for col in ['Delivered Date', 'Requested Date', 'Order Date']:\n        sale_df[col] = pd.to_datetime(sale_df[col], errors='coerce')\n\n    last_order_date = sale_df['Order Date'].max()\n\n    open_statuses = [\n        'in transit', 'out for delivery', 'picked up', 'exception',\n        'delivery exception', 'delayed', 'tendered', 'booked', 'dispatched',\n        'pending', 'shipped', 'partially shipped', 'backordered',\n        'short shipped', 'open', 'allocated', 'released', 'picked', 'packed'\n    ]\n    sale_df['_status_lower'] = sale_df['Status'].str.lower().str.strip()\n\n    # OTIF line eligibility: delivered lines OR open lines whose requested date < last_order_date\n    delivered_mask = sale_df['_status_lower'] == 'delivered'\n    open_mask = sale_df['_status_lower'].isin(open_statuses)\n    past_due_open_mask = open_mask & (sale_df['days_past_due'] > 0)\n\n    eligible_lines = sale_df[delivered_mask | past_due_open_mask].copy()\n\n    # OTIF line: delivered on time (days_before_promise >= 0) AND shipped in full (shipped_minus_ordered >= 0)\n    otif_line_mask = (\n        (eligible_lines['days_before_promise'] >= 0) &\n        (eligible_lines['shipped_minus_ordered'] >= 0)\n    )\n    eligible_lines['_otif_line'] = otif_line_mask\n\n    # OTIF order: per order, all eligible lines must be OTIF\n    order_eligible = eligible_lines.groupby('Order ID')['_otif_line'].agg(['all', 'count']).reset_index()\n    order_eligible.columns = ['Order ID', '_all_otif', '_line_count']\n\n    # Merge warehouse back to order level (take first warehouse per order from eligible lines)\n    order_warehouse = eligible_lines.groupby('Order ID')['Warehouse'].first().reset_index()\n    order_eligible = order_eligible.merge(order_warehouse, on='Order ID', how='left')\n\n    # Overall OTIF order\n    total_orders = len(order_eligible)\n    otif_orders = order_eligible['_all_otif'].sum()\n    overall_otif = float(otif_orders) / float(total_orders) if total_orders > 0 else 0.0\n\n    # OTIF order by warehouse\n    wh_groups = order_eligible.groupby('Warehouse')\n    wh_results = []\n    for wh_name, wh_grp in wh_groups:\n        wh_total = len(wh_grp)\n        wh_otif = wh_grp['_all_otif'].sum()\n        wh_rate = float(wh_otif) / float(wh_total) if wh_total > 0 else 0.0\n        wh_results.append({\"name\": str(wh_name), \"value\": round(wh_rate, 6)})\n\n    wh_results_sorted = sorted(wh_results, key=lambda x: x['value'], reverse=True)\n\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Order ID\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"otif_order\",\n        \"results\": wh_results_sorted\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Order ID\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"otif_order_overall\",\n        \"results\": [{\"name\": \"Overall\", \"value\": round(overall_otif, 6)}]\n    })\n\n    result['assumptions'].append(\n        \"OTIF (order): eligible = delivered lines + open lines with days_past_due > 0; \"\n        \"order is OTIF only if every eligible line is on-time AND shipped in full.\"\n    )\n    result['assumptions'].append(\n        f\"last_order_date used for days_past_due window: {last_order_date.date() if pd.notna(last_order_date) else 'unknown'}.\"\n    )\n    result['assumptions'].append(\n        \"Warehouse assigned to order from first eligible line's Warehouse value.\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Order ID\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"otif_order_error\",\n        \"results\": [{\"name\": \"error\", \"value\": 0.0}]\n    })\n    result['assumptions'].append(f\"OTIF order segmentation failed: {str(e)}\")\n\n# \u2500\u2500\u2500 Guaranteed EDA + chart distributions + briefing (always runs) \u2500\u2500\u2500\n\ntry:\n    _head_df = df.head(5).replace({float('nan'): None})\n    result['head_preview'] = _head_df.to_dict('records')\nexcept Exception:\n    pass\n\ntry:\n    result['dtypes_summary'] = {str(k): str(v) for k, v in df.dtypes.items()}\n    result['non_null'] = {str(k): int(v) for k, v in df.notna().sum().items()}\n    result['n_rows'] = int(len(df))\nexcept Exception:\n    pass\n\ntry:\n    _miss = df.isna().mean() * 100\n    result['missing_pct'] = {str(k): round(float(v), 2) for k, v in _miss.items()}\nexcept Exception:\n    pass\n\ntry:\n    if 'Qty Ordered' in df.columns and pd.api.types.is_numeric_dtype(df['Qty Ordered']):\n        _s = df['Qty Ordered'].dropna()\n        if len(_s) > 0 and 'Qty Ordered' not in result['eda_summary']:\n            result['eda_summary']['Qty Ordered'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Qty Shipped' in df.columns and pd.api.types.is_numeric_dtype(df['Qty Shipped']):\n        _s = df['Qty Shipped'].dropna()\n        if len(_s) > 0 and 'Qty Shipped' not in result['eda_summary']:\n            result['eda_summary']['Qty Shipped'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Qty Ordered' in df.columns and pd.api.types.is_numeric_dtype(df['Qty Ordered']):\n        _col_data = df['Qty Ordered'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Qty Ordered'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Qty Shipped' in df.columns and pd.api.types.is_numeric_dtype(df['Qty Shipped']):\n        _col_data = df['Qty Shipped'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Qty Shipped'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Status' in df.columns:\n        _vc = df['Status'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Status'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Warehouse' in df.columns:\n        _vc = df['Warehouse'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Warehouse'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Carrier' in df.columns:\n        _vc = df['Carrier'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Carrier'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Ship To' in df.columns:\n        _vc = df['Ship To'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Ship To'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\nprint(json.dumps(result, default=str))",
+     "figures_base64": [],
+     "head_preview": [
+      {
+       "Order ID": "SO50000",
+       "Line No": 10,
+       "Order Line ID": "SO50000-10",
+       "SKU": "SKU-0077",
+       "Order Date": "2026-06-25",
+       "Requested Date": "2026-06-28",
+       "Delivered Date": "2026-06-26",
+       "Qty Ordered": 40,
+       "Qty Shipped": 40,
+       "Status": "Delivered",
+       "Warehouse": "Columbus DC",
+       "Carrier": "FedEx Freight",
+       "Ship To": "Umbrella Co",
+       "row_kind": "sale",
+       "transit_days": 1.0,
+       "days_before_promise": 2.0,
+       "days_late": null,
+       "shipped_minus_ordered": 0,
+       "days_past_due": 125.0
+      },
+      {
+       "Order ID": "SO50001",
+       "Line No": 10,
+       "Order Line ID": "SO50001-10",
+       "SKU": "SKU-0046",
+       "Order Date": "2026-03-22",
+       "Requested Date": "2026-03-29",
+       "Delivered Date": "2026-03-29",
+       "Qty Ordered": 40,
+       "Qty Shipped": 40,
+       "Status": "Delivered",
+       "Warehouse": "Dallas DC",
+       "Carrier": "UPS",
+       "Ship To": "Initech LLC",
+       "row_kind": "sale",
+       "transit_days": 7.0,
+       "days_before_promise": 0.0,
+       "days_late": 0.0,
+       "shipped_minus_ordered": 0,
+       "days_past_due": 216.0
+      },
+      {
+       "Order ID": "SO50001",
+       "Line No": 20,
+       "Order Line ID": "SO50001-20",
+       "SKU": "SKU-0014",
+       "Order Date": "2026-03-22",
+       "Requested Date": "2026-03-29",
+       "Delivered Date": null,
+       "Qty Ordered": 44,
+       "Qty Shipped": 0,
+       "Status": "Backordered",
+       "Warehouse": "Dallas DC",
+       "Carrier": "UPS",
+       "Ship To": "Wayne Retail",
+       "row_kind": "sale",
+       "transit_days": null,
+       "days_before_promise": null,
+       "days_late": null,
+       "shipped_minus_ordered": -44,
+       "days_past_due": 216.0
+      },
+      {
+       "Order ID": "SO50001",
+       "Line No": 30,
+       "Order Line ID": "SO50001-30",
+       "SKU": "SKU-0039",
+       "Order Date": "2026-03-22",
+       "Requested Date": "2026-03-29",
+       "Delivered Date": "2026-03-27",
+       "Qty Ordered": 36,
+       "Qty Shipped": 36,
+       "Status": "Delivered",
+       "Warehouse": "Dallas DC",
+       "Carrier": "UPS",
+       "Ship To": "Wayne Retail",
+       "row_kind": "sale",
+       "transit_days": 5.0,
+       "days_before_promise": 2.0,
+       "days_late": null,
+       "shipped_minus_ordered": 0,
+       "days_past_due": 216.0
+      },
+      {
+       "Order ID": "SO50002",
+       "Line No": 10,
+       "Order Line ID": "SO50002-10",
+       "SKU": "SKU-0104",
+       "Order Date": "2026-06-12",
+       "Requested Date": "2026-06-17",
+       "Delivered Date": "2026-06-17",
+       "Qty Ordered": 22,
+       "Qty Shipped": 22,
+       "Status": "Delivered",
+       "Warehouse": "Reno DC",
+       "Carrier": "FedEx Freight",
+       "Ship To": "Initech LLC",
+       "row_kind": "sale",
+       "transit_days": 5.0,
+       "days_before_promise": 0.0,
+       "days_late": 0.0,
+       "shipped_minus_ordered": 0,
+       "days_past_due": 136.0
+      }
+     ],
+     "dtypes_summary": {
+      "Order ID": "object",
+      "Line No": "int64",
+      "Order Line ID": "object",
+      "SKU": "object",
+      "Order Date": "object",
+      "Requested Date": "object",
+      "Delivered Date": "object",
+      "Qty Ordered": "int64",
+      "Qty Shipped": "int64",
+      "Status": "object",
+      "Warehouse": "object",
+      "Carrier": "object",
+      "Ship To": "object",
+      "row_kind": "object",
+      "transit_days": "float64",
+      "days_before_promise": "float64",
+      "days_late": "float64",
+      "shipped_minus_ordered": "int64",
+      "days_past_due": "float64"
+     },
+     "missing_pct": {
+      "Order ID": 0.0,
+      "Line No": 0.0,
+      "Order Line ID": 0.0,
+      "SKU": 0.0,
+      "Order Date": 0.0,
+      "Requested Date": 0.0,
+      "Delivered Date": 5.76,
+      "Qty Ordered": 0.0,
+      "Qty Shipped": 0.0,
+      "Status": 0.0,
+      "Warehouse": 0.0,
+      "Carrier": 0.0,
+      "Ship To": 0.0,
+      "row_kind": 0.0,
+      "transit_days": 5.76,
+      "days_before_promise": 14.66,
+      "days_late": 63.04,
+      "shipped_minus_ordered": 0.0,
+      "days_past_due": 2.57
+     },
+     "kpis": [],
+     "pre_cleaning_missing_pct": {},
+     "unique_counts": {},
+     "sample_values_per_col": {},
+     "skewness": {},
+     "target_correlations": {},
+     "target_col": null,
+     "column_roles_summary": {},
+     "column_units": {},
+     "evidence": [
+      {
+       "id": "seg:Warehouse/Order ID:ratio:otif_order",
+       "kind": "segment",
+       "claim": "otif_order (from Order ID) by Warehouse (3 groups)",
+       "code": "try:\n    sale_df = df[df['row_kind'] == 'sale'].copy()\n\n    for col in ['Delivered Date', 'Requested Date', 'Order Date']:\n        sale_df[col] = pd.to_datetime(sale_df[col], errors='coerce')\n\n    last_order_date = sale_df['Order Date'].max()\n\n    open_statuses = [\n        'in transit', 'out for delivery', 'picked up', 'exception',\n        'delivery exception', 'delayed', 'tendered', 'booked', 'dispatched',\n        'pending', 'shipped', 'partially shipped', 'backordered',\n        'short shipped', 'open', 'allocated', 'released', 'picked', 'packed'\n    ]\n    sale_df['_status_lower'] = sale_df['Status'].str.lower().str.strip()\n\n    # OTIF line eligibility: delivered lines OR open lines whose requested date < last_order_date\n    delivered_mask = sale_df['_status_lower'] == 'delivered'\n    open_mask = sale_df['_status_lower'].isin(open_statuses)\n    past_due_open_mask = open_mask & (sale_df['days_past_due'] > 0)\n\n    eligible_lines = sale_df[delivered_mask | past_due_open_mask].copy()\n\n    # OTIF line: delivered on time (days_before_promise >= 0) AND shipped in full (shipped_minus_ordered >= 0)\n    otif_line_mask = (\n        (eligible_lines['days_before_promise'] >= 0) &\n        (eligible_lines['shipped_minus_ordered'] >= 0)\n    )\n    eligible_lines['_otif_line'] = otif_line_mask\n\n    # OTIF order: per order, all eligible lines must be OTIF\n    order_eligible = eligible_lines.groupby('Order ID')['_otif_line'].agg(['all', 'count']).reset_index()\n    order_eligible.columns = ['Order ID', '_all_otif', '_line_count']\n\n    # Merge warehouse back to order level (take first warehouse per order from eligible lines)\n    order_warehouse = eligible_lines.groupby('Order ID')['Warehouse'].first().reset_index()\n    order_eligible = order_eligible.merge(order_warehouse, on='Order ID', how='left')\n\n    # Overall OTIF order\n    total_orders = len(order_eligible)\n    otif_orders = order_eligible['_all_otif'].sum()\n    overall_otif = float(otif_orders) / float(total_orders) if total_orders > 0 else 0.0\n\n    # OTIF order by warehouse\n    wh_groups = order_eligible.groupby('Warehouse')\n    wh_results = []\n    for wh_name, wh_grp in wh_groups:\n        wh_total = len(wh_grp)\n        wh_otif = wh_grp['_all_otif'].sum()\n        wh_rate = float(wh_otif) / float(wh_total) if wh_total > 0 else 0.0\n        wh_results.append({\"name\": str(wh_name), \"value\": round(wh_rate, 6)})\n\n    wh_results_sorted = sorted(wh_results, key=lambda x: x['value'], reverse=True)\n\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Order ID\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"otif_order\",\n        \"results\": wh_results_sorted\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Order ID\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"otif_order_overall\",\n        \"results\": [{\"name\": \"Overall\", \"value\": round(overall_otif, 6)}]\n    })\n\n    result['assumptions'].append(\n        \"OTIF (order): eligible = delivered lines + open lines with days_past_due > 0; \"\n        \"order is OTIF only if every eligible line is on-time AND shipped in full.\"\n    )\n    result['assumptions'].append(\n        f\"last_order_date used for days_past_due window: {last_order_date.date() if pd.notna(last_order_date) else 'unknown'}.\"\n    )\n    result['assumptions'].append(\n        \"Warehouse assigned to order from first eligible line's Warehouse value.\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Order ID\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"otif_order_error\",\n        \"results\": [{\"name\": \"error\", \"value\": 0.0}]\n    })\n    result['assumptions'].append(f\"OTIF order segmentation failed: {str(e)}\")",
+       "result_excerpt": "{\"segment_column\": \"Warehouse\", \"metric_column\": \"Order ID\", \"aggregation\": \"ratio\", \"results\": [{\"name\": \"Reno DC\", \"value\": 0.725882}, {\"name\": \"Dallas DC\", \"value\": 0.599707}, {\"name\": \"Columbus DC\", \"value\": 0.493857}], \"label\": \"otif_order\"}",
+       "row_count": 6025,
+       "confidence": "high",
+       "confidence_reason": "6025 rows",
+       "assumptions": [
+        "Warehouse assigned to order from first eligible line's Warehouse value."
+       ]
+      },
+      {
+       "id": "seg:Warehouse/Order ID:ratio:otif_order_overall",
+       "kind": "segment",
+       "claim": "otif_order_overall (from Order ID) by Warehouse (1 groups)",
+       "code": "try:\n    sale_df = df[df['row_kind'] == 'sale'].copy()\n\n    for col in ['Delivered Date', 'Requested Date', 'Order Date']:\n        sale_df[col] = pd.to_datetime(sale_df[col], errors='coerce')\n\n    last_order_date = sale_df['Order Date'].max()\n\n    open_statuses = [\n        'in transit', 'out for delivery', 'picked up', 'exception',\n        'delivery exception', 'delayed', 'tendered', 'booked', 'dispatched',\n        'pending', 'shipped', 'partially shipped', 'backordered',\n        'short shipped', 'open', 'allocated', 'released', 'picked', 'packed'\n    ]\n    sale_df['_status_lower'] = sale_df['Status'].str.lower().str.strip()\n\n    # OTIF line eligibility: delivered lines OR open lines whose requested date < last_order_date\n    delivered_mask = sale_df['_status_lower'] == 'delivered'\n    open_mask = sale_df['_status_lower'].isin(open_statuses)\n    past_due_open_mask = open_mask & (sale_df['days_past_due'] > 0)\n\n    eligible_lines = sale_df[delivered_mask | past_due_open_mask].copy()\n\n    # OTIF line: delivered on time (days_before_promise >= 0) AND shipped in full (shipped_minus_ordered >= 0)\n    otif_line_mask = (\n        (eligible_lines['days_before_promise'] >= 0) &\n        (eligible_lines['shipped_minus_ordered'] >= 0)\n    )\n    eligible_lines['_otif_line'] = otif_line_mask\n\n    # OTIF order: per order, all eligible lines must be OTIF\n    order_eligible = eligible_lines.groupby('Order ID')['_otif_line'].agg(['all', 'count']).reset_index()\n    order_eligible.columns = ['Order ID', '_all_otif', '_line_count']\n\n    # Merge warehouse back to order level (take first warehouse per order from eligible lines)\n    order_warehouse = eligible_lines.groupby('Order ID')['Warehouse'].first().reset_index()\n    order_eligible = order_eligible.merge(order_warehouse, on='Order ID', how='left')\n\n    # Overall OTIF order\n    total_orders = len(order_eligible)\n    otif_orders = order_eligible['_all_otif'].sum()\n    overall_otif = float(otif_orders) / float(total_orders) if total_orders > 0 else 0.0\n\n    # OTIF order by warehouse\n    wh_groups = order_eligible.groupby('Warehouse')\n    wh_results = []\n    for wh_name, wh_grp in wh_groups:\n        wh_total = len(wh_grp)\n        wh_otif = wh_grp['_all_otif'].sum()\n        wh_rate = float(wh_otif) / float(wh_total) if wh_total > 0 else 0.0\n        wh_results.append({\"name\": str(wh_name), \"value\": round(wh_rate, 6)})\n\n    wh_results_sorted = sorted(wh_results, key=lambda x: x['value'], reverse=True)\n\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Order ID\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"otif_order\",\n        \"results\": wh_results_sorted\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Order ID\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"otif_order_overall\",\n        \"results\": [{\"name\": \"Overall\", \"value\": round(overall_otif, 6)}]\n    })\n\n    result['assumptions'].append(\n        \"OTIF (order): eligible = delivered lines + open lines with days_past_due > 0; \"\n        \"order is OTIF only if every eligible line is on-time AND shipped in full.\"\n    )\n    result['assumptions'].append(\n        f\"last_order_date used for days_past_due window: {last_order_date.date() if pd.notna(last_order_date) else 'unknown'}.\"\n    )\n    result['assumptions'].append(\n        \"Warehouse assigned to order from first eligible line's Warehouse value.\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Order ID\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"otif_order_error\",\n        \"results\": [{\"name\": \"error\", \"value\": 0.0}]\n    })\n    result['assumptions'].append(f\"OTIF order segmentation failed: {str(e)}\")",
+       "result_excerpt": "{\"segment_column\": \"Warehouse\", \"metric_column\": \"Order ID\", \"aggregation\": \"ratio\", \"results\": [{\"name\": \"Overall\", \"value\": 0.6328}], \"label\": \"otif_order_overall\"}",
+       "row_count": 6025,
+       "confidence": "high",
+       "confidence_reason": "6025 rows",
+       "assumptions": [
+        "Warehouse assigned to order from first eligible line's Warehouse value."
+       ]
+      },
+      {
+       "id": "eda:Qty Ordered",
+       "kind": "eda",
+       "claim": "Qty Ordered: median 24.00, mean 24.37, range 1.00 to 48.00",
+       "code": "try:\n    sale_df = df[df['row_kind'] == 'sale'].copy()\n\n    for col in ['Delivered Date', 'Requested Date', 'Order Date']:\n        sale_df[col] = pd.to_datetime(sale_df[col], errors='coerce')\n\n    last_order_date = sale_df['Order Date'].max()\n\n    open_statuses = [\n        'in transit', 'out for delivery', 'picked up', 'exception',\n        'delivery exception', 'delayed', 'tendered', 'booked', 'dispatched',\n        'pending', 'shipped', 'partially shipped', 'backordered',\n        'short shipped', 'open', 'allocated', 'released', 'picked', 'packed'\n    ]\n    sale_df['_status_lower'] = sale_df['Status'].str.lower().str.strip()\n\n    # OTIF line eligibility: delivered lines OR open lines whose requested date < last_order_date\n    delivered_mask = sale_df['_status_lower'] == 'delivered'\n    open_mask = sale_df['_status_lower'].isin(open_statuses)\n    past_due_open_mask = open_mask & (sale_df['days_past_due'] > 0)\n\n    eligible_lines = sale_df[delivered_mask | past_due_open_mask].copy()\n\n    # OTIF line: delivered on time (days_before_promise >= 0) AND shipped in full (shipped_minus_ordered >= 0)\n    otif_line_mask = (\n        (eligible_lines['days_before_promise'] >= 0) &\n        (eligible_lines['shipped_minus_ordered'] >= 0)\n    )\n    eligible_lines['_otif_line'] = otif_line_mask\n\n    # OTIF order: per order, all eligible lines must be OTIF\n    order_eligible = eligible_lines.groupby('Order ID')['_otif_line'].agg(['all', 'count']).reset_index()\n    order_eligible.columns = ['Order ID', '_all_otif', '_line_count']\n\n    # Merge warehouse back to order level (take first warehouse per order from eligible lines)\n    order_warehouse = eligible_lines.groupby('Order ID')['Warehouse'].first().reset_index()\n    order_eligible = order_eligible.merge(order_warehouse, on='Order ID', how='left')\n\n    # Overall OTIF order\n    total_orders = len(order_eligible)\n    otif_orders = order_eligible['_all_otif'].sum()\n    overall_otif = float(otif_orders) / float(total_orders) if total_orders > 0 else 0.0\n\n    # OTIF order by warehouse\n    wh_groups = order_eligible.groupby('Warehouse')\n    wh_results = []\n    for wh_name, wh_grp in wh_groups:\n        wh_total = len(wh_grp)\n        wh_otif = wh_grp['_all_otif'].sum()\n        wh_rate = float(wh_otif) / float(wh_total) if wh_total > 0 else 0.0\n        wh_results.append({\"name\": str(wh_name), \"value\": round(wh_rate, 6)})\n\n    wh_results_sorted = sorted(wh_results, key=lambda x: x['value'], reverse=True)\n\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Order ID\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"otif_order\",\n        \"results\": wh_results_sorted\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Order ID\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"otif_order_overall\",\n        \"results\": [{\"name\": \"Overall\", \"value\": round(overall_otif, 6)}]\n    })\n\n    result['assumptions'].append(\n        \"OTIF (order): eligible = delivered lines + open lines with days_past_due > 0; \"\n        \"order is OTIF only if every eligible line is on-time AND shipped in full.\"\n    )\n    result['assumptions'].append(\n        f\"last_order_date used for days_past_due window: {last_order_date.date() if pd.notna(last_order_date) else 'unknown'}.\"\n    )\n    result['assumptions'].append(\n        \"Warehouse assigned to order from first eligible line's Warehouse value.\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Order ID\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"otif_order_error\",\n        \"results\": [{\"name\": \"error\", \"value\": 0.0}]\n    })\n    result['assumptions'].append(f\"OTIF order segmentation failed: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 24.3689, \"std\": 13.7572, \"min\": 1.0, \"max\": 48.0, \"median\": 24.0, \"count\": 5915}",
+       "row_count": 5915,
+       "confidence": "high",
+       "confidence_reason": "5915 rows",
+       "assumptions": []
+      },
+      {
+       "id": "eda:Qty Shipped",
+       "kind": "eda",
+       "claim": "Qty Shipped: median 23.00, mean 23.12, range 0 to 50.00",
+       "code": "try:\n    sale_df = df[df['row_kind'] == 'sale'].copy()\n\n    for col in ['Delivered Date', 'Requested Date', 'Order Date']:\n        sale_df[col] = pd.to_datetime(sale_df[col], errors='coerce')\n\n    last_order_date = sale_df['Order Date'].max()\n\n    open_statuses = [\n        'in transit', 'out for delivery', 'picked up', 'exception',\n        'delivery exception', 'delayed', 'tendered', 'booked', 'dispatched',\n        'pending', 'shipped', 'partially shipped', 'backordered',\n        'short shipped', 'open', 'allocated', 'released', 'picked', 'packed'\n    ]\n    sale_df['_status_lower'] = sale_df['Status'].str.lower().str.strip()\n\n    # OTIF line eligibility: delivered lines OR open lines whose requested date < last_order_date\n    delivered_mask = sale_df['_status_lower'] == 'delivered'\n    open_mask = sale_df['_status_lower'].isin(open_statuses)\n    past_due_open_mask = open_mask & (sale_df['days_past_due'] > 0)\n\n    eligible_lines = sale_df[delivered_mask | past_due_open_mask].copy()\n\n    # OTIF line: delivered on time (days_before_promise >= 0) AND shipped in full (shipped_minus_ordered >= 0)\n    otif_line_mask = (\n        (eligible_lines['days_before_promise'] >= 0) &\n        (eligible_lines['shipped_minus_ordered'] >= 0)\n    )\n    eligible_lines['_otif_line'] = otif_line_mask\n\n    # OTIF order: per order, all eligible lines must be OTIF\n    order_eligible = eligible_lines.groupby('Order ID')['_otif_line'].agg(['all', 'count']).reset_index()\n    order_eligible.columns = ['Order ID', '_all_otif', '_line_count']\n\n    # Merge warehouse back to order level (take first warehouse per order from eligible lines)\n    order_warehouse = eligible_lines.groupby('Order ID')['Warehouse'].first().reset_index()\n    order_eligible = order_eligible.merge(order_warehouse, on='Order ID', how='left')\n\n    # Overall OTIF order\n    total_orders = len(order_eligible)\n    otif_orders = order_eligible['_all_otif'].sum()\n    overall_otif = float(otif_orders) / float(total_orders) if total_orders > 0 else 0.0\n\n    # OTIF order by warehouse\n    wh_groups = order_eligible.groupby('Warehouse')\n    wh_results = []\n    for wh_name, wh_grp in wh_groups:\n        wh_total = len(wh_grp)\n        wh_otif = wh_grp['_all_otif'].sum()\n        wh_rate = float(wh_otif) / float(wh_total) if wh_total > 0 else 0.0\n        wh_results.append({\"name\": str(wh_name), \"value\": round(wh_rate, 6)})\n\n    wh_results_sorted = sorted(wh_results, key=lambda x: x['value'], reverse=True)\n\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Order ID\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"otif_order\",\n        \"results\": wh_results_sorted\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Order ID\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"otif_order_overall\",\n        \"results\": [{\"name\": \"Overall\", \"value\": round(overall_otif, 6)}]\n    })\n\n    result['assumptions'].append(\n        \"OTIF (order): eligible = delivered lines + open lines with days_past_due > 0; \"\n        \"order is OTIF only if every eligible line is on-time AND shipped in full.\"\n    )\n    result['assumptions'].append(\n        f\"last_order_date used for days_past_due window: {last_order_date.date() if pd.notna(last_order_date) else 'unknown'}.\"\n    )\n    result['assumptions'].append(\n        \"Warehouse assigned to order from first eligible line's Warehouse value.\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Order ID\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"otif_order_error\",\n        \"results\": [{\"name\": \"error\", \"value\": 0.0}]\n    })\n    result['assumptions'].append(f\"OTIF order segmentation failed: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 23.1189, \"std\": 14.2338, \"min\": 0.0, \"max\": 50.0, \"median\": 23.0, \"count\": 5915}",
+       "row_count": 5915,
+       "confidence": "high",
+       "confidence_reason": "5915 rows",
+       "assumptions": []
+      }
+     ]
+    },
+    "domain": "logistics",
+    "latency_s": 28.45,
+    "cost_usd": 0.03196,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```python\ntry:\n    sale_df = df[df['row_kind'] == 'sale'].copy()\n\n    for col in ['Delivered Date', 'Requested Date', 'Order Date']:\n        sale_df[col] = pd.to_datetime(sale_df[col], errors='coerce')\n\n    last_order_date = sale_df['Order Date'].max()\n\n    open_statuses = [\n        'in transit', 'out for delivery', 'picked up', 'exception',\n        'delivery exception', 'delayed', 'tendered', 'booked', 'dispatched',\n        'pending', 'shipped', 'partially shipped', 'backordered',\n        'short shipped', 'open', 'allocated', 'released', 'picked', 'packed'\n    ]\n    sale_df['_status_lower'] = sale_df['Status'].str.lower().str.strip()\n\n    # OTIF line eligibility: delivered lines OR open lines whose requested date < last_order_date\n    delivered_mask = sale_df['_status_lower'] == 'delivered'\n    open_mask = sale_df['_status_lower'].isin(open_statuses)\n    past_due_open_mask = open_mask & (sale_df['days_past_due'] > 0)\n\n    eligible_lines = sale_df[delivered_mask | past_due_open_mask].copy()\n\n    # OTIF line: delivered on time (days_before_promise >= 0) AND shipped in full (shipped_minus_ordered >= 0)\n    otif_line_mask = (\n        (eligible_lines['days_before_promise'] >= 0) &\n        (eligible_lines['shipped_minus_ordered'] >= 0)\n    )\n    eligible_lines['_otif_line'] = otif_line_mask\n\n    # OTIF order: per order, all eligible lines must be OTIF\n    order_eligible = eligible_lines.groupby('Order ID')['_otif_line'].agg(['all', 'count']).reset_index()\n    order_eligible.columns = ['Order ID', '_all_otif', '_line_count']\n\n    # Merge warehouse back to order level (take first warehouse per order from eligible lines)\n    order_warehouse = eligible_lines.groupby('Order ID')['Warehouse'].first().reset_index()\n    order_eligible = order_eligible.merge(order_warehouse, on='Order ID', how='left')\n\n    # Overall OTIF order\n    total_orders = len(order_eligible)\n    otif_orders = order_eligible['_all_otif'].sum()\n    overall_otif = float(otif_orders) / float(total_orders) if total_orders > 0 else 0.0\n\n    # OTIF order by warehouse\n    wh_groups = order_eligible.groupby('Warehouse')\n    wh_results = []\n    for wh_name, wh_grp in wh_groups:\n        wh_total = len(wh_grp)\n        wh_otif = wh_grp['_all_otif'].sum()\n        wh_rate = float(wh_otif) / float(wh_total) if wh_total > 0 else 0.0\n        wh_results.append({\"name\": str(wh_name), \"value\": round(wh_rate, 6)})\n\n    wh_results_sorted = sorted(wh_results, key=lambda x: x['value'], reverse=True)\n\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Order ID\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"otif_order\",\n        \"results\": wh_results_sorted\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Order ID\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"otif_order_overall\",\n        \"results\": [{\"name\": \"Overall\", \"value\": round(overall_otif, 6)}]\n    })\n\n    result['assumptions'].append(\n        \"OTIF (order): eligible = delivered lines + open lines with days_past_due > 0; \"\n        \"order is OTIF only if every eligible line is on-time AND shipped in full.\"\n    )\n    result['assumptions'].append(\n        f\"last_order_date used for days_past_due window: {last_order_date.date() if pd.notna(last_order_date) else 'unknown'}.\"\n    )\n    result['assumptions'].append(\n        \"Warehouse assigned to order from first eligible line's Warehouse value.\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Order ID\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"otif_order_error\",\n        \"results\": [{\"name\": \"error\", \"value\": 0.0}]\n    })\n    result['assumptions'].append(f\"OTIF order segmentation failed: {str(e)}\")\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value_truth",
+      "ok": true,
+      "detail": "ok (Order ID)",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     },
+     {
+      "rule": "pii_exits",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 18,
+     "details": []
+    },
+    "builtin_only": false,
+    "pii_exits": {
+     "rule": "pii_exits",
+     "ok": true,
+     "na": true,
+     "detail": "n/a: no planted PII"
+    },
+    "pii_canary_hits": 0,
+    "pii_model_hits": 0,
+    "pii_planted": 0,
+    "output": {
+     "eda_summary": {
+      "Qty Ordered": {
+       "mean": 24.3689,
+       "std": 13.7572,
+       "min": 1.0,
+       "max": 48.0,
+       "median": 24.0,
+       "count": 5915
+      },
+      "Qty Shipped": {
+       "mean": 23.1189,
+       "std": 14.2338,
+       "min": 0.0,
+       "max": 50.0,
+       "median": 23.0,
+       "count": 5915
+      }
+     },
+     "correlations": {},
+     "trends": [],
+     "segments": [
+      {
+       "segment_column": "Warehouse",
+       "metric_column": "Order ID",
+       "aggregation": "ratio",
+       "results": [
+        {
+         "name": "Columbus DC",
+         "value": 0.493857
+        },
+        {
+         "name": "Dallas DC",
+         "value": 0.599707
+        },
+        {
+         "name": "Reno DC",
+         "value": 0.725882
+        },
+        {
+         "name": "Overall",
+         "value": 0.6328
+        }
+       ],
+       "label": "otif_order"
+      },
+      {
+       "segment_column": "Warehouse",
+       "metric_column": "Qty Shipped",
+       "aggregation": "sum",
+       "results": [
+        {
+         "name": "Reno DC",
+         "value": 60150.0
+        },
+        {
+         "name": "Dallas DC",
+         "value": 48273.0
+        },
+        {
+         "name": "Columbus DC",
+         "value": 28325.0
+        }
+       ],
+       "label": null
+      },
+      {
+       "segment_column": "Warehouse",
+       "metric_column": "Qty Ordered",
+       "aggregation": "sum",
+       "results": [
+        {
+         "name": "Reno DC",
+         "value": 62757.0
+        },
+        {
+         "name": "Dallas DC",
+         "value": 51541.0
+        },
+        {
+         "name": "Columbus DC",
+         "value": 29844.0
+        }
+       ],
+       "label": null
+      },
+      {
+       "segment_column": "Warehouse",
+       "metric_column": "Order ID",
+       "aggregation": "count",
+       "results": [
+        {
+         "name": "Columbus DC",
+         "value": 415.0
+        },
+        {
+         "name": "Dallas DC",
+         "value": 708.0
+        },
+        {
+         "name": "Reno DC",
+         "value": 870.0
+        }
+       ],
+       "label": "order_count"
+      }
+     ],
+     "anomalies": [],
+     "statistical_tests": [],
+     "forecast_points": [],
+     "distributions": {
+      "Qty Ordered": [
+       {
+        "label": "(0.953, 5.7]",
+        "count": 636
+       },
+       {
+        "label": "(5.7, 10.4]",
+        "count": 621
+       },
+       {
+        "label": "(10.4, 15.1]",
+        "count": 649
+       },
+       {
+        "label": "(15.1, 19.8]",
+        "count": 501
+       },
+       {
+        "label": "(19.8, 24.5]",
+        "count": 613
+       },
+       {
+        "label": "(24.5, 29.2]",
+        "count": 662
+       },
+       {
+        "label": "(29.2, 33.9]",
+        "count": 505
+       },
+       {
+        "label": "(33.9, 38.6]",
+        "count": 638
+       },
+       {
+        "label": "(38.6, 43.3]",
+        "count": 611
+       },
+       {
+        "label": "(43.3, 48.0]",
+        "count": 589
+       }
+      ],
+      "Qty Shipped": [
+       {
+        "label": "(-0.05, 5.0]",
+        "count": 953
+       },
+       {
+        "label": "(5.0, 10.0]",
+        "count": 616
+       },
+       {
+        "label": "(10.0, 15.0]",
+        "count": 625
+       },
+       {
+        "label": "(15.0, 20.0]",
+        "count": 597
+       },
+       {
+        "label": "(20.0, 25.0]",
+        "count": 585
+       },
+       {
+        "label": "(25.0, 30.0]",
+        "count": 596
+       },
+       {
+        "label": "(30.0, 35.0]",
+        "count": 584
+       },
+       {
+        "label": "(35.0, 40.0]",
+        "count": 597
+       },
+       {
+        "label": "(40.0, 45.0]",
+        "count": 533
+       },
+       {
+        "label": "(45.0, 50.0]",
+        "count": 339
+       }
+      ],
+      "Status": [
+       {
+        "label": "Delivered",
+        "count": 5678
+       },
+       {
+        "label": "Open",
+        "count": 116
+       },
+       {
+        "label": "Cancelled",
+        "count": 110
+       },
+       {
+        "label": "Shipped",
+        "count": 62
+       },
+       {
+        "label": "Backordered",
+        "count": 59
+       }
+      ],
+      "Warehouse": [
+       {
+        "label": "Reno DC",
+        "count": 2639
+       },
+       {
+        "label": "Dallas DC",
+        "count": 2147
+       },
+       {
+        "label": "Columbus DC",
+        "count": 1239
+       }
+      ],
+      "Carrier": [
+       {
+        "label": "UPS",
+        "count": 2066
+       },
+       {
+        "label": "Old Dominion",
+        "count": 1995
+       },
+       {
+        "label": "FedEx Freight",
+        "count": 1964
+       }
+      ],
+      "Ship To": [
+       {
+        "label": "Initech LLC",
+        "count": 1017
+       },
+       {
+        "label": "Wayne Retail",
+        "count": 1016
+       },
+       {
+        "label": "Globex Inc",
+        "count": 1015
+       },
+       {
+        "label": "Stark Supply",
+        "count": 1015
+       },
+       {
+        "label": "Acme Corp",
+        "count": 997
+       },
+       {
+        "label": "Umbrella Co",
+        "count": 965
+       }
+      ]
+     },
+     "code_executed": "import pandas as pd\nimport numpy as np\nimport json\nfrom scipy import stats as scipy_stats\n\ndf = pd.read_csv('/data/df.csv')\n\nresult = {\n    \"eda_summary\": {},\n    \"correlations\": {},\n    \"trends\": [],\n    \"segments\": [],\n    \"anomalies\": [],\n    \"statistical_tests\": [],\n    \"forecast_points\": [],\n    \"distributions\": {},\n    \"head_preview\": [],\n    \"dtypes_summary\": {},\n    \"missing_pct\": {},\n    \"assumptions\": [],\n}\n\ntry:\n    sale_df = df[df['row_kind'] == 'sale'].copy()\n\n    for col in ['Delivered Date', 'Requested Date', 'Order Date']:\n        sale_df[col] = pd.to_datetime(sale_df[col], errors='coerce')\n\n    last_order_date = sale_df['Order Date'].max()\n\n    open_statuses = [\n        'in transit', 'out for delivery', 'picked up', 'exception', 'delivery exception',\n        'delayed', 'tendered', 'booked', 'dispatched', 'pending', 'shipped',\n        'partially shipped', 'backordered', 'short shipped', 'open', 'allocated',\n        'released', 'picked', 'packed'\n    ]\n\n    sale_df['_status_lower'] = sale_df['Status'].str.lower().str.strip()\n\n    sale_df['_is_open'] = sale_df['_status_lower'].isin(open_statuses)\n    sale_df['_is_delivered'] = sale_df['_status_lower'] == 'delivered'\n\n    sale_df['_otif_eligible'] = (\n        sale_df['_is_delivered'] |\n        (sale_df['_is_open'] & (sale_df['days_past_due'] > 0))\n    )\n\n    sale_df['_otif_pass'] = (\n        sale_df['_otif_eligible'] &\n        (sale_df['shipped_minus_ordered'] >= 0) &\n        (\n            sale_df['_is_delivered'] & (sale_df['days_before_promise'] >= 0) |\n            (sale_df['_is_open'] & (sale_df['days_past_due'] > 0))\n        )\n    )\n\n    sale_df['_otif_pass'] = (\n        sale_df['_otif_eligible'] &\n        ~(\n            (sale_df['shipped_minus_ordered'] < 0) |\n            (sale_df['_is_delivered'] & (sale_df['days_late'] > 0)) |\n            (sale_df['_is_open'] & (sale_df['days_past_due'] > 0))\n        )\n    )\n\n    eligible_lines = sale_df[sale_df['_otif_eligible']].copy()\n\n    order_otif = eligible_lines.groupby(['Order ID', 'Warehouse']).agg(\n        all_pass=('_otif_pass', 'all'),\n        any_eligible=('_otif_eligible', 'any')\n    ).reset_index()\n\n    warehouses = sale_df['Warehouse'].dropna().unique()\n    otif_order_results = []\n\n    for wh in sorted(warehouses):\n        wh_orders = order_otif[order_otif['Warehouse'] == wh]\n        denom = len(wh_orders)\n        numer = wh_orders['all_pass'].sum()\n        rate = float(numer / denom) if denom > 0 else float('nan')\n        otif_order_results.append({\"name\": str(wh), \"value\": round(rate, 6)})\n\n    overall_denom = len(order_otif)\n    overall_numer = order_otif['all_pass'].sum()\n    overall_rate = float(overall_numer / overall_denom) if overall_denom > 0 else float('nan')\n    otif_order_results.append({\"name\": \"Overall\", \"value\": round(overall_rate, 6)})\n\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Order ID\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"otif_order\",\n        \"results\": otif_order_results\n    })\n\n    qty_seg = sale_df.groupby('Warehouse')['Qty Shipped'].sum().reset_index()\n    qty_seg = qty_seg.nlargest(10, 'Qty Shipped')\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Qty Shipped\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": [{\"name\": str(r['Warehouse']), \"value\": float(r['Qty Shipped'])} for _, r in qty_seg.iterrows()]\n    })\n\n    qty_ord_seg = sale_df.groupby('Warehouse')['Qty Ordered'].sum().reset_index()\n    qty_ord_seg = qty_ord_seg.nlargest(10, 'Qty Ordered')\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Qty Ordered\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": [{\"name\": str(r['Warehouse']), \"value\": float(r['Qty Ordered'])} for _, r in qty_ord_seg.iterrows()]\n    })\n\n    order_count_seg = sale_df.drop_duplicates('Order ID').groupby('Warehouse')['Order ID'].count().reset_index()\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Order ID\",\n        \"aggregation\": \"count\",\n        \"label\": \"order_count\",\n        \"results\": [{\"name\": str(r['Warehouse']), \"value\": float(r['Order ID'])} for _, r in order_count_seg.iterrows()]\n    })\n\n    result['assumptions'].append(\"OTIF (order): an order passes if every eligible line is on-time AND shipped in full; eligible = delivered or open with days_past_due > 0.\")\n    result['assumptions'].append(\"last_order_date used as data cutoff for days_past_due eligibility.\")\n    result['assumptions'].append(\"Only row_kind='sale' rows included; cancelled rows excluded.\")\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")\n\n# \u2500\u2500\u2500 Guaranteed EDA + chart distributions + briefing (always runs) \u2500\u2500\u2500\n\ntry:\n    _head_df = df.head(5).replace({float('nan'): None})\n    result['head_preview'] = _head_df.to_dict('records')\nexcept Exception:\n    pass\n\ntry:\n    result['dtypes_summary'] = {str(k): str(v) for k, v in df.dtypes.items()}\n    result['non_null'] = {str(k): int(v) for k, v in df.notna().sum().items()}\n    result['n_rows'] = int(len(df))\nexcept Exception:\n    pass\n\ntry:\n    _miss = df.isna().mean() * 100\n    result['missing_pct'] = {str(k): round(float(v), 2) for k, v in _miss.items()}\nexcept Exception:\n    pass\n\ntry:\n    if 'Qty Ordered' in df.columns and pd.api.types.is_numeric_dtype(df['Qty Ordered']):\n        _s = df['Qty Ordered'].dropna()\n        if len(_s) > 0 and 'Qty Ordered' not in result['eda_summary']:\n            result['eda_summary']['Qty Ordered'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Qty Shipped' in df.columns and pd.api.types.is_numeric_dtype(df['Qty Shipped']):\n        _s = df['Qty Shipped'].dropna()\n        if len(_s) > 0 and 'Qty Shipped' not in result['eda_summary']:\n            result['eda_summary']['Qty Shipped'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Qty Ordered' in df.columns and pd.api.types.is_numeric_dtype(df['Qty Ordered']):\n        _col_data = df['Qty Ordered'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Qty Ordered'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Qty Shipped' in df.columns and pd.api.types.is_numeric_dtype(df['Qty Shipped']):\n        _col_data = df['Qty Shipped'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Qty Shipped'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Status' in df.columns:\n        _vc = df['Status'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Status'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Warehouse' in df.columns:\n        _vc = df['Warehouse'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Warehouse'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Carrier' in df.columns:\n        _vc = df['Carrier'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Carrier'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Ship To' in df.columns:\n        _vc = df['Ship To'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Ship To'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\nprint(json.dumps(result, default=str))",
+     "figures_base64": [],
+     "head_preview": [
+      {
+       "Order ID": "SO50000",
+       "Line No": 10,
+       "Order Line ID": "SO50000-10",
+       "SKU": "SKU-0077",
+       "Order Date": "2026-06-25",
+       "Requested Date": "2026-06-28",
+       "Delivered Date": "2026-06-26",
+       "Qty Ordered": 40,
+       "Qty Shipped": 40,
+       "Status": "Delivered",
+       "Warehouse": "Columbus DC",
+       "Carrier": "FedEx Freight",
+       "Ship To": "Umbrella Co",
+       "row_kind": "sale",
+       "transit_days": 1.0,
+       "days_before_promise": 2.0,
+       "days_late": null,
+       "shipped_minus_ordered": 0,
+       "days_past_due": 125.0
+      },
+      {
+       "Order ID": "SO50001",
+       "Line No": 10,
+       "Order Line ID": "SO50001-10",
+       "SKU": "SKU-0046",
+       "Order Date": "2026-03-22",
+       "Requested Date": "2026-03-29",
+       "Delivered Date": "2026-03-29",
+       "Qty Ordered": 40,
+       "Qty Shipped": 40,
+       "Status": "Delivered",
+       "Warehouse": "Dallas DC",
+       "Carrier": "UPS",
+       "Ship To": "Initech LLC",
+       "row_kind": "sale",
+       "transit_days": 7.0,
+       "days_before_promise": 0.0,
+       "days_late": 0.0,
+       "shipped_minus_ordered": 0,
+       "days_past_due": 216.0
+      },
+      {
+       "Order ID": "SO50001",
+       "Line No": 20,
+       "Order Line ID": "SO50001-20",
+       "SKU": "SKU-0014",
+       "Order Date": "2026-03-22",
+       "Requested Date": "2026-03-29",
+       "Delivered Date": null,
+       "Qty Ordered": 44,
+       "Qty Shipped": 0,
+       "Status": "Backordered",
+       "Warehouse": "Dallas DC",
+       "Carrier": "UPS",
+       "Ship To": "Wayne Retail",
+       "row_kind": "sale",
+       "transit_days": null,
+       "days_before_promise": null,
+       "days_late": null,
+       "shipped_minus_ordered": -44,
+       "days_past_due": 216.0
+      },
+      {
+       "Order ID": "SO50001",
+       "Line No": 30,
+       "Order Line ID": "SO50001-30",
+       "SKU": "SKU-0039",
+       "Order Date": "2026-03-22",
+       "Requested Date": "2026-03-29",
+       "Delivered Date": "2026-03-27",
+       "Qty Ordered": 36,
+       "Qty Shipped": 36,
+       "Status": "Delivered",
+       "Warehouse": "Dallas DC",
+       "Carrier": "UPS",
+       "Ship To": "Wayne Retail",
+       "row_kind": "sale",
+       "transit_days": 5.0,
+       "days_before_promise": 2.0,
+       "days_late": null,
+       "shipped_minus_ordered": 0,
+       "days_past_due": 216.0
+      },
+      {
+       "Order ID": "SO50002",
+       "Line No": 10,
+       "Order Line ID": "SO50002-10",
+       "SKU": "SKU-0104",
+       "Order Date": "2026-06-12",
+       "Requested Date": "2026-06-17",
+       "Delivered Date": "2026-06-17",
+       "Qty Ordered": 22,
+       "Qty Shipped": 22,
+       "Status": "Delivered",
+       "Warehouse": "Reno DC",
+       "Carrier": "FedEx Freight",
+       "Ship To": "Initech LLC",
+       "row_kind": "sale",
+       "transit_days": 5.0,
+       "days_before_promise": 0.0,
+       "days_late": 0.0,
+       "shipped_minus_ordered": 0,
+       "days_past_due": 136.0
+      }
+     ],
+     "dtypes_summary": {
+      "Order ID": "object",
+      "Line No": "int64",
+      "Order Line ID": "object",
+      "SKU": "object",
+      "Order Date": "object",
+      "Requested Date": "object",
+      "Delivered Date": "object",
+      "Qty Ordered": "int64",
+      "Qty Shipped": "int64",
+      "Status": "object",
+      "Warehouse": "object",
+      "Carrier": "object",
+      "Ship To": "object",
+      "row_kind": "object",
+      "transit_days": "float64",
+      "days_before_promise": "float64",
+      "days_late": "float64",
+      "shipped_minus_ordered": "int64",
+      "days_past_due": "float64"
+     },
+     "missing_pct": {
+      "Order ID": 0.0,
+      "Line No": 0.0,
+      "Order Line ID": 0.0,
+      "SKU": 0.0,
+      "Order Date": 0.0,
+      "Requested Date": 0.0,
+      "Delivered Date": 5.76,
+      "Qty Ordered": 0.0,
+      "Qty Shipped": 0.0,
+      "Status": 0.0,
+      "Warehouse": 0.0,
+      "Carrier": 0.0,
+      "Ship To": 0.0,
+      "row_kind": 0.0,
+      "transit_days": 5.76,
+      "days_before_promise": 14.66,
+      "days_late": 63.04,
+      "shipped_minus_ordered": 0.0,
+      "days_past_due": 2.57
+     },
+     "kpis": [],
+     "pre_cleaning_missing_pct": {},
+     "unique_counts": {},
+     "sample_values_per_col": {},
+     "skewness": {},
+     "target_correlations": {},
+     "target_col": null,
+     "column_roles_summary": {},
+     "column_units": {},
+     "evidence": [
+      {
+       "id": "seg:Warehouse/Order ID:ratio:otif_order",
+       "kind": "segment",
+       "claim": "otif_order (from Order ID) by Warehouse (4 groups)",
+       "code": "try:\n    sale_df = df[df['row_kind'] == 'sale'].copy()\n\n    for col in ['Delivered Date', 'Requested Date', 'Order Date']:\n        sale_df[col] = pd.to_datetime(sale_df[col], errors='coerce')\n\n    last_order_date = sale_df['Order Date'].max()\n\n    open_statuses = [\n        'in transit', 'out for delivery', 'picked up', 'exception', 'delivery exception',\n        'delayed', 'tendered', 'booked', 'dispatched', 'pending', 'shipped',\n        'partially shipped', 'backordered', 'short shipped', 'open', 'allocated',\n        'released', 'picked', 'packed'\n    ]\n\n    sale_df['_status_lower'] = sale_df['Status'].str.lower().str.strip()\n\n    sale_df['_is_open'] = sale_df['_status_lower'].isin(open_statuses)\n    sale_df['_is_delivered'] = sale_df['_status_lower'] == 'delivered'\n\n    sale_df['_otif_eligible'] = (\n        sale_df['_is_delivered'] |\n        (sale_df['_is_open'] & (sale_df['days_past_due'] > 0))\n    )\n\n    sale_df['_otif_pass'] = (\n        sale_df['_otif_eligible'] &\n        (sale_df['shipped_minus_ordered'] >= 0) &\n        (\n            sale_df['_is_delivered'] & (sale_df['days_before_promise'] >= 0) |\n            (sale_df['_is_open'] & (sale_df['days_past_due'] > 0))\n        )\n    )\n\n    sale_df['_otif_pass'] = (\n        sale_df['_otif_eligible'] &\n        ~(\n            (sale_df['shipped_minus_ordered'] < 0) |\n            (sale_df['_is_delivered'] & (sale_df['days_late'] > 0)) |\n            (sale_df['_is_open'] & (sale_df['days_past_due'] > 0))\n        )\n    )\n\n    eligible_lines = sale_df[sale_df['_otif_eligible']].copy()\n\n    order_otif = eligible_lines.groupby(['Order ID', 'Warehouse']).agg(\n        all_pass=('_otif_pass', 'all'),\n        any_eligible=('_otif_eligible', 'any')\n    ).reset_index()\n\n    warehouses = sale_df['Warehouse'].dropna().unique()\n    otif_order_results = []\n\n    for wh in sorted(warehouses):\n        wh_orders = order_otif[order_otif['Warehouse'] == wh]\n        denom = len(wh_orders)\n        numer = wh_orders['all_pass'].sum()\n        rate = float(numer / denom) if denom > 0 else float('nan')\n        otif_order_results.append({\"name\": str(wh), \"value\": round(rate, 6)})\n\n    overall_denom = len(order_otif)\n    overall_numer = order_otif['all_pass'].sum()\n    overall_rate = float(overall_numer / overall_denom) if overall_denom > 0 else float('nan')\n    otif_order_results.append({\"name\": \"Overall\", \"value\": round(overall_rate, 6)})\n\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Order ID\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"otif_order\",\n        \"results\": otif_order_results\n    })\n\n    qty_seg = sale_df.groupby('Warehouse')['Qty Shipped'].sum().reset_index()\n    qty_seg = qty_seg.nlargest(10, 'Qty Shipped')\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Qty Shipped\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": [{\"name\": str(r['Warehouse']), \"value\": float(r['Qty Shipped'])} for _, r in qty_seg.iterrows()]\n    })\n\n    qty_ord_seg = sale_df.groupby('Warehouse')['Qty Ordered'].sum().reset_index()\n    qty_ord_seg = qty_ord_seg.nlargest(10, 'Qty Ordered')\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Qty Ordered\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": [{\"name\": str(r['Warehouse']), \"value\": float(r['Qty Ordered'])} for _, r in qty_ord_seg.iterrows()]\n    })\n\n    order_count_seg = sale_df.drop_duplicates('Order ID').groupby('Warehouse')['Order ID'].count().reset_index()\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Order ID\",\n        \"aggregation\": \"count\",\n        \"label\": \"order_count\",\n        \"results\": [{\"name\": str(r['Warehouse']), \"value\": float(r['Order ID'])} for _, r in order_count_seg.iterrows()]\n    })\n\n    result['assumptions'].append(\"OTIF (order): an order passes if every eligible line is on-time AND shipped in full; eligible = delivered or open with days_past_due > 0.\")\n    result['assumptions'].append(\"last_order_date used as data cutoff for days_past_due eligibility.\")\n    result['assumptions'].append(\"Only row_kind='sale' rows included; cancelled rows excluded.\")\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"segment_column\": \"Warehouse\", \"metric_column\": \"Order ID\", \"aggregation\": \"ratio\", \"results\": [{\"name\": \"Columbus DC\", \"value\": 0.493857}, {\"name\": \"Dallas DC\", \"value\": 0.599707}, {\"name\": \"Reno DC\", \"value\": 0.725882}, {\"name\": \"Overall\", \"value\": 0.6328}], \"label\": \"otif_order\"}",
+       "row_count": 6025,
+       "confidence": "high",
+       "confidence_reason": "6025 rows",
+       "assumptions": [
+        "Qty Shipped by Warehouse recomputed: Only the rows the figures count: 110 other rows left out."
+       ]
+      },
+      {
+       "id": "seg:Warehouse/Qty Shipped:sum",
+       "kind": "segment",
+       "claim": "sum Qty Shipped by Warehouse (3 groups)",
+       "code": "try:\n    sale_df = df[df['row_kind'] == 'sale'].copy()\n\n    for col in ['Delivered Date', 'Requested Date', 'Order Date']:\n        sale_df[col] = pd.to_datetime(sale_df[col], errors='coerce')\n\n    last_order_date = sale_df['Order Date'].max()\n\n    open_statuses = [\n        'in transit', 'out for delivery', 'picked up', 'exception', 'delivery exception',\n        'delayed', 'tendered', 'booked', 'dispatched', 'pending', 'shipped',\n        'partially shipped', 'backordered', 'short shipped', 'open', 'allocated',\n        'released', 'picked', 'packed'\n    ]\n\n    sale_df['_status_lower'] = sale_df['Status'].str.lower().str.strip()\n\n    sale_df['_is_open'] = sale_df['_status_lower'].isin(open_statuses)\n    sale_df['_is_delivered'] = sale_df['_status_lower'] == 'delivered'\n\n    sale_df['_otif_eligible'] = (\n        sale_df['_is_delivered'] |\n        (sale_df['_is_open'] & (sale_df['days_past_due'] > 0))\n    )\n\n    sale_df['_otif_pass'] = (\n        sale_df['_otif_eligible'] &\n        (sale_df['shipped_minus_ordered'] >= 0) &\n        (\n            sale_df['_is_delivered'] & (sale_df['days_before_promise'] >= 0) |\n            (sale_df['_is_open'] & (sale_df['days_past_due'] > 0))\n        )\n    )\n\n    sale_df['_otif_pass'] = (\n        sale_df['_otif_eligible'] &\n        ~(\n            (sale_df['shipped_minus_ordered'] < 0) |\n            (sale_df['_is_delivered'] & (sale_df['days_late'] > 0)) |\n            (sale_df['_is_open'] & (sale_df['days_past_due'] > 0))\n        )\n    )\n\n    eligible_lines = sale_df[sale_df['_otif_eligible']].copy()\n\n    order_otif = eligible_lines.groupby(['Order ID', 'Warehouse']).agg(\n        all_pass=('_otif_pass', 'all'),\n        any_eligible=('_otif_eligible', 'any')\n    ).reset_index()\n\n    warehouses = sale_df['Warehouse'].dropna().unique()\n    otif_order_results = []\n\n    for wh in sorted(warehouses):\n        wh_orders = order_otif[order_otif['Warehouse'] == wh]\n        denom = len(wh_orders)\n        numer = wh_orders['all_pass'].sum()\n        rate = float(numer / denom) if denom > 0 else float('nan')\n        otif_order_results.append({\"name\": str(wh), \"value\": round(rate, 6)})\n\n    overall_denom = len(order_otif)\n    overall_numer = order_otif['all_pass'].sum()\n    overall_rate = float(overall_numer / overall_denom) if overall_denom > 0 else float('nan')\n    otif_order_results.append({\"name\": \"Overall\", \"value\": round(overall_rate, 6)})\n\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Order ID\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"otif_order\",\n        \"results\": otif_order_results\n    })\n\n    qty_seg = sale_df.groupby('Warehouse')['Qty Shipped'].sum().reset_index()\n    qty_seg = qty_seg.nlargest(10, 'Qty Shipped')\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Qty Shipped\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": [{\"name\": str(r['Warehouse']), \"value\": float(r['Qty Shipped'])} for _, r in qty_seg.iterrows()]\n    })\n\n    qty_ord_seg = sale_df.groupby('Warehouse')['Qty Ordered'].sum().reset_index()\n    qty_ord_seg = qty_ord_seg.nlargest(10, 'Qty Ordered')\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Qty Ordered\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": [{\"name\": str(r['Warehouse']), \"value\": float(r['Qty Ordered'])} for _, r in qty_ord_seg.iterrows()]\n    })\n\n    order_count_seg = sale_df.drop_duplicates('Order ID').groupby('Warehouse')['Order ID'].count().reset_index()\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Order ID\",\n        \"aggregation\": \"count\",\n        \"label\": \"order_count\",\n        \"results\": [{\"name\": str(r['Warehouse']), \"value\": float(r['Order ID'])} for _, r in order_count_seg.iterrows()]\n    })\n\n    result['assumptions'].append(\"OTIF (order): an order passes if every eligible line is on-time AND shipped in full; eligible = delivered or open with days_past_due > 0.\")\n    result['assumptions'].append(\"last_order_date used as data cutoff for days_past_due eligibility.\")\n    result['assumptions'].append(\"Only row_kind='sale' rows included; cancelled rows excluded.\")\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"segment_column\": \"Warehouse\", \"metric_column\": \"Qty Shipped\", \"aggregation\": \"sum\", \"results\": [{\"name\": \"Reno DC\", \"value\": 60150.0}, {\"name\": \"Dallas DC\", \"value\": 48273.0}, {\"name\": \"Columbus DC\", \"value\": 28325.0}]}",
+       "row_count": 6025,
+       "confidence": "high",
+       "confidence_reason": "6025 rows",
+       "assumptions": [
+        "Qty Shipped by Warehouse recomputed: Only the rows the figures count: 110 other rows left out."
+       ]
+      },
+      {
+       "id": "seg:Warehouse/Qty Ordered:sum",
+       "kind": "segment",
+       "claim": "sum Qty Ordered by Warehouse (3 groups)",
+       "code": "try:\n    sale_df = df[df['row_kind'] == 'sale'].copy()\n\n    for col in ['Delivered Date', 'Requested Date', 'Order Date']:\n        sale_df[col] = pd.to_datetime(sale_df[col], errors='coerce')\n\n    last_order_date = sale_df['Order Date'].max()\n\n    open_statuses = [\n        'in transit', 'out for delivery', 'picked up', 'exception', 'delivery exception',\n        'delayed', 'tendered', 'booked', 'dispatched', 'pending', 'shipped',\n        'partially shipped', 'backordered', 'short shipped', 'open', 'allocated',\n        'released', 'picked', 'packed'\n    ]\n\n    sale_df['_status_lower'] = sale_df['Status'].str.lower().str.strip()\n\n    sale_df['_is_open'] = sale_df['_status_lower'].isin(open_statuses)\n    sale_df['_is_delivered'] = sale_df['_status_lower'] == 'delivered'\n\n    sale_df['_otif_eligible'] = (\n        sale_df['_is_delivered'] |\n        (sale_df['_is_open'] & (sale_df['days_past_due'] > 0))\n    )\n\n    sale_df['_otif_pass'] = (\n        sale_df['_otif_eligible'] &\n        (sale_df['shipped_minus_ordered'] >= 0) &\n        (\n            sale_df['_is_delivered'] & (sale_df['days_before_promise'] >= 0) |\n            (sale_df['_is_open'] & (sale_df['days_past_due'] > 0))\n        )\n    )\n\n    sale_df['_otif_pass'] = (\n        sale_df['_otif_eligible'] &\n        ~(\n            (sale_df['shipped_minus_ordered'] < 0) |\n            (sale_df['_is_delivered'] & (sale_df['days_late'] > 0)) |\n            (sale_df['_is_open'] & (sale_df['days_past_due'] > 0))\n        )\n    )\n\n    eligible_lines = sale_df[sale_df['_otif_eligible']].copy()\n\n    order_otif = eligible_lines.groupby(['Order ID', 'Warehouse']).agg(\n        all_pass=('_otif_pass', 'all'),\n        any_eligible=('_otif_eligible', 'any')\n    ).reset_index()\n\n    warehouses = sale_df['Warehouse'].dropna().unique()\n    otif_order_results = []\n\n    for wh in sorted(warehouses):\n        wh_orders = order_otif[order_otif['Warehouse'] == wh]\n        denom = len(wh_orders)\n        numer = wh_orders['all_pass'].sum()\n        rate = float(numer / denom) if denom > 0 else float('nan')\n        otif_order_results.append({\"name\": str(wh), \"value\": round(rate, 6)})\n\n    overall_denom = len(order_otif)\n    overall_numer = order_otif['all_pass'].sum()\n    overall_rate = float(overall_numer / overall_denom) if overall_denom > 0 else float('nan')\n    otif_order_results.append({\"name\": \"Overall\", \"value\": round(overall_rate, 6)})\n\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Order ID\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"otif_order\",\n        \"results\": otif_order_results\n    })\n\n    qty_seg = sale_df.groupby('Warehouse')['Qty Shipped'].sum().reset_index()\n    qty_seg = qty_seg.nlargest(10, 'Qty Shipped')\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Qty Shipped\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": [{\"name\": str(r['Warehouse']), \"value\": float(r['Qty Shipped'])} for _, r in qty_seg.iterrows()]\n    })\n\n    qty_ord_seg = sale_df.groupby('Warehouse')['Qty Ordered'].sum().reset_index()\n    qty_ord_seg = qty_ord_seg.nlargest(10, 'Qty Ordered')\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Qty Ordered\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": [{\"name\": str(r['Warehouse']), \"value\": float(r['Qty Ordered'])} for _, r in qty_ord_seg.iterrows()]\n    })\n\n    order_count_seg = sale_df.drop_duplicates('Order ID').groupby('Warehouse')['Order ID'].count().reset_index()\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Order ID\",\n        \"aggregation\": \"count\",\n        \"label\": \"order_count\",\n        \"results\": [{\"name\": str(r['Warehouse']), \"value\": float(r['Order ID'])} for _, r in order_count_seg.iterrows()]\n    })\n\n    result['assumptions'].append(\"OTIF (order): an order passes if every eligible line is on-time AND shipped in full; eligible = delivered or open with days_past_due > 0.\")\n    result['assumptions'].append(\"last_order_date used as data cutoff for days_past_due eligibility.\")\n    result['assumptions'].append(\"Only row_kind='sale' rows included; cancelled rows excluded.\")\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"segment_column\": \"Warehouse\", \"metric_column\": \"Qty Ordered\", \"aggregation\": \"sum\", \"results\": [{\"name\": \"Reno DC\", \"value\": 62757.0}, {\"name\": \"Dallas DC\", \"value\": 51541.0}, {\"name\": \"Columbus DC\", \"value\": 29844.0}]}",
+       "row_count": 6025,
+       "confidence": "high",
+       "confidence_reason": "6025 rows",
+       "assumptions": [
+        "Qty Shipped by Warehouse recomputed: Only the rows the figures count: 110 other rows left out."
+       ]
+      },
+      {
+       "id": "seg:Warehouse/Order ID:count",
+       "kind": "segment",
+       "claim": "count Order ID by Warehouse (3 groups)",
+       "code": "try:\n    sale_df = df[df['row_kind'] == 'sale'].copy()\n\n    for col in ['Delivered Date', 'Requested Date', 'Order Date']:\n        sale_df[col] = pd.to_datetime(sale_df[col], errors='coerce')\n\n    last_order_date = sale_df['Order Date'].max()\n\n    open_statuses = [\n        'in transit', 'out for delivery', 'picked up', 'exception', 'delivery exception',\n        'delayed', 'tendered', 'booked', 'dispatched', 'pending', 'shipped',\n        'partially shipped', 'backordered', 'short shipped', 'open', 'allocated',\n        'released', 'picked', 'packed'\n    ]\n\n    sale_df['_status_lower'] = sale_df['Status'].str.lower().str.strip()\n\n    sale_df['_is_open'] = sale_df['_status_lower'].isin(open_statuses)\n    sale_df['_is_delivered'] = sale_df['_status_lower'] == 'delivered'\n\n    sale_df['_otif_eligible'] = (\n        sale_df['_is_delivered'] |\n        (sale_df['_is_open'] & (sale_df['days_past_due'] > 0))\n    )\n\n    sale_df['_otif_pass'] = (\n        sale_df['_otif_eligible'] &\n        (sale_df['shipped_minus_ordered'] >= 0) &\n        (\n            sale_df['_is_delivered'] & (sale_df['days_before_promise'] >= 0) |\n            (sale_df['_is_open'] & (sale_df['days_past_due'] > 0))\n        )\n    )\n\n    sale_df['_otif_pass'] = (\n        sale_df['_otif_eligible'] &\n        ~(\n            (sale_df['shipped_minus_ordered'] < 0) |\n            (sale_df['_is_delivered'] & (sale_df['days_late'] > 0)) |\n            (sale_df['_is_open'] & (sale_df['days_past_due'] > 0))\n        )\n    )\n\n    eligible_lines = sale_df[sale_df['_otif_eligible']].copy()\n\n    order_otif = eligible_lines.groupby(['Order ID', 'Warehouse']).agg(\n        all_pass=('_otif_pass', 'all'),\n        any_eligible=('_otif_eligible', 'any')\n    ).reset_index()\n\n    warehouses = sale_df['Warehouse'].dropna().unique()\n    otif_order_results = []\n\n    for wh in sorted(warehouses):\n        wh_orders = order_otif[order_otif['Warehouse'] == wh]\n        denom = len(wh_orders)\n        numer = wh_orders['all_pass'].sum()\n        rate = float(numer / denom) if denom > 0 else float('nan')\n        otif_order_results.append({\"name\": str(wh), \"value\": round(rate, 6)})\n\n    overall_denom = len(order_otif)\n    overall_numer = order_otif['all_pass'].sum()\n    overall_rate = float(overall_numer / overall_denom) if overall_denom > 0 else float('nan')\n    otif_order_results.append({\"name\": \"Overall\", \"value\": round(overall_rate, 6)})\n\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Order ID\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"otif_order\",\n        \"results\": otif_order_results\n    })\n\n    qty_seg = sale_df.groupby('Warehouse')['Qty Shipped'].sum().reset_index()\n    qty_seg = qty_seg.nlargest(10, 'Qty Shipped')\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Qty Shipped\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": [{\"name\": str(r['Warehouse']), \"value\": float(r['Qty Shipped'])} for _, r in qty_seg.iterrows()]\n    })\n\n    qty_ord_seg = sale_df.groupby('Warehouse')['Qty Ordered'].sum().reset_index()\n    qty_ord_seg = qty_ord_seg.nlargest(10, 'Qty Ordered')\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Qty Ordered\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": [{\"name\": str(r['Warehouse']), \"value\": float(r['Qty Ordered'])} for _, r in qty_ord_seg.iterrows()]\n    })\n\n    order_count_seg = sale_df.drop_duplicates('Order ID').groupby('Warehouse')['Order ID'].count().reset_index()\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Order ID\",\n        \"aggregation\": \"count\",\n        \"label\": \"order_count\",\n        \"results\": [{\"name\": str(r['Warehouse']), \"value\": float(r['Order ID'])} for _, r in order_count_seg.iterrows()]\n    })\n\n    result['assumptions'].append(\"OTIF (order): an order passes if every eligible line is on-time AND shipped in full; eligible = delivered or open with days_past_due > 0.\")\n    result['assumptions'].append(\"last_order_date used as data cutoff for days_past_due eligibility.\")\n    result['assumptions'].append(\"Only row_kind='sale' rows included; cancelled rows excluded.\")\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"segment_column\": \"Warehouse\", \"metric_column\": \"Order ID\", \"aggregation\": \"count\", \"results\": [{\"name\": \"Columbus DC\", \"value\": 415.0}, {\"name\": \"Dallas DC\", \"value\": 708.0}, {\"name\": \"Reno DC\", \"value\": 870.0}], \"label\": \"order_count\"}",
+       "row_count": 6025,
+       "confidence": "high",
+       "confidence_reason": "6025 rows",
+       "assumptions": [
+        "Qty Shipped by Warehouse recomputed: Only the rows the figures count: 110 other rows left out."
+       ]
+      },
+      {
+       "id": "eda:Qty Ordered",
+       "kind": "eda",
+       "claim": "Qty Ordered: median 24.00, mean 24.37, range 1.00 to 48.00",
+       "code": "try:\n    sale_df = df[df['row_kind'] == 'sale'].copy()\n\n    for col in ['Delivered Date', 'Requested Date', 'Order Date']:\n        sale_df[col] = pd.to_datetime(sale_df[col], errors='coerce')\n\n    last_order_date = sale_df['Order Date'].max()\n\n    open_statuses = [\n        'in transit', 'out for delivery', 'picked up', 'exception', 'delivery exception',\n        'delayed', 'tendered', 'booked', 'dispatched', 'pending', 'shipped',\n        'partially shipped', 'backordered', 'short shipped', 'open', 'allocated',\n        'released', 'picked', 'packed'\n    ]\n\n    sale_df['_status_lower'] = sale_df['Status'].str.lower().str.strip()\n\n    sale_df['_is_open'] = sale_df['_status_lower'].isin(open_statuses)\n    sale_df['_is_delivered'] = sale_df['_status_lower'] == 'delivered'\n\n    sale_df['_otif_eligible'] = (\n        sale_df['_is_delivered'] |\n        (sale_df['_is_open'] & (sale_df['days_past_due'] > 0))\n    )\n\n    sale_df['_otif_pass'] = (\n        sale_df['_otif_eligible'] &\n        (sale_df['shipped_minus_ordered'] >= 0) &\n        (\n            sale_df['_is_delivered'] & (sale_df['days_before_promise'] >= 0) |\n            (sale_df['_is_open'] & (sale_df['days_past_due'] > 0))\n        )\n    )\n\n    sale_df['_otif_pass'] = (\n        sale_df['_otif_eligible'] &\n        ~(\n            (sale_df['shipped_minus_ordered'] < 0) |\n            (sale_df['_is_delivered'] & (sale_df['days_late'] > 0)) |\n            (sale_df['_is_open'] & (sale_df['days_past_due'] > 0))\n        )\n    )\n\n    eligible_lines = sale_df[sale_df['_otif_eligible']].copy()\n\n    order_otif = eligible_lines.groupby(['Order ID', 'Warehouse']).agg(\n        all_pass=('_otif_pass', 'all'),\n        any_eligible=('_otif_eligible', 'any')\n    ).reset_index()\n\n    warehouses = sale_df['Warehouse'].dropna().unique()\n    otif_order_results = []\n\n    for wh in sorted(warehouses):\n        wh_orders = order_otif[order_otif['Warehouse'] == wh]\n        denom = len(wh_orders)\n        numer = wh_orders['all_pass'].sum()\n        rate = float(numer / denom) if denom > 0 else float('nan')\n        otif_order_results.append({\"name\": str(wh), \"value\": round(rate, 6)})\n\n    overall_denom = len(order_otif)\n    overall_numer = order_otif['all_pass'].sum()\n    overall_rate = float(overall_numer / overall_denom) if overall_denom > 0 else float('nan')\n    otif_order_results.append({\"name\": \"Overall\", \"value\": round(overall_rate, 6)})\n\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Order ID\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"otif_order\",\n        \"results\": otif_order_results\n    })\n\n    qty_seg = sale_df.groupby('Warehouse')['Qty Shipped'].sum().reset_index()\n    qty_seg = qty_seg.nlargest(10, 'Qty Shipped')\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Qty Shipped\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": [{\"name\": str(r['Warehouse']), \"value\": float(r['Qty Shipped'])} for _, r in qty_seg.iterrows()]\n    })\n\n    qty_ord_seg = sale_df.groupby('Warehouse')['Qty Ordered'].sum().reset_index()\n    qty_ord_seg = qty_ord_seg.nlargest(10, 'Qty Ordered')\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Qty Ordered\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": [{\"name\": str(r['Warehouse']), \"value\": float(r['Qty Ordered'])} for _, r in qty_ord_seg.iterrows()]\n    })\n\n    order_count_seg = sale_df.drop_duplicates('Order ID').groupby('Warehouse')['Order ID'].count().reset_index()\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Order ID\",\n        \"aggregation\": \"count\",\n        \"label\": \"order_count\",\n        \"results\": [{\"name\": str(r['Warehouse']), \"value\": float(r['Order ID'])} for _, r in order_count_seg.iterrows()]\n    })\n\n    result['assumptions'].append(\"OTIF (order): an order passes if every eligible line is on-time AND shipped in full; eligible = delivered or open with days_past_due > 0.\")\n    result['assumptions'].append(\"last_order_date used as data cutoff for days_past_due eligibility.\")\n    result['assumptions'].append(\"Only row_kind='sale' rows included; cancelled rows excluded.\")\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 24.3689, \"std\": 13.7572, \"min\": 1.0, \"max\": 48.0, \"median\": 24.0, \"count\": 5915}",
+       "row_count": 5915,
+       "confidence": "high",
+       "confidence_reason": "5915 rows",
+       "assumptions": []
+      },
+      {
+       "id": "eda:Qty Shipped",
+       "kind": "eda",
+       "claim": "Qty Shipped: median 23.00, mean 23.12, range 0 to 50.00",
+       "code": "try:\n    sale_df = df[df['row_kind'] == 'sale'].copy()\n\n    for col in ['Delivered Date', 'Requested Date', 'Order Date']:\n        sale_df[col] = pd.to_datetime(sale_df[col], errors='coerce')\n\n    last_order_date = sale_df['Order Date'].max()\n\n    open_statuses = [\n        'in transit', 'out for delivery', 'picked up', 'exception', 'delivery exception',\n        'delayed', 'tendered', 'booked', 'dispatched', 'pending', 'shipped',\n        'partially shipped', 'backordered', 'short shipped', 'open', 'allocated',\n        'released', 'picked', 'packed'\n    ]\n\n    sale_df['_status_lower'] = sale_df['Status'].str.lower().str.strip()\n\n    sale_df['_is_open'] = sale_df['_status_lower'].isin(open_statuses)\n    sale_df['_is_delivered'] = sale_df['_status_lower'] == 'delivered'\n\n    sale_df['_otif_eligible'] = (\n        sale_df['_is_delivered'] |\n        (sale_df['_is_open'] & (sale_df['days_past_due'] > 0))\n    )\n\n    sale_df['_otif_pass'] = (\n        sale_df['_otif_eligible'] &\n        (sale_df['shipped_minus_ordered'] >= 0) &\n        (\n            sale_df['_is_delivered'] & (sale_df['days_before_promise'] >= 0) |\n            (sale_df['_is_open'] & (sale_df['days_past_due'] > 0))\n        )\n    )\n\n    sale_df['_otif_pass'] = (\n        sale_df['_otif_eligible'] &\n        ~(\n            (sale_df['shipped_minus_ordered'] < 0) |\n            (sale_df['_is_delivered'] & (sale_df['days_late'] > 0)) |\n            (sale_df['_is_open'] & (sale_df['days_past_due'] > 0))\n        )\n    )\n\n    eligible_lines = sale_df[sale_df['_otif_eligible']].copy()\n\n    order_otif = eligible_lines.groupby(['Order ID', 'Warehouse']).agg(\n        all_pass=('_otif_pass', 'all'),\n        any_eligible=('_otif_eligible', 'any')\n    ).reset_index()\n\n    warehouses = sale_df['Warehouse'].dropna().unique()\n    otif_order_results = []\n\n    for wh in sorted(warehouses):\n        wh_orders = order_otif[order_otif['Warehouse'] == wh]\n        denom = len(wh_orders)\n        numer = wh_orders['all_pass'].sum()\n        rate = float(numer / denom) if denom > 0 else float('nan')\n        otif_order_results.append({\"name\": str(wh), \"value\": round(rate, 6)})\n\n    overall_denom = len(order_otif)\n    overall_numer = order_otif['all_pass'].sum()\n    overall_rate = float(overall_numer / overall_denom) if overall_denom > 0 else float('nan')\n    otif_order_results.append({\"name\": \"Overall\", \"value\": round(overall_rate, 6)})\n\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Order ID\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"otif_order\",\n        \"results\": otif_order_results\n    })\n\n    qty_seg = sale_df.groupby('Warehouse')['Qty Shipped'].sum().reset_index()\n    qty_seg = qty_seg.nlargest(10, 'Qty Shipped')\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Qty Shipped\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": [{\"name\": str(r['Warehouse']), \"value\": float(r['Qty Shipped'])} for _, r in qty_seg.iterrows()]\n    })\n\n    qty_ord_seg = sale_df.groupby('Warehouse')['Qty Ordered'].sum().reset_index()\n    qty_ord_seg = qty_ord_seg.nlargest(10, 'Qty Ordered')\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Qty Ordered\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": [{\"name\": str(r['Warehouse']), \"value\": float(r['Qty Ordered'])} for _, r in qty_ord_seg.iterrows()]\n    })\n\n    order_count_seg = sale_df.drop_duplicates('Order ID').groupby('Warehouse')['Order ID'].count().reset_index()\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Order ID\",\n        \"aggregation\": \"count\",\n        \"label\": \"order_count\",\n        \"results\": [{\"name\": str(r['Warehouse']), \"value\": float(r['Order ID'])} for _, r in order_count_seg.iterrows()]\n    })\n\n    result['assumptions'].append(\"OTIF (order): an order passes if every eligible line is on-time AND shipped in full; eligible = delivered or open with days_past_due > 0.\")\n    result['assumptions'].append(\"last_order_date used as data cutoff for days_past_due eligibility.\")\n    result['assumptions'].append(\"Only row_kind='sale' rows included; cancelled rows excluded.\")\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 23.1189, \"std\": 14.2338, \"min\": 0.0, \"max\": 50.0, \"median\": 23.0, \"count\": 5915}",
+       "row_count": 5915,
+       "confidence": "high",
+       "confidence_reason": "5915 rows",
+       "assumptions": [
+        "Qty Shipped by Warehouse recomputed: Only the rows the figures count: 110 other rows left out."
+       ]
+      }
+     ]
+    },
+    "domain": "logistics",
+    "latency_s": 29.98,
+    "cost_usd": 0.03555,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [
+     "breakdown_recomputed"
+    ],
+    "replies": [
+     {
+      "text": "```python\ntry:\n    sale_df = df[df['row_kind'] == 'sale'].copy()\n\n    for col in ['Delivered Date', 'Requested Date', 'Order Date']:\n        sale_df[col] = pd.to_datetime(sale_df[col], errors='coerce')\n\n    last_order_date = sale_df['Order Date'].max()\n\n    open_statuses = [\n        'in transit', 'out for delivery', 'picked up', 'exception', 'delivery exception',\n        'delayed', 'tendered', 'booked', 'dispatched', 'pending', 'shipped',\n        'partially shipped', 'backordered', 'short shipped', 'open', 'allocated',\n        'released', 'picked', 'packed'\n    ]\n\n    sale_df['_status_lower'] = sale_df['Status'].str.lower().str.strip()\n\n    sale_df['_is_open'] = sale_df['_status_lower'].isin(open_statuses)\n    sale_df['_is_delivered'] = sale_df['_status_lower'] == 'delivered'\n\n    sale_df['_otif_eligible'] = (\n        sale_df['_is_delivered'] |\n        (sale_df['_is_open'] & (sale_df['days_past_due'] > 0))\n    )\n\n    sale_df['_otif_pass'] = (\n        sale_df['_otif_eligible'] &\n        (sale_df['shipped_minus_ordered'] >= 0) &\n        (\n            sale_df['_is_delivered'] & (sale_df['days_before_promise'] >= 0) |\n            (sale_df['_is_open'] & (sale_df['days_past_due'] > 0))\n        )\n    )\n\n    sale_df['_otif_pass'] = (\n        sale_df['_otif_eligible'] &\n        ~(\n            (sale_df['shipped_minus_ordered'] < 0) |\n            (sale_df['_is_delivered'] & (sale_df['days_late'] > 0)) |\n            (sale_df['_is_open'] & (sale_df['days_past_due'] > 0))\n        )\n    )\n\n    eligible_lines = sale_df[sale_df['_otif_eligible']].copy()\n\n    order_otif = eligible_lines.groupby(['Order ID', 'Warehouse']).agg(\n        all_pass=('_otif_pass', 'all'),\n        any_eligible=('_otif_eligible', 'any')\n    ).reset_index()\n\n    warehouses = sale_df['Warehouse'].dropna().unique()\n    otif_order_results = []\n\n    for wh in sorted(warehouses):\n        wh_orders = order_otif[order_otif['Warehouse'] == wh]\n        denom = len(wh_orders)\n        numer = wh_orders['all_pass'].sum()\n        rate = float(numer / denom) if denom > 0 else float('nan')\n        otif_order_results.append({\"name\": str(wh), \"value\": round(rate, 6)})\n\n    overall_denom = len(order_otif)\n    overall_numer = order_otif['all_pass'].sum()\n    overall_rate = float(overall_numer / overall_denom) if overall_denom > 0 else float('nan')\n    otif_order_results.append({\"name\": \"Overall\", \"value\": round(overall_rate, 6)})\n\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Order ID\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"otif_order\",\n        \"results\": otif_order_results\n    })\n\n    qty_seg = sale_df.groupby('Warehouse')['Qty Shipped'].sum().reset_index()\n    qty_seg = qty_seg.nlargest(10, 'Qty Shipped')\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Qty Shipped\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": [{\"name\": str(r['Warehouse']), \"value\": float(r['Qty Shipped'])} for _, r in qty_seg.iterrows()]\n    })\n\n    qty_ord_seg = sale_df.groupby('Warehouse')['Qty Ordered'].sum().reset_index()\n    qty_ord_seg = qty_ord_seg.nlargest(10, 'Qty Ordered')\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Qty Ordered\",\n        \"aggregation\": \"sum\",\n        \"label\": None,\n        \"results\": [{\"name\": str(r['Warehouse']), \"value\": float(r['Qty Ordered'])} for _, r in qty_ord_seg.iterrows()]\n    })\n\n    order_count_seg = sale_df.drop_duplicates('Order ID').groupby('Warehouse')['Order ID'].count().reset_index()\n    result['segments'].append({\n        \"segment_column\": \"Warehouse\",\n        \"metric_column\": \"Order ID\",\n        \"aggregation\": \"count\",\n        \"label\": \"order_count\",\n        \"results\": [{\"name\": str(r['Warehouse']), \"value\": float(r['Order ID'])} for _, r in order_count_seg.iterrows()]\n    })\n\n    result['assumptions'].append(\"OTIF (order): an order passes if every eligible line is on-time AND shipped in full; eligible = delivered or open with days_past_due > 0.\")\n    result['assumptions'].append(\"last_order_date used as data cutoff for days_past_due eligibility.\")\n    result['assumptions'].append(\"Only row_kind='sale' rows included; cancelled rows excluded.\")\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ]
+ }
+}

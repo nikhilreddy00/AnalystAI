@@ -1,0 +1,33 @@
+id: logi-5
+domain: logistics
+category: ratio
+pipeline: production
+dataset:
+  name: order_lines
+  seed: 1
+question: What is OTIF by warehouse, counting whole orders?
+task:
+  analysis_types:
+  - segmentation
+  target_metrics:
+  - Delivered Date
+  - Requested Date
+  - Qty Shipped
+  - Qty Ordered
+  segments:
+  - Warehouse
+checks:
+- kind: segment_value_truth
+  planted: true
+  segment: Warehouse
+  truth_key: otif_order_by_warehouse
+  abs_tol: 0.005
+  scales:
+  - 1
+  - 100
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
+- numbers_grounded
+label_note: 'Domain 8 (T13): an order is OTIF only if every delivered line arrived by its requested
+  date and shipped in full; line-level OTIF is higher.'

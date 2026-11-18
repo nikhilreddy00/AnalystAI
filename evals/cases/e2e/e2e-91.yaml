@@ -1,0 +1,36 @@
+id: e2e-91
+domain: logistics
+dataset:
+  name: tms_shipments
+  seed: 1
+question: Give me an overview of this dataset.
+overview_done: false
+trap: true
+checks:
+- kind: number_in_answer
+  truth_key: on_time_rate
+  rel_tol: 0.002
+  scales: &pct
+  - - 1
+    - null
+  - - 100
+    - '%'
+- kind: must_not_number
+  truth_key: naive_mean_of_carrier_rates
+  rel_tol: 0.001
+  scales: *pct
+  scope: report
+- kind: must_not_match
+  pattern: \b(?:J\.?B\.? Hunt|XPO|UPS|FedEx|Old Dominion)\b[^.]{0,60}\b(?:caus(?:es|ed)|is to blame|is at fault)\b
+  scope: report
+hard_rules:
+- charts_lint_clean
+- charts_have_rationale
+- non_empty_or_error
+- insight_grounded
+- insight_dates_in_range
+- executive_no_jargon
+- claims_cite_evidence
+label_note: 'Domain 8 TMS export (T1, T3, T6, T19, U1): on-time delivery 88.9% pooled (early is on time; returned
+  to sender and open past the promise are late), never the 84.7% mean of carriers'' rates; no carrier blamed
+  from observational data.'

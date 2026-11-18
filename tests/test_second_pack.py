@@ -315,3 +315,30 @@ def test_a_duration_in_hours_reads_the_load_times_and_never_a_negative():
     assert hours.tolist()[:2] == [3.5, 1.5] and pd.isna(hours.iloc[2])
     with pytest.raises(ValueError, match="hours"):
         Pack.model_validate(__import__("yaml").safe_load(SETTLE.replace("hours, txn_date", "minutes, txn_date")))
+
+
+OVERDUE = BANK.replace("  quantity:", """  due_date: {kind: date, headers: [due_date]}
+  days_overdue: {kind: number, additive: false, headers: [days_overdue]}
+  quantity:""").replace("kpis:\n", """derived: {days_overdue: [as_of, days, due_date]}
+kpis:
+  - {name: overdue, label: Overdue, unit: count, num: [[{nunique: account_id, where: [[{role: days_overdue, gt: 0}]]}]]}
+""")
+
+
+def test_an_open_item_is_overdue_as_of_the_whole_datas_last_date():
+    """Domain 8 (L1), a second reader of the as-of operand: a bill due 10 Jan is overdue as of
+    the data's last posting (20 Jan), whichever part is asked; the as-of is no role of the data
+    and only a day span may start from it."""
+    pack = Pack.model_validate(__import__("yaml").safe_load(OVERDUE))
+    df = pd.DataFrame({"account_id": ["A", "B", "C"], "amount": [1.0, 2.0, 3.0],
+                       "txn_date": ["2026-01-05", "2026-01-20", "2026-01-06"],
+                       "due_date": ["2026-01-10", "2026-01-25", "2026-01-30"]})
+    roles = {c: c for c in ("account_id", "amount", "txn_date", "due_date")}
+    assert domain_pack.compute_kpi(df, roles, pack, "overdue") == 1.0           # A only
+    part = df[df["account_id"] == "A"]   # alone, A's last posting (5 Jan) is before its due date
+    assert domain_pack.compute_kpi(part, roles, pack, "overdue", full=df) == 1.0
+    assert domain_pack.computable(pack, "overdue", roles) and not domain_pack.computable(
+        pack, "overdue", {k: v for k, v in roles.items() if k != "txn_date"})
+    with pytest.raises(ValueError, match="as_of"):
+        Pack.model_validate(__import__("yaml").safe_load(
+            OVERDUE.replace("[as_of, days, due_date]", "[as_of, hours, due_date]")))

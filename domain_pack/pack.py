@@ -251,6 +251,31 @@ class Spell(_Strict):
 # the second role's time to the first's.
 TERM_OPS = ("*", "-", "days", "hours")
 DURATION_OPS = ("days", "hours")
+# A derived span may start from the data's as-of date instead of a role ([as_of, days, due]: how
+# overdue an open item is, judged on the whole data; GLOSSARY "As-of date")
+AS_OF = "as_of"
+
+
+def operands(pack: "Pack", expr: list[str]) -> list[str]:
+    """THE roles a derived expression reads: its two roles, the as-of read off the time axis."""
+    return [pack.date_role if expr[0] == AS_OF else expr[0], expr[2]]
+
+
+def latest_day(cols: list[pd.Series]) -> pd.Timestamp | None:
+    """THE latest calendar day in these date columns not after today (a pre-boarded hire, a
+    promise in the future: not yet)."""
+    from agents.utils import today
+    days = pd.concat([wall_times(c).dt.normalize() for c in cols]   # a zoned day as written
+                     or [pd.Series(dtype="datetime64[ns]")])
+    days = days[days <= today()]
+    return days.max() if days.notna().any() else None
+
+
+def data_as_of(pack: "Pack", whole: pd.DataFrame, roles: dict[str, str]) -> pd.Timestamp | None:
+    """THE as-of date of data with no spell: its time axis's latest day (the last ship or order
+    date). Always judged on the whole data: a filter never moves it."""
+    col = roles.get(pack.date_role)
+    return latest_day([whole[col]]) if col in whole.columns else None
 
 
 class Term(_Strict):
@@ -578,8 +603,10 @@ class Pack(_Strict):
         errors += [f"unknown role {r}" for r in refs if r not in self.roles]
         for r, expr in self.derived.items():
             if r not in self.roles or len(expr) != 3 or expr[1] not in TERM_OPS \
-                    or expr[0] not in self.roles or expr[2] not in self.roles:
-                errors.append(f"derived {r}: a role and [role, {' | '.join(TERM_OPS)}, role]")
+                    or not (expr[0] in self.roles or (expr[0] == AS_OF and expr[1] == "days")) \
+                    or expr[2] not in self.roles:
+                errors.append(f"derived {r}: a role and [role or {AS_OF} (days only), "
+                              f"{' | '.join(TERM_OPS)}, role]")
         for r, f in self.columns.items():
             errors += [f"columns {r}: unknown role {x}" for x in
                        [r, *f.times, *f.over, *([f.net_of] if f.net_of else []), *f.optional]
@@ -712,12 +739,14 @@ def _column(df: pd.DataFrame, roles: dict[str, str], expr: str | list[str],
     duration (blank); `signed` keeps it negative, for the check that says it (ranges)."""
     if isinstance(expr, str):
         return pd.to_numeric(df[roles[expr]], errors="coerce")
-    if expr[1] == "days":   # whole days from b to a (a stay: discharge − admit; same day = 0)
-        d = (_day(df[roles[expr[0]]]) - _day(df[roles[expr[2]]])).dt.days
+    if expr[1] == "days":   # whole calendar days from b to a, each day as written (same day = 0)
+        d = (wall_times(df[roles[expr[0]]]).dt.normalize()
+             - wall_times(df[roles[expr[2]]]).dt.normalize()).dt.days
         return d.astype(float) if signed else d.where(d >= 0).astype(float)
-    if expr[1] == "hours":   # exact hours from b to a (a repair: finish − start), never negative
-        from connectors.base import as_times
-        h = (as_times(df[roles[expr[0]]]) - as_times(df[roles[expr[2]]])).dt.total_seconds() / 3600
+    if expr[1] == "hours":
+        a, b = _paired_times(df[roles[expr[0]]], df[roles[expr[2]]])
+        # exact hours from b to a (a repair: finish − start), never negative
+        h = (a - b).dt.total_seconds() / 3600
         return h.astype(float) if signed else h.where(h >= 0).astype(float)
     a, op, b = (pd.to_numeric(df[roles[expr[0]]], errors="coerce"), expr[1],
                 pd.to_numeric(df[roles[expr[2]]], errors="coerce"))
@@ -727,6 +756,23 @@ def _column(df: pd.DataFrame, roles: dict[str, str], expr: str | list[str],
 def _day(s: pd.Series) -> pd.Series:
     from connectors.base import as_times
     return as_times(s).dt.normalize()
+
+
+def wall_times(s: pd.Series) -> pd.Series:
+    """THE dates as written: a zoned value at its own wall time ('…-05:00' read in its zone),
+    so it compares with naive dates and a calendar day means the writer's day."""
+    from connectors.base import as_times
+    t = as_times(s)
+    return t.dt.tz_localize(None) if t.dt.tz is not None else t
+
+
+def _paired_times(a: pd.Series, b: pd.Series) -> tuple[pd.Series, pd.Series]:
+    """Two date columns of one span, comparable: both zoned stay exact (a UTC repair across a
+    clock change); one zoned beside a naive one is read at its own wall time, as written (a
+    carrier's '…Z' delivery beside a TMS's naive promise date: audit, Domain 8)."""
+    from connectors.base import as_times
+    a, b = as_times(a), as_times(b)
+    return (wall_times(a), wall_times(b)) if (a.dt.tz is None) != (b.dt.tz is None) else (a, b)
 
 
 def snapshot_role(pack: Pack) -> str | None:

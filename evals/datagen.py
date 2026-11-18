@@ -3123,6 +3123,332 @@ def _saas_invoices_truth(df: pd.DataFrame) -> dict:
     return t
 
 
+# ── Phase 5.7, domain 8: logistics ───────────────────────────────────────────────────────────
+# Definitions: docs/research/2026-11-18-logistics.md. Truths with plain pandas, never through
+# domain_pack. Times are naive local (an X12 214's default). "As of" = the latest ship, delivery
+# or arrival date in the file.
+
+_CARRIERS = {"UPS": "Parcel", "FedEx Freight": "LTL", "Old Dominion": "LTL", "J.B. Hunt": "FTL",
+             "XPO": "FTL"}
+_STD_DAYS = {"Parcel": 3, "LTL": 4, "FTL": 3}
+# T1: the big carriers are punctual, the small FTL ones late, so a mean of carriers' rates (each
+# weighed alike) sits well below the pooled rate
+_LATE_P = {"UPS": 0.04, "FedEx Freight": 0.10, "Old Dominion": 0.06, "J.B. Hunt": 0.30, "XPO": 0.22}
+_PEOPLE = ["Maria Gomez", "Tom Reyes", "Ann Lee", "Raj Patel", "Kim Moss", "Lena Park", "Omar Diaz",
+           "Sara Cole", "Ben Ito", "Eva Novak"]
+_COMPANIES = ["Acme Corp", "Globex Inc", "Initech LLC", "Umbrella Co", "Stark Supply", "Wayne Retail"]
+
+
+def make_tms_shipments(seed: int) -> tuple[pd.DataFrame, dict]:
+    """A TMS / carrier export, one row per shipment, shipped 2026-01-05 .. 2026-10-31.
+
+    Traps: 1 a mean of per-carrier on-time rates (pooled is the answer); 3 early deliveries are on
+    time; 4 six delivered before they shipped (no span, flagged); 5 cancelled (left out); 6
+    returned to sender (not on time); 7 LB and KG rows, five with no unit (left out of cost per
+    lb); 8 CAD rows (left out of cost); 10 promise dates blank (out of on-time, counted); 11
+    consignee names, phones, tracking numbers (PII); 20 the fuel surcharge climbs (a cost rise is
+    diesel); S-d delivered at 23:50 on its promise day (on time); four Delivered rows with no
+    delivery date (missing, never layout). Open shipments past their promise: truth for L1."""
+    rng = np.random.default_rng(seed)
+    days = pd.date_range("2026-01-05", "2026-10-31", freq="D")
+    carriers = list(_CARRIERS)
+    rows = []
+    for i in range(3000):
+        carrier = carriers[int(rng.choice(5, p=[0.40, 0.25, 0.20, 0.08, 0.07]))]
+        mode = _CARRIERS[carrier]
+        ship = days[int(rng.integers(len(days)))]
+        promised = ship + pd.Timedelta(days=_STD_DAYS[mode])
+        late = rng.random() < _LATE_P[carrier]
+        delta = int(rng.integers(1, 5)) if late else -int(rng.choice([0, 0, 0, 1, 1, 2]))
+        delivered = promised + pd.Timedelta(days=delta, hours=int(rng.integers(8, 19)),
+                                            minutes=int(rng.integers(60)))
+        status = "Delivered"
+        if ship > pd.Timestamp("2026-10-24"):
+            status = str(rng.choice(["In Transit", "Delivered"], p=[0.6, 0.4]))
+        r = rng.random()
+        status = "Cancelled" if r < 0.02 else "Returned to Sender" if r < 0.03 else \
+            "Exception" if r < 0.04 else status
+        lb = float(rng.gamma(2.0, 60.0 if mode == "Parcel" else 900.0))
+        uom = str(rng.choice(["LB", "KG"], p=[0.7, 0.3]))
+        month = ship.month
+        linehaul = round(lb * (0.9 if mode == "Parcel" else 0.12) + 15 + rng.normal(0, 5), 2)
+        fuel = round(linehaul * (0.17 + 0.012 * (month - 1)), 2)                          # 20
+        acc = round(float(rng.choice([0, 0, 0, 35, 75])), 2)
+        person = mode == "Parcel"
+        names = _PEOPLE if person else _COMPANIES
+        rows.append({
+            "Shipment ID": f"SH{200000 + i}", "Tracking Number": f"1Z{rng.integers(10**15):016d}",
+            "Carrier": carrier, "Mode": mode,
+            "Origin City": str(rng.choice(["Reno", "Dallas", "Columbus"])),
+            "Dest City": str(rng.choice(["Denver", "Atlanta", "Chicago", "Phoenix", "Seattle"])),
+            "Ship Date": f"{ship:%Y-%m-%d}", "Promised Date": f"{promised:%Y-%m-%d}",
+            "Delivered At": f"{delivered:%Y-%m-%d %H:%M}" if status == "Delivered" else None,
+            "Status": status,
+            "Weight": round(lb / 2.20462, 1) if uom == "KG" else round(lb, 1), "Weight UOM": uom,
+            # a TMS writes 0.00 on a shipment cancelled before pickup
+            "Linehaul": 0.0 if status == "Cancelled" else linehaul,
+            "Fuel Surcharge": 0.0 if status == "Cancelled" else fuel,
+            "Accessorials": 0.0 if status == "Cancelled" else acc,
+            "Total Charge": 0.0 if status == "Cancelled" else round(linehaul + fuel + acc, 2),
+            "Currency": "CAD" if rng.random() < 0.03 else "USD",                               # 8
+            "Consignee Name": names[int(rng.integers(len(names)))],
+            "Consignee Phone": f"+1 312 555 {int(rng.integers(1000, 9999))}"})
+    df = pd.DataFrame(rows)
+    deliv = df.index[(df["Status"] == "Delivered") & (df["Currency"] == "USD")]
+    df.loc[deliv[:6], "Delivered At"] = (pd.to_datetime(df.loc[deliv[:6], "Ship Date"])     # 4
+                                         - pd.Timedelta(days=2)).dt.strftime("%Y-%m-%d %H:%M")
+    df.loc[deliv[6:21], "Promised Date"] = None                                               # 10
+    df.loc[deliv[21:26], "Weight UOM"] = None                                                 # 7
+    df.loc[deliv[26], "Delivered At"] = f"{df.loc[deliv[26], 'Promised Date']} 23:50"         # S-d
+    df.loc[deliv[27:31], "Delivered At"] = None                          # Delivered, no date
+    return df, _tms_truth(df)
+
+
+def _tms_truth(df: pd.DataFrame) -> dict:
+    ship = pd.to_datetime(df["Ship Date"])
+    deliv = pd.to_datetime(df["Delivered At"])
+    promised = pd.to_datetime(df["Promised Date"])
+    # the product's one population: rows in another currency are left out of every figure, counts
+    # and rates too, so tiles side by side divide cleanly (said by the mixed_currency caveat)
+    live = (df["Status"] != "Cancelled") & (df["Currency"] == "USD")
+    span = (deliv.dt.normalize() - ship).dt.days
+    delivered = live & deliv.notna() & (span >= 0)
+    has_promise = promised.notna()
+    on_time = delivered & has_promise & (deliv.dt.normalize() <= promised)
+    late = delivered & has_promise & (deliv.dt.normalize() > promised)
+    returned = live & has_promise & (df["Status"] == "Returned to Sender")
+    as_of = ship.max()   # the data's as-of: the last date of its time axis (the ship date)
+    open_ = live & df["Status"].isin(["In Transit", "Exception"])
+    past_due = open_ & has_promise & (promised < as_of)
+    seen = on_time | late | returned          # before U1: open shipments left out
+    base = seen | past_due                    # U1: open past its promise is late
+    usd = live & (df["Currency"] == "USD")
+    lb = df["Weight"].where(df["Weight UOM"].notna()) * df["Weight UOM"].map({"LB": 1.0, "KG": 2.20462})
+    weighed = usd & (lb > 0)
+    d = df.assign(_ot=on_time, _base=base, _pd=past_due)
+    by_carrier = d[base].groupby("Carrier")["_ot"].mean()
+    t = {
+        "row_count": len(df), "pii_columns": ["Tracking Number", "Consignee Name", "Consignee Phone"],
+        "as_of": f"{as_of:%Y-%m-%d}",
+        "on_time_rate": float(on_time.sum() / base.sum()),
+        "on_time_by_carrier": by_carrier.to_dict(),
+        "shipments_by_carrier": d[base].groupby("Carrier").size().to_dict(),
+        "on_time_by_carrier_ltl": d[base & (df["Mode"] == "LTL")].groupby("Carrier")["_ot"].mean().to_dict(),
+        "naive_open_left_out": float(on_time.sum() / seen.sum()),
+        "past_due_open": int(past_due.sum()), "open_shipments": int(open_.sum()),
+        "returned": int(returned.sum()), "cancelled": int((df["Status"] == "Cancelled").sum()),
+        "other_currency_rows": int((df["Currency"] != "USD").sum()),
+        "kg_rows": int((df["Weight UOM"] == "KG").sum()),
+        "early_deliveries": int((delivered & has_promise & (deliv.dt.normalize() < promised)).sum()),
+        "no_promise": int((delivered & ~has_promise).sum()),
+        "delivered_no_date": int((live & (df["Status"] == "Delivered") & deliv.isna()).sum()),
+        "negative_spans": int((live & (span < 0)).sum()),
+        "avg_transit_days": float(span[delivered].mean()),
+        "transit_by_mode": d.assign(_s=span)[delivered].groupby("Mode")["_s"].mean().to_dict(),
+        "avg_days_late": float((deliv.dt.normalize() - promised).dt.days[late].mean()),
+        "cost_per_shipment": float(df.loc[usd, "Total Charge"].sum() / df.loc[usd, "Shipment ID"].nunique()),
+        "cost_per_lb": float(df.loc[weighed, "Total Charge"].sum() / lb[weighed].sum()),
+        "cost_per_lb_by_mode": (df[weighed].groupby("Mode")["Total Charge"].sum()
+                                / lb[weighed].groupby(df.loc[weighed, "Mode"]).sum()).to_dict(),
+        "fuel_share": float(df.loc[usd, "Fuel Surcharge"].sum() / df.loc[usd, "Total Charge"].sum()),
+        "fuel_share_jan": float(df.loc[usd & (ship.dt.month == 1), "Fuel Surcharge"].sum()
+                                / df.loc[usd & (ship.dt.month == 1), "Total Charge"].sum()),
+        "fuel_share_oct": float(df.loc[usd & (ship.dt.month == 10), "Fuel Surcharge"].sum()
+                                / df.loc[usd & (ship.dt.month == 10), "Total Charge"].sum()),
+        "shipments": int(df.loc[live, "Shipment ID"].nunique()),
+        # naive twins
+        "naive_mean_of_carrier_rates": float(by_carrier.mean()),
+        "naive_delivered_only": float(on_time.sum() / (on_time | late).sum()),
+        "naive_cost_per_lb_all_rows": float(df.loc[live, "Total Charge"].sum()
+                                            / df.loc[live, "Weight"].sum()),
+    }
+    assert t["on_time_rate"] - t["naive_mean_of_carrier_rates"] > 0.02                        # 1
+    assert t["on_time_rate"] < t["naive_open_left_out"] < t["naive_delivered_only"]          # 2, 6
+    assert t["early_deliveries"] > 100 and t["negative_spans"] == 6                          # 3, 4
+    assert t["fuel_share_oct"] > t["fuel_share_jan"] + 0.05                                   # 20
+    assert abs(t["naive_cost_per_lb_all_rows"] - t["cost_per_lb"]) > 0.05 * t["cost_per_lb"]  # 7, 8
+    assert t["delivered_no_date"] == 4 and t["no_promise"] == 15 and t["past_due_open"] > 0
+    return t
+
+
+_WAREHOUSES = ["Reno DC", "Dallas DC", "Columbus DC"]
+
+
+def make_order_lines(seed: int) -> tuple[pd.DataFrame, dict]:
+    """A WMS / OMS fulfilment export, one row per order line, ordered 2026-03-02 .. 2026-10-31.
+
+    Traps: 13 OTIF by order is below OTIF by line (an order fails on any line); 14 unit, line and
+    order fill differ; 15 over-shipped lines (flagged, counted); 16 short lines (backorders); open
+    lines not yet released are not judged; cancelled lines left out; S-c an order with a line
+    past due; an order on time with a line still pending; line numbers restart per order (10, 20,
+    30) beside a line id unique across orders."""
+    rng = np.random.default_rng(seed)
+    days = pd.date_range("2026-03-02", "2026-10-31", freq="D")
+    rows = []
+    for o in range(2000):
+        ordered = days[int(rng.integers(len(days)))]
+        wh = _WAREHOUSES[int(rng.choice(3, p=[0.45, 0.35, 0.20]))]
+        carrier = str(rng.choice(["UPS", "FedEx Freight", "Old Dominion"]))
+        requested = ordered + pd.Timedelta(days=int(rng.integers(3, 8)))
+        late_p = {"Reno DC": 0.05, "Dallas DC": 0.10, "Columbus DC": 0.16}[wh]
+        recent = ordered > pd.Timestamp("2026-10-25")
+        for ln in range(int(rng.integers(1, 6))):
+            qty = int(rng.integers(1, 49))
+            r = rng.random()
+            status = "Cancelled" if r < 0.02 else "Open" if recent and r < 0.6 else \
+                "Shipped" if recent else "Delivered"
+            shipped = qty
+            if status != "Open" and rng.random() < 0.07:
+                shipped = int(rng.integers(0, qty))                                         # 16
+                status = "Backordered" if shipped == 0 and status != "Cancelled" else status
+            if status == "Delivered" and rng.random() < 0.012:
+                shipped = qty + int(rng.integers(1, 4))                                      # 15
+            late = rng.random() < late_p
+            deliv = requested + pd.Timedelta(days=int(rng.integers(1, 4)) if late
+                                             else -int(rng.integers(0, 3)))
+            rows.append({
+                "Order ID": f"SO{50000 + o}", "Line No": (ln + 1) * 10,
+                "Order Line ID": f"SO{50000 + o}-{(ln + 1) * 10}", "SKU": f"SKU-{int(rng.integers(1, 120)):04d}",
+                "Order Date": f"{ordered:%Y-%m-%d}", "Requested Date": f"{requested:%Y-%m-%d}",
+                "Delivered Date": f"{deliv:%Y-%m-%d}" if status == "Delivered" else None,
+                "Qty Ordered": qty, "Qty Shipped": 0 if status in ("Open", "Cancelled") else shipped,
+                "Status": status, "Warehouse": wh, "Carrier": carrier,
+                "Ship To": _COMPANIES[int(rng.integers(len(_COMPANIES)))]})
+    df = pd.DataFrame(rows)
+    multi = df.groupby("Order ID").filter(lambda g: len(g) >= 2 and (g["Status"] == "Delivered").all())
+    o1, o2 = multi["Order ID"].unique()[:2]
+    i1 = df.index[df["Order ID"] == o1]
+    df.loc[i1[1], ["Status", "Delivered Date", "Qty Shipped"]] = ["Backordered", None, 0]   # S-c
+    df.loc[i1[0], ["Delivered Date", "Qty Shipped"]] = [df.loc[i1[0], "Requested Date"],
+                                                        df.loc[i1[0], "Qty Ordered"]]
+    i2 = df.index[df["Order ID"] == o2]
+    df.loc[i2, "Qty Shipped"] = df.loc[i2, "Qty Ordered"]
+    df.loc[i2, "Delivered Date"] = df.loc[i2, "Requested Date"]
+    df.loc[i2[1], ["Status", "Delivered Date", "Qty Shipped", "Requested Date"]] = [        # pending:
+        "Open", None, 0, "2026-11-20"]                          # scheduled after the data ends
+    return df, _order_lines_truth(df, o1, o2)
+
+
+def _order_lines_truth(df: pd.DataFrame, past_due_order: str, pending_order: str) -> dict:
+    deliv = pd.to_datetime(df["Delivered Date"])
+    req = pd.to_datetime(df["Requested Date"])
+    live = df["Status"] != "Cancelled"
+    delivered = live & deliv.notna()
+    full = df["Qty Shipped"] >= df["Qty Ordered"]
+    ok = delivered & (deliv <= req) & full
+    # U1: a line still open after its requested date, as of the last order date, has failed
+    past_due = live & deliv.isna() & (req < pd.to_datetime(df["Order Date"]).max())
+    judged = delivered | past_due
+    released = live & ~df["Status"].isin(["Open"])
+    d = df.assign(_ok=ok, _del=delivered)
+    per_order = d[judged].groupby("Order ID")["_ok"].all()
+    d_rel = df[released]
+    t = {
+        "row_count": len(df), "pii_columns": [], "orders": int(df.loc[live, "Order ID"].nunique()),
+        "otif_line": float(ok.sum() / judged.sum()),
+        "otif_order": float(per_order.mean()),
+        "past_due_lines": int(past_due.sum()),
+        "naive_otif_order_delivered_only": float(d[delivered].groupby("Order ID")["_ok"].all().mean()),
+        "otif_order_by_warehouse": d[judged].groupby(["Warehouse", "Order ID"])["_ok"].all()
+                                    .groupby("Warehouse").mean().to_dict(),
+        "otif_line_by_warehouse": d[judged].groupby("Warehouse")["_ok"].mean().to_dict(),
+        "unit_fill": float(d_rel["Qty Shipped"].sum() / d_rel["Qty Ordered"].sum()),
+        "unit_fill_by_warehouse": (d_rel.groupby("Warehouse")["Qty Shipped"].sum()
+                                   / d_rel.groupby("Warehouse")["Qty Ordered"].sum()).to_dict(),
+        "line_fill": float((d_rel["Qty Shipped"] >= d_rel["Qty Ordered"]).mean()),
+        "order_fill": float((d_rel["Qty Shipped"] >= d_rel["Qty Ordered"]).groupby(d_rel["Order ID"]).all().mean()),
+        "over_shipped_lines": int((live & (df["Qty Shipped"] > df["Qty Ordered"])).sum()),
+        "short_lines": int((released & (df["Qty Shipped"] < df["Qty Ordered"])).sum()),
+        "cancelled_lines": int((~live).sum()),
+        "past_due_order": past_due_order, "pending_order": pending_order,
+        "pending_order_ok": bool(per_order[pending_order]),
+        # naive twins
+        "naive_unit_fill_all_lines": float(df.loc[live, "Qty Shipped"].sum() / df.loc[live, "Qty Ordered"].sum()),
+        "naive_line_count_by_line_no": int(df["Line No"].nunique()),
+    }
+    assert t["otif_order"] < t["otif_line"] - 0.02                                             # 13
+    assert t["order_fill"] < t["line_fill"] and abs(t["unit_fill"] - t["line_fill"]) > 0.01  # 14
+    assert t["over_shipped_lines"] > 0 and t["short_lines"] > 0                               # 15, 16
+    assert t["naive_unit_fill_all_lines"] < t["unit_fill"] and t["pending_order_ok"]
+    assert t["naive_line_count_by_line_no"] <= 5                                    # line no ≠ id
+    return t
+
+
+_FACILITIES = ["Dallas Cross-Dock", "Reno DC", "Columbus DC"]
+
+
+def make_dock_appointments(seed: int) -> tuple[pd.DataFrame, dict]:
+    """A dock / yard scheduling export, one row per appointment, 2026-06-01 .. 2026-10-31.
+
+    Traps: 17 early arrivals are on time, late by a minute is late (no grace); an overnight dwell
+    (exact hours across midnight); three departures before arrival (no dwell, flagged); no-shows
+    counted apart (never late, no dwell); cancelled left out; 18 driver names and plates (PII),
+    trailer numbers not. Dwell is a level: averaged per visit."""
+    rng = np.random.default_rng(seed)
+    days = pd.date_range("2026-06-01", "2026-10-31", freq="D")
+    rows = []
+    for i in range(1500):
+        fac = _FACILITIES[int(rng.choice(3, p=[0.4, 0.35, 0.25]))]
+        appt = days[int(rng.integers(len(days)))] + pd.Timedelta(minutes=int(rng.integers(20, 61)) * 30)
+        r = rng.random()
+        status = "Cancelled" if r < 0.03 else "No-show" if r < 0.09 else "Completed"
+        arrive = appt + pd.Timedelta(minutes=int(round(rng.normal(-12, 22))))
+        mean_dwell = {"Dallas Cross-Dock": 1.4, "Reno DC": 1.9, "Columbus DC": 2.6}[fac]
+        depart = arrive + pd.Timedelta(minutes=int(round(rng.gamma(4.0, mean_dwell / 4.0) * 60)))
+        done = status == "Completed"
+        rows.append({
+            "Appointment ID": f"AP{70000 + i}", "Facility": fac, "Door": f"D{int(rng.integers(1, 13)):02d}",
+            "Carrier": str(rng.choice(list(_CARRIERS))),
+            "Direction": str(rng.choice(["Inbound", "Outbound"])),
+            "Appointment Time": f"{appt:%Y-%m-%d %H:%M}",
+            "Arrived At": f"{arrive:%Y-%m-%d %H:%M}" if done else None,
+            "Departed At": f"{depart:%Y-%m-%d %H:%M}" if done else None,
+            "Status": status, "Driver Name": _PEOPLE[int(rng.integers(len(_PEOPLE)))],
+            "Trailer Number": f"53-{int(rng.integers(1000, 9999))}",
+            "License Plate": f"{int(rng.integers(1, 9))}{''.join(rng.choice(list('ABCDEFGHJK'), 3))}{int(rng.integers(100, 999))}"})
+    df = pd.DataFrame(rows)
+    done = df.index[df["Status"] == "Completed"]
+    for k, i in enumerate(done[:3]):                                     # departed before arrival
+        a = pd.Timestamp(df.loc[i, "Arrived At"])
+        df.loc[i, "Departed At"] = f"{a - pd.Timedelta(minutes=40 + k):%Y-%m-%d %H:%M}"
+    df.loc[done[3], ["Appointment Time", "Arrived At", "Departed At"]] = [                   # overnight
+        "2026-07-14 20:30", "2026-07-14 20:41", "2026-07-15 07:11"]
+    df.loc[done[4], ["Appointment Time", "Arrived At"]] = ["2026-08-03 09:00", "2026-08-03 09:01"]
+    return df, _dock_truth(df)
+
+
+def _dock_truth(df: pd.DataFrame) -> dict:
+    appt = pd.to_datetime(df["Appointment Time"])
+    arr = pd.to_datetime(df["Arrived At"])
+    dep = pd.to_datetime(df["Departed At"])
+    live = df["Status"] != "Cancelled"
+    dwell = (dep - arr).dt.total_seconds() / 3600
+    valid = live & dwell.notna() & (dwell >= 0)
+    arrived = live & arr.notna() & appt.notna()
+    on_time = arrived & (arr <= appt)
+    d = df.assign(_dw=dwell, _ot=on_time)
+    t = {
+        "row_count": len(df), "pii_columns": ["Driver Name", "License Plate"],
+        "avg_dwell_hours": float(dwell[valid].mean()),
+        "dwell_by_facility": d[valid].groupby("Facility")["_dw"].mean().to_dict(),
+        "on_time_arrival": float(on_time.sum() / arrived.sum()),
+        "on_time_arrival_by_carrier": d[arrived].groupby("Carrier")["_ot"].mean().to_dict(),
+        "visits_over_2h": float((valid & (dwell > 2)).sum() / valid.sum()),
+        "no_shows": int((df["Status"] == "No-show").sum()), "visits": int(live.sum()),
+        "negative_dwells": int((live & (dwell < 0)).sum()), "cancelled": int((~live).sum()),
+        "overnight_dwell_hours": float(dwell[df["Departed At"] == "2026-07-15 07:11"].iloc[0]),
+        # naive twins
+        "naive_with_15min_grace": float((arrived & (arr <= appt + pd.Timedelta(minutes=15))).sum()
+                                        / arrived.sum()),
+        "naive_no_shows_as_late": float(on_time.sum() / (arrived | (df["Status"] == "No-show")).sum()),
+        "naive_dwell_with_negatives": float(dwell[live & dwell.notna()].mean()),
+    }
+    assert t["naive_with_15min_grace"] > t["on_time_arrival"] + 0.05                          # 17
+    assert t["naive_no_shows_as_late"] < t["on_time_arrival"] - 0.02
+    assert t["negative_dwells"] == 3 and t["overnight_dwell_hours"] == 10.5
+    return t
+
+
 DATASETS = {"sales": make_sales, "simpson": make_simpson, "mixed_dates": make_mixed_dates,
             "subscriptions": make_subscriptions, "bank_balances": make_bank_balances,
             "encounters": make_encounters, "claims": make_claims, "employees": make_employees,
@@ -3139,7 +3465,8 @@ DATASETS = {"sales": make_sales, "simpson": make_simpson, "mixed_dates": make_mi
             "hr_snapshots": make_hr_snapshots, "saas_subscriptions": make_saas_subscriptions,
             "saas_mrr_snapshots": make_saas_mrr_snapshots, "saas_invoices": make_saas_invoices,
             "shift_production": make_shift_production, "work_orders": make_work_orders,
-            "machine_readings": make_machine_readings}
+            "machine_readings": make_machine_readings, "tms_shipments": make_tms_shipments,
+            "order_lines": make_order_lines, "dock_appointments": make_dock_appointments}
 
 
 def make(name: str, seed: int) -> tuple[pd.DataFrame, dict]:

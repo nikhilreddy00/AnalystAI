@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 import pandas as pd
 
-from .pack import Pack, _day, _meets, _snapshot_column, spell_terms, words
+from .pack import Pack, _day, _meets, _snapshot_column, latest_day, spell_terms, words
 
 
 # A spell series reaches back at most this many years and has at most this many periods (one
@@ -36,10 +36,7 @@ def _spell_as_of(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> pd.Time
             if col == snap and _month_labelled(pack, df, roles):
                 return min(t + pd.offsets.MonthEnd(0), today())
             return t
-    dates = pd.concat([_day(df[roles[r]]) for r in (s.start, s.end, s.paid_from) if r in roles]
-                      or [pd.Series(dtype="datetime64[ns]")])
-    dates = dates[dates <= today()]
-    return dates.max() if dates.notna().any() else None
+    return latest_day([df[roles[r]] for r in (s.start, s.end, s.paid_from) if r in roles])
 
 
 def spell_from(pack: Pack, df: pd.DataFrame, roles: dict[str, str]) -> pd.Timestamp | None:

@@ -19,5 +19,7 @@ forbid:
   strategy: non_product
 - operation: flag
   strategy: out_of_range
-expect_grain: null
+# Domain 8: read as logistics now; a pack with no order key reports 'aggregate' (IoT too); only
+# 'line' changes the brief
+expect_grain: aggregate
 label_note: 'Another domain (logistics): no retail rule may fire.'

@@ -263,7 +263,8 @@ def test_bank_balances_month_end_and_segment_averages_are_the_truth():
 @pytest.mark.parametrize("name", ["loan_tape", "card_ledger", "bank_balances", "retail_lines",
                                   "loss_run", "policies", "hr_roster", "hr_snapshots",
                                   "saas_subscriptions", "saas_mrr_snapshots", "saas_invoices",
-                                  "shift_production", "work_orders", "machine_readings"])
+                                  "shift_production", "work_orders", "machine_readings",
+                                  "tms_shipments", "order_lines", "dock_appointments"])
 def test_row_order_changes_no_number(name):
     assert tiles(name) == tiles(name, transform="shuffle")
 
@@ -339,8 +340,17 @@ def _one_snapshot(df: pd.DataFrame) -> pd.DataFrame:
     return df[df[col] == df[col].max()].reset_index(drop=True)
 
 
+def _zoned(df: pd.DataFrame) -> pd.DataFrame:
+    """Every '… Date' column written as UTC ISO strings ('2026-01-05T00:00:00Z'), the way an
+    API export writes them (audit, Domain 8: HR dates in this form crashed cleaning)."""
+    cols = [c for c in df.columns if str(c).lower().endswith("date")]
+    return df.assign(**{c: pd.to_datetime(df[c], errors="coerce").dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+                        for c in cols})
+
+
 TRANSFORMS = {"shuffle": _shuffle, "overlap": _overlap, "synonyms": _synonyms, "canonical": _canonical,
-              "presigned": _presigned, "next_bill": _next_bill, "one_snapshot": _one_snapshot}
+              "presigned": _presigned, "next_bill": _next_bill, "one_snapshot": _one_snapshot,
+              "zoned": _zoned}
 
 
 def builtin_on(built, targets: list[str], segments: list[str]) -> dict:
@@ -466,8 +476,9 @@ def _mocked_source(source: str, df: pd.DataFrame, csv: str, monkeypatch):
 @pytest.mark.parametrize("name", ["inpatient", "health_claims", "loan_tape", "retail_lines",
                                   "policies", "loss_run", "hr_roster", "hr_snapshots",
                                   "saas_subscriptions", "saas_mrr_snapshots", "saas_invoices",
-                                  "shift_production", "work_orders", "machine_readings"])
-@pytest.mark.parametrize("source", ["xlsx", "json", "parquet", "sqlite", "postgres", "api", "sheets"])
+                                  "shift_production", "work_orders", "machine_readings",
+                                  "tms_shipments", "order_lines", "dock_appointments"])
+@pytest.mark.parametrize("source",["xlsx", "json", "parquet", "sqlite", "postgres", "api", "sheets"])
 async def test_every_source_reads_the_same_as_the_csv(name, source, tmp_path, monkeypatch):
     import connectors.csv_connector as csvc
     import domain_pack

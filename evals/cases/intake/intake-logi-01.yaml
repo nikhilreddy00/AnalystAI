@@ -1,0 +1,17 @@
+id: intake-logi-01
+category: clear
+pipeline: production
+source:
+  dataset: tms_shipments
+  seed: 1
+overview_done: true
+question: "What's our on-time rate by carrier?"
+expect:
+  ask: false
+  intent_any:
+  - segment_compare
+  - top_n
+  - time_series
+  params:
+    kpi: on_time_delivery
+rationale: "Domain 8 (RT-7): on a shipment export 'on-time rate' is on-time delivery against the promised date."

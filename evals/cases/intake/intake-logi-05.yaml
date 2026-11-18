@@ -1,0 +1,11 @@
+id: intake-logi-05
+category: clear
+pipeline: production
+source:
+  dataset: tms_shipments
+  seed: 1
+overview_done: true
+question: "What's average transit time in business days by mode?"
+expect:
+  ask: true
+rationale: "Domain 8: business days need a holiday calendar the data doesn't give: unsupported, ask."

@@ -3921,7 +3921,7 @@
    }
   },
   "iot-4": {
-   "context": "149f9e6734948f66",
+   "context": "5642c8a22e5d1c46",
    "roles": {
     "Changeover (min)": {
      "date": false,
@@ -4022,7 +4022,7 @@
    }
   },
   "iot-5": {
-   "context": "8382bfe92bbf3c61",
+   "context": "fa6e0f17115e6fd9",
    "roles": {
     "ACTFINISH": {
      "date": true,
@@ -4081,7 +4081,7 @@
    }
   },
   "iot-6": {
-   "context": "4233ccea4dfbff99",
+   "context": "8ab8c81b2aacf17f",
    "roles": {
     "Changeover (min)": {
      "date": false,
@@ -4241,7 +4241,7 @@
    }
   },
   "iot-8": {
-   "context": "82af5c5364afa6af",
+   "context": "6fbb12a37ed7a07e",
    "roles": {
     "Changeover (min)": {
      "date": false,
@@ -4342,7 +4342,7 @@
    }
   },
   "logi-1": {
-   "context": "80bc4b76c496d63e",
+   "context": "5d8efd07cd2a448b",
    "roles": {
     "carrier": {
      "date": false,
@@ -4460,7 +4460,7 @@
    }
   },
   "logi-3": {
-   "context": "a6581fa621a68971",
+   "context": "f4ba202e092bf2b5",
    "roles": {
     "carrier": {
      "date": false,
@@ -4515,6 +4515,606 @@
      "dtype": "float64",
      "id": false,
      "metric": true
+    }
+   }
+  },
+  "logi-4": {
+   "context": "ae33c95b572185e1",
+   "roles": {
+    "Accessorials": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Carrier": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Consignee Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Consignee Phone": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Currency": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Delivered At": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Dest City": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Fuel Surcharge": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Linehaul": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Mode": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Origin City": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Promised Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Ship Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Shipment ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Total Charge": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Tracking Number": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Weight": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Weight UOM": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "logi-5": {
+   "context": "50ac819aa092fd66",
+   "roles": {
+    "Carrier": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Delivered Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Line No": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Order Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Order ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Order Line ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Qty Ordered": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Qty Shipped": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Requested Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "SKU": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Ship To": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Warehouse": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "logi-6": {
+   "context": "520561898fc58402",
+   "roles": {
+    "Carrier": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Delivered Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Line No": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Order Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Order ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Order Line ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Qty Ordered": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Qty Shipped": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Requested Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "SKU": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Ship To": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Warehouse": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "logi-7": {
+   "context": "7348191586c4627b",
+   "roles": {
+    "Accessorials": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Carrier": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Consignee Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Consignee Phone": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Currency": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Delivered At": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Dest City": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Fuel Surcharge": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Linehaul": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Mode": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Origin City": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Promised Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Ship Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Shipment ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Total Charge": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Tracking Number": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Weight": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Weight UOM": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "logi-8": {
+   "context": "fb75e585236c8e88",
+   "roles": {
+    "Appointment ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Appointment Time": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Arrived At": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Carrier": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Departed At": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Direction": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Door": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Driver Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Facility": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "License Plate": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Trailer Number": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    }
+   }
+  },
+  "logi-9": {
+   "context": "3ac17e1b6082de08",
+   "roles": {
+    "Accessorials": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Carrier": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Consignee Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Consignee Phone": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Currency": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Delivered At": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Dest City": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Fuel Surcharge": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Linehaul": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Mode": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Origin City": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Promised Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Ship Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Shipment ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Total Charge": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Tracking Number": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Weight": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Weight UOM": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
     }
    }
   },
@@ -7673,6 +8273,16 @@
    "kpis": "7b7c98310535aa2d",
    "standard_code": "42dafc04eca73055"
   },
+  "dock_appointments-1": {
+   "answers": "4f53cda18c2baa0c",
+   "answers_by_group": "4f53cda18c2baa0c",
+   "audit": "fed7cb3e4f66388a",
+   "contract": "960ba2474133aed0",
+   "extras": "752b271641fc5f20",
+   "frame": "dc4f8d31ff95ad0a",
+   "kpis": "f980512646260783",
+   "standard_code": "033527e0b0285610"
+  },
   "employees-1": {
    "answers": "311529b884ba99af",
    "answers_by_group": "227b07a137b0c23b",
@@ -7848,6 +8458,28 @@
    "frame": "1331f46826e17c59",
    "kpis": "66f4a03cc07ea780",
    "standard_code": "6ce9f72734b2b330"
+  },
+  "order_lines-1": {
+   "answers": "a0ab28346706058c",
+   "answers_by_group": "a1be3f6f4ebaa232",
+   "audit": "129a546187add855",
+   "chart": "104b42c3823655a8",
+   "contract": "55d9540d099c3883",
+   "extras": "c76d021bd6a36ccd",
+   "frame": "7b2236e8d4df9f4b",
+   "kpis": "2bbabba5240d912e",
+   "standard_code": "000ae24be59b3562"
+  },
+  "order_lines-2": {
+   "answers": "ba7edbb2e43d77b8",
+   "answers_by_group": "7db459b952cdd307",
+   "audit": "18a87a55b1b08f16",
+   "chart": "8f35833920a7c943",
+   "contract": "ba0290e1aebf89d4",
+   "extras": "d7a44f6b57fae08e",
+   "frame": "5fab3dc12aa410cc",
+   "kpis": "3c98640c284cc243",
+   "standard_code": "ff12a78d42920351"
   },
   "policies-1": {
    "answers": "69998c4127913360",
@@ -8028,7 +8660,7 @@
   "shift_production-1": {
    "answers": "f8c9dec1d9e0d1c2",
    "answers_by_group": "117d3ecedf8ec5ea",
-   "audit": "658cc87094ea1e56",
+   "audit": "87b51c0f91a5750f",
    "chart": "5baf6e27fd730bdb",
    "contract": "a50aa17dda18428c",
    "extras": "6c4df7f0c0f38628",
@@ -8039,7 +8671,7 @@
   "shift_production-2": {
    "answers": "f8c9dec1d9e0d1c2",
    "answers_by_group": "117d3ecedf8ec5ea",
-   "audit": "95c0fab567f1ee09",
+   "audit": "c05f6cf67fa5494c",
    "chart": "5baf6e27fd730bdb",
    "contract": "43739e55392a97c0",
    "extras": "5d26a889692737b5",
@@ -8050,7 +8682,7 @@
   "shift_production-3": {
    "answers": "f8c9dec1d9e0d1c2",
    "answers_by_group": "117d3ecedf8ec5ea",
-   "audit": "e5f9d7777f47dd1f",
+   "audit": "2a5ce90148ca4e27",
    "chart": "5baf6e27fd730bdb",
    "contract": "dcd93d7893a27f8a",
    "extras": "18a6474275bbfc77",
@@ -8059,36 +8691,36 @@
    "standard_code": "3ddb2c6e976f62e7"
   },
   "shipments-1": {
-   "answers": "7c838419be005b84",
-   "answers_by_group": "6974fff8e3c6dc99",
-   "audit": "33e3ad398019b1b9",
+   "answers": "81d6c8577632d827",
+   "answers_by_group": "4b5762f3fdb854fd",
+   "audit": "fa01a32efe0fee23",
    "chart": "99baea2ade30bfec",
-   "contract": "2d9db48a004a20a4",
+   "contract": "a520daea183da897",
    "extras": "86456200b787e34b",
    "frame": "197611c792764759",
-   "kpis": "753ffff28dc4f1cb",
+   "kpis": "bc952223e241029b",
    "standard_code": "724d478bfea01344"
   },
   "shipments-2": {
-   "answers": "e5fcde21e5226b4b",
-   "answers_by_group": "6974fff8e3c6dc99",
-   "audit": "87319f3004c7e8ca",
+   "answers": "912556fd5659df71",
+   "answers_by_group": "1acdd04d461d2868",
+   "audit": "d75eab09c957aa44",
    "chart": "633f10aad09ce4d9",
-   "contract": "af6d480d25d90e93",
+   "contract": "f4921d32c032703b",
    "extras": "f815c8db9882b7ca",
    "frame": "66167f106f7b57c3",
-   "kpis": "e0c861f161bb9ad4",
+   "kpis": "a69658cb928d8d6a",
    "standard_code": "1ccb71897e71496f"
   },
   "shipments-3": {
-   "answers": "01338541be9c2c1c",
-   "answers_by_group": "6974fff8e3c6dc99",
-   "audit": "3d821f3c29413884",
+   "answers": "3e387257f7656dc6",
+   "answers_by_group": "af317cac9df361eb",
+   "audit": "322add104fccbe04",
    "chart": "cfef3661358a3f6a",
-   "contract": "61750fb5f226fe8d",
+   "contract": "3cedb646405f9670",
    "extras": "3709efef16fcee54",
    "frame": "c8d9a22853f19503",
-   "kpis": "c5b25b68b1841636",
+   "kpis": "ad8837da7b077d6e",
    "standard_code": "b3eb868f075b37c0"
   },
   "simpson-1": {
@@ -8152,14 +8784,47 @@
    "kpis": "314674c2a2cb8e7a",
    "standard_code": "82a900b8187a87cb"
   },
+  "tms_shipments-1": {
+   "answers": "1525b83aba521e5d",
+   "answers_by_group": "20ddc28be6efe2c3",
+   "audit": "37ff3e8b1022bfa3",
+   "chart": "a8aa333ff3f9b117",
+   "contract": "e6e78d2b41d77997",
+   "extras": "30dcac62cc7b48c8",
+   "frame": "a7279399cd71eedc",
+   "kpis": "db4c7d3f21cb41a0",
+   "standard_code": "a6a6cb2f0ea395a8"
+  },
+  "tms_shipments-2": {
+   "answers": "2a696bf585662c68",
+   "answers_by_group": "653735f0ddadf09b",
+   "audit": "37ed0ea7ce61720e",
+   "chart": "8264913ed124c6bf",
+   "contract": "bb5a6fc077caa89a",
+   "extras": "c413fff1fdb289a6",
+   "frame": "0887be4a2d8252cf",
+   "kpis": "6722eebd9350b949",
+   "standard_code": "b7ce4b8a10a6533c"
+  },
+  "tms_shipments-3": {
+   "answers": "ce74abe61554366a",
+   "answers_by_group": "7b282ae4a388ae7b",
+   "audit": "9807b1f2445ca286",
+   "chart": "4c8ce843517f73c3",
+   "contract": "8a20d47455dd3eeb",
+   "extras": "3c64a73af9efd05f",
+   "frame": "0f1c0f526dd8b06b",
+   "kpis": "574f6a3e053b5f5c",
+   "standard_code": "eb5e377fb50ba8ed"
+  },
   "work_orders-1": {
    "answers": "4f53cda18c2baa0c",
    "answers_by_group": "4f53cda18c2baa0c",
-   "audit": "c0ad7cdac76927ff",
-   "contract": "2d030a66a01a6e3f",
+   "audit": "6163095512dc6b01",
+   "contract": "605f19be3b195664",
    "extras": "efebc0e607448272",
    "frame": "37f305e71574ce95",
-   "kpis": "17ebf366d0f4a1a0",
+   "kpis": "815d4e07236b10d7",
    "standard_code": "033527e0b0285610"
   }
  },
@@ -14507,6 +15172,676 @@
      "metric": true
     }
    }
+  },
+  "e2e-91": {
+   "roles": {
+    "Accessorials": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Carrier": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Consignee Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Consignee Phone": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Currency": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Delivered At": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Dest City": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Fuel Surcharge": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Linehaul": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Mode": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Origin City": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Promised Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Ship Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Shipment ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Total Charge": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Tracking Number": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Weight": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Weight UOM": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "e2e-92": {
+   "roles": {
+    "Carrier": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Delivered Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Line No": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Order Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Order ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Order Line ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Qty Ordered": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Qty Shipped": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Requested Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "SKU": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Ship To": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Warehouse": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "e2e-93": {
+   "roles": {
+    "Appointment ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Appointment Time": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Arrived At": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Carrier": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Departed At": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Direction": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Door": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Driver Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Facility": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "License Plate": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Trailer Number": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    }
+   }
+  },
+  "e2e-94": {
+   "roles": {
+    "Accessorials": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Carrier": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Consignee Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Consignee Phone": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Currency": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Delivered At": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Dest City": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Fuel Surcharge": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Linehaul": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Mode": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Origin City": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Promised Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Ship Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Shipment ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Total Charge": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Tracking Number": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Weight": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Weight UOM": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "e2e-95": {
+   "roles": {
+    "Carrier": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Delivered Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Line No": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Order Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Order ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Order Line ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Qty Ordered": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Qty Shipped": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Requested Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "SKU": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Ship To": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Warehouse": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "e2e-96": {
+   "roles": {
+    "Appointment ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Appointment Time": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Arrived At": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Carrier": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Departed At": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Direction": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Door": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Driver Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Facility": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "License Plate": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Trailer Number": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    }
+   }
+  },
+  "e2e-97": {
+   "roles": {
+    "Accessorials": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Carrier": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Consignee Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Consignee Phone": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Currency": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Delivered At": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Dest City": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Fuel Surcharge": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Linehaul": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Mode": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Origin City": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Promised Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Ship Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Shipment ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Total Charge": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Tracking Number": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Weight": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Weight UOM": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
   }
  },
  "insight": {
@@ -18078,6 +19413,208 @@
      "dtype": "float64",
      "id": false,
      "metric": true
+    }
+   }
+  },
+  "ins-54-logi-shipments-overview": {
+   "context": "a30d7947b7debc16",
+   "roles": {
+    "Accessorials": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Carrier": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Consignee Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Consignee Phone": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Currency": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Delivered At": {
+     "date": true,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Dest City": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Fuel Surcharge": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Linehaul": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Mode": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Origin City": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Promised Date": {
+     "date": true,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Ship Date": {
+     "date": true,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Shipment ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Total Charge": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Tracking Number": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Weight": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Weight UOM": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "ins-55-logi-order-lines-overview": {
+   "context": "250f50c2bf9c776b",
+   "roles": {
+    "Carrier": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Delivered Date": {
+     "date": true,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Line No": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Order Date": {
+     "date": true,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Order ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Order Line ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Qty Ordered": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Qty Shipped": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Requested Date": {
+     "date": true,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "SKU": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Ship To": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Warehouse": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
     }
    }
   }
@@ -25642,7 +27179,7 @@
    }
   },
   "intake-iot-03": {
-   "context": "02c16e7d6f527b78",
+   "context": "1007c2e300f1a899",
    "roles": {
     "ACTFINISH": {
      "date": true,
@@ -25815,6 +27352,564 @@
      "dtype": "float64",
      "id": false,
      "metric": true
+    }
+   }
+  },
+  "intake-logi-01": {
+   "context": "7ff7e3cc17e2c787",
+   "roles": {
+    "Accessorials": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Carrier": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Consignee Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Consignee Phone": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Currency": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Delivered At": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Dest City": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Fuel Surcharge": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Linehaul": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Mode": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Origin City": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Promised Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Ship Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Shipment ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Total Charge": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Tracking Number": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Weight": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Weight UOM": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "intake-logi-02": {
+   "context": "f71d35f8b95cdd8c",
+   "roles": {
+    "Appointment ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Appointment Time": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Arrived At": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Carrier": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Departed At": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Direction": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Door": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Driver Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Facility": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "License Plate": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Trailer Number": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    }
+   }
+  },
+  "intake-logi-03": {
+   "context": "b1ee499330da95f2",
+   "roles": {
+    "Carrier": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Delivered Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Line No": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Order Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Order ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Order Line ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Qty Ordered": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Qty Shipped": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Requested Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "SKU": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Ship To": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Warehouse": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "intake-logi-04": {
+   "context": "7e20691b898bdac2",
+   "roles": {
+    "Carrier": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Delivered Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Line No": {
+     "date": false,
+     "dtype": "int64",
+     "id": true,
+     "metric": false
+    },
+    "Order Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Order ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Order Line ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Qty Ordered": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Qty Shipped": {
+     "date": false,
+     "dtype": "int64",
+     "id": false,
+     "metric": true
+    },
+    "Requested Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "SKU": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Ship To": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Warehouse": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "intake-logi-05": {
+   "context": "648cc9e7cfff3d9e",
+   "roles": {
+    "Accessorials": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Carrier": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Consignee Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Consignee Phone": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Currency": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Delivered At": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Dest City": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Fuel Surcharge": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Linehaul": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Mode": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Origin City": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Promised Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Ship Date": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Shipment ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Total Charge": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Tracking Number": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Weight": {
+     "date": false,
+     "dtype": "float64",
+     "id": false,
+     "metric": true
+    },
+    "Weight UOM": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    }
+   }
+  },
+  "intake-logi-06": {
+   "context": "a3ee43d40d344428",
+   "roles": {
+    "Appointment ID": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Appointment Time": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Arrived At": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Carrier": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Departed At": {
+     "date": true,
+     "dtype": "datetime64[us]",
+     "id": false,
+     "metric": false
+    },
+    "Direction": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Door": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Driver Name": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Facility": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "License Plate": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
+    },
+    "Status": {
+     "date": false,
+     "dtype": "str",
+     "id": false,
+     "metric": false
+    },
+    "Trailer Number": {
+     "date": false,
+     "dtype": "str",
+     "id": true,
+     "metric": false
     }
    }
   },

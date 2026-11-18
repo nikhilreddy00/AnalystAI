@@ -15,17 +15,9 @@ import pytest
 from evals.snapshot import GOLDEN, snapshot
 
 # The domain being built: {suite: {case or dataset: why}}. Empty right after a pin.
-# Re-pinned at Domain 7's end (2026-11-17); its diff is named in docs/baselines/phase5_7_iot.md.
-CHANGES: dict[str, dict[str, str]] = {
-    # Domain 7 review (2026-11-17): the over-100% performance flag is filed under the ideal cycle
-    # (was the first role alphabetically, changeover); MTBF / MTTR answers say their basis
-    "deterministic": {f"shift_production-{s}": "review: the over-max flag's column; MTBF's basis"
-                      for s in (1, 2, 3)} | {"work_orders-1": "review: the preventive share tile; MTTR's basis"},
-    "analysis": {c: "review: the cleaning note names Ideal Cycle Time (s) for the over-100% shift"
-                 for c in ("iot-4", "iot-6", "iot-8")} | {
-        "iot-5": "review: a work order's actual dates are blank by its status (layout), never missing"},
-    "intake": {"intake-iot-03": "review: a work order's actual dates are blank by its status, never missing"},
-}
+# Re-pinned at Domain 8's end (2026-11-18); its diff is named in
+# docs/baselines/phase5_7_logistics.md.
+CHANGES: dict[str, dict[str, str]] = {}
 
 
 GOLDEN_NOW = json.loads(GOLDEN.read_text())

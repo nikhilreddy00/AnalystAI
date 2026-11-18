@@ -1,0 +1,835 @@
+{
+ "meta": {
+  "suite": "analysis",
+  "report": "analysis-20261118T160443Z",
+  "k": 1,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "0febd73",
+  "started_at": "20261118T160443Z",
+  "only": "logi-7",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 1,
+  "runs": 1,
+  "pass_rate": 1.0,
+  "case_majority_pass_rate": 1.0,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "hard_rules_na": 0,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 0,
+  "runs_with_prose_rewritten": 0,
+  "runs_with_pii_guard_hit": 0,
+  "cost_per_question_usd": 0.0179,
+  "latency_p50_s": 25.56,
+  "latency_p95_s": 25.56,
+  "numeric_accuracy": 1.0,
+  "insight_recall": 1.0,
+  "false_finding_rate": 0.1538,
+  "verifiable_claims": 39,
+  "by_domain": {
+   "logistics": {
+    "cases": 1,
+    "k_min": 1,
+    "k_max": 1,
+    "cases_passed_all_runs": 1,
+    "pass_rate": 1.0,
+    "hard_rule_violations": 0,
+    "hard_rules_na": 0,
+    "builtin_only_cases": [],
+    "model_dependent_passed": 1,
+    "model_dependent_cases": 1,
+    "numeric_accuracy": 1.0,
+    "insight_recall": 1.0,
+    "false_finding_rate": 0.1538,
+    "verifiable_claims": 39,
+    "model_dependent_quality": {
+     "numeric_accuracy": 1.0,
+     "insight_recall": 1.0,
+     "false_finding_rate": 0.1538,
+     "verifiable_claims": 39
+    }
+   }
+  }
+ },
+ "runs": {
+  "logi-7": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value_truth",
+      "ok": true,
+      "detail": "ok (Total Charge)",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_exits",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 6,
+     "verifiable": 39,
+     "details": [
+      "sum Weight[Parcel]",
+      "sum Weight[FTL]",
+      "sum Weight[LTL]",
+      "count Weight[Parcel]",
+      "count Weight[FTL]",
+      "count Weight[LTL]"
+     ]
+    },
+    "builtin_only": false,
+    "pii_exits": {
+     "rule": "pii_exits",
+     "ok": true,
+     "detail": "ok"
+    },
+    "pii_canary_hits": 0,
+    "pii_model_hits": 0,
+    "pii_planted": 5555,
+    "output": {
+     "eda_summary": {
+      "Weight": {
+       "mean": 1090.4645,
+       "std": 1247.056,
+       "min": 1.5432,
+       "max": 10270.0,
+       "median": 596.6,
+       "count": 2995
+      },
+      "Linehaul": {
+       "mean": 184.9763,
+       "std": 134.3984,
+       "min": 7.25,
+       "max": 1249.25,
+       "median": 146.605,
+       "count": 2842
+      },
+      "Fuel Surcharge": {
+       "mean": 41.5805,
+       "std": 31.1048,
+       "min": 2.02,
+       "max": 287.33,
+       "median": 32.77,
+       "count": 2842
+      },
+      "Accessorials": {
+       "mean": 22.3593,
+       "std": 30.008,
+       "min": 0.0,
+       "max": 75.0,
+       "median": 0.0,
+       "count": 2842
+      },
+      "Total Charge": {
+       "mean": 248.9161,
+       "std": 166.873,
+       "min": 9.27,
+       "max": 1611.58,
+       "median": 205.105,
+       "count": 2842
+      }
+     },
+     "correlations": {},
+     "trends": [],
+     "segments": [
+      {
+       "segment_column": "Mode",
+       "metric_column": "Total Charge",
+       "aggregation": "ratio",
+       "results": [
+        {
+         "name": "Parcel",
+         "value": 1.443309
+        },
+        {
+         "name": "FTL",
+         "value": 0.170083
+        },
+        {
+         "name": "LTL",
+         "value": 0.170048
+        }
+       ],
+       "label": "cost_per_lb"
+      },
+      {
+       "segment_column": "Mode",
+       "metric_column": "Total Charge",
+       "aggregation": "sum",
+       "results": [
+        {
+         "name": "Parcel",
+         "value": 202058.03
+        },
+        {
+         "name": "FTL",
+         "value": 136152.42
+        },
+        {
+         "name": "LTL",
+         "value": 367259.86
+        }
+       ],
+       "label": "total_freight_cost_usd"
+      },
+      {
+       "segment_column": "Mode",
+       "metric_column": "Weight",
+       "aggregation": "sum",
+       "results": [
+        {
+         "name": "Parcel",
+         "value": 139996.3323
+        },
+        {
+         "name": "FTL",
+         "value": 800504.68
+        },
+        {
+         "name": "LTL",
+         "value": 2159738.0761
+        }
+       ],
+       "label": "total_weight_lb"
+      },
+      {
+       "segment_column": "Mode",
+       "metric_column": "Weight",
+       "aggregation": "count",
+       "results": [
+        {
+         "name": "Parcel",
+         "value": 1172
+        },
+        {
+         "name": "FTL",
+         "value": 430
+        },
+        {
+         "name": "LTL",
+         "value": 1235
+        }
+       ],
+       "label": "shipment_count"
+      }
+     ],
+     "anomalies": [],
+     "statistical_tests": [],
+     "forecast_points": [],
+     "distributions": {
+      "Weight": [
+       {
+        "label": "(-8.725, 1028.389]",
+        "count": 1819
+       },
+       {
+        "label": "(1028.389, 2055.235]",
+        "count": 586
+       },
+       {
+        "label": "(2055.235, 3082.08]",
+        "count": 351
+       },
+       {
+        "label": "(3082.08, 4108.926]",
+        "count": 136
+       },
+       {
+        "label": "(4108.926, 5135.772]",
+        "count": 71
+       },
+       {
+        "label": "(5135.772, 6162.617]",
+        "count": 25
+       },
+       {
+        "label": "(6162.617, 7189.463]",
+        "count": 5
+       },
+       {
+        "label": "(7189.463, 8216.309]",
+        "count": 1
+       },
+       {
+        "label": "(9243.154, 10270.0]",
+        "count": 1
+       }
+      ],
+      "Linehaul": [
+       {
+        "label": "(-1.249, 124.925]",
+        "count": 1281
+       },
+       {
+        "label": "(124.925, 249.85]",
+        "count": 1004
+       },
+       {
+        "label": "(249.85, 374.775]",
+        "count": 444
+       },
+       {
+        "label": "(374.775, 499.7]",
+        "count": 162
+       },
+       {
+        "label": "(499.7, 624.625]",
+        "count": 78
+       },
+       {
+        "label": "(624.625, 749.55]",
+        "count": 25
+       },
+       {
+        "label": "(749.55, 874.475]",
+        "count": 4
+       },
+       {
+        "label": "(874.475, 999.4]",
+        "count": 1
+       },
+       {
+        "label": "(1124.325, 1249.25]",
+        "count": 1
+       }
+      ],
+      "Fuel Surcharge": [
+       {
+        "label": "(-0.287, 28.733]",
+        "count": 1337
+       },
+       {
+        "label": "(28.733, 57.466]",
+        "count": 969
+       },
+       {
+        "label": "(57.466, 86.199]",
+        "count": 422
+       },
+       {
+        "label": "(86.199, 114.932]",
+        "count": 179
+       },
+       {
+        "label": "(114.932, 143.665]",
+        "count": 57
+       },
+       {
+        "label": "(143.665, 172.398]",
+        "count": 25
+       },
+       {
+        "label": "(172.398, 201.131]",
+        "count": 8
+       },
+       {
+        "label": "(201.131, 229.864]",
+        "count": 2
+       },
+       {
+        "label": "(258.597, 287.33]",
+        "count": 1
+       }
+      ],
+      "Accessorials": [
+       {
+        "label": "(-0.075, 25.0]",
+        "count": 1823
+       },
+       {
+        "label": "(25.0, 50.0]",
+        "count": 578
+       },
+       {
+        "label": "(50.0, 75.0]",
+        "count": 599
+       }
+      ],
+      "Total Charge": [
+       {
+        "label": "(-1.612, 161.158]",
+        "count": 1138
+       },
+       {
+        "label": "(161.158, 322.316]",
+        "count": 1121
+       },
+       {
+        "label": "(322.316, 483.474]",
+        "count": 475
+       },
+       {
+        "label": "(483.474, 644.632]",
+        "count": 169
+       },
+       {
+        "label": "(644.632, 805.79]",
+        "count": 71
+       },
+       {
+        "label": "(805.79, 966.948]",
+        "count": 21
+       },
+       {
+        "label": "(966.948, 1128.106]",
+        "count": 3
+       },
+       {
+        "label": "(1128.106, 1289.264]",
+        "count": 1
+       },
+       {
+        "label": "(1450.422, 1611.58]",
+        "count": 1
+       }
+      ],
+      "Carrier": [
+       {
+        "label": "UPS",
+        "count": 1240
+       },
+       {
+        "label": "FedEx Freight",
+        "count": 740
+       },
+       {
+        "label": "Old Dominion",
+        "count": 571
+       },
+       {
+        "label": "J.B. Hunt",
+        "count": 239
+       },
+       {
+        "label": "XPO",
+        "count": 210
+       }
+      ],
+      "Mode": [
+       {
+        "label": "LTL",
+        "count": 1311
+       },
+       {
+        "label": "Parcel",
+        "count": 1240
+       },
+       {
+        "label": "FTL",
+        "count": 449
+       }
+      ],
+      "Origin City": [
+       {
+        "label": "Columbus",
+        "count": 1030
+       },
+       {
+        "label": "Dallas",
+        "count": 992
+       },
+       {
+        "label": "Reno",
+        "count": 978
+       }
+      ],
+      "Dest City": [
+       {
+        "label": "Denver",
+        "count": 644
+       },
+       {
+        "label": "Chicago",
+        "count": 603
+       },
+       {
+        "label": "Seattle",
+        "count": 593
+       },
+       {
+        "label": "Atlanta",
+        "count": 591
+       },
+       {
+        "label": "Phoenix",
+        "count": 569
+       }
+      ],
+      "Status": [
+       {
+        "label": "Delivered",
+        "count": 2835
+       },
+       {
+        "label": "Cancelled",
+        "count": 73
+       },
+       {
+        "label": "In Transit",
+        "count": 43
+       },
+       {
+        "label": "Exception",
+        "count": 27
+       },
+       {
+        "label": "Returned to Sender",
+        "count": 22
+       }
+      ]
+     },
+     "code_executed": "import pandas as pd\nimport numpy as np\nimport json\nfrom scipy import stats as scipy_stats\n\ndf = pd.read_csv('/data/df.csv')\n\nresult = {\n    \"eda_summary\": {},\n    \"correlations\": {},\n    \"trends\": [],\n    \"segments\": [],\n    \"anomalies\": [],\n    \"statistical_tests\": [],\n    \"forecast_points\": [],\n    \"distributions\": {},\n    \"head_preview\": [],\n    \"dtypes_summary\": {},\n    \"missing_pct\": {},\n    \"assumptions\": [],\n}\n\ntry:\n    active = df[\n        (df['row_kind'] != 'cancelled') &\n        (df['row_kind'] != 'cancel') &\n        (df['Currency'] == 'USD') &\n        (df['Weight'] > 0) &\n        (df['Weight UOM'].notna()) &\n        (df['Weight UOM'] != '')\n    ].copy()\n\n    modes = active.groupby('Mode').agg(\n        total_charge=('Total Charge', 'sum'),\n        total_weight=('Weight', 'sum')\n    ).reset_index()\n    modes['cost_per_lb'] = modes['total_charge'] / modes['total_weight']\n    modes_sorted = modes.sort_values('cost_per_lb', ascending=False).head(10)\n\n    result['segments'].append({\n        \"segment_column\": \"Mode\",\n        \"metric_column\": \"Total Charge\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"cost_per_lb\",\n        \"results\": [\n            {\"name\": str(row['Mode']), \"value\": round(float(row['cost_per_lb']), 6)}\n            for _, row in modes_sorted.iterrows()\n        ]\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Mode\",\n        \"metric_column\": \"Total Charge\",\n        \"aggregation\": \"sum\",\n        \"label\": \"total_freight_cost_usd\",\n        \"results\": [\n            {\"name\": str(row['Mode']), \"value\": round(float(row['total_charge']), 4)}\n            for _, row in modes_sorted.iterrows()\n        ]\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Mode\",\n        \"metric_column\": \"Weight\",\n        \"aggregation\": \"sum\",\n        \"label\": \"total_weight_lb\",\n        \"results\": [\n            {\"name\": str(row['Mode']), \"value\": round(float(row['total_weight']), 4)}\n            for _, row in modes_sorted.iterrows()\n        ]\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Mode\",\n        \"metric_column\": \"Weight\",\n        \"aggregation\": \"count\",\n        \"label\": \"shipment_count\",\n        \"results\": [\n            {\"name\": str(row['Mode']), \"value\": int(active[active['Mode'] == row['Mode']].shape[0])}\n            for _, row in modes_sorted.iterrows()\n        ]\n    })\n\n    result['assumptions'].append(\"cost_per_lb = sum(Total Charge) / sum(Weight) per Mode; cancelled and non-USD rows excluded; Weight > 0 and Weight UOM present required.\")\n    result['assumptions'].append(\"889 rows had Weight/Weight UOM type-coerced (unit converted); 5 rows with unknown unit sentinel-nulled and excluded via Weight > 0 filter.\")\n    result['assumptions'].append(\"73 cancelled rows and 87 non-USD rows excluded from all cost_per_lb calculations.\")\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")\n\n# \u2500\u2500\u2500 Guaranteed EDA + chart distributions + briefing (always runs) \u2500\u2500\u2500\n\ntry:\n    _head_df = df.head(5).replace({float('nan'): None})\n    result['head_preview'] = _head_df.to_dict('records')\nexcept Exception:\n    pass\n\ntry:\n    result['dtypes_summary'] = {str(k): str(v) for k, v in df.dtypes.items()}\n    result['non_null'] = {str(k): int(v) for k, v in df.notna().sum().items()}\n    result['n_rows'] = int(len(df))\nexcept Exception:\n    pass\n\ntry:\n    _miss = df.isna().mean() * 100\n    result['missing_pct'] = {str(k): round(float(v), 2) for k, v in _miss.items()}\nexcept Exception:\n    pass\n\ntry:\n    if 'Weight' in df.columns and pd.api.types.is_numeric_dtype(df['Weight']):\n        _s = df['Weight'].dropna()\n        if len(_s) > 0 and 'Weight' not in result['eda_summary']:\n            result['eda_summary']['Weight'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Linehaul' in df.columns and pd.api.types.is_numeric_dtype(df['Linehaul']):\n        _s = df['Linehaul'].dropna()\n        if len(_s) > 0 and 'Linehaul' not in result['eda_summary']:\n            result['eda_summary']['Linehaul'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Fuel Surcharge' in df.columns and pd.api.types.is_numeric_dtype(df['Fuel Surcharge']):\n        _s = df['Fuel Surcharge'].dropna()\n        if len(_s) > 0 and 'Fuel Surcharge' not in result['eda_summary']:\n            result['eda_summary']['Fuel Surcharge'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Accessorials' in df.columns and pd.api.types.is_numeric_dtype(df['Accessorials']):\n        _s = df['Accessorials'].dropna()\n        if len(_s) > 0 and 'Accessorials' not in result['eda_summary']:\n            result['eda_summary']['Accessorials'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Total Charge' in df.columns and pd.api.types.is_numeric_dtype(df['Total Charge']):\n        _s = df['Total Charge'].dropna()\n        if len(_s) > 0 and 'Total Charge' not in result['eda_summary']:\n            result['eda_summary']['Total Charge'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Weight' in df.columns and pd.api.types.is_numeric_dtype(df['Weight']):\n        _col_data = df['Weight'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Weight'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Linehaul' in df.columns and pd.api.types.is_numeric_dtype(df['Linehaul']):\n        _col_data = df['Linehaul'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Linehaul'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Fuel Surcharge' in df.columns and pd.api.types.is_numeric_dtype(df['Fuel Surcharge']):\n        _col_data = df['Fuel Surcharge'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Fuel Surcharge'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Accessorials' in df.columns and pd.api.types.is_numeric_dtype(df['Accessorials']):\n        _col_data = df['Accessorials'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Accessorials'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Total Charge' in df.columns and pd.api.types.is_numeric_dtype(df['Total Charge']):\n        _col_data = df['Total Charge'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Total Charge'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Carrier' in df.columns:\n        _vc = df['Carrier'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Carrier'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Mode' in df.columns:\n        _vc = df['Mode'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Mode'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Origin City' in df.columns:\n        _vc = df['Origin City'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Origin City'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Dest City' in df.columns:\n        _vc = df['Dest City'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Dest City'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Status' in df.columns:\n        _vc = df['Status'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Status'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\nprint(json.dumps(result, default=str))",
+     "figures_base64": [],
+     "head_preview": [
+      {
+       "Shipment ID": "SH200000",
+       "Tracking Number": "1Z0562265662780428",
+       "Carrier": "UPS",
+       "Mode": "Parcel",
+       "Origin City": "Dallas",
+       "Dest City": "Atlanta",
+       "Ship Date": "2026-02-06",
+       "Promised Date": "2026-02-09",
+       "Delivered At": "2026-02-04 00:00:00",
+       "Status": "Delivered",
+       "Weight": 217.4,
+       "Weight UOM": "LB",
+       "Linehaul": 212.05,
+       "Fuel Surcharge": 38.59,
+       "Accessorials": 0.0,
+       "Total Charge": 250.64,
+       "Currency": "USD",
+       "Consignee Name": "Tom Reyes",
+       "Consignee Phone": "+1 312 555 7107",
+       "row_kind": "sale",
+       "transit_days": null,
+       "days_before_promise": 5.0,
+       "days_late": null
+      },
+      {
+       "Shipment ID": "SH200001",
+       "Tracking Number": "1Z0775563942472689",
+       "Carrier": "FedEx Freight",
+       "Mode": "LTL",
+       "Origin City": "Columbus",
+       "Dest City": "Atlanta",
+       "Ship Date": "2026-07-24",
+       "Promised Date": "2026-07-28",
+       "Delivered At": "2026-07-22 00:00:00",
+       "Status": "Delivered",
+       "Weight": 683.8,
+       "Weight UOM": "LB",
+       "Linehaul": 98.71,
+       "Fuel Surcharge": 23.89,
+       "Accessorials": 35.0,
+       "Total Charge": 157.6,
+       "Currency": "USD",
+       "Consignee Name": "Globex Inc",
+       "Consignee Phone": "+1 312 555 5237",
+       "row_kind": "sale",
+       "transit_days": null,
+       "days_before_promise": 6.0,
+       "days_late": null
+      },
+      {
+       "Shipment ID": "SH200002",
+       "Tracking Number": "1Z0593443517755906",
+       "Carrier": "Old Dominion",
+       "Mode": "LTL",
+       "Origin City": "Dallas",
+       "Dest City": "Chicago",
+       "Ship Date": "2026-08-03",
+       "Promised Date": "2026-08-07",
+       "Delivered At": "2026-08-01 00:00:00",
+       "Status": "Delivered",
+       "Weight": 3134.1,
+       "Weight UOM": "LB",
+       "Linehaul": 392.52,
+       "Fuel Surcharge": 99.7,
+       "Accessorials": 0.0,
+       "Total Charge": 492.22,
+       "Currency": "USD",
+       "Consignee Name": "Wayne Retail",
+       "Consignee Phone": "+1 312 555 5375",
+       "row_kind": "sale",
+       "transit_days": null,
+       "days_before_promise": 6.0,
+       "days_late": null
+      },
+      {
+       "Shipment ID": "SH200003",
+       "Tracking Number": "1Z0701949476385989",
+       "Carrier": "FedEx Freight",
+       "Mode": "LTL",
+       "Origin City": "Dallas",
+       "Dest City": "Chicago",
+       "Ship Date": "2026-09-29",
+       "Promised Date": "2026-10-03",
+       "Delivered At": "2026-09-27 00:00:00",
+       "Status": "Delivered",
+       "Weight": 1243.2,
+       "Weight UOM": "LB",
+       "Linehaul": 169.82,
+       "Fuel Surcharge": 45.17,
+       "Accessorials": 35.0,
+       "Total Charge": 249.99,
+       "Currency": "USD",
+       "Consignee Name": "Globex Inc",
+       "Consignee Phone": "+1 312 555 8515",
+       "row_kind": "sale",
+       "transit_days": null,
+       "days_before_promise": 6.0,
+       "days_late": null
+      },
+      {
+       "Shipment ID": "SH200004",
+       "Tracking Number": "1Z0832996964188420",
+       "Carrier": "UPS",
+       "Mode": "Parcel",
+       "Origin City": "Reno",
+       "Dest City": "Atlanta",
+       "Ship Date": "2026-08-01",
+       "Promised Date": "2026-08-04",
+       "Delivered At": "2026-07-30 00:00:00",
+       "Status": "Delivered",
+       "Weight": 51.4,
+       "Weight UOM": "LB",
+       "Linehaul": 60.34,
+       "Fuel Surcharge": 15.33,
+       "Accessorials": 0.0,
+       "Total Charge": 75.67,
+       "Currency": "USD",
+       "Consignee Name": "Maria Gomez",
+       "Consignee Phone": "+1 312 555 5844",
+       "row_kind": "sale",
+       "transit_days": null,
+       "days_before_promise": 5.0,
+       "days_late": null
+      }
+     ],
+     "dtypes_summary": {
+      "Shipment ID": "object",
+      "Tracking Number": "object",
+      "Carrier": "object",
+      "Mode": "object",
+      "Origin City": "object",
+      "Dest City": "object",
+      "Ship Date": "object",
+      "Promised Date": "object",
+      "Delivered At": "object",
+      "Status": "object",
+      "Weight": "float64",
+      "Weight UOM": "object",
+      "Linehaul": "float64",
+      "Fuel Surcharge": "float64",
+      "Accessorials": "float64",
+      "Total Charge": "float64",
+      "Currency": "object",
+      "Consignee Name": "object",
+      "Consignee Phone": "object",
+      "row_kind": "object",
+      "transit_days": "float64",
+      "days_before_promise": "float64",
+      "days_late": "float64"
+     },
+     "missing_pct": {
+      "Shipment ID": 0.0,
+      "Tracking Number": 0.0,
+      "Carrier": 0.0,
+      "Mode": 0.0,
+      "Origin City": 0.0,
+      "Dest City": 0.0,
+      "Ship Date": 0.0,
+      "Promised Date": 0.5,
+      "Delivered At": 5.63,
+      "Status": 0.0,
+      "Weight": 0.17,
+      "Weight UOM": 0.17,
+      "Linehaul": 0.0,
+      "Fuel Surcharge": 0.0,
+      "Accessorials": 0.0,
+      "Total Charge": 0.0,
+      "Currency": 0.0,
+      "Consignee Name": 0.0,
+      "Consignee Phone": 0.0,
+      "row_kind": 0.0,
+      "transit_days": 5.83,
+      "days_before_promise": 15.77,
+      "days_late": 48.33
+     },
+     "kpis": [],
+     "pre_cleaning_missing_pct": {},
+     "unique_counts": {},
+     "sample_values_per_col": {},
+     "skewness": {},
+     "target_correlations": {},
+     "target_col": null,
+     "column_roles_summary": {},
+     "column_units": {},
+     "evidence": [
+      {
+       "id": "seg:Mode/Total Charge:ratio:cost_per_lb",
+       "kind": "segment",
+       "claim": "cost_per_lb (from Total Charge) by Mode (3 groups)",
+       "code": "try:\n    active = df[\n        (df['row_kind'] != 'cancelled') &\n        (df['row_kind'] != 'cancel') &\n        (df['Currency'] == 'USD') &\n        (df['Weight'] > 0) &\n        (df['Weight UOM'].notna()) &\n        (df['Weight UOM'] != '')\n    ].copy()\n\n    modes = active.groupby('Mode').agg(\n        total_charge=('Total Charge', 'sum'),\n        total_weight=('Weight', 'sum')\n    ).reset_index()\n    modes['cost_per_lb'] = modes['total_charge'] / modes['total_weight']\n    modes_sorted = modes.sort_values('cost_per_lb', ascending=False).head(10)\n\n    result['segments'].append({\n        \"segment_column\": \"Mode\",\n        \"metric_column\": \"Total Charge\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"cost_per_lb\",\n        \"results\": [\n            {\"name\": str(row['Mode']), \"value\": round(float(row['cost_per_lb']), 6)}\n            for _, row in modes_sorted.iterrows()\n        ]\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Mode\",\n        \"metric_column\": \"Total Charge\",\n        \"aggregation\": \"sum\",\n        \"label\": \"total_freight_cost_usd\",\n        \"results\": [\n            {\"name\": str(row['Mode']), \"value\": round(float(row['total_charge']), 4)}\n            for _, row in modes_sorted.iterrows()\n        ]\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Mode\",\n        \"metric_column\": \"Weight\",\n        \"aggregation\": \"sum\",\n        \"label\": \"total_weight_lb\",\n        \"results\": [\n            {\"name\": str(row['Mode']), \"value\": round(float(row['total_weight']), 4)}\n            for _, row in modes_sorted.iterrows()\n        ]\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Mode\",\n        \"metric_column\": \"Weight\",\n        \"aggregation\": \"count\",\n        \"label\": \"shipment_count\",\n        \"results\": [\n            {\"name\": str(row['Mode']), \"value\": int(active[active['Mode'] == row['Mode']].shape[0])}\n            for _, row in modes_sorted.iterrows()\n        ]\n    })\n\n    result['assumptions'].append(\"cost_per_lb = sum(Total Charge) / sum(Weight) per Mode; cancelled and non-USD rows excluded; Weight > 0 and Weight UOM present required.\")\n    result['assumptions'].append(\"889 rows had Weight/Weight UOM type-coerced (unit converted); 5 rows with unknown unit sentinel-nulled and excluded via Weight > 0 filter.\")\n    result['assumptions'].append(\"73 cancelled rows and 87 non-USD rows excluded from all cost_per_lb calculations.\")\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"segment_column\": \"Mode\", \"metric_column\": \"Total Charge\", \"aggregation\": \"ratio\", \"results\": [{\"name\": \"Parcel\", \"value\": 1.443309}, {\"name\": \"FTL\", \"value\": 0.170083}, {\"name\": \"LTL\", \"value\": 0.170048}], \"label\": \"cost_per_lb\"}",
+       "row_count": 3000,
+       "confidence": "high",
+       "confidence_reason": "3000 rows",
+       "assumptions": [
+        "cost_per_lb = sum(Total Charge) / sum(Weight) per Mode; cancelled and non-USD rows excluded; Weight > 0 and Weight UOM present required."
+       ]
+      },
+      {
+       "id": "seg:Mode/Total Charge:sum",
+       "kind": "segment",
+       "claim": "sum Total Charge by Mode (3 groups)",
+       "code": "try:\n    active = df[\n        (df['row_kind'] != 'cancelled') &\n        (df['row_kind'] != 'cancel') &\n        (df['Currency'] == 'USD') &\n        (df['Weight'] > 0) &\n        (df['Weight UOM'].notna()) &\n        (df['Weight UOM'] != '')\n    ].copy()\n\n    modes = active.groupby('Mode').agg(\n        total_charge=('Total Charge', 'sum'),\n        total_weight=('Weight', 'sum')\n    ).reset_index()\n    modes['cost_per_lb'] = modes['total_charge'] / modes['total_weight']\n    modes_sorted = modes.sort_values('cost_per_lb', ascending=False).head(10)\n\n    result['segments'].append({\n        \"segment_column\": \"Mode\",\n        \"metric_column\": \"Total Charge\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"cost_per_lb\",\n        \"results\": [\n            {\"name\": str(row['Mode']), \"value\": round(float(row['cost_per_lb']), 6)}\n            for _, row in modes_sorted.iterrows()\n        ]\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Mode\",\n        \"metric_column\": \"Total Charge\",\n        \"aggregation\": \"sum\",\n        \"label\": \"total_freight_cost_usd\",\n        \"results\": [\n            {\"name\": str(row['Mode']), \"value\": round(float(row['total_charge']), 4)}\n            for _, row in modes_sorted.iterrows()\n        ]\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Mode\",\n        \"metric_column\": \"Weight\",\n        \"aggregation\": \"sum\",\n        \"label\": \"total_weight_lb\",\n        \"results\": [\n            {\"name\": str(row['Mode']), \"value\": round(float(row['total_weight']), 4)}\n            for _, row in modes_sorted.iterrows()\n        ]\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Mode\",\n        \"metric_column\": \"Weight\",\n        \"aggregation\": \"count\",\n        \"label\": \"shipment_count\",\n        \"results\": [\n            {\"name\": str(row['Mode']), \"value\": int(active[active['Mode'] == row['Mode']].shape[0])}\n            for _, row in modes_sorted.iterrows()\n        ]\n    })\n\n    result['assumptions'].append(\"cost_per_lb = sum(Total Charge) / sum(Weight) per Mode; cancelled and non-USD rows excluded; Weight > 0 and Weight UOM present required.\")\n    result['assumptions'].append(\"889 rows had Weight/Weight UOM type-coerced (unit converted); 5 rows with unknown unit sentinel-nulled and excluded via Weight > 0 filter.\")\n    result['assumptions'].append(\"73 cancelled rows and 87 non-USD rows excluded from all cost_per_lb calculations.\")\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"segment_column\": \"Mode\", \"metric_column\": \"Total Charge\", \"aggregation\": \"sum\", \"results\": [{\"name\": \"Parcel\", \"value\": 202058.03}, {\"name\": \"FTL\", \"value\": 136152.42}, {\"name\": \"LTL\", \"value\": 367259.86}], \"label\": \"total_freight_cost_usd\"}",
+       "row_count": 3000,
+       "confidence": "high",
+       "confidence_reason": "3000 rows",
+       "assumptions": [
+        "cost_per_lb = sum(Total Charge) / sum(Weight) per Mode; cancelled and non-USD rows excluded; Weight > 0 and Weight UOM present required."
+       ]
+      },
+      {
+       "id": "seg:Mode/Weight:sum",
+       "kind": "segment",
+       "claim": "sum Weight by Mode (3 groups)",
+       "code": "try:\n    active = df[\n        (df['row_kind'] != 'cancelled') &\n        (df['row_kind'] != 'cancel') &\n        (df['Currency'] == 'USD') &\n        (df['Weight'] > 0) &\n        (df['Weight UOM'].notna()) &\n        (df['Weight UOM'] != '')\n    ].copy()\n\n    modes = active.groupby('Mode').agg(\n        total_charge=('Total Charge', 'sum'),\n        total_weight=('Weight', 'sum')\n    ).reset_index()\n    modes['cost_per_lb'] = modes['total_charge'] / modes['total_weight']\n    modes_sorted = modes.sort_values('cost_per_lb', ascending=False).head(10)\n\n    result['segments'].append({\n        \"segment_column\": \"Mode\",\n        \"metric_column\": \"Total Charge\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"cost_per_lb\",\n        \"results\": [\n            {\"name\": str(row['Mode']), \"value\": round(float(row['cost_per_lb']), 6)}\n            for _, row in modes_sorted.iterrows()\n        ]\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Mode\",\n        \"metric_column\": \"Total Charge\",\n        \"aggregation\": \"sum\",\n        \"label\": \"total_freight_cost_usd\",\n        \"results\": [\n            {\"name\": str(row['Mode']), \"value\": round(float(row['total_charge']), 4)}\n            for _, row in modes_sorted.iterrows()\n        ]\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Mode\",\n        \"metric_column\": \"Weight\",\n        \"aggregation\": \"sum\",\n        \"label\": \"total_weight_lb\",\n        \"results\": [\n            {\"name\": str(row['Mode']), \"value\": round(float(row['total_weight']), 4)}\n            for _, row in modes_sorted.iterrows()\n        ]\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Mode\",\n        \"metric_column\": \"Weight\",\n        \"aggregation\": \"count\",\n        \"label\": \"shipment_count\",\n        \"results\": [\n            {\"name\": str(row['Mode']), \"value\": int(active[active['Mode'] == row['Mode']].shape[0])}\n            for _, row in modes_sorted.iterrows()\n        ]\n    })\n\n    result['assumptions'].append(\"cost_per_lb = sum(Total Charge) / sum(Weight) per Mode; cancelled and non-USD rows excluded; Weight > 0 and Weight UOM present required.\")\n    result['assumptions'].append(\"889 rows had Weight/Weight UOM type-coerced (unit converted); 5 rows with unknown unit sentinel-nulled and excluded via Weight > 0 filter.\")\n    result['assumptions'].append(\"73 cancelled rows and 87 non-USD rows excluded from all cost_per_lb calculations.\")\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"segment_column\": \"Mode\", \"metric_column\": \"Weight\", \"aggregation\": \"sum\", \"results\": [{\"name\": \"Parcel\", \"value\": 139996.3323}, {\"name\": \"FTL\", \"value\": 800504.68}, {\"name\": \"LTL\", \"value\": 2159738.076}], \"label\": \"total_weight_lb\"}",
+       "row_count": 2995,
+       "confidence": "high",
+       "confidence_reason": "2995 rows",
+       "assumptions": [
+        "Weight: 0% missing, left out of this result",
+        "cost_per_lb = sum(Total Charge) / sum(Weight) per Mode; cancelled and non-USD rows excluded; Weight > 0 and Weight UOM present required.",
+        "889 rows had Weight/Weight UOM type-coerced (unit converted); 5 rows with unknown unit sentinel-nulled and excluded via Weight > 0 filter."
+       ]
+      },
+      {
+       "id": "seg:Mode/Weight:count",
+       "kind": "segment",
+       "claim": "count Weight by Mode (3 groups)",
+       "code": "try:\n    active = df[\n        (df['row_kind'] != 'cancelled') &\n        (df['row_kind'] != 'cancel') &\n        (df['Currency'] == 'USD') &\n        (df['Weight'] > 0) &\n        (df['Weight UOM'].notna()) &\n        (df['Weight UOM'] != '')\n    ].copy()\n\n    modes = active.groupby('Mode').agg(\n        total_charge=('Total Charge', 'sum'),\n        total_weight=('Weight', 'sum')\n    ).reset_index()\n    modes['cost_per_lb'] = modes['total_charge'] / modes['total_weight']\n    modes_sorted = modes.sort_values('cost_per_lb', ascending=False).head(10)\n\n    result['segments'].append({\n        \"segment_column\": \"Mode\",\n        \"metric_column\": \"Total Charge\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"cost_per_lb\",\n        \"results\": [\n            {\"name\": str(row['Mode']), \"value\": round(float(row['cost_per_lb']), 6)}\n            for _, row in modes_sorted.iterrows()\n        ]\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Mode\",\n        \"metric_column\": \"Total Charge\",\n        \"aggregation\": \"sum\",\n        \"label\": \"total_freight_cost_usd\",\n        \"results\": [\n            {\"name\": str(row['Mode']), \"value\": round(float(row['total_charge']), 4)}\n            for _, row in modes_sorted.iterrows()\n        ]\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Mode\",\n        \"metric_column\": \"Weight\",\n        \"aggregation\": \"sum\",\n        \"label\": \"total_weight_lb\",\n        \"results\": [\n            {\"name\": str(row['Mode']), \"value\": round(float(row['total_weight']), 4)}\n            for _, row in modes_sorted.iterrows()\n        ]\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Mode\",\n        \"metric_column\": \"Weight\",\n        \"aggregation\": \"count\",\n        \"label\": \"shipment_count\",\n        \"results\": [\n            {\"name\": str(row['Mode']), \"value\": int(active[active['Mode'] == row['Mode']].shape[0])}\n            for _, row in modes_sorted.iterrows()\n        ]\n    })\n\n    result['assumptions'].append(\"cost_per_lb = sum(Total Charge) / sum(Weight) per Mode; cancelled and non-USD rows excluded; Weight > 0 and Weight UOM present required.\")\n    result['assumptions'].append(\"889 rows had Weight/Weight UOM type-coerced (unit converted); 5 rows with unknown unit sentinel-nulled and excluded via Weight > 0 filter.\")\n    result['assumptions'].append(\"73 cancelled rows and 87 non-USD rows excluded from all cost_per_lb calculations.\")\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"segment_column\": \"Mode\", \"metric_column\": \"Weight\", \"aggregation\": \"count\", \"results\": [{\"name\": \"Parcel\", \"value\": 1172}, {\"name\": \"FTL\", \"value\": 430}, {\"name\": \"LTL\", \"value\": 1235}], \"label\": \"shipment_count\"}",
+       "row_count": 2995,
+       "confidence": "high",
+       "confidence_reason": "2995 rows",
+       "assumptions": [
+        "Weight: 0% missing, left out of this result",
+        "cost_per_lb = sum(Total Charge) / sum(Weight) per Mode; cancelled and non-USD rows excluded; Weight > 0 and Weight UOM present required.",
+        "889 rows had Weight/Weight UOM type-coerced (unit converted); 5 rows with unknown unit sentinel-nulled and excluded via Weight > 0 filter."
+       ]
+      },
+      {
+       "id": "eda:Weight",
+       "kind": "eda",
+       "claim": "Weight: median 596.60, mean 1,090.46, range 1.54 to 10,270.00",
+       "code": "try:\n    active = df[\n        (df['row_kind'] != 'cancelled') &\n        (df['row_kind'] != 'cancel') &\n        (df['Currency'] == 'USD') &\n        (df['Weight'] > 0) &\n        (df['Weight UOM'].notna()) &\n        (df['Weight UOM'] != '')\n    ].copy()\n\n    modes = active.groupby('Mode').agg(\n        total_charge=('Total Charge', 'sum'),\n        total_weight=('Weight', 'sum')\n    ).reset_index()\n    modes['cost_per_lb'] = modes['total_charge'] / modes['total_weight']\n    modes_sorted = modes.sort_values('cost_per_lb', ascending=False).head(10)\n\n    result['segments'].append({\n        \"segment_column\": \"Mode\",\n        \"metric_column\": \"Total Charge\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"cost_per_lb\",\n        \"results\": [\n            {\"name\": str(row['Mode']), \"value\": round(float(row['cost_per_lb']), 6)}\n            for _, row in modes_sorted.iterrows()\n        ]\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Mode\",\n        \"metric_column\": \"Total Charge\",\n        \"aggregation\": \"sum\",\n        \"label\": \"total_freight_cost_usd\",\n        \"results\": [\n            {\"name\": str(row['Mode']), \"value\": round(float(row['total_charge']), 4)}\n            for _, row in modes_sorted.iterrows()\n        ]\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Mode\",\n        \"metric_column\": \"Weight\",\n        \"aggregation\": \"sum\",\n        \"label\": \"total_weight_lb\",\n        \"results\": [\n            {\"name\": str(row['Mode']), \"value\": round(float(row['total_weight']), 4)}\n            for _, row in modes_sorted.iterrows()\n        ]\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Mode\",\n        \"metric_column\": \"Weight\",\n        \"aggregation\": \"count\",\n        \"label\": \"shipment_count\",\n        \"results\": [\n            {\"name\": str(row['Mode']), \"value\": int(active[active['Mode'] == row['Mode']].shape[0])}\n            for _, row in modes_sorted.iterrows()\n        ]\n    })\n\n    result['assumptions'].append(\"cost_per_lb = sum(Total Charge) / sum(Weight) per Mode; cancelled and non-USD rows excluded; Weight > 0 and Weight UOM present required.\")\n    result['assumptions'].append(\"889 rows had Weight/Weight UOM type-coerced (unit converted); 5 rows with unknown unit sentinel-nulled and excluded via Weight > 0 filter.\")\n    result['assumptions'].append(\"73 cancelled rows and 87 non-USD rows excluded from all cost_per_lb calculations.\")\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 1090.4645, \"std\": 1247.056, \"min\": 1.5432, \"max\": 10270.0, \"median\": 596.6, \"count\": 2995}",
+       "row_count": 2995,
+       "confidence": "high",
+       "confidence_reason": "2995 rows",
+       "assumptions": [
+        "Weight: 0% missing, left out of this result",
+        "cost_per_lb = sum(Total Charge) / sum(Weight) per Mode; cancelled and non-USD rows excluded; Weight > 0 and Weight UOM present required.",
+        "889 rows had Weight/Weight UOM type-coerced (unit converted); 5 rows with unknown unit sentinel-nulled and excluded via Weight > 0 filter."
+       ]
+      },
+      {
+       "id": "eda:Linehaul",
+       "kind": "eda",
+       "claim": "Linehaul: median 146.60, mean 184.98, range 7.25 to 1,249.25",
+       "code": "try:\n    active = df[\n        (df['row_kind'] != 'cancelled') &\n        (df['row_kind'] != 'cancel') &\n        (df['Currency'] == 'USD') &\n        (df['Weight'] > 0) &\n        (df['Weight UOM'].notna()) &\n        (df['Weight UOM'] != '')\n    ].copy()\n\n    modes = active.groupby('Mode').agg(\n        total_charge=('Total Charge', 'sum'),\n        total_weight=('Weight', 'sum')\n    ).reset_index()\n    modes['cost_per_lb'] = modes['total_charge'] / modes['total_weight']\n    modes_sorted = modes.sort_values('cost_per_lb', ascending=False).head(10)\n\n    result['segments'].append({\n        \"segment_column\": \"Mode\",\n        \"metric_column\": \"Total Charge\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"cost_per_lb\",\n        \"results\": [\n            {\"name\": str(row['Mode']), \"value\": round(float(row['cost_per_lb']), 6)}\n            for _, row in modes_sorted.iterrows()\n        ]\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Mode\",\n        \"metric_column\": \"Total Charge\",\n        \"aggregation\": \"sum\",\n        \"label\": \"total_freight_cost_usd\",\n        \"results\": [\n            {\"name\": str(row['Mode']), \"value\": round(float(row['total_charge']), 4)}\n            for _, row in modes_sorted.iterrows()\n        ]\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Mode\",\n        \"metric_column\": \"Weight\",\n        \"aggregation\": \"sum\",\n        \"label\": \"total_weight_lb\",\n        \"results\": [\n            {\"name\": str(row['Mode']), \"value\": round(float(row['total_weight']), 4)}\n            for _, row in modes_sorted.iterrows()\n        ]\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Mode\",\n        \"metric_column\": \"Weight\",\n        \"aggregation\": \"count\",\n        \"label\": \"shipment_count\",\n        \"results\": [\n            {\"name\": str(row['Mode']), \"value\": int(active[active['Mode'] == row['Mode']].shape[0])}\n            for _, row in modes_sorted.iterrows()\n        ]\n    })\n\n    result['assumptions'].append(\"cost_per_lb = sum(Total Charge) / sum(Weight) per Mode; cancelled and non-USD rows excluded; Weight > 0 and Weight UOM present required.\")\n    result['assumptions'].append(\"889 rows had Weight/Weight UOM type-coerced (unit converted); 5 rows with unknown unit sentinel-nulled and excluded via Weight > 0 filter.\")\n    result['assumptions'].append(\"73 cancelled rows and 87 non-USD rows excluded from all cost_per_lb calculations.\")\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 184.9763, \"std\": 134.3984, \"min\": 7.25, \"max\": 1249.25, \"median\": 146.605, \"count\": 2842}",
+       "row_count": 2842,
+       "confidence": "high",
+       "confidence_reason": "2842 rows",
+       "assumptions": []
+      },
+      {
+       "id": "eda:Fuel Surcharge",
+       "kind": "eda",
+       "claim": "Fuel Surcharge: median 32.77, mean 41.58, range 2.02 to 287.33",
+       "code": "try:\n    active = df[\n        (df['row_kind'] != 'cancelled') &\n        (df['row_kind'] != 'cancel') &\n        (df['Currency'] == 'USD') &\n        (df['Weight'] > 0) &\n        (df['Weight UOM'].notna()) &\n        (df['Weight UOM'] != '')\n    ].copy()\n\n    modes = active.groupby('Mode').agg(\n        total_charge=('Total Charge', 'sum'),\n        total_weight=('Weight', 'sum')\n    ).reset_index()\n    modes['cost_per_lb'] = modes['total_charge'] / modes['total_weight']\n    modes_sorted = modes.sort_values('cost_per_lb', ascending=False).head(10)\n\n    result['segments'].append({\n        \"segment_column\": \"Mode\",\n        \"metric_column\": \"Total Charge\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"cost_per_lb\",\n        \"results\": [\n            {\"name\": str(row['Mode']), \"value\": round(float(row['cost_per_lb']), 6)}\n            for _, row in modes_sorted.iterrows()\n        ]\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Mode\",\n        \"metric_column\": \"Total Charge\",\n        \"aggregation\": \"sum\",\n        \"label\": \"total_freight_cost_usd\",\n        \"results\": [\n            {\"name\": str(row['Mode']), \"value\": round(float(row['total_charge']), 4)}\n            for _, row in modes_sorted.iterrows()\n        ]\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Mode\",\n        \"metric_column\": \"Weight\",\n        \"aggregation\": \"sum\",\n        \"label\": \"total_weight_lb\",\n        \"results\": [\n            {\"name\": str(row['Mode']), \"value\": round(float(row['total_weight']), 4)}\n            for _, row in modes_sorted.iterrows()\n        ]\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Mode\",\n        \"metric_column\": \"Weight\",\n        \"aggregation\": \"count\",\n        \"label\": \"shipment_count\",\n        \"results\": [\n            {\"name\": str(row['Mode']), \"value\": int(active[active['Mode'] == row['Mode']].shape[0])}\n            for _, row in modes_sorted.iterrows()\n        ]\n    })\n\n    result['assumptions'].append(\"cost_per_lb = sum(Total Charge) / sum(Weight) per Mode; cancelled and non-USD rows excluded; Weight > 0 and Weight UOM present required.\")\n    result['assumptions'].append(\"889 rows had Weight/Weight UOM type-coerced (unit converted); 5 rows with unknown unit sentinel-nulled and excluded via Weight > 0 filter.\")\n    result['assumptions'].append(\"73 cancelled rows and 87 non-USD rows excluded from all cost_per_lb calculations.\")\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 41.5805, \"std\": 31.1048, \"min\": 2.02, \"max\": 287.33, \"median\": 32.77, \"count\": 2842}",
+       "row_count": 2842,
+       "confidence": "high",
+       "confidence_reason": "2842 rows",
+       "assumptions": []
+      },
+      {
+       "id": "eda:Accessorials",
+       "kind": "eda",
+       "claim": "Accessorials: median 0, mean 22.36, range 0 to 75.00",
+       "code": "try:\n    active = df[\n        (df['row_kind'] != 'cancelled') &\n        (df['row_kind'] != 'cancel') &\n        (df['Currency'] == 'USD') &\n        (df['Weight'] > 0) &\n        (df['Weight UOM'].notna()) &\n        (df['Weight UOM'] != '')\n    ].copy()\n\n    modes = active.groupby('Mode').agg(\n        total_charge=('Total Charge', 'sum'),\n        total_weight=('Weight', 'sum')\n    ).reset_index()\n    modes['cost_per_lb'] = modes['total_charge'] / modes['total_weight']\n    modes_sorted = modes.sort_values('cost_per_lb', ascending=False).head(10)\n\n    result['segments'].append({\n        \"segment_column\": \"Mode\",\n        \"metric_column\": \"Total Charge\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"cost_per_lb\",\n        \"results\": [\n            {\"name\": str(row['Mode']), \"value\": round(float(row['cost_per_lb']), 6)}\n            for _, row in modes_sorted.iterrows()\n        ]\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Mode\",\n        \"metric_column\": \"Total Charge\",\n        \"aggregation\": \"sum\",\n        \"label\": \"total_freight_cost_usd\",\n        \"results\": [\n            {\"name\": str(row['Mode']), \"value\": round(float(row['total_charge']), 4)}\n            for _, row in modes_sorted.iterrows()\n        ]\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Mode\",\n        \"metric_column\": \"Weight\",\n        \"aggregation\": \"sum\",\n        \"label\": \"total_weight_lb\",\n        \"results\": [\n            {\"name\": str(row['Mode']), \"value\": round(float(row['total_weight']), 4)}\n            for _, row in modes_sorted.iterrows()\n        ]\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Mode\",\n        \"metric_column\": \"Weight\",\n        \"aggregation\": \"count\",\n        \"label\": \"shipment_count\",\n        \"results\": [\n            {\"name\": str(row['Mode']), \"value\": int(active[active['Mode'] == row['Mode']].shape[0])}\n            for _, row in modes_sorted.iterrows()\n        ]\n    })\n\n    result['assumptions'].append(\"cost_per_lb = sum(Total Charge) / sum(Weight) per Mode; cancelled and non-USD rows excluded; Weight > 0 and Weight UOM present required.\")\n    result['assumptions'].append(\"889 rows had Weight/Weight UOM type-coerced (unit converted); 5 rows with unknown unit sentinel-nulled and excluded via Weight > 0 filter.\")\n    result['assumptions'].append(\"73 cancelled rows and 87 non-USD rows excluded from all cost_per_lb calculations.\")\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 22.3593, \"std\": 30.008, \"min\": 0.0, \"max\": 75.0, \"median\": 0.0, \"count\": 2842}",
+       "row_count": 2842,
+       "confidence": "high",
+       "confidence_reason": "2842 rows",
+       "assumptions": []
+      },
+      {
+       "id": "eda:Total Charge",
+       "kind": "eda",
+       "claim": "Total Charge: median 205.10, mean 248.92, range 9.27 to 1,611.58",
+       "code": "try:\n    active = df[\n        (df['row_kind'] != 'cancelled') &\n        (df['row_kind'] != 'cancel') &\n        (df['Currency'] == 'USD') &\n        (df['Weight'] > 0) &\n        (df['Weight UOM'].notna()) &\n        (df['Weight UOM'] != '')\n    ].copy()\n\n    modes = active.groupby('Mode').agg(\n        total_charge=('Total Charge', 'sum'),\n        total_weight=('Weight', 'sum')\n    ).reset_index()\n    modes['cost_per_lb'] = modes['total_charge'] / modes['total_weight']\n    modes_sorted = modes.sort_values('cost_per_lb', ascending=False).head(10)\n\n    result['segments'].append({\n        \"segment_column\": \"Mode\",\n        \"metric_column\": \"Total Charge\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"cost_per_lb\",\n        \"results\": [\n            {\"name\": str(row['Mode']), \"value\": round(float(row['cost_per_lb']), 6)}\n            for _, row in modes_sorted.iterrows()\n        ]\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Mode\",\n        \"metric_column\": \"Total Charge\",\n        \"aggregation\": \"sum\",\n        \"label\": \"total_freight_cost_usd\",\n        \"results\": [\n            {\"name\": str(row['Mode']), \"value\": round(float(row['total_charge']), 4)}\n            for _, row in modes_sorted.iterrows()\n        ]\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Mode\",\n        \"metric_column\": \"Weight\",\n        \"aggregation\": \"sum\",\n        \"label\": \"total_weight_lb\",\n        \"results\": [\n            {\"name\": str(row['Mode']), \"value\": round(float(row['total_weight']), 4)}\n            for _, row in modes_sorted.iterrows()\n        ]\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Mode\",\n        \"metric_column\": \"Weight\",\n        \"aggregation\": \"count\",\n        \"label\": \"shipment_count\",\n        \"results\": [\n            {\"name\": str(row['Mode']), \"value\": int(active[active['Mode'] == row['Mode']].shape[0])}\n            for _, row in modes_sorted.iterrows()\n        ]\n    })\n\n    result['assumptions'].append(\"cost_per_lb = sum(Total Charge) / sum(Weight) per Mode; cancelled and non-USD rows excluded; Weight > 0 and Weight UOM present required.\")\n    result['assumptions'].append(\"889 rows had Weight/Weight UOM type-coerced (unit converted); 5 rows with unknown unit sentinel-nulled and excluded via Weight > 0 filter.\")\n    result['assumptions'].append(\"73 cancelled rows and 87 non-USD rows excluded from all cost_per_lb calculations.\")\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 248.9161, \"std\": 166.873, \"min\": 9.27, \"max\": 1611.58, \"median\": 205.105, \"count\": 2842}",
+       "row_count": 2842,
+       "confidence": "high",
+       "confidence_reason": "2842 rows",
+       "assumptions": [
+        "cost_per_lb = sum(Total Charge) / sum(Weight) per Mode; cancelled and non-USD rows excluded; Weight > 0 and Weight UOM present required."
+       ]
+      }
+     ]
+    },
+    "domain": "logistics",
+    "latency_s": 25.56,
+    "cost_usd": 0.01787,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```python\ntry:\n    active = df[\n        (df['row_kind'] != 'cancelled') &\n        (df['row_kind'] != 'cancel') &\n        (df['Currency'] == 'USD') &\n        (df['Weight'] > 0) &\n        (df['Weight UOM'].notna()) &\n        (df['Weight UOM'] != '')\n    ].copy()\n\n    modes = active.groupby('Mode').agg(\n        total_charge=('Total Charge', 'sum'),\n        total_weight=('Weight', 'sum')\n    ).reset_index()\n    modes['cost_per_lb'] = modes['total_charge'] / modes['total_weight']\n    modes_sorted = modes.sort_values('cost_per_lb', ascending=False).head(10)\n\n    result['segments'].append({\n        \"segment_column\": \"Mode\",\n        \"metric_column\": \"Total Charge\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"cost_per_lb\",\n        \"results\": [\n            {\"name\": str(row['Mode']), \"value\": round(float(row['cost_per_lb']), 6)}\n            for _, row in modes_sorted.iterrows()\n        ]\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Mode\",\n        \"metric_column\": \"Total Charge\",\n        \"aggregation\": \"sum\",\n        \"label\": \"total_freight_cost_usd\",\n        \"results\": [\n            {\"name\": str(row['Mode']), \"value\": round(float(row['total_charge']), 4)}\n            for _, row in modes_sorted.iterrows()\n        ]\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Mode\",\n        \"metric_column\": \"Weight\",\n        \"aggregation\": \"sum\",\n        \"label\": \"total_weight_lb\",\n        \"results\": [\n            {\"name\": str(row['Mode']), \"value\": round(float(row['total_weight']), 4)}\n            for _, row in modes_sorted.iterrows()\n        ]\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Mode\",\n        \"metric_column\": \"Weight\",\n        \"aggregation\": \"count\",\n        \"label\": \"shipment_count\",\n        \"results\": [\n            {\"name\": str(row['Mode']), \"value\": int(active[active['Mode'] == row['Mode']].shape[0])}\n            for _, row in modes_sorted.iterrows()\n        ]\n    })\n\n    result['assumptions'].append(\"cost_per_lb = sum(Total Charge) / sum(Weight) per Mode; cancelled and non-USD rows excluded; Weight > 0 and Weight UOM present required.\")\n    result['assumptions'].append(\"889 rows had Weight/Weight UOM type-coerced (unit converted); 5 rows with unknown unit sentinel-nulled and excluded via Weight > 0 filter.\")\n    result['assumptions'].append(\"73 cancelled rows and 87 non-USD rows excluded from all cost_per_lb calculations.\")\n\nexcept Exception as e:\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ]
+ }
+}

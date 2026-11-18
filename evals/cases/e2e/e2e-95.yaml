@@ -1,0 +1,25 @@
+id: e2e-95
+domain: logistics
+dataset:
+  name: order_lines
+  seed: 1
+question: What is OTIF by order and by line?
+overview_done: true
+checks:
+- kind: number_in_answer
+  truth_key: otif_order
+  rel_tol: 0.003
+  scales: &pct
+  - - 1
+    - null
+  - - 100
+    - '%'
+- kind: number_in_answer
+  truth_key: otif_line
+  rel_tol: 0.003
+  scales: *pct
+hard_rules:
+- charts_lint_clean
+- charts_have_rationale
+- non_empty_or_error
+label_note: 'Domain 8 (T13, U1): OTIF by order 63.3% and by line 84.4%, each named with its level.'

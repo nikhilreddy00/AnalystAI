@@ -1,0 +1,4095 @@
+{
+ "meta": {
+  "suite": "e2e",
+  "report": "e2e-20261118T175039Z",
+  "k": 3,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "66e03f3",
+  "started_at": "20261118T175039Z",
+  "only": "e2e-34,e2e-95",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 2,
+  "runs": 6,
+  "pass_rate": 0.5,
+  "case_majority_pass_rate": 0.5,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "hard_rules_na": 12,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 3,
+  "runs_with_prose_rewritten": 0,
+  "runs_with_pii_guard_hit": 0,
+  "cost_per_question_usd": 0.025,
+  "latency_p50_s": 15.69,
+  "latency_p95_s": 21.27,
+  "by_domain": {
+   "logistics": {
+    "cases": 2,
+    "k_min": 3,
+    "k_max": 3,
+    "cases_passed_all_runs": 1,
+    "pass_rate": 0.5,
+    "hard_rule_violations": 0,
+    "hard_rules_na": 12,
+    "builtin_only_cases": [],
+    "model_dependent_passed": 0,
+    "model_dependent_cases": 0
+   }
+  }
+ },
+ "runs": {
+  "e2e-34": [
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": true,
+      "detail": "want \u22480.75 [(1.0, None), (100.0, None)] in answer; saw [84.0, 75.0, 84.0, 75.0]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "charts_lint_clean",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "charts_have_rationale",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     },
+     {
+      "rule": "pii_exits",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     }
+    ],
+    "error": null,
+    "answer": "On-time delivery by carrier: Y leads at 84.0%, X at 75.0%. How: Sum of on_time, divided by distinct shipment_id where on_time has a value; over counted rows.\nY 84.0%\nX 75.0%",
+    "pii_exits": {
+     "rule": "pii_exits",
+     "ok": true,
+     "na": true,
+     "detail": "n/a: no planted PII"
+    },
+    "pii_canary_hits": 0,
+    "pii_model_hits": 0,
+    "pii_planted": 0,
+    "approvals": [],
+    "output": {
+     "session_id": "f8c94c4b-0ab8-4ef0-ac80-306470e5b1be",
+     "user_id": "default",
+     "conversation_history": [
+      {
+       "role": "user",
+       "content": "What share of shipments does each carrier deliver on time?",
+       "timestamp": "2026-11-18T17:50:52.517843Z"
+      },
+      {
+       "role": "assistant",
+       "content": "On-time delivery by carrier: Y leads at 84.0%, X at 75.0%. How: Sum of on_time, divided by distinct shipment_id where on_time has a value; over counted rows.",
+       "timestamp": "2026-11-18T17:50:52.655707Z"
+      }
+     ],
+     "connector_config": {
+      "type": "csv",
+      "file_path": "/Users/uvnikhil/Projects/AnalystAI/uploads/evals/shipments-1.csv",
+      "connection_string": null,
+      "table_name": null,
+      "spreadsheet_id": null,
+      "sheet_name": null,
+      "service_account_json": null,
+      "url": null,
+      "auth_type": null,
+      "auth_value": null,
+      "api_key_header": null,
+      "pagination_key": null
+     },
+     "task_plan": {
+      "raw_query": "What share of shipments does each carrier deliver on time?",
+      "target_metrics": [
+       "on_time"
+      ],
+      "timeframe": null,
+      "segments": [
+       "carrier"
+      ],
+      "analysis_types": [
+       "eda",
+       "segmentation"
+      ],
+      "output_format": "both",
+      "resume_from": null,
+      "clarification_needed": false,
+      "clarification_question": null,
+      "question_intent": "segment_compare",
+      "targeted_params": {
+       "target_columns": [
+        "on_time",
+        "carrier"
+       ],
+       "metric_column": null,
+       "date_column": null,
+       "segment_column": "carrier",
+       "segment_value": null,
+       "group_by": "carrier",
+       "variant_column": null,
+       "n": null,
+       "order": null,
+       "frequency": null,
+       "test_type": null,
+       "aggregation": "mean",
+       "chart_type": null,
+       "kpi": "on_time_delivery",
+       "period_start": null,
+       "period_end": null,
+       "compare": null
+      }
+     },
+     "data_contract": {
+      "source_type": "csv",
+      "row_count": 4000,
+      "column_count": 9,
+      "columns": [
+       {
+        "name": "shipment_id",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "SHP-000001",
+         "SHP-000002",
+         "SHP-000003",
+         "SHP-000004",
+         "SHP-000005"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "named as an identifier ('shipment_id')",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "ship_date",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2026-02-21T00:00:00",
+         "2026-08-13T00:00:00",
+         "2026-10-15T00:00:00",
+         "2026-03-19T00:00:00",
+         "2026-03-17T00:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "distance_band",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Short",
+         "Short",
+         "Short",
+         "Long",
+         "Short"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "carrier",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "X",
+         "Y",
+         "Y",
+         "X",
+         "Y"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "on_time",
+        "dtype": "int64",
+        "nullable": false,
+        "sample_values": [
+         1,
+         1,
+         1,
+         1,
+         1
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": "mean",
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "distance_km",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         177.4,
+         157.1,
+         277.8,
+         2111.8,
+         282.6
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": "km"
+       },
+       {
+        "name": "weight_kg",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         23.5,
+         147.1,
+         25.1,
+         41.9,
+         45.3
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": "sum",
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": "kg"
+       },
+       {
+        "name": "delivery_days",
+        "dtype": "int64",
+        "nullable": false,
+        "sample_values": [
+         2,
+         2,
+         2,
+         6,
+         3
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": "mean",
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": "days"
+       },
+       {
+        "name": "cost",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         137.72,
+         193.8,
+         281.29,
+         1933.47,
+         255.67
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": "sum",
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": "USD"
+       }
+      ],
+      "sample_rows": [
+       {
+        "shipment_id": "SHP-000001",
+        "ship_date": "2026-02-21T00:00:00",
+        "distance_band": "Short",
+        "carrier": "X",
+        "on_time": 1,
+        "distance_km": 177.4,
+        "weight_kg": 23.5,
+        "delivery_days": 2,
+        "cost": 137.72
+       },
+       {
+        "shipment_id": "SHP-000002",
+        "ship_date": "2026-08-13T00:00:00",
+        "distance_band": "Short",
+        "carrier": "Y",
+        "on_time": 1,
+        "distance_km": 157.1,
+        "weight_kg": 147.1,
+        "delivery_days": 2,
+        "cost": 193.8
+       },
+       {
+        "shipment_id": "SHP-000003",
+        "ship_date": "2026-10-15T00:00:00",
+        "distance_band": "Short",
+        "carrier": "Y",
+        "on_time": 1,
+        "distance_km": 277.8,
+        "weight_kg": 25.1,
+        "delivery_days": 2,
+        "cost": 281.29
+       },
+       {
+        "shipment_id": "SHP-000004",
+        "ship_date": "2026-03-19T00:00:00",
+        "distance_band": "Long",
+        "carrier": "X",
+        "on_time": 1,
+        "distance_km": 2111.8,
+        "weight_kg": 41.9,
+        "delivery_days": 6,
+        "cost": 1933.47
+       },
+       {
+        "shipment_id": "SHP-000005",
+        "ship_date": "2026-03-17T00:00:00",
+        "distance_band": "Short",
+        "carrier": "Y",
+        "on_time": 1,
+        "distance_km": 282.6,
+        "weight_kg": 45.3,
+        "delivery_days": 3,
+        "cost": 255.67
+       }
+      ],
+      "date_columns": [
+       "ship_date"
+      ],
+      "id_columns": [
+       "shipment_id"
+      ],
+      "metric_columns": [
+       "on_time",
+       "distance_km",
+       "weight_kg",
+       "delivery_days",
+       "cost"
+      ],
+      "schema_summary": "4,000 rows \u00d7 9 columns. Dates: ship_date from 2026-01-01 to 2026-10-30 (daily). Metrics: on_time, distance_km, weight_kg, delivery_days, cost. Identifiers: shipment_id. Categories: distance_band, carrier.",
+      "source_query": null,
+      "source_evidence": {
+       "id": "source:data",
+       "kind": "source",
+       "claim": "Loaded 4,000 rows \u00d7 9 columns from a CSV file.",
+       "code": "pd.read_csv(<uploaded file>, encoding='utf-8', sep=',')",
+       "result_excerpt": "{\"roles\": {\"id\": [\"shipment_id\"], \"date\": [\"ship_date\"], \"category\": [\"distance_band\", \"carrier\"], \"metric\": [\"on_time\", \"distance_km\", \"weight_kg\", \"delivery_days\", \"cost\"]}, \"personal_data\": {}, \"fingerprint\": \"2b3d9039895b67bd\"}",
+       "row_count": 4000,
+       "confidence": "medium",
+       "confidence_reason": "The layout was detected, not given: check the notes.",
+       "assumptions": [
+        "Column meanings from the semantic layer table 'shipments'."
+       ]
+      },
+      "fingerprint": "2b3d9039895b67bdab18baed2cd048bc50401732a484185bbb53844ea78311c6",
+      "pii_columns": [],
+      "phi": false,
+      "deidentification": [],
+      "deidentified": false,
+      "domain": "logistics",
+      "roles": {
+       "date": "ship_date",
+       "shipment": "shipment_id",
+       "carrier": "carrier",
+       "freight_cost": "cost",
+       "weight_kg": "weight_kg",
+       "on_time_flag": "on_time",
+       "transit_days": "delivery_days"
+      },
+      "domain_confidence": "strong"
+     },
+     "cleaning_audit": {
+      "decisions": [],
+      "rows_before": 4000,
+      "rows_after": 4000,
+      "columns_coerced": [],
+      "duplicates_removed": 0,
+      "outliers_flagged": [
+       "13 extreme outliers in weight_kg (0.3% of data, threshold: values > 312.88)"
+      ],
+      "high_null_columns": [],
+      "summary": "Outliers flagged (kept) in: weight_kg. Final dataset: 4000 rows (started with 4000).",
+      "anomaly_report": {
+       "flags": [
+        {
+         "column": "weight_kg",
+         "extreme_count": 13,
+         "mild_count": 120,
+         "extreme_pct": 0.325,
+         "lower_bound": -168.90000000000003,
+         "upper_bound": 312.875,
+         "mild_lower_bound": -65.66250000000001,
+         "mild_upper_bound": 209.63750000000002,
+         "used_log_transform": false,
+         "heavy_tailed": false,
+         "message": "13 extreme outliers in weight_kg (0.3% of data, threshold: values > 312.88)"
+        }
+       ],
+       "methodology_note": "",
+       "eligible_columns": [
+        "distance_km",
+        "weight_kg",
+        "delivery_days",
+        "cost"
+       ],
+       "skipped_columns": {
+        "shipment_id": "id column",
+        "ship_date": "datetime column",
+        "distance_band": "binary column (only 2 values)",
+        "carrier": "binary column (only 2 values)",
+        "on_time": "binary column (only 2 values)"
+       }
+      },
+      "skipped_columns": [],
+      "date_ranges": {
+       "ship_date": [
+        "2026-01-01",
+        "2026-10-30",
+        10
+       ]
+      },
+      "grain": "aggregate",
+      "partial_months": {},
+      "main_currency": null,
+      "spell_story": [],
+      "window_span": {}
+     },
+     "analysis_findings": null,
+     "chart_configs": [],
+     "insight_report": null,
+     "targeted_response": {
+      "intent": "segment_compare",
+      "answer_text": "On-time delivery by carrier: Y leads at 84.0%, X at 75.0%. How: Sum of on_time, divided by distinct shipment_id where on_time has a value; over counted rows.",
+      "chart_configs": [
+       {
+        "id": "46f8d9d8-0a83-4413-85e7-8b02cc2f8b71",
+        "chart_type": "HorizontalBarChart",
+        "title": "On-time delivery by carrier",
+        "data": [
+         {
+          "carrier": "Y",
+          "On-time delivery": 84.0
+         },
+         {
+          "carrier": "X",
+          "On-time delivery": 75.0
+         }
+        ],
+        "x_key": "carrier",
+        "y_keys": [
+         "On-time delivery"
+        ],
+        "colors": [],
+        "x_label": "carrier",
+        "y_label": "On-time delivery",
+        "show_legend": true,
+        "show_grid": true,
+        "source_finding": "kpi",
+        "value_format": "percent",
+        "layout_hint": "half_width",
+        "rationale": {
+         "rule": "targeted:kpi\u2192ranked bars",
+         "reason": "On-time delivery per carrier, ranked. Sum of on_time, divided by distinct shipment_id where on_time has a value; over counted rows.",
+         "x": "carrier",
+         "y": "On-time delivery",
+         "split": null,
+         "aggregation": "none",
+         "n_rows": 4000,
+         "evidence_ids": [],
+         "code": "",
+         "confidence": null
+        },
+        "placement": "summary",
+        "lint_warnings": [],
+        "error_key": null,
+        "split_key": null,
+        "reference_lines": []
+       }
+      ],
+      "table_data": [
+       {
+        "carrier": "Y",
+        "On-time delivery": "84.0%"
+       },
+       {
+        "carrier": "X",
+        "On-time delivery": "75.0%"
+       }
+      ],
+      "table_columns": [],
+      "suggestions": [],
+      "unanswerable_reason": null,
+      "generated_at": "2026-11-18T17:50:52.649854Z"
+     },
+     "expert_review": null,
+     "narrative": {
+      "column_display_names": {
+       "shipment_id": "Shipment ID",
+       "ship_date": "Ship Date",
+       "distance_band": "Distance Band",
+       "carrier": "Carrier",
+       "on_time": "On Time",
+       "distance_km": "Distance (km)",
+       "weight_kg": "Weight (kg)",
+       "delivery_days": "Delivery Days",
+       "cost": "Cost"
+      },
+      "entity_singular": "shipment",
+      "entity_plural": "shipments"
+     },
+     "iteration": 1,
+     "quality_check_attempts": 0,
+     "high_null_answer": null,
+     "prior_pii": [],
+     "error_retryable": true,
+     "error_reask": true,
+     "overview_done": true,
+     "dataset_name": null,
+     "file_hash": null,
+     "dataset_id": null,
+     "dataset_version_id": null,
+     "status": "completed",
+     "cleaned_data_path": "/Users/uvnikhil/Projects/AnalystAI/session_data/f8c94c4b-0ab8-4ef0-ac80-306470e5b1be/cleaned_data.parquet",
+     "error_message": null,
+     "created_at": "2026-11-18T17:50:40.076166Z",
+     "updated_at": "2026-11-18T17:50:52.655710Z"
+    },
+    "domain": "logistics",
+    "latency_s": 13.18,
+    "cost_usd": 0.02343,
+    "llm_calls": 3,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "[\n  \"Which carrier has the highest on_time delivery rate, and how does that compare across all carriers weighted by their shipment volume?\",\n  \"How has the monthly on_time delivery rate trended from January through October 2026 \u2014 are there any months where performance notably declined?\",\n  \"Is there a correlation between distance_km and delivery_days, and does this relationship differ across distance_band categories?\",\n  \"Which carrier delivers the lowest average cost per shipment, and does that cost efficiency hold when controlling for weight_kg and distance_band?\",\n  \"Are there specific ship_date periods where delivery_days spiked abnormally high, suggesting potential operational disruptions or carrier-specific bottlenecks?\"\n]",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "{\n  \"column_display_names\": {\n    \"shipment_id\": \"Shipment ID\",\n    \"ship_date\": \"Ship Date\",\n    \"distance_band\": \"Distance Band\",\n    \"carrier\": \"Carrier\",\n    \"on_time\": \"On Time\",\n    \"distance_km\": \"Distance (km)\",\n    \"weight_kg\": \"Weight (kg)\",\n    \"delivery_days\": \"Delivery Days\",\n    \"cost\": \"Cost\"\n  },\n  \"entity_singular\": \"shipment\",\n  \"entity_plural\": \"shipments\"\n}",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "```json\n{\n  \"raw_query\": \"What share of shipments does each carrier deliver on time?\",\n  \"target_metrics\": [\"on_time\"],\n  \"timeframe\": null,\n  \"segments\": [\"carrier\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [\"on_time\", \"carrier\"],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": \"carrier\",\n    \"segment_value\": null,\n    \"group_by\": \"carrier\",\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"mean\",\n    \"chart_type\": null,\n    \"kpi\": \"on_time_delivery\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": true,
+      "detail": "want \u22480.75 [(1.0, None), (100.0, None)] in answer; saw [84.0, 75.0, 84.0, 75.0]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "charts_lint_clean",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "charts_have_rationale",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     },
+     {
+      "rule": "pii_exits",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     }
+    ],
+    "error": null,
+    "answer": "On-time delivery by carrier: Y leads at 84.0%, X at 75.0%. How: Sum of on_time, divided by distinct shipment_id where on_time has a value; over counted rows.\nY 84.0%\nX 75.0%",
+    "pii_exits": {
+     "rule": "pii_exits",
+     "ok": true,
+     "na": true,
+     "detail": "n/a: no planted PII"
+    },
+    "pii_canary_hits": 0,
+    "pii_model_hits": 0,
+    "pii_planted": 0,
+    "approvals": [],
+    "output": {
+     "session_id": "ad7dfdb3-3541-4fc9-85c9-00413f06e893",
+     "user_id": "default",
+     "conversation_history": [
+      {
+       "role": "user",
+       "content": "What share of shipments does each carrier deliver on time?",
+       "timestamp": "2026-11-18T17:50:52.681125Z"
+      },
+      {
+       "role": "assistant",
+       "content": "On-time delivery by carrier: Y leads at 84.0%, X at 75.0%. How: Sum of on_time, divided by distinct shipment_id where on_time has a value; over counted rows.",
+       "timestamp": "2026-11-18T17:50:52.870275Z"
+      }
+     ],
+     "connector_config": {
+      "type": "csv",
+      "file_path": "/Users/uvnikhil/Projects/AnalystAI/uploads/evals/shipments-1.csv",
+      "connection_string": null,
+      "table_name": null,
+      "spreadsheet_id": null,
+      "sheet_name": null,
+      "service_account_json": null,
+      "url": null,
+      "auth_type": null,
+      "auth_value": null,
+      "api_key_header": null,
+      "pagination_key": null
+     },
+     "task_plan": {
+      "raw_query": "What share of shipments does each carrier deliver on time?",
+      "target_metrics": [
+       "on_time"
+      ],
+      "timeframe": null,
+      "segments": [
+       "carrier"
+      ],
+      "analysis_types": [
+       "eda",
+       "segmentation"
+      ],
+      "output_format": "both",
+      "resume_from": null,
+      "clarification_needed": false,
+      "clarification_question": null,
+      "question_intent": "segment_compare",
+      "targeted_params": {
+       "target_columns": [
+        "on_time",
+        "carrier"
+       ],
+       "metric_column": null,
+       "date_column": null,
+       "segment_column": "carrier",
+       "segment_value": null,
+       "group_by": "carrier",
+       "variant_column": null,
+       "n": null,
+       "order": null,
+       "frequency": null,
+       "test_type": null,
+       "aggregation": "mean",
+       "chart_type": null,
+       "kpi": "on_time_delivery",
+       "period_start": null,
+       "period_end": null,
+       "compare": null
+      }
+     },
+     "data_contract": {
+      "source_type": "csv",
+      "row_count": 4000,
+      "column_count": 9,
+      "columns": [
+       {
+        "name": "shipment_id",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "SHP-000001",
+         "SHP-000002",
+         "SHP-000003",
+         "SHP-000004",
+         "SHP-000005"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "named as an identifier ('shipment_id')",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "ship_date",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2026-02-21T00:00:00",
+         "2026-08-13T00:00:00",
+         "2026-10-15T00:00:00",
+         "2026-03-19T00:00:00",
+         "2026-03-17T00:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "distance_band",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Short",
+         "Short",
+         "Short",
+         "Long",
+         "Short"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "carrier",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "X",
+         "Y",
+         "Y",
+         "X",
+         "Y"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "on_time",
+        "dtype": "int64",
+        "nullable": false,
+        "sample_values": [
+         1,
+         1,
+         1,
+         1,
+         1
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": "mean",
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "distance_km",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         177.4,
+         157.1,
+         277.8,
+         2111.8,
+         282.6
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": "km"
+       },
+       {
+        "name": "weight_kg",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         23.5,
+         147.1,
+         25.1,
+         41.9,
+         45.3
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": "sum",
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": "kg"
+       },
+       {
+        "name": "delivery_days",
+        "dtype": "int64",
+        "nullable": false,
+        "sample_values": [
+         2,
+         2,
+         2,
+         6,
+         3
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": "mean",
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": "days"
+       },
+       {
+        "name": "cost",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         137.72,
+         193.8,
+         281.29,
+         1933.47,
+         255.67
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": "sum",
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": "USD"
+       }
+      ],
+      "sample_rows": [
+       {
+        "shipment_id": "SHP-000001",
+        "ship_date": "2026-02-21T00:00:00",
+        "distance_band": "Short",
+        "carrier": "X",
+        "on_time": 1,
+        "distance_km": 177.4,
+        "weight_kg": 23.5,
+        "delivery_days": 2,
+        "cost": 137.72
+       },
+       {
+        "shipment_id": "SHP-000002",
+        "ship_date": "2026-08-13T00:00:00",
+        "distance_band": "Short",
+        "carrier": "Y",
+        "on_time": 1,
+        "distance_km": 157.1,
+        "weight_kg": 147.1,
+        "delivery_days": 2,
+        "cost": 193.8
+       },
+       {
+        "shipment_id": "SHP-000003",
+        "ship_date": "2026-10-15T00:00:00",
+        "distance_band": "Short",
+        "carrier": "Y",
+        "on_time": 1,
+        "distance_km": 277.8,
+        "weight_kg": 25.1,
+        "delivery_days": 2,
+        "cost": 281.29
+       },
+       {
+        "shipment_id": "SHP-000004",
+        "ship_date": "2026-03-19T00:00:00",
+        "distance_band": "Long",
+        "carrier": "X",
+        "on_time": 1,
+        "distance_km": 2111.8,
+        "weight_kg": 41.9,
+        "delivery_days": 6,
+        "cost": 1933.47
+       },
+       {
+        "shipment_id": "SHP-000005",
+        "ship_date": "2026-03-17T00:00:00",
+        "distance_band": "Short",
+        "carrier": "Y",
+        "on_time": 1,
+        "distance_km": 282.6,
+        "weight_kg": 45.3,
+        "delivery_days": 3,
+        "cost": 255.67
+       }
+      ],
+      "date_columns": [
+       "ship_date"
+      ],
+      "id_columns": [
+       "shipment_id"
+      ],
+      "metric_columns": [
+       "on_time",
+       "distance_km",
+       "weight_kg",
+       "delivery_days",
+       "cost"
+      ],
+      "schema_summary": "4,000 rows \u00d7 9 columns. Dates: ship_date from 2026-01-01 to 2026-10-30 (daily). Metrics: on_time, distance_km, weight_kg, delivery_days, cost. Identifiers: shipment_id. Categories: distance_band, carrier.",
+      "source_query": null,
+      "source_evidence": {
+       "id": "source:data",
+       "kind": "source",
+       "claim": "Loaded 4,000 rows \u00d7 9 columns from a CSV file.",
+       "code": "pd.read_csv(<uploaded file>, encoding='utf-8', sep=',')",
+       "result_excerpt": "{\"roles\": {\"id\": [\"shipment_id\"], \"date\": [\"ship_date\"], \"category\": [\"distance_band\", \"carrier\"], \"metric\": [\"on_time\", \"distance_km\", \"weight_kg\", \"delivery_days\", \"cost\"]}, \"personal_data\": {}, \"fingerprint\": \"2b3d9039895b67bd\"}",
+       "row_count": 4000,
+       "confidence": "medium",
+       "confidence_reason": "The layout was detected, not given: check the notes.",
+       "assumptions": [
+        "Column meanings from the semantic layer table 'shipments'."
+       ]
+      },
+      "fingerprint": "2b3d9039895b67bdab18baed2cd048bc50401732a484185bbb53844ea78311c6",
+      "pii_columns": [],
+      "phi": false,
+      "deidentification": [],
+      "deidentified": false,
+      "domain": "logistics",
+      "roles": {
+       "date": "ship_date",
+       "shipment": "shipment_id",
+       "carrier": "carrier",
+       "freight_cost": "cost",
+       "weight_kg": "weight_kg",
+       "on_time_flag": "on_time",
+       "transit_days": "delivery_days"
+      },
+      "domain_confidence": "strong"
+     },
+     "cleaning_audit": {
+      "decisions": [],
+      "rows_before": 4000,
+      "rows_after": 4000,
+      "columns_coerced": [],
+      "duplicates_removed": 0,
+      "outliers_flagged": [
+       "13 extreme outliers in weight_kg (0.3% of data, threshold: values > 312.88)"
+      ],
+      "high_null_columns": [],
+      "summary": "Outliers flagged (kept) in: weight_kg. Final dataset: 4000 rows (started with 4000).",
+      "anomaly_report": {
+       "flags": [
+        {
+         "column": "weight_kg",
+         "extreme_count": 13,
+         "mild_count": 120,
+         "extreme_pct": 0.325,
+         "lower_bound": -168.90000000000003,
+         "upper_bound": 312.875,
+         "mild_lower_bound": -65.66250000000001,
+         "mild_upper_bound": 209.63750000000002,
+         "used_log_transform": false,
+         "heavy_tailed": false,
+         "message": "13 extreme outliers in weight_kg (0.3% of data, threshold: values > 312.88)"
+        }
+       ],
+       "methodology_note": "",
+       "eligible_columns": [
+        "distance_km",
+        "weight_kg",
+        "delivery_days",
+        "cost"
+       ],
+       "skipped_columns": {
+        "shipment_id": "id column",
+        "ship_date": "datetime column",
+        "distance_band": "binary column (only 2 values)",
+        "carrier": "binary column (only 2 values)",
+        "on_time": "binary column (only 2 values)"
+       }
+      },
+      "skipped_columns": [],
+      "date_ranges": {
+       "ship_date": [
+        "2026-01-01",
+        "2026-10-30",
+        10
+       ]
+      },
+      "grain": "aggregate",
+      "partial_months": {},
+      "main_currency": null,
+      "spell_story": [],
+      "window_span": {}
+     },
+     "analysis_findings": null,
+     "chart_configs": [],
+     "insight_report": null,
+     "targeted_response": {
+      "intent": "segment_compare",
+      "answer_text": "On-time delivery by carrier: Y leads at 84.0%, X at 75.0%. How: Sum of on_time, divided by distinct shipment_id where on_time has a value; over counted rows.",
+      "chart_configs": [
+       {
+        "id": "aa37522f-1f4f-4b0c-a15c-80927e5def31",
+        "chart_type": "HorizontalBarChart",
+        "title": "On-time delivery by carrier",
+        "data": [
+         {
+          "carrier": "Y",
+          "On-time delivery": 84.0
+         },
+         {
+          "carrier": "X",
+          "On-time delivery": 75.0
+         }
+        ],
+        "x_key": "carrier",
+        "y_keys": [
+         "On-time delivery"
+        ],
+        "colors": [],
+        "x_label": "carrier",
+        "y_label": "On-time delivery",
+        "show_legend": true,
+        "show_grid": true,
+        "source_finding": "kpi",
+        "value_format": "percent",
+        "layout_hint": "half_width",
+        "rationale": {
+         "rule": "targeted:kpi\u2192ranked bars",
+         "reason": "On-time delivery per carrier, ranked. Sum of on_time, divided by distinct shipment_id where on_time has a value; over counted rows.",
+         "x": "carrier",
+         "y": "On-time delivery",
+         "split": null,
+         "aggregation": "none",
+         "n_rows": 4000,
+         "evidence_ids": [],
+         "code": "",
+         "confidence": null
+        },
+        "placement": "summary",
+        "lint_warnings": [],
+        "error_key": null,
+        "split_key": null,
+        "reference_lines": []
+       }
+      ],
+      "table_data": [
+       {
+        "carrier": "Y",
+        "On-time delivery": "84.0%"
+       },
+       {
+        "carrier": "X",
+        "On-time delivery": "75.0%"
+       }
+      ],
+      "table_columns": [],
+      "suggestions": [],
+      "unanswerable_reason": null,
+      "generated_at": "2026-11-18T17:50:52.864478Z"
+     },
+     "expert_review": null,
+     "narrative": {
+      "column_display_names": {
+       "shipment_id": "Shipment ID",
+       "ship_date": "Ship Date",
+       "distance_band": "Distance Band",
+       "carrier": "Carrier",
+       "on_time": "On Time",
+       "distance_km": "Distance (km)",
+       "weight_kg": "Weight (kg)",
+       "delivery_days": "Delivery Days",
+       "cost": "Cost"
+      },
+      "entity_singular": "shipment",
+      "entity_plural": "shipments"
+     },
+     "iteration": 1,
+     "quality_check_attempts": 0,
+     "high_null_answer": null,
+     "prior_pii": [],
+     "error_retryable": true,
+     "error_reask": true,
+     "overview_done": true,
+     "dataset_name": null,
+     "file_hash": null,
+     "dataset_id": null,
+     "dataset_version_id": null,
+     "status": "completed",
+     "cleaned_data_path": "/Users/uvnikhil/Projects/AnalystAI/session_data/ad7dfdb3-3541-4fc9-85c9-00413f06e893/cleaned_data.parquet",
+     "error_message": null,
+     "created_at": "2026-11-18T17:50:40.090033Z",
+     "updated_at": "2026-11-18T17:50:52.870278Z"
+    },
+    "domain": "logistics",
+    "latency_s": 12.94,
+    "cost_usd": 0.0234,
+    "llm_calls": 3,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "[\n  \"Which carrier has the highest on_time delivery rate, and how does that compare across all carriers weighted by their shipment volume?\",\n  \"How has the monthly on_time delivery rate trended from January through October 2026 \u2014 are there any months where performance notably declined?\",\n  \"Is there a correlation between distance_km and delivery_days, and does it vary by distance_band or carrier?\",\n  \"Which carrier has the lowest average cost per shipment, and does that advantage hold when controlling for distance_band and weight_kg?\",\n  \"Are there any shipments with anomalously high delivery_days relative to their distance_band that could indicate operational bottlenecks or data quality issues?\"\n]",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "{\n  \"column_display_names\": {\n    \"shipment_id\": \"Shipment ID\",\n    \"ship_date\": \"Ship Date\",\n    \"distance_band\": \"Distance Band\",\n    \"carrier\": \"Carrier\",\n    \"on_time\": \"On Time\",\n    \"distance_km\": \"Distance (km)\",\n    \"weight_kg\": \"Weight (kg)\",\n    \"delivery_days\": \"Delivery Days\",\n    \"cost\": \"Cost\"\n  },\n  \"entity_singular\": \"shipment\",\n  \"entity_plural\": \"shipments\"\n}",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "```json\n{\n  \"raw_query\": \"What share of shipments does each carrier deliver on time?\",\n  \"target_metrics\": [\"on_time\"],\n  \"timeframe\": null,\n  \"segments\": [\"carrier\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [\"on_time\", \"carrier\"],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": \"carrier\",\n    \"segment_value\": null,\n    \"group_by\": \"carrier\",\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"mean\",\n    \"chart_type\": null,\n    \"kpi\": \"on_time_delivery\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   },
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": true,
+      "detail": "want \u22480.75 [(1.0, None), (100.0, None)] in answer; saw [84.0, 75.0, 84.0, 75.0]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "charts_lint_clean",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "charts_have_rationale",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     },
+     {
+      "rule": "pii_exits",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     }
+    ],
+    "error": null,
+    "answer": "On-time delivery by carrier: Y leads at 84.0%, X at 75.0%. How: Sum of on_time, divided by distinct shipment_id where on_time has a value; over counted rows.\nY 84.0%\nX 75.0%",
+    "pii_exits": {
+     "rule": "pii_exits",
+     "ok": true,
+     "na": true,
+     "detail": "n/a: no planted PII"
+    },
+    "pii_canary_hits": 0,
+    "pii_model_hits": 0,
+    "pii_planted": 0,
+    "approvals": [],
+    "output": {
+     "session_id": "215b35df-8ca9-4268-96c9-f8e5185baaae",
+     "user_id": "default",
+     "conversation_history": [
+      {
+       "role": "user",
+       "content": "What share of shipments does each carrier deliver on time?",
+       "timestamp": "2026-11-18T17:50:52.838303Z"
+      },
+      {
+       "role": "assistant",
+       "content": "On-time delivery by carrier: Y leads at 84.0%, X at 75.0%. How: Sum of on_time, divided by distinct shipment_id where on_time has a value; over counted rows.",
+       "timestamp": "2026-11-18T17:50:52.981674Z"
+      }
+     ],
+     "connector_config": {
+      "type": "csv",
+      "file_path": "/Users/uvnikhil/Projects/AnalystAI/uploads/evals/shipments-1.csv",
+      "connection_string": null,
+      "table_name": null,
+      "spreadsheet_id": null,
+      "sheet_name": null,
+      "service_account_json": null,
+      "url": null,
+      "auth_type": null,
+      "auth_value": null,
+      "api_key_header": null,
+      "pagination_key": null
+     },
+     "task_plan": {
+      "raw_query": "What share of shipments does each carrier deliver on time?",
+      "target_metrics": [
+       "on_time",
+       "carrier"
+      ],
+      "timeframe": null,
+      "segments": [
+       "carrier"
+      ],
+      "analysis_types": [
+       "eda",
+       "segmentation"
+      ],
+      "output_format": "both",
+      "resume_from": null,
+      "clarification_needed": false,
+      "clarification_question": null,
+      "question_intent": "segment_compare",
+      "targeted_params": {
+       "target_columns": [],
+       "metric_column": null,
+       "date_column": null,
+       "segment_column": "carrier",
+       "segment_value": null,
+       "group_by": "carrier",
+       "variant_column": null,
+       "n": null,
+       "order": null,
+       "frequency": null,
+       "test_type": null,
+       "aggregation": "mean",
+       "chart_type": null,
+       "kpi": "on_time_delivery",
+       "period_start": null,
+       "period_end": null,
+       "compare": null
+      }
+     },
+     "data_contract": {
+      "source_type": "csv",
+      "row_count": 4000,
+      "column_count": 9,
+      "columns": [
+       {
+        "name": "shipment_id",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "SHP-000001",
+         "SHP-000002",
+         "SHP-000003",
+         "SHP-000004",
+         "SHP-000005"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "named as an identifier ('shipment_id')",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "ship_date",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2026-02-21T00:00:00",
+         "2026-08-13T00:00:00",
+         "2026-10-15T00:00:00",
+         "2026-03-19T00:00:00",
+         "2026-03-17T00:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "distance_band",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Short",
+         "Short",
+         "Short",
+         "Long",
+         "Short"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "carrier",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "X",
+         "Y",
+         "Y",
+         "X",
+         "Y"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "on_time",
+        "dtype": "int64",
+        "nullable": false,
+        "sample_values": [
+         1,
+         1,
+         1,
+         1,
+         1
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": "mean",
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "distance_km",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         177.4,
+         157.1,
+         277.8,
+         2111.8,
+         282.6
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": "km"
+       },
+       {
+        "name": "weight_kg",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         23.5,
+         147.1,
+         25.1,
+         41.9,
+         45.3
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": "sum",
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": "kg"
+       },
+       {
+        "name": "delivery_days",
+        "dtype": "int64",
+        "nullable": false,
+        "sample_values": [
+         2,
+         2,
+         2,
+         6,
+         3
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": "mean",
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": "days"
+       },
+       {
+        "name": "cost",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         137.72,
+         193.8,
+         281.29,
+         1933.47,
+         255.67
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": "sum",
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": "USD"
+       }
+      ],
+      "sample_rows": [
+       {
+        "shipment_id": "SHP-000001",
+        "ship_date": "2026-02-21T00:00:00",
+        "distance_band": "Short",
+        "carrier": "X",
+        "on_time": 1,
+        "distance_km": 177.4,
+        "weight_kg": 23.5,
+        "delivery_days": 2,
+        "cost": 137.72
+       },
+       {
+        "shipment_id": "SHP-000002",
+        "ship_date": "2026-08-13T00:00:00",
+        "distance_band": "Short",
+        "carrier": "Y",
+        "on_time": 1,
+        "distance_km": 157.1,
+        "weight_kg": 147.1,
+        "delivery_days": 2,
+        "cost": 193.8
+       },
+       {
+        "shipment_id": "SHP-000003",
+        "ship_date": "2026-10-15T00:00:00",
+        "distance_band": "Short",
+        "carrier": "Y",
+        "on_time": 1,
+        "distance_km": 277.8,
+        "weight_kg": 25.1,
+        "delivery_days": 2,
+        "cost": 281.29
+       },
+       {
+        "shipment_id": "SHP-000004",
+        "ship_date": "2026-03-19T00:00:00",
+        "distance_band": "Long",
+        "carrier": "X",
+        "on_time": 1,
+        "distance_km": 2111.8,
+        "weight_kg": 41.9,
+        "delivery_days": 6,
+        "cost": 1933.47
+       },
+       {
+        "shipment_id": "SHP-000005",
+        "ship_date": "2026-03-17T00:00:00",
+        "distance_band": "Short",
+        "carrier": "Y",
+        "on_time": 1,
+        "distance_km": 282.6,
+        "weight_kg": 45.3,
+        "delivery_days": 3,
+        "cost": 255.67
+       }
+      ],
+      "date_columns": [
+       "ship_date"
+      ],
+      "id_columns": [
+       "shipment_id"
+      ],
+      "metric_columns": [
+       "on_time",
+       "distance_km",
+       "weight_kg",
+       "delivery_days",
+       "cost"
+      ],
+      "schema_summary": "4,000 rows \u00d7 9 columns. Dates: ship_date from 2026-01-01 to 2026-10-30 (daily). Metrics: on_time, distance_km, weight_kg, delivery_days, cost. Identifiers: shipment_id. Categories: distance_band, carrier.",
+      "source_query": null,
+      "source_evidence": {
+       "id": "source:data",
+       "kind": "source",
+       "claim": "Loaded 4,000 rows \u00d7 9 columns from a CSV file.",
+       "code": "pd.read_csv(<uploaded file>, encoding='utf-8', sep=',')",
+       "result_excerpt": "{\"roles\": {\"id\": [\"shipment_id\"], \"date\": [\"ship_date\"], \"category\": [\"distance_band\", \"carrier\"], \"metric\": [\"on_time\", \"distance_km\", \"weight_kg\", \"delivery_days\", \"cost\"]}, \"personal_data\": {}, \"fingerprint\": \"2b3d9039895b67bd\"}",
+       "row_count": 4000,
+       "confidence": "medium",
+       "confidence_reason": "The layout was detected, not given: check the notes.",
+       "assumptions": [
+        "Column meanings from the semantic layer table 'shipments'."
+       ]
+      },
+      "fingerprint": "2b3d9039895b67bdab18baed2cd048bc50401732a484185bbb53844ea78311c6",
+      "pii_columns": [],
+      "phi": false,
+      "deidentification": [],
+      "deidentified": false,
+      "domain": "logistics",
+      "roles": {
+       "date": "ship_date",
+       "shipment": "shipment_id",
+       "carrier": "carrier",
+       "freight_cost": "cost",
+       "weight_kg": "weight_kg",
+       "on_time_flag": "on_time",
+       "transit_days": "delivery_days"
+      },
+      "domain_confidence": "strong"
+     },
+     "cleaning_audit": {
+      "decisions": [],
+      "rows_before": 4000,
+      "rows_after": 4000,
+      "columns_coerced": [],
+      "duplicates_removed": 0,
+      "outliers_flagged": [
+       "13 extreme outliers in weight_kg (0.3% of data, threshold: values > 312.88)"
+      ],
+      "high_null_columns": [],
+      "summary": "Outliers flagged (kept) in: weight_kg. Final dataset: 4000 rows (started with 4000).",
+      "anomaly_report": {
+       "flags": [
+        {
+         "column": "weight_kg",
+         "extreme_count": 13,
+         "mild_count": 120,
+         "extreme_pct": 0.325,
+         "lower_bound": -168.90000000000003,
+         "upper_bound": 312.875,
+         "mild_lower_bound": -65.66250000000001,
+         "mild_upper_bound": 209.63750000000002,
+         "used_log_transform": false,
+         "heavy_tailed": false,
+         "message": "13 extreme outliers in weight_kg (0.3% of data, threshold: values > 312.88)"
+        }
+       ],
+       "methodology_note": "",
+       "eligible_columns": [
+        "distance_km",
+        "weight_kg",
+        "delivery_days",
+        "cost"
+       ],
+       "skipped_columns": {
+        "shipment_id": "id column",
+        "ship_date": "datetime column",
+        "distance_band": "binary column (only 2 values)",
+        "carrier": "binary column (only 2 values)",
+        "on_time": "binary column (only 2 values)"
+       }
+      },
+      "skipped_columns": [],
+      "date_ranges": {
+       "ship_date": [
+        "2026-01-01",
+        "2026-10-30",
+        10
+       ]
+      },
+      "grain": "aggregate",
+      "partial_months": {},
+      "main_currency": null,
+      "spell_story": [],
+      "window_span": {}
+     },
+     "analysis_findings": null,
+     "chart_configs": [],
+     "insight_report": null,
+     "targeted_response": {
+      "intent": "segment_compare",
+      "answer_text": "On-time delivery by carrier: Y leads at 84.0%, X at 75.0%. How: Sum of on_time, divided by distinct shipment_id where on_time has a value; over counted rows.",
+      "chart_configs": [
+       {
+        "id": "5338cd6d-7f00-4870-b7a4-b5ce803e9617",
+        "chart_type": "HorizontalBarChart",
+        "title": "On-time delivery by carrier",
+        "data": [
+         {
+          "carrier": "Y",
+          "On-time delivery": 84.0
+         },
+         {
+          "carrier": "X",
+          "On-time delivery": 75.0
+         }
+        ],
+        "x_key": "carrier",
+        "y_keys": [
+         "On-time delivery"
+        ],
+        "colors": [],
+        "x_label": "carrier",
+        "y_label": "On-time delivery",
+        "show_legend": true,
+        "show_grid": true,
+        "source_finding": "kpi",
+        "value_format": "percent",
+        "layout_hint": "half_width",
+        "rationale": {
+         "rule": "targeted:kpi\u2192ranked bars",
+         "reason": "On-time delivery per carrier, ranked. Sum of on_time, divided by distinct shipment_id where on_time has a value; over counted rows.",
+         "x": "carrier",
+         "y": "On-time delivery",
+         "split": null,
+         "aggregation": "none",
+         "n_rows": 4000,
+         "evidence_ids": [],
+         "code": "",
+         "confidence": null
+        },
+        "placement": "summary",
+        "lint_warnings": [],
+        "error_key": null,
+        "split_key": null,
+        "reference_lines": []
+       }
+      ],
+      "table_data": [
+       {
+        "carrier": "Y",
+        "On-time delivery": "84.0%"
+       },
+       {
+        "carrier": "X",
+        "On-time delivery": "75.0%"
+       }
+      ],
+      "table_columns": [],
+      "suggestions": [],
+      "unanswerable_reason": null,
+      "generated_at": "2026-11-18T17:50:52.974455Z"
+     },
+     "expert_review": null,
+     "narrative": {
+      "column_display_names": {
+       "shipment_id": "Shipment ID",
+       "ship_date": "Ship Date",
+       "distance_band": "Distance Band",
+       "carrier": "Carrier",
+       "on_time": "On Time",
+       "distance_km": "Distance (km)",
+       "weight_kg": "Weight (kg)",
+       "delivery_days": "Delivery Days",
+       "cost": "Cost"
+      },
+      "entity_singular": "shipment",
+      "entity_plural": "shipments"
+     },
+     "iteration": 1,
+     "quality_check_attempts": 0,
+     "high_null_answer": null,
+     "prior_pii": [],
+     "error_retryable": true,
+     "error_reask": true,
+     "overview_done": true,
+     "dataset_name": null,
+     "file_hash": null,
+     "dataset_id": null,
+     "dataset_version_id": null,
+     "status": "completed",
+     "cleaned_data_path": "/Users/uvnikhil/Projects/AnalystAI/session_data/215b35df-8ca9-4268-96c9-f8e5185baaae/cleaned_data.parquet",
+     "error_message": null,
+     "created_at": "2026-11-18T17:50:40.100884Z",
+     "updated_at": "2026-11-18T17:50:52.981682Z"
+    },
+    "domain": "logistics",
+    "latency_s": 12.96,
+    "cost_usd": 0.02337,
+    "llm_calls": 3,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "[\n  \"Which carrier has the highest on_time delivery rate, and how does that compare across all carriers weighted by their shipment volume?\",\n  \"How has the monthly on_time delivery rate trended from January through October 2026 \u2014 are there any months where performance notably declined?\",\n  \"Is there a correlation between distance_km and delivery_days, and does this relationship differ across distance_band categories?\",\n  \"Which carrier delivers the lowest average cost per shipment, and does that cost efficiency hold when controlling for weight_kg and distance_band?\",\n  \"Are there specific ship_date periods where delivery_days spiked abnormally high, suggesting potential operational disruptions or carrier-specific bottlenecks?\"\n]",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "{\n  \"column_display_names\": {\n    \"shipment_id\": \"Shipment ID\",\n    \"ship_date\": \"Ship Date\",\n    \"distance_band\": \"Distance Band\",\n    \"carrier\": \"Carrier\",\n    \"on_time\": \"On Time\",\n    \"distance_km\": \"Distance (km)\",\n    \"weight_kg\": \"Weight (kg)\",\n    \"delivery_days\": \"Delivery Days\",\n    \"cost\": \"Cost\"\n  },\n  \"entity_singular\": \"shipment\",\n  \"entity_plural\": \"shipments\"\n}",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "```json\n{\n  \"raw_query\": \"What share of shipments does each carrier deliver on time?\",\n  \"target_metrics\": [\"on_time\", \"carrier\"],\n  \"timeframe\": null,\n  \"segments\": [\"carrier\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": \"carrier\",\n    \"segment_value\": null,\n    \"group_by\": \"carrier\",\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"mean\",\n    \"chart_type\": null,\n    \"kpi\": \"on_time_delivery\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "e2e-95": [
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": true,
+      "detail": "want \u22480.6328 [(1.0, None), (100.0, '%')] in answer; saw [63.3, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]"
+     },
+     {
+      "kind": "number_in_answer",
+      "ok": false,
+      "detail": "want \u22480.8443 [(1.0, None), (100.0, '%')] in answer; saw [63.3, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "charts_lint_clean",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "charts_have_rationale",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     },
+     {
+      "rule": "pii_exits",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     }
+    ],
+    "error": null,
+    "answer": "OTIF (orders): 63.3%. An order counts when every line due so far arrived by its requested date and shipped in full; a line still open past its requested date (as of the data's last order date) fails it, lines not yet due are not judged. By Order ID each group is one Order ID: OTIF (orders) counts them, so this is its value over them all. How: Distinct Order ID where days from Delivered Date to Requested Date \u2265 0 or days from Requested Date to Delivered Date > 0 or days from Requested Date to the data's last date > 0 and Status is in transit / out for delivery / picked up / exception / delivery exception / delayed / tendered / booked / dispatched / pending / shipped / partially shipped / backordered / short shipped / open / allocated / released / picked / packed less distinct Order ID where days from Requested Date to Delivered Date > 0 or Qty Shipped \u2212 Qty Ordered < 0 and days from Delivered Date to Requested Date \u2265 0 or days from Requested Date to the data's last date > 0 and Status is in transit / out for delivery / picked up / exception / delivery exception / delayed / tendered / booked / dispatched / pending / shipped / partially shipped / backordered / short shipped / open / allocated / released / picked / packed, divided by distinct Order ID where the same conditions hold; over counted rows (cancelled rows left out).",
+    "pii_exits": {
+     "rule": "pii_exits",
+     "ok": true,
+     "na": true,
+     "detail": "n/a: no planted PII"
+    },
+    "pii_canary_hits": 0,
+    "pii_model_hits": 0,
+    "pii_planted": 0,
+    "approvals": [],
+    "output": {
+     "session_id": "81514070-5cc6-4124-8eb2-a6e7495f3a66",
+     "user_id": "default",
+     "conversation_history": [
+      {
+       "role": "user",
+       "content": "What is OTIF by order and by line?",
+       "timestamp": "2026-11-18T17:50:58.891778Z"
+      },
+      {
+       "role": "assistant",
+       "content": "OTIF (orders): 63.3%. An order counts when every line due so far arrived by its requested date and shipped in full; a line still open past its requested date (as of the data's last order date) fails it, lines not yet due are not judged. By Order ID each group is one Order ID: OTIF (orders) counts them, so this is its value over them all. How: Distinct Order ID where days from Delivered Date to Requested Date \u2265 0 or days from Requested Date to Delivered Date > 0 or days from Requested Date to the data's last date > 0 and Status is in transit / out for delivery / picked up / exception / delivery exception / delayed / tendered / booked / dispatched / pending / shipped / partially shipped / backordered / short shipped / open / allocated / released / picked / packed less distinct Order ID where days from Requested Date to Delivered Date > 0 or Qty Shipped \u2212 Qty Ordered < 0 and days from Delivered Date to Requested Date \u2265 0 or days from Requested Date to the data's last date > 0 and Status is in transit / out for delivery / picked up / exception / delivery exception / delayed / tendered / booked / dispatched / pending / shipped / partially shipped / backordered / short shipped / open / allocated / released / picked / packed, divided by distinct Order ID where the same conditions hold; over counted rows (cancelled rows left out).",
+       "timestamp": "2026-11-18T17:50:59.402692Z"
+      }
+     ],
+     "connector_config": {
+      "type": "csv",
+      "file_path": "/Users/uvnikhil/Projects/AnalystAI/uploads/evals/order_lines-1.csv",
+      "connection_string": null,
+      "table_name": null,
+      "spreadsheet_id": null,
+      "sheet_name": null,
+      "service_account_json": null,
+      "url": null,
+      "auth_type": null,
+      "auth_value": null,
+      "api_key_header": null,
+      "pagination_key": null
+     },
+     "task_plan": {
+      "raw_query": "What is OTIF by order and by line?",
+      "target_metrics": [
+       "Qty Ordered",
+       "Qty Shipped"
+      ],
+      "timeframe": null,
+      "segments": [
+       "Order ID",
+       "Line No"
+      ],
+      "analysis_types": [
+       "eda",
+       "segmentation"
+      ],
+      "output_format": "both",
+      "resume_from": null,
+      "clarification_needed": false,
+      "clarification_question": null,
+      "question_intent": "segment_compare",
+      "targeted_params": {
+       "target_columns": [
+        "Order ID",
+        "Line No"
+       ],
+       "metric_column": null,
+       "date_column": null,
+       "segment_column": null,
+       "segment_value": null,
+       "group_by": "Order ID",
+       "variant_column": null,
+       "n": null,
+       "order": null,
+       "frequency": null,
+       "test_type": null,
+       "aggregation": null,
+       "chart_type": null,
+       "kpi": "otif_order",
+       "period_start": null,
+       "period_end": null,
+       "compare": null
+      }
+     },
+     "data_contract": {
+      "source_type": "csv",
+      "row_count": 6025,
+      "column_count": 13,
+      "columns": [
+       {
+        "name": "Order ID",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "SO50000",
+         "SO50001",
+         "SO50001",
+         "SO50001",
+         "SO50002"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "named as an identifier ('Order ID')",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Line No",
+        "dtype": "int64",
+        "nullable": false,
+        "sample_values": [
+         10,
+         10,
+         20,
+         30,
+         10
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "id: the logistics line number",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Order Line ID",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "SO50000-10",
+         "SO50001-10",
+         "SO50001-20",
+         "SO50001-30",
+         "SO50002-10"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "named as an identifier ('Order Line ID')",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "SKU",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "SKU-0077",
+         "SKU-0046",
+         "SKU-0014",
+         "SKU-0039",
+         "SKU-0104"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "id: the logistics sku",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Order Date",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2026-06-25T00:00:00",
+         "2026-03-22T00:00:00",
+         "2026-03-22T00:00:00",
+         "2026-03-22T00:00:00",
+         "2026-06-12T00:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Requested Date",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2026-06-28T00:00:00",
+         "2026-03-29T00:00:00",
+         "2026-03-29T00:00:00",
+         "2026-03-29T00:00:00",
+         "2026-06-17T00:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Delivered Date",
+        "dtype": "datetime64[us]",
+        "nullable": true,
+        "sample_values": [
+         "2026-06-26T00:00:00",
+         "2026-03-29T00:00:00",
+         "2026-03-27T00:00:00",
+         "2026-06-17T00:00:00",
+         "2026-06-17T00:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 5.76,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Qty Ordered",
+        "dtype": "int64",
+        "nullable": false,
+        "sample_values": [
+         40,
+         40,
+         44,
+         36,
+         22
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Qty Shipped",
+        "dtype": "int64",
+        "nullable": false,
+        "sample_values": [
+         40,
+         40,
+         0,
+         36,
+         22
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Status",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Delivered",
+         "Delivered",
+         "Backordered",
+         "Delivered",
+         "Delivered"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Warehouse",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Columbus DC",
+         "Dallas DC",
+         "Dallas DC",
+         "Dallas DC",
+         "Reno DC"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Carrier",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "FedEx Freight",
+         "UPS",
+         "UPS",
+         "UPS",
+         "FedEx Freight"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Ship To",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Umbrella Co",
+         "Initech LLC",
+         "Wayne Retail",
+         "Wayne Retail",
+         "Initech LLC"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       }
+      ],
+      "sample_rows": [
+       {
+        "Order ID": "SO50000",
+        "Line No": 10,
+        "Order Line ID": "SO50000-10",
+        "SKU": "SKU-0077",
+        "Order Date": "2026-06-25T00:00:00",
+        "Requested Date": "2026-06-28T00:00:00",
+        "Delivered Date": "2026-06-26T00:00:00",
+        "Qty Ordered": 40,
+        "Qty Shipped": 40,
+        "Status": "Delivered",
+        "Warehouse": "Columbus DC",
+        "Carrier": "FedEx Freight",
+        "Ship To": "Umbrella Co"
+       },
+       {
+        "Order ID": "SO50001",
+        "Line No": 10,
+        "Order Line ID": "SO50001-10",
+        "SKU": "SKU-0046",
+        "Order Date": "2026-03-22T00:00:00",
+        "Requested Date": "2026-03-29T00:00:00",
+        "Delivered Date": "2026-03-29T00:00:00",
+        "Qty Ordered": 40,
+        "Qty Shipped": 40,
+        "Status": "Delivered",
+        "Warehouse": "Dallas DC",
+        "Carrier": "UPS",
+        "Ship To": "Initech LLC"
+       },
+       {
+        "Order ID": "SO50001",
+        "Line No": 20,
+        "Order Line ID": "SO50001-20",
+        "SKU": "SKU-0014",
+        "Order Date": "2026-03-22T00:00:00",
+        "Requested Date": "2026-03-29T00:00:00",
+        "Delivered Date": null,
+        "Qty Ordered": 44,
+        "Qty Shipped": 0,
+        "Status": "Backordered",
+        "Warehouse": "Dallas DC",
+        "Carrier": "UPS",
+        "Ship To": "Wayne Retail"
+       },
+       {
+        "Order ID": "SO50001",
+        "Line No": 30,
+        "Order Line ID": "SO50001-30",
+        "SKU": "SKU-0039",
+        "Order Date": "2026-03-22T00:00:00",
+        "Requested Date": "2026-03-29T00:00:00",
+        "Delivered Date": "2026-03-27T00:00:00",
+        "Qty Ordered": 36,
+        "Qty Shipped": 36,
+        "Status": "Delivered",
+        "Warehouse": "Dallas DC",
+        "Carrier": "UPS",
+        "Ship To": "Wayne Retail"
+       },
+       {
+        "Order ID": "SO50002",
+        "Line No": 10,
+        "Order Line ID": "SO50002-10",
+        "SKU": "SKU-0104",
+        "Order Date": "2026-06-12T00:00:00",
+        "Requested Date": "2026-06-17T00:00:00",
+        "Delivered Date": "2026-06-17T00:00:00",
+        "Qty Ordered": 22,
+        "Qty Shipped": 22,
+        "Status": "Delivered",
+        "Warehouse": "Reno DC",
+        "Carrier": "FedEx Freight",
+        "Ship To": "Initech LLC"
+       }
+      ],
+      "date_columns": [
+       "Order Date",
+       "Requested Date",
+       "Delivered Date"
+      ],
+      "id_columns": [
+       "Order ID",
+       "Line No",
+       "Order Line ID",
+       "SKU"
+      ],
+      "metric_columns": [
+       "Qty Ordered",
+       "Qty Shipped"
+      ],
+      "schema_summary": "6,025 rows \u00d7 13 columns. Dates: Order Date from 2026-03-02 to 2026-10-31 (daily). Metrics: Qty Ordered, Qty Shipped. Identifiers: Order ID, Line No, Order Line ID, SKU. Categories: Status, Warehouse, Carrier, Ship To. Blank by the file's layout, not missing (filled only for the rows whose status needs one): Delivered Date.",
+      "source_query": null,
+      "source_evidence": {
+       "id": "source:data",
+       "kind": "source",
+       "claim": "Loaded 6,025 rows \u00d7 13 columns from a CSV file.",
+       "code": "pd.read_csv(<uploaded file>, encoding='utf-8', sep=',')",
+       "result_excerpt": "{\"roles\": {\"id\": [\"Order ID\", \"Line No\", \"Order Line ID\", \"SKU\"], \"date\": [\"Order Date\", \"Requested Date\", \"Delivered Date\"], \"metric\": [\"Qty Ordered\", \"Qty Shipped\"], \"category\": [\"Status\", \"Warehouse\", \"Carrier\", \"Ship To\"]}, \"personal_data\": {}, \"fingerprint\": \"a96a0eba4a2661e6\"}",
+       "row_count": 6025,
+       "confidence": "high",
+       "confidence_reason": "Read as-is: no layout guessing was needed.",
+       "assumptions": []
+      },
+      "fingerprint": "a96a0eba4a2661e64b7f4d710d71e71d19e70d15eb46a2f6af5be9432781cdff",
+      "pii_columns": [],
+      "phi": false,
+      "deidentification": [],
+      "deidentified": false,
+      "domain": "logistics",
+      "roles": {
+       "date": "Order Date",
+       "promised_date": "Requested Date",
+       "delivered": "Delivered Date",
+       "order": "Order ID",
+       "order_line_id": "Order Line ID",
+       "line_number": "Line No",
+       "sku": "SKU",
+       "carrier": "Carrier",
+       "warehouse": "Warehouse",
+       "status": "Status",
+       "qty_ordered": "Qty Ordered",
+       "qty_shipped": "Qty Shipped"
+      },
+      "domain_confidence": "strong"
+     },
+     "cleaning_audit": {
+      "decisions": [
+       {
+        "column": "Delivered Date",
+        "operation": "keep",
+        "strategy": "conditional",
+        "reason": "Filled only for rows whose status needs it, so other rows are blank by design; 0% of those rows have no value. Kept as it is.",
+        "rows_affected": 0,
+        "before_null_pct": 5.8,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "*",
+        "operation": "flag",
+        "strategy": "cancel",
+        "reason": "110 cancelled shipments, lines or appointments: left out of every count and rate; kept in the data.",
+        "rows_affected": 110,
+        "before_null_pct": 0.0,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "shipped_minus_ordered",
+        "operation": "flag",
+        "strategy": "out_of_range",
+        "reason": "76 values outside the valid range (le 0); kept, check them.",
+        "rows_affected": 76,
+        "before_null_pct": 0.0,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       }
+      ],
+      "rows_before": 6025,
+      "rows_after": 6025,
+      "columns_coerced": [],
+      "duplicates_removed": 0,
+      "outliers_flagged": [],
+      "high_null_columns": [],
+      "summary": "Final dataset: 6025 rows (started with 6025).",
+      "anomaly_report": {
+       "flags": [],
+       "methodology_note": "",
+       "eligible_columns": [
+        "Qty Ordered",
+        "Qty Shipped"
+       ],
+       "skipped_columns": {
+        "Order ID": "constant or unsupported",
+        "Line No": "ordinal (low-cardinality numeric, e.g. Likert/class)",
+        "Order Line ID": "constant or unsupported",
+        "SKU": "constant or unsupported",
+        "Order Date": "datetime column",
+        "Requested Date": "datetime column",
+        "Delivered Date": "datetime column",
+        "Status": "non-numeric",
+        "Warehouse": "non-numeric",
+        "Carrier": "non-numeric",
+        "Ship To": "non-numeric"
+       }
+      },
+      "skipped_columns": [],
+      "date_ranges": {
+       "Order Date": [
+        "2026-03-02",
+        "2026-10-31",
+        8
+       ],
+       "Requested Date": [
+        "2026-03-06",
+        "2026-11-20",
+        9
+       ],
+       "Delivered Date": [
+        "2026-03-04",
+        "2026-11-02",
+        9
+       ]
+      },
+      "grain": "aggregate",
+      "partial_months": {
+       "Requested Date": [
+        "2026-11",
+        20
+       ],
+       "Delivered Date": [
+        "2026-11",
+        2
+       ]
+      },
+      "main_currency": null,
+      "spell_story": [],
+      "window_span": {}
+     },
+     "analysis_findings": null,
+     "chart_configs": [],
+     "insight_report": null,
+     "targeted_response": {
+      "intent": "segment_compare",
+      "answer_text": "OTIF (orders): 63.3%. An order counts when every line due so far arrived by its requested date and shipped in full; a line still open past its requested date (as of the data's last order date) fails it, lines not yet due are not judged. By Order ID each group is one Order ID: OTIF (orders) counts them, so this is its value over them all. How: Distinct Order ID where days from Delivered Date to Requested Date \u2265 0 or days from Requested Date to Delivered Date > 0 or days from Requested Date to the data's last date > 0 and Status is in transit / out for delivery / picked up / exception / delivery exception / delayed / tendered / booked / dispatched / pending / shipped / partially shipped / backordered / short shipped / open / allocated / released / picked / packed less distinct Order ID where days from Requested Date to Delivered Date > 0 or Qty Shipped \u2212 Qty Ordered < 0 and days from Delivered Date to Requested Date \u2265 0 or days from Requested Date to the data's last date > 0 and Status is in transit / out for delivery / picked up / exception / delivery exception / delayed / tendered / booked / dispatched / pending / shipped / partially shipped / backordered / short shipped / open / allocated / released / picked / packed, divided by distinct Order ID where the same conditions hold; over counted rows (cancelled rows left out).",
+      "chart_configs": [],
+      "table_data": [],
+      "table_columns": [],
+      "suggestions": [],
+      "unanswerable_reason": null,
+      "generated_at": "2026-11-18T17:50:59.394537Z"
+     },
+     "expert_review": null,
+     "narrative": {
+      "column_display_names": {
+       "Order ID": "Order ID",
+       "Line No": "Line Number",
+       "Order Line ID": "Order Line ID",
+       "SKU": "SKU",
+       "Order Date": "Order Date",
+       "Requested Date": "Requested Date",
+       "Delivered Date": "Delivered Date",
+       "Qty Ordered": "Quantity Ordered",
+       "Qty Shipped": "Quantity Shipped",
+       "Status": "Status",
+       "Warehouse": "Warehouse",
+       "Carrier": "Carrier",
+       "Ship To": "Ship To"
+      },
+      "entity_singular": "order line",
+      "entity_plural": "order lines"
+     },
+     "iteration": 1,
+     "quality_check_attempts": 0,
+     "high_null_answer": null,
+     "prior_pii": [],
+     "error_retryable": true,
+     "error_reask": true,
+     "overview_done": true,
+     "dataset_name": null,
+     "file_hash": null,
+     "dataset_id": null,
+     "dataset_version_id": null,
+     "status": "completed",
+     "cleaned_data_path": "/Users/uvnikhil/Projects/AnalystAI/session_data/81514070-5cc6-4124-8eb2-a6e7495f3a66/cleaned_data.parquet",
+     "error_message": null,
+     "created_at": "2026-11-18T17:50:40.385583Z",
+     "updated_at": "2026-11-18T17:50:59.402701Z"
+    },
+    "domain": "logistics",
+    "latency_s": 21.65,
+    "cost_usd": 0.02698,
+    "llm_calls": 4,
+    "truncated_calls": 0,
+    "rejections": [
+     "invented_columns"
+    ],
+    "replies": [
+     {
+      "text": "[\n  \"What is the on-time in-full (OTIF) rate by Warehouse and Carrier \u2014 comparing Delivered Date against Requested Date and Qty Shipped against Qty Ordered \u2014 and which combinations are the worst offenders?\",\n  \"How does the unit fill rate (Qty Shipped \u00f7 Qty Ordered) and line fill rate (lines where Qty Shipped = Qty Ordered \u00f7 total lines) compare across each Warehouse, and are any warehouses consistently under-filling orders?\",\n  \"What is the trend in order volume (count of Order IDs) and total Qty Ordered by week across the Order Date range (March\u2013October 2026), and are there any unexpected spikes or drops that could indicate demand or operational disruptions?\",\n  \"Which Ship To destinations have the highest proportion of orders with a Status indicating non-delivery (e.g., cancelled, backordered, or pending), and how does their average gap between Order Date and Requested Date compare to fulfilled orders?\",\n  \"Are there specific SKUs that are repeatedly shipped short (Qty Shipped < Qty Ordered) across multiple orders, and which Warehouse and Carrier combinations are most associated with those shortfalls?\"\n]",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "{\n  \"column_display_names\": {\n    \"Order ID\": \"Order ID\",\n    \"Line No\": \"Line Number\",\n    \"Order Line ID\": \"Order Line ID\",\n    \"SKU\": \"SKU\",\n    \"Order Date\": \"Order Date\",\n    \"Requested Date\": \"Requested Date\",\n    \"Delivered Date\": \"Delivered Date\",\n    \"Qty Ordered\": \"Quantity Ordered\",\n    \"Qty Shipped\": \"Quantity Shipped\",\n    \"Status\": \"Status\",\n    \"Warehouse\": \"Warehouse\",\n    \"Carrier\": \"Carrier\",\n    \"Ship To\": \"Ship To\"\n  },\n  \"entity_singular\": \"order line\",\n  \"entity_plural\": \"order lines\"\n}",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "```json\n{\n  \"raw_query\": \"What is OTIF by order and by line?\",\n  \"target_metrics\": [\"Qty Ordered\", \"Qty Shipped\"],\n  \"timeframe\": null,\n  \"segments\": [\"Order ID\", \"Line No\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [\"Order ID\", \"Line No\"],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": null,\n    \"segment_value\": null,\n    \"group_by\": [\"Order ID\", \"Line No\"],\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": null,\n    \"chart_type\": null,\n    \"kpi\": \"otif_order\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "```json\n{\n  \"raw_query\": \"What is OTIF by order and by line?\",\n  \"target_metrics\": [\"Qty Ordered\", \"Qty Shipped\"],\n  \"timeframe\": null,\n  \"segments\": [\"Order ID\", \"Line No\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [\"Order ID\", \"Line No\"],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": null,\n    \"segment_value\": null,\n    \"group_by\": \"Order ID\",\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": null,\n    \"chart_type\": null,\n    \"kpi\": \"otif_order\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": true,
+      "detail": "want \u22480.6328 [(1.0, None), (100.0, '%')] in answer; saw [63.3, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]"
+     },
+     {
+      "kind": "number_in_answer",
+      "ok": false,
+      "detail": "want \u22480.8443 [(1.0, None), (100.0, '%')] in answer; saw [63.3, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "charts_lint_clean",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "charts_have_rationale",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     },
+     {
+      "rule": "pii_exits",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     }
+    ],
+    "error": null,
+    "answer": "OTIF (orders): 63.3%. An order counts when every line due so far arrived by its requested date and shipped in full; a line still open past its requested date (as of the data's last order date) fails it, lines not yet due are not judged. By Order ID each group is one Order ID: OTIF (orders) counts them, so this is its value over them all. How: Distinct Order ID where days from Delivered Date to Requested Date \u2265 0 or days from Requested Date to Delivered Date > 0 or days from Requested Date to the data's last date > 0 and Status is in transit / out for delivery / picked up / exception / delivery exception / delayed / tendered / booked / dispatched / pending / shipped / partially shipped / backordered / short shipped / open / allocated / released / picked / packed less distinct Order ID where days from Requested Date to Delivered Date > 0 or Qty Shipped \u2212 Qty Ordered < 0 and days from Delivered Date to Requested Date \u2265 0 or days from Requested Date to the data's last date > 0 and Status is in transit / out for delivery / picked up / exception / delivery exception / delayed / tendered / booked / dispatched / pending / shipped / partially shipped / backordered / short shipped / open / allocated / released / picked / packed, divided by distinct Order ID where the same conditions hold; over counted rows (cancelled rows left out).",
+    "pii_exits": {
+     "rule": "pii_exits",
+     "ok": true,
+     "na": true,
+     "detail": "n/a: no planted PII"
+    },
+    "pii_canary_hits": 0,
+    "pii_model_hits": 0,
+    "pii_planted": 0,
+    "approvals": [],
+    "output": {
+     "session_id": "08d7cc6c-557e-4032-9929-a314c79783a0",
+     "user_id": "default",
+     "conversation_history": [
+      {
+       "role": "user",
+       "content": "What is OTIF by order and by line?",
+       "timestamp": "2026-11-18T17:50:58.866104Z"
+      },
+      {
+       "role": "assistant",
+       "content": "OTIF (orders): 63.3%. An order counts when every line due so far arrived by its requested date and shipped in full; a line still open past its requested date (as of the data's last order date) fails it, lines not yet due are not judged. By Order ID each group is one Order ID: OTIF (orders) counts them, so this is its value over them all. How: Distinct Order ID where days from Delivered Date to Requested Date \u2265 0 or days from Requested Date to Delivered Date > 0 or days from Requested Date to the data's last date > 0 and Status is in transit / out for delivery / picked up / exception / delivery exception / delayed / tendered / booked / dispatched / pending / shipped / partially shipped / backordered / short shipped / open / allocated / released / picked / packed less distinct Order ID where days from Requested Date to Delivered Date > 0 or Qty Shipped \u2212 Qty Ordered < 0 and days from Delivered Date to Requested Date \u2265 0 or days from Requested Date to the data's last date > 0 and Status is in transit / out for delivery / picked up / exception / delivery exception / delayed / tendered / booked / dispatched / pending / shipped / partially shipped / backordered / short shipped / open / allocated / released / picked / packed, divided by distinct Order ID where the same conditions hold; over counted rows (cancelled rows left out).",
+       "timestamp": "2026-11-18T17:50:59.340804Z"
+      }
+     ],
+     "connector_config": {
+      "type": "csv",
+      "file_path": "/Users/uvnikhil/Projects/AnalystAI/uploads/evals/order_lines-1.csv",
+      "connection_string": null,
+      "table_name": null,
+      "spreadsheet_id": null,
+      "sheet_name": null,
+      "service_account_json": null,
+      "url": null,
+      "auth_type": null,
+      "auth_value": null,
+      "api_key_header": null,
+      "pagination_key": null
+     },
+     "task_plan": {
+      "raw_query": "What is OTIF by order and by line?",
+      "target_metrics": [
+       "Qty Ordered",
+       "Qty Shipped"
+      ],
+      "timeframe": null,
+      "segments": [
+       "Order ID",
+       "Line No"
+      ],
+      "analysis_types": [
+       "eda",
+       "segmentation"
+      ],
+      "output_format": "both",
+      "resume_from": null,
+      "clarification_needed": false,
+      "clarification_question": null,
+      "question_intent": "segment_compare",
+      "targeted_params": {
+       "target_columns": [
+        "Order ID",
+        "Line No"
+       ],
+       "metric_column": null,
+       "date_column": null,
+       "segment_column": null,
+       "segment_value": null,
+       "group_by": "Order ID",
+       "variant_column": null,
+       "n": null,
+       "order": null,
+       "frequency": null,
+       "test_type": null,
+       "aggregation": null,
+       "chart_type": null,
+       "kpi": "otif_order",
+       "period_start": null,
+       "period_end": null,
+       "compare": null
+      }
+     },
+     "data_contract": {
+      "source_type": "csv",
+      "row_count": 6025,
+      "column_count": 13,
+      "columns": [
+       {
+        "name": "Order ID",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "SO50000",
+         "SO50001",
+         "SO50001",
+         "SO50001",
+         "SO50002"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "named as an identifier ('Order ID')",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Line No",
+        "dtype": "int64",
+        "nullable": false,
+        "sample_values": [
+         10,
+         10,
+         20,
+         30,
+         10
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "id: the logistics line number",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Order Line ID",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "SO50000-10",
+         "SO50001-10",
+         "SO50001-20",
+         "SO50001-30",
+         "SO50002-10"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "named as an identifier ('Order Line ID')",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "SKU",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "SKU-0077",
+         "SKU-0046",
+         "SKU-0014",
+         "SKU-0039",
+         "SKU-0104"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "id: the logistics sku",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Order Date",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2026-06-25T00:00:00",
+         "2026-03-22T00:00:00",
+         "2026-03-22T00:00:00",
+         "2026-03-22T00:00:00",
+         "2026-06-12T00:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Requested Date",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2026-06-28T00:00:00",
+         "2026-03-29T00:00:00",
+         "2026-03-29T00:00:00",
+         "2026-03-29T00:00:00",
+         "2026-06-17T00:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Delivered Date",
+        "dtype": "datetime64[us]",
+        "nullable": true,
+        "sample_values": [
+         "2026-06-26T00:00:00",
+         "2026-03-29T00:00:00",
+         "2026-03-27T00:00:00",
+         "2026-06-17T00:00:00",
+         "2026-06-17T00:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 5.76,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Qty Ordered",
+        "dtype": "int64",
+        "nullable": false,
+        "sample_values": [
+         40,
+         40,
+         44,
+         36,
+         22
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Qty Shipped",
+        "dtype": "int64",
+        "nullable": false,
+        "sample_values": [
+         40,
+         40,
+         0,
+         36,
+         22
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Status",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Delivered",
+         "Delivered",
+         "Backordered",
+         "Delivered",
+         "Delivered"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Warehouse",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Columbus DC",
+         "Dallas DC",
+         "Dallas DC",
+         "Dallas DC",
+         "Reno DC"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Carrier",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "FedEx Freight",
+         "UPS",
+         "UPS",
+         "UPS",
+         "FedEx Freight"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Ship To",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Umbrella Co",
+         "Initech LLC",
+         "Wayne Retail",
+         "Wayne Retail",
+         "Initech LLC"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       }
+      ],
+      "sample_rows": [
+       {
+        "Order ID": "SO50000",
+        "Line No": 10,
+        "Order Line ID": "SO50000-10",
+        "SKU": "SKU-0077",
+        "Order Date": "2026-06-25T00:00:00",
+        "Requested Date": "2026-06-28T00:00:00",
+        "Delivered Date": "2026-06-26T00:00:00",
+        "Qty Ordered": 40,
+        "Qty Shipped": 40,
+        "Status": "Delivered",
+        "Warehouse": "Columbus DC",
+        "Carrier": "FedEx Freight",
+        "Ship To": "Umbrella Co"
+       },
+       {
+        "Order ID": "SO50001",
+        "Line No": 10,
+        "Order Line ID": "SO50001-10",
+        "SKU": "SKU-0046",
+        "Order Date": "2026-03-22T00:00:00",
+        "Requested Date": "2026-03-29T00:00:00",
+        "Delivered Date": "2026-03-29T00:00:00",
+        "Qty Ordered": 40,
+        "Qty Shipped": 40,
+        "Status": "Delivered",
+        "Warehouse": "Dallas DC",
+        "Carrier": "UPS",
+        "Ship To": "Initech LLC"
+       },
+       {
+        "Order ID": "SO50001",
+        "Line No": 20,
+        "Order Line ID": "SO50001-20",
+        "SKU": "SKU-0014",
+        "Order Date": "2026-03-22T00:00:00",
+        "Requested Date": "2026-03-29T00:00:00",
+        "Delivered Date": null,
+        "Qty Ordered": 44,
+        "Qty Shipped": 0,
+        "Status": "Backordered",
+        "Warehouse": "Dallas DC",
+        "Carrier": "UPS",
+        "Ship To": "Wayne Retail"
+       },
+       {
+        "Order ID": "SO50001",
+        "Line No": 30,
+        "Order Line ID": "SO50001-30",
+        "SKU": "SKU-0039",
+        "Order Date": "2026-03-22T00:00:00",
+        "Requested Date": "2026-03-29T00:00:00",
+        "Delivered Date": "2026-03-27T00:00:00",
+        "Qty Ordered": 36,
+        "Qty Shipped": 36,
+        "Status": "Delivered",
+        "Warehouse": "Dallas DC",
+        "Carrier": "UPS",
+        "Ship To": "Wayne Retail"
+       },
+       {
+        "Order ID": "SO50002",
+        "Line No": 10,
+        "Order Line ID": "SO50002-10",
+        "SKU": "SKU-0104",
+        "Order Date": "2026-06-12T00:00:00",
+        "Requested Date": "2026-06-17T00:00:00",
+        "Delivered Date": "2026-06-17T00:00:00",
+        "Qty Ordered": 22,
+        "Qty Shipped": 22,
+        "Status": "Delivered",
+        "Warehouse": "Reno DC",
+        "Carrier": "FedEx Freight",
+        "Ship To": "Initech LLC"
+       }
+      ],
+      "date_columns": [
+       "Order Date",
+       "Requested Date",
+       "Delivered Date"
+      ],
+      "id_columns": [
+       "Order ID",
+       "Line No",
+       "Order Line ID",
+       "SKU"
+      ],
+      "metric_columns": [
+       "Qty Ordered",
+       "Qty Shipped"
+      ],
+      "schema_summary": "6,025 rows \u00d7 13 columns. Dates: Order Date from 2026-03-02 to 2026-10-31 (daily). Metrics: Qty Ordered, Qty Shipped. Identifiers: Order ID, Line No, Order Line ID, SKU. Categories: Status, Warehouse, Carrier, Ship To. Blank by the file's layout, not missing (filled only for the rows whose status needs one): Delivered Date.",
+      "source_query": null,
+      "source_evidence": {
+       "id": "source:data",
+       "kind": "source",
+       "claim": "Loaded 6,025 rows \u00d7 13 columns from a CSV file.",
+       "code": "pd.read_csv(<uploaded file>, encoding='utf-8', sep=',')",
+       "result_excerpt": "{\"roles\": {\"id\": [\"Order ID\", \"Line No\", \"Order Line ID\", \"SKU\"], \"date\": [\"Order Date\", \"Requested Date\", \"Delivered Date\"], \"metric\": [\"Qty Ordered\", \"Qty Shipped\"], \"category\": [\"Status\", \"Warehouse\", \"Carrier\", \"Ship To\"]}, \"personal_data\": {}, \"fingerprint\": \"a96a0eba4a2661e6\"}",
+       "row_count": 6025,
+       "confidence": "high",
+       "confidence_reason": "Read as-is: no layout guessing was needed.",
+       "assumptions": []
+      },
+      "fingerprint": "a96a0eba4a2661e64b7f4d710d71e71d19e70d15eb46a2f6af5be9432781cdff",
+      "pii_columns": [],
+      "phi": false,
+      "deidentification": [],
+      "deidentified": false,
+      "domain": "logistics",
+      "roles": {
+       "date": "Order Date",
+       "promised_date": "Requested Date",
+       "delivered": "Delivered Date",
+       "order": "Order ID",
+       "order_line_id": "Order Line ID",
+       "line_number": "Line No",
+       "sku": "SKU",
+       "carrier": "Carrier",
+       "warehouse": "Warehouse",
+       "status": "Status",
+       "qty_ordered": "Qty Ordered",
+       "qty_shipped": "Qty Shipped"
+      },
+      "domain_confidence": "strong"
+     },
+     "cleaning_audit": {
+      "decisions": [
+       {
+        "column": "Delivered Date",
+        "operation": "keep",
+        "strategy": "conditional",
+        "reason": "Filled only for rows whose status needs it, so other rows are blank by design; 0% of those rows have no value. Kept as it is.",
+        "rows_affected": 0,
+        "before_null_pct": 5.8,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "*",
+        "operation": "flag",
+        "strategy": "cancel",
+        "reason": "110 cancelled shipments, lines or appointments: left out of every count and rate; kept in the data.",
+        "rows_affected": 110,
+        "before_null_pct": 0.0,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "shipped_minus_ordered",
+        "operation": "flag",
+        "strategy": "out_of_range",
+        "reason": "76 values outside the valid range (le 0); kept, check them.",
+        "rows_affected": 76,
+        "before_null_pct": 0.0,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       }
+      ],
+      "rows_before": 6025,
+      "rows_after": 6025,
+      "columns_coerced": [],
+      "duplicates_removed": 0,
+      "outliers_flagged": [],
+      "high_null_columns": [],
+      "summary": "Final dataset: 6025 rows (started with 6025).",
+      "anomaly_report": {
+       "flags": [],
+       "methodology_note": "",
+       "eligible_columns": [
+        "Qty Ordered",
+        "Qty Shipped"
+       ],
+       "skipped_columns": {
+        "Order ID": "constant or unsupported",
+        "Line No": "ordinal (low-cardinality numeric, e.g. Likert/class)",
+        "Order Line ID": "constant or unsupported",
+        "SKU": "constant or unsupported",
+        "Order Date": "datetime column",
+        "Requested Date": "datetime column",
+        "Delivered Date": "datetime column",
+        "Status": "non-numeric",
+        "Warehouse": "non-numeric",
+        "Carrier": "non-numeric",
+        "Ship To": "non-numeric"
+       }
+      },
+      "skipped_columns": [],
+      "date_ranges": {
+       "Order Date": [
+        "2026-03-02",
+        "2026-10-31",
+        8
+       ],
+       "Requested Date": [
+        "2026-03-06",
+        "2026-11-20",
+        9
+       ],
+       "Delivered Date": [
+        "2026-03-04",
+        "2026-11-02",
+        9
+       ]
+      },
+      "grain": "aggregate",
+      "partial_months": {
+       "Requested Date": [
+        "2026-11",
+        20
+       ],
+       "Delivered Date": [
+        "2026-11",
+        2
+       ]
+      },
+      "main_currency": null,
+      "spell_story": [],
+      "window_span": {}
+     },
+     "analysis_findings": null,
+     "chart_configs": [],
+     "insight_report": null,
+     "targeted_response": {
+      "intent": "segment_compare",
+      "answer_text": "OTIF (orders): 63.3%. An order counts when every line due so far arrived by its requested date and shipped in full; a line still open past its requested date (as of the data's last order date) fails it, lines not yet due are not judged. By Order ID each group is one Order ID: OTIF (orders) counts them, so this is its value over them all. How: Distinct Order ID where days from Delivered Date to Requested Date \u2265 0 or days from Requested Date to Delivered Date > 0 or days from Requested Date to the data's last date > 0 and Status is in transit / out for delivery / picked up / exception / delivery exception / delayed / tendered / booked / dispatched / pending / shipped / partially shipped / backordered / short shipped / open / allocated / released / picked / packed less distinct Order ID where days from Requested Date to Delivered Date > 0 or Qty Shipped \u2212 Qty Ordered < 0 and days from Delivered Date to Requested Date \u2265 0 or days from Requested Date to the data's last date > 0 and Status is in transit / out for delivery / picked up / exception / delivery exception / delayed / tendered / booked / dispatched / pending / shipped / partially shipped / backordered / short shipped / open / allocated / released / picked / packed, divided by distinct Order ID where the same conditions hold; over counted rows (cancelled rows left out).",
+      "chart_configs": [],
+      "table_data": [],
+      "table_columns": [],
+      "suggestions": [],
+      "unanswerable_reason": null,
+      "generated_at": "2026-11-18T17:50:59.332884Z"
+     },
+     "expert_review": null,
+     "narrative": {
+      "column_display_names": {
+       "Order ID": "Order ID",
+       "Line No": "Line Number",
+       "Order Line ID": "Order Line ID",
+       "SKU": "SKU",
+       "Order Date": "Order Date",
+       "Requested Date": "Requested Date",
+       "Delivered Date": "Delivered Date",
+       "Qty Ordered": "Quantity Ordered",
+       "Qty Shipped": "Quantity Shipped",
+       "Status": "Status",
+       "Warehouse": "Warehouse",
+       "Carrier": "Carrier",
+       "Ship To": "Ship To"
+      },
+      "entity_singular": "order line",
+      "entity_plural": "order lines"
+     },
+     "iteration": 1,
+     "quality_check_attempts": 0,
+     "high_null_answer": null,
+     "prior_pii": [],
+     "error_retryable": true,
+     "error_reask": true,
+     "overview_done": true,
+     "dataset_name": null,
+     "file_hash": null,
+     "dataset_id": null,
+     "dataset_version_id": null,
+     "status": "completed",
+     "cleaned_data_path": "/Users/uvnikhil/Projects/AnalystAI/session_data/08d7cc6c-557e-4032-9929-a314c79783a0/cleaned_data.parquet",
+     "error_message": null,
+     "created_at": "2026-11-18T17:50:40.630297Z",
+     "updated_at": "2026-11-18T17:50:59.340811Z"
+    },
+    "domain": "logistics",
+    "latency_s": 20.14,
+    "cost_usd": 0.02698,
+    "llm_calls": 4,
+    "truncated_calls": 0,
+    "rejections": [
+     "invented_columns"
+    ],
+    "replies": [
+     {
+      "text": "[\n  \"What is the on-time in-full (OTIF) rate by Warehouse and Carrier \u2014 comparing Delivered Date against Requested Date and Qty Shipped against Qty Ordered \u2014 and which combinations are the worst offenders?\",\n  \"How does the unit fill rate (Qty Shipped \u00f7 Qty Ordered) and line fill rate (lines where Qty Shipped = Qty Ordered \u00f7 total lines) compare across each Warehouse, and are any warehouses consistently under-filling orders?\",\n  \"What is the trend in order volume (count of Order IDs) and total Qty Ordered by week across the Order Date range (March\u2013October 2026), and are there any unexpected spikes or drops that could indicate demand or operational disruptions?\",\n  \"Which Ship To destinations have the highest proportion of orders with a Status indicating non-delivery (e.g., cancelled, backordered, or pending), and how does their average gap between Order Date and Requested Date compare to fulfilled orders?\",\n  \"Are there specific SKUs that are repeatedly shipped short (Qty Shipped < Qty Ordered) across multiple orders, and which Warehouse and Carrier combinations are most associated with those shortfalls?\"\n]",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "{\n  \"column_display_names\": {\n    \"Order ID\": \"Order ID\",\n    \"Line No\": \"Line Number\",\n    \"Order Line ID\": \"Order Line ID\",\n    \"SKU\": \"SKU\",\n    \"Order Date\": \"Order Date\",\n    \"Requested Date\": \"Requested Date\",\n    \"Delivered Date\": \"Delivered Date\",\n    \"Qty Ordered\": \"Quantity Ordered\",\n    \"Qty Shipped\": \"Quantity Shipped\",\n    \"Status\": \"Status\",\n    \"Warehouse\": \"Warehouse\",\n    \"Carrier\": \"Carrier\",\n    \"Ship To\": \"Ship To\"\n  },\n  \"entity_singular\": \"order line\",\n  \"entity_plural\": \"order lines\"\n}",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "```json\n{\n  \"raw_query\": \"What is OTIF by order and by line?\",\n  \"target_metrics\": [\"Qty Ordered\", \"Qty Shipped\"],\n  \"timeframe\": null,\n  \"segments\": [\"Order ID\", \"Line No\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [\"Order ID\", \"Line No\"],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": null,\n    \"segment_value\": null,\n    \"group_by\": [\"Order ID\", \"Line No\"],\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": null,\n    \"chart_type\": null,\n    \"kpi\": \"otif_order\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "```json\n{\n  \"raw_query\": \"What is OTIF by order and by line?\",\n  \"target_metrics\": [\"Qty Ordered\", \"Qty Shipped\"],\n  \"timeframe\": null,\n  \"segments\": [\"Order ID\", \"Line No\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [\"Order ID\", \"Line No\"],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": null,\n    \"segment_value\": null,\n    \"group_by\": \"Order ID\",\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": null,\n    \"chart_type\": null,\n    \"kpi\": \"otif_order\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": true,
+      "detail": "want \u22480.6328 [(1.0, None), (100.0, '%')] in answer; saw [63.3, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]"
+     },
+     {
+      "kind": "number_in_answer",
+      "ok": false,
+      "detail": "want \u22480.8443 [(1.0, None), (100.0, '%')] in answer; saw [63.3, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "charts_lint_clean",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "charts_have_rationale",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     },
+     {
+      "rule": "pii_exits",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     }
+    ],
+    "error": null,
+    "answer": "OTIF (orders): 63.3%. An order counts when every line due so far arrived by its requested date and shipped in full; a line still open past its requested date (as of the data's last order date) fails it, lines not yet due are not judged. By Order ID each group is one Order ID: OTIF (orders) counts them, so this is its value over them all. How: Distinct Order ID where days from Delivered Date to Requested Date \u2265 0 or days from Requested Date to Delivered Date > 0 or days from Requested Date to the data's last date > 0 and Status is in transit / out for delivery / picked up / exception / delivery exception / delayed / tendered / booked / dispatched / pending / shipped / partially shipped / backordered / short shipped / open / allocated / released / picked / packed less distinct Order ID where days from Requested Date to Delivered Date > 0 or Qty Shipped \u2212 Qty Ordered < 0 and days from Delivered Date to Requested Date \u2265 0 or days from Requested Date to the data's last date > 0 and Status is in transit / out for delivery / picked up / exception / delivery exception / delayed / tendered / booked / dispatched / pending / shipped / partially shipped / backordered / short shipped / open / allocated / released / picked / packed, divided by distinct Order ID where the same conditions hold; over counted rows (cancelled rows left out).",
+    "pii_exits": {
+     "rule": "pii_exits",
+     "ok": true,
+     "na": true,
+     "detail": "n/a: no planted PII"
+    },
+    "pii_canary_hits": 0,
+    "pii_model_hits": 0,
+    "pii_planted": 0,
+    "approvals": [],
+    "output": {
+     "session_id": "7511c7f8-2515-486d-bb2e-572ee2b47d61",
+     "user_id": "default",
+     "conversation_history": [
+      {
+       "role": "user",
+       "content": "What is OTIF by order and by line?",
+       "timestamp": "2026-11-18T17:50:57.259280Z"
+      },
+      {
+       "role": "assistant",
+       "content": "OTIF (orders): 63.3%. An order counts when every line due so far arrived by its requested date and shipped in full; a line still open past its requested date (as of the data's last order date) fails it, lines not yet due are not judged. By Order ID each group is one Order ID: OTIF (orders) counts them, so this is its value over them all. How: Distinct Order ID where days from Delivered Date to Requested Date \u2265 0 or days from Requested Date to Delivered Date > 0 or days from Requested Date to the data's last date > 0 and Status is in transit / out for delivery / picked up / exception / delivery exception / delayed / tendered / booked / dispatched / pending / shipped / partially shipped / backordered / short shipped / open / allocated / released / picked / packed less distinct Order ID where days from Requested Date to Delivered Date > 0 or Qty Shipped \u2212 Qty Ordered < 0 and days from Delivered Date to Requested Date \u2265 0 or days from Requested Date to the data's last date > 0 and Status is in transit / out for delivery / picked up / exception / delivery exception / delayed / tendered / booked / dispatched / pending / shipped / partially shipped / backordered / short shipped / open / allocated / released / picked / packed, divided by distinct Order ID where the same conditions hold; over counted rows (cancelled rows left out).",
+       "timestamp": "2026-11-18T17:50:57.475566Z"
+      }
+     ],
+     "connector_config": {
+      "type": "csv",
+      "file_path": "/Users/uvnikhil/Projects/AnalystAI/uploads/evals/order_lines-1.csv",
+      "connection_string": null,
+      "table_name": null,
+      "spreadsheet_id": null,
+      "sheet_name": null,
+      "service_account_json": null,
+      "url": null,
+      "auth_type": null,
+      "auth_value": null,
+      "api_key_header": null,
+      "pagination_key": null
+     },
+     "task_plan": {
+      "raw_query": "What is OTIF by order and by line?",
+      "target_metrics": [
+       "Qty Ordered",
+       "Qty Shipped"
+      ],
+      "timeframe": null,
+      "segments": [
+       "Order ID",
+       "Line No"
+      ],
+      "analysis_types": [
+       "eda",
+       "segmentation"
+      ],
+      "output_format": "both",
+      "resume_from": null,
+      "clarification_needed": false,
+      "clarification_question": null,
+      "question_intent": "segment_compare",
+      "targeted_params": {
+       "target_columns": [
+        "Order ID",
+        "Line No"
+       ],
+       "metric_column": null,
+       "date_column": null,
+       "segment_column": null,
+       "segment_value": null,
+       "group_by": "Order ID",
+       "variant_column": null,
+       "n": null,
+       "order": null,
+       "frequency": null,
+       "test_type": null,
+       "aggregation": null,
+       "chart_type": null,
+       "kpi": "otif_order",
+       "period_start": null,
+       "period_end": null,
+       "compare": null
+      }
+     },
+     "data_contract": {
+      "source_type": "csv",
+      "row_count": 6025,
+      "column_count": 13,
+      "columns": [
+       {
+        "name": "Order ID",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "SO50000",
+         "SO50001",
+         "SO50001",
+         "SO50001",
+         "SO50002"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "named as an identifier ('Order ID')",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Line No",
+        "dtype": "int64",
+        "nullable": false,
+        "sample_values": [
+         10,
+         10,
+         20,
+         30,
+         10
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "id: the logistics line number",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Order Line ID",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "SO50000-10",
+         "SO50001-10",
+         "SO50001-20",
+         "SO50001-30",
+         "SO50002-10"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "named as an identifier ('Order Line ID')",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "SKU",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "SKU-0077",
+         "SKU-0046",
+         "SKU-0014",
+         "SKU-0039",
+         "SKU-0104"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "id: the logistics sku",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Order Date",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2026-06-25T00:00:00",
+         "2026-03-22T00:00:00",
+         "2026-03-22T00:00:00",
+         "2026-03-22T00:00:00",
+         "2026-06-12T00:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Requested Date",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2026-06-28T00:00:00",
+         "2026-03-29T00:00:00",
+         "2026-03-29T00:00:00",
+         "2026-03-29T00:00:00",
+         "2026-06-17T00:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Delivered Date",
+        "dtype": "datetime64[us]",
+        "nullable": true,
+        "sample_values": [
+         "2026-06-26T00:00:00",
+         "2026-03-29T00:00:00",
+         "2026-03-27T00:00:00",
+         "2026-06-17T00:00:00",
+         "2026-06-17T00:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 5.76,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Qty Ordered",
+        "dtype": "int64",
+        "nullable": false,
+        "sample_values": [
+         40,
+         40,
+         44,
+         36,
+         22
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Qty Shipped",
+        "dtype": "int64",
+        "nullable": false,
+        "sample_values": [
+         40,
+         40,
+         0,
+         36,
+         22
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Status",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Delivered",
+         "Delivered",
+         "Backordered",
+         "Delivered",
+         "Delivered"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Warehouse",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Columbus DC",
+         "Dallas DC",
+         "Dallas DC",
+         "Dallas DC",
+         "Reno DC"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Carrier",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "FedEx Freight",
+         "UPS",
+         "UPS",
+         "UPS",
+         "FedEx Freight"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Ship To",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Umbrella Co",
+         "Initech LLC",
+         "Wayne Retail",
+         "Wayne Retail",
+         "Initech LLC"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       }
+      ],
+      "sample_rows": [
+       {
+        "Order ID": "SO50000",
+        "Line No": 10,
+        "Order Line ID": "SO50000-10",
+        "SKU": "SKU-0077",
+        "Order Date": "2026-06-25T00:00:00",
+        "Requested Date": "2026-06-28T00:00:00",
+        "Delivered Date": "2026-06-26T00:00:00",
+        "Qty Ordered": 40,
+        "Qty Shipped": 40,
+        "Status": "Delivered",
+        "Warehouse": "Columbus DC",
+        "Carrier": "FedEx Freight",
+        "Ship To": "Umbrella Co"
+       },
+       {
+        "Order ID": "SO50001",
+        "Line No": 10,
+        "Order Line ID": "SO50001-10",
+        "SKU": "SKU-0046",
+        "Order Date": "2026-03-22T00:00:00",
+        "Requested Date": "2026-03-29T00:00:00",
+        "Delivered Date": "2026-03-29T00:00:00",
+        "Qty Ordered": 40,
+        "Qty Shipped": 40,
+        "Status": "Delivered",
+        "Warehouse": "Dallas DC",
+        "Carrier": "UPS",
+        "Ship To": "Initech LLC"
+       },
+       {
+        "Order ID": "SO50001",
+        "Line No": 20,
+        "Order Line ID": "SO50001-20",
+        "SKU": "SKU-0014",
+        "Order Date": "2026-03-22T00:00:00",
+        "Requested Date": "2026-03-29T00:00:00",
+        "Delivered Date": null,
+        "Qty Ordered": 44,
+        "Qty Shipped": 0,
+        "Status": "Backordered",
+        "Warehouse": "Dallas DC",
+        "Carrier": "UPS",
+        "Ship To": "Wayne Retail"
+       },
+       {
+        "Order ID": "SO50001",
+        "Line No": 30,
+        "Order Line ID": "SO50001-30",
+        "SKU": "SKU-0039",
+        "Order Date": "2026-03-22T00:00:00",
+        "Requested Date": "2026-03-29T00:00:00",
+        "Delivered Date": "2026-03-27T00:00:00",
+        "Qty Ordered": 36,
+        "Qty Shipped": 36,
+        "Status": "Delivered",
+        "Warehouse": "Dallas DC",
+        "Carrier": "UPS",
+        "Ship To": "Wayne Retail"
+       },
+       {
+        "Order ID": "SO50002",
+        "Line No": 10,
+        "Order Line ID": "SO50002-10",
+        "SKU": "SKU-0104",
+        "Order Date": "2026-06-12T00:00:00",
+        "Requested Date": "2026-06-17T00:00:00",
+        "Delivered Date": "2026-06-17T00:00:00",
+        "Qty Ordered": 22,
+        "Qty Shipped": 22,
+        "Status": "Delivered",
+        "Warehouse": "Reno DC",
+        "Carrier": "FedEx Freight",
+        "Ship To": "Initech LLC"
+       }
+      ],
+      "date_columns": [
+       "Order Date",
+       "Requested Date",
+       "Delivered Date"
+      ],
+      "id_columns": [
+       "Order ID",
+       "Line No",
+       "Order Line ID",
+       "SKU"
+      ],
+      "metric_columns": [
+       "Qty Ordered",
+       "Qty Shipped"
+      ],
+      "schema_summary": "6,025 rows \u00d7 13 columns. Dates: Order Date from 2026-03-02 to 2026-10-31 (daily). Metrics: Qty Ordered, Qty Shipped. Identifiers: Order ID, Line No, Order Line ID, SKU. Categories: Status, Warehouse, Carrier, Ship To. Blank by the file's layout, not missing (filled only for the rows whose status needs one): Delivered Date.",
+      "source_query": null,
+      "source_evidence": {
+       "id": "source:data",
+       "kind": "source",
+       "claim": "Loaded 6,025 rows \u00d7 13 columns from a CSV file.",
+       "code": "pd.read_csv(<uploaded file>, encoding='utf-8', sep=',')",
+       "result_excerpt": "{\"roles\": {\"id\": [\"Order ID\", \"Line No\", \"Order Line ID\", \"SKU\"], \"date\": [\"Order Date\", \"Requested Date\", \"Delivered Date\"], \"metric\": [\"Qty Ordered\", \"Qty Shipped\"], \"category\": [\"Status\", \"Warehouse\", \"Carrier\", \"Ship To\"]}, \"personal_data\": {}, \"fingerprint\": \"a96a0eba4a2661e6\"}",
+       "row_count": 6025,
+       "confidence": "high",
+       "confidence_reason": "Read as-is: no layout guessing was needed.",
+       "assumptions": []
+      },
+      "fingerprint": "a96a0eba4a2661e64b7f4d710d71e71d19e70d15eb46a2f6af5be9432781cdff",
+      "pii_columns": [],
+      "phi": false,
+      "deidentification": [],
+      "deidentified": false,
+      "domain": "logistics",
+      "roles": {
+       "date": "Order Date",
+       "promised_date": "Requested Date",
+       "delivered": "Delivered Date",
+       "order": "Order ID",
+       "order_line_id": "Order Line ID",
+       "line_number": "Line No",
+       "sku": "SKU",
+       "carrier": "Carrier",
+       "warehouse": "Warehouse",
+       "status": "Status",
+       "qty_ordered": "Qty Ordered",
+       "qty_shipped": "Qty Shipped"
+      },
+      "domain_confidence": "strong"
+     },
+     "cleaning_audit": {
+      "decisions": [
+       {
+        "column": "Delivered Date",
+        "operation": "keep",
+        "strategy": "conditional",
+        "reason": "Filled only for rows whose status needs it, so other rows are blank by design; 0% of those rows have no value. Kept as it is.",
+        "rows_affected": 0,
+        "before_null_pct": 5.8,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "*",
+        "operation": "flag",
+        "strategy": "cancel",
+        "reason": "110 cancelled shipments, lines or appointments: left out of every count and rate; kept in the data.",
+        "rows_affected": 110,
+        "before_null_pct": 0.0,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "shipped_minus_ordered",
+        "operation": "flag",
+        "strategy": "out_of_range",
+        "reason": "76 values outside the valid range (le 0); kept, check them.",
+        "rows_affected": 76,
+        "before_null_pct": 0.0,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       }
+      ],
+      "rows_before": 6025,
+      "rows_after": 6025,
+      "columns_coerced": [],
+      "duplicates_removed": 0,
+      "outliers_flagged": [],
+      "high_null_columns": [],
+      "summary": "Final dataset: 6025 rows (started with 6025).",
+      "anomaly_report": {
+       "flags": [],
+       "methodology_note": "",
+       "eligible_columns": [
+        "Qty Ordered",
+        "Qty Shipped"
+       ],
+       "skipped_columns": {
+        "Order ID": "constant or unsupported",
+        "Line No": "ordinal (low-cardinality numeric, e.g. Likert/class)",
+        "Order Line ID": "constant or unsupported",
+        "SKU": "constant or unsupported",
+        "Order Date": "datetime column",
+        "Requested Date": "datetime column",
+        "Delivered Date": "datetime column",
+        "Status": "non-numeric",
+        "Warehouse": "non-numeric",
+        "Carrier": "non-numeric",
+        "Ship To": "non-numeric"
+       }
+      },
+      "skipped_columns": [],
+      "date_ranges": {
+       "Order Date": [
+        "2026-03-02",
+        "2026-10-31",
+        8
+       ],
+       "Requested Date": [
+        "2026-03-06",
+        "2026-11-20",
+        9
+       ],
+       "Delivered Date": [
+        "2026-03-04",
+        "2026-11-02",
+        9
+       ]
+      },
+      "grain": "aggregate",
+      "partial_months": {
+       "Requested Date": [
+        "2026-11",
+        20
+       ],
+       "Delivered Date": [
+        "2026-11",
+        2
+       ]
+      },
+      "main_currency": null,
+      "spell_story": [],
+      "window_span": {}
+     },
+     "analysis_findings": null,
+     "chart_configs": [],
+     "insight_report": null,
+     "targeted_response": {
+      "intent": "segment_compare",
+      "answer_text": "OTIF (orders): 63.3%. An order counts when every line due so far arrived by its requested date and shipped in full; a line still open past its requested date (as of the data's last order date) fails it, lines not yet due are not judged. By Order ID each group is one Order ID: OTIF (orders) counts them, so this is its value over them all. How: Distinct Order ID where days from Delivered Date to Requested Date \u2265 0 or days from Requested Date to Delivered Date > 0 or days from Requested Date to the data's last date > 0 and Status is in transit / out for delivery / picked up / exception / delivery exception / delayed / tendered / booked / dispatched / pending / shipped / partially shipped / backordered / short shipped / open / allocated / released / picked / packed less distinct Order ID where days from Requested Date to Delivered Date > 0 or Qty Shipped \u2212 Qty Ordered < 0 and days from Delivered Date to Requested Date \u2265 0 or days from Requested Date to the data's last date > 0 and Status is in transit / out for delivery / picked up / exception / delivery exception / delayed / tendered / booked / dispatched / pending / shipped / partially shipped / backordered / short shipped / open / allocated / released / picked / packed, divided by distinct Order ID where the same conditions hold; over counted rows (cancelled rows left out).",
+      "chart_configs": [],
+      "table_data": [],
+      "table_columns": [],
+      "suggestions": [],
+      "unanswerable_reason": null,
+      "generated_at": "2026-11-18T17:50:57.470403Z"
+     },
+     "expert_review": null,
+     "narrative": {
+      "column_display_names": {
+       "Order ID": "Order ID",
+       "Line No": "Line Number",
+       "Order Line ID": "Order Line ID",
+       "SKU": "SKU",
+       "Order Date": "Order Date",
+       "Requested Date": "Requested Date",
+       "Delivered Date": "Delivered Date",
+       "Qty Ordered": "Quantity Ordered",
+       "Qty Shipped": "Quantity Shipped",
+       "Status": "Status",
+       "Warehouse": "Warehouse",
+       "Carrier": "Carrier",
+       "Ship To": "Ship To"
+      },
+      "entity_singular": "order line",
+      "entity_plural": "order lines"
+     },
+     "iteration": 1,
+     "quality_check_attempts": 0,
+     "high_null_answer": null,
+     "prior_pii": [],
+     "error_retryable": true,
+     "error_reask": true,
+     "overview_done": true,
+     "dataset_name": null,
+     "file_hash": null,
+     "dataset_id": null,
+     "dataset_version_id": null,
+     "status": "completed",
+     "cleaned_data_path": "/Users/uvnikhil/Projects/AnalystAI/session_data/7511c7f8-2515-486d-bb2e-572ee2b47d61/cleaned_data.parquet",
+     "error_message": null,
+     "created_at": "2026-11-18T17:50:40.877453Z",
+     "updated_at": "2026-11-18T17:50:57.475570Z"
+    },
+    "domain": "logistics",
+    "latency_s": 18.2,
+    "cost_usd": 0.02614,
+    "llm_calls": 4,
+    "truncated_calls": 0,
+    "rejections": [
+     "invented_columns"
+    ],
+    "replies": [
+     {
+      "text": "[\n  \"What is the on-time in-full (OTIF) rate by Warehouse and Carrier, comparing Delivered Date against Requested Date for all shipped orders?\",\n  \"How does the unit fill rate (Qty Shipped \u00f7 Qty Ordered) vary by Warehouse and Status, and which warehouse has the highest proportion of partially fulfilled order lines?\",\n  \"Which Carriers show the longest average lead time between Order Date and Delivered Date, and are there specific Ship To destinations driving those delays?\",\n  \"Are there any SKUs or Ship To locations with a consistently high gap between Qty Ordered and Qty Shipped across multiple orders, suggesting a recurring supply or allocation problem?\",\n  \"How have weekly order volumes (Qty Ordered) and fulfillment rates (Qty Shipped \u00f7 Qty Ordered) trended between March and October 2026, and are there any periods where a spike in orders coincides with a drop in fill rate?\"\n]",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "{\n  \"column_display_names\": {\n    \"Order ID\": \"Order ID\",\n    \"Line No\": \"Line Number\",\n    \"Order Line ID\": \"Order Line ID\",\n    \"SKU\": \"SKU\",\n    \"Order Date\": \"Order Date\",\n    \"Requested Date\": \"Requested Date\",\n    \"Delivered Date\": \"Delivered Date\",\n    \"Qty Ordered\": \"Quantity Ordered\",\n    \"Qty Shipped\": \"Quantity Shipped\",\n    \"Status\": \"Status\",\n    \"Warehouse\": \"Warehouse\",\n    \"Carrier\": \"Carrier\",\n    \"Ship To\": \"Ship To\"\n  },\n  \"entity_singular\": \"order line\",\n  \"entity_plural\": \"order lines\"\n}",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "```json\n{\n  \"raw_query\": \"What is OTIF by order and by line?\",\n  \"target_metrics\": [\"Qty Ordered\", \"Qty Shipped\"],\n  \"timeframe\": null,\n  \"segments\": [\"Order ID\", \"Line No\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [\"Order ID\", \"Line No\"],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": null,\n    \"segment_value\": null,\n    \"group_by\": [\"Order ID\", \"Line No\"],\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": null,\n    \"chart_type\": null,\n    \"kpi\": \"otif_order\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "```json\n{\n  \"raw_query\": \"What is OTIF by order and by line?\",\n  \"target_metrics\": [\"Qty Ordered\", \"Qty Shipped\"],\n  \"timeframe\": null,\n  \"segments\": [\"Order ID\", \"Line No\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [\"Order ID\", \"Line No\"],\n    \"metric_column\": null,\n    \"date_column\": null,\n    \"segment_column\": null,\n    \"segment_value\": null,\n    \"group_by\": \"Order ID\",\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": null,\n    \"chart_type\": null,\n    \"kpi\": \"otif_order\"\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": false
+   }
+  ]
+ }
+}

@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import inspect
+
 import pandas as pd
 import pytest
 
-from evals import datagen
+from evals import datagen, scoring
 from evals.run import compare, estimate_usd, load_cases, rescore, summarize
 from evals.scoring import (
     ANALYSIS_CHECKS,
@@ -197,14 +199,19 @@ def test_numbers_grounded_hard_rule(sales):
 def test_every_case_is_well_formed():
     for suite, kinds in (("analysis", ANALYSIS_CHECKS), ("e2e", E2E_CHECKS)):
         cases = load_cases(suite, None)
-        assert len(cases) == {"analysis": 109, "e2e": 86}[suite]   # 5.5: +22/+14; 5.7 retail +7/+8, banking +4/+9, healthcare +5/+9, insurance +6/+7, hr +7/+7, saas +7/+5, iot +5/+8
+        assert len(cases) == {"analysis": 115, "e2e": 93}[suite]   # 5.5: +22/+14; 5.7 retail +7/+8, banking +4/+9, healthcare +5/+9, insurance +6/+7, hr +7/+7, saas +7/+5, iot +5/+8, logistics +6/+7
         assert len({c["id"] for c in cases}) == len(cases)
         for c in cases:
             _, truth = datagen.make(c["dataset"]["name"], c["dataset"]["seed"])
-            for spec in c["checks"]:
+            for spec in [*c["checks"], *(s for t in c.get("turns", []) for s in t["checks"])]:
                 assert spec["kind"] in kinds, c["id"]
                 if "truth_key" in spec:
                     _truth_value(truth, spec["truth_key"])   # raises if the key is wrong
+                # Domain 8 smoke: a 'rel_tol' the scorer doesn't take failed a paid run in the
+                # harness ($0.05 lost); every argument binds to the scorer's own signature here
+                if fn := getattr(scoring, f"check_{spec['kind']}", None):
+                    args = {k: v for k, v in spec.items() if k not in ("kind", "planted")}
+                    inspect.signature(fn).bind_partial(**args)   # raises on an unknown one
 
 
 def _run(passed: bool, cost=0.01, latency=1.0) -> dict:
@@ -311,9 +318,9 @@ INTAKE = load_cases("intake", None)
 
 def test_intake_case_mix_matches_the_plan():
     from collections import Counter
-    assert len(INTAKE) == 141 and sum(c["id"].endswith("holdout") for c in INTAKE) == 13   # 5.7: +12, +12, +12, saas +14, iot +5
+    assert len(INTAKE) == 147 and sum(c["id"].endswith("holdout") for c in INTAKE) == 13   # 5.7: +12, +12, +12, saas +14, iot +5, logistics +6
     assert Counter(c["category"] for c in INTAKE) == {
-        "clear": 98, "ambiguous": 10, "out_of_scope": 9, "injected": 8, "followup": 16}   # 5.7 retail: +10, +1, +1; banking: +11 clear (2 ask), +1 followup; healthcare: +14 clear (5 ask); insurance: +12 clear (4 ask); hr: +12 clear (4 ask); saas: +14 clear (4 ask); iot: +5 clear (2 ask)
+        "clear": 104, "ambiguous": 10, "out_of_scope": 9, "injected": 8, "followup": 16}   # 5.7 retail: +10, +1, +1; banking: +11 clear (2 ask), +1 followup; healthcare: +14 clear (5 ask); insurance: +12 clear (4 ask); hr: +12 clear (4 ask); saas: +14 clear (4 ask); iot: +5 clear (2 ask); logistics: +6 clear (1 ask)
     sql = [c for c in INTAKE if "-sql-" in c["id"]]                   # database-result cases
     assert len(sql) == 18 and all("frame" in c["source"] for c in sql)
     assert sum(not c["overview_done"] for c in INTAKE) == 4           # first-run override

@@ -7,7 +7,8 @@ from typing import NamedTuple
 
 import pandas as pd
 
-from .pack import (CONDITIONS, Cond, DURATION_OPS, KPI, Maturity, Measured, MeasuredBy, Pack, ROW_KINDS,
+from .pack import (AS_OF, CONDITIONS, Cond, DURATION_OPS, KPI, Maturity, Measured, MeasuredBy, Pack,
+                   ROW_KINDS, operands,
                    ROW_KIND_COLUMN, Term, _column,
                    _day, _snapshot_column, and_list, defaults_pack, expand_header, normalize_header,
                    ordinal, roles_of, span_words, spell_terms)
@@ -263,6 +264,19 @@ def _ledger_story(pack: Pack, df: pd.DataFrame, roles: dict[str, str], w: Window
     return out
 
 
+def _expr_words(expr: list[str], roles: dict[str, str], brief: bool = False) -> str:
+    """THE words for a two-role expression: 'days from A to B', 'A × B', 'A − B'; the as-of
+    is the data's own date ('days from Promised Date to the data's last date'). `brief`: the
+    model's frame note says how a span counts ('(same day = 0)', 'exact hours')."""
+    a = "the data's last date" if expr[0] == AS_OF else roles[expr[0]]
+    op, b = expr[1], roles[expr[2]]
+    if op not in DURATION_OPS:
+        return f"{a} {'×' if op == '*' else '−'} {b}"
+    if brief:
+        return f"days from {b} to {a} (same day = 0)" if op == "days" else f"exact hours from {b} to {a}"
+    return f"{op} from {b} to {a}"
+
+
 def describe_kpi(pack: Pack, name: str, roles: dict[str, str],
                  present: set[str] = frozenset(ROW_KINDS), parts: bool = False) -> str:
     """How a KPI was computed on this data, in words, from the alternative that applied. Only
@@ -270,9 +284,10 @@ def describe_kpi(pack: Pack, name: str, roles: dict[str, str],
     also says how each part was counted (an answer's 'How': the 12 month-ends, exits as events,
     who is out), never just 'separations ÷ headcount'."""
     kpi = pack.kpi(name)
-    # a derived role (measure adds it) is named by what it is: 'hours from start to finish'
-    roles = {**{r: f"{e[1]} from {roles[e[2]]} to {roles[e[0]]}" for r, e in pack.derived.items()
-                if e[1] in DURATION_OPS and e[0] in roles and e[2] in roles}, **roles}
+    # a derived role (measure adds it) is named by what it is: 'hours from start to finish',
+    # 'Qty Shipped − Qty Ordered'
+    roles = {**{r: _expr_words(e, roles) for r, e in pack.derived.items()
+                if all(o in roles for o in operands(pack, e))}, **roles}
 
     def scaled(text: str, times: float) -> str:   # ÷ 60 (minutes to hours), never '0.0166667 ×'
         n = round(1 / times) if times else 0
@@ -317,9 +332,7 @@ def describe_kpi(pack: Pack, name: str, roles: dict[str, str],
                     f"{roles[w.entity]} starting 1–{w.days} days after {roles[w.end]}{then}") + (
                 f" where {where(t.where)}" if t.where else "")
         expr = t.sum if t.sum is not None else t.sum_abs
-        cols = roles[expr] if isinstance(expr, str) else (
-            f"{expr[1]} from {roles[expr[2]]} to {roles[expr[0]]}" if expr[1] in DURATION_OPS else
-            f"{roles[expr[0]]} {'×' if expr[1] == '*' else '−'} {roles[expr[2]]}")
+        cols = roles[expr] if isinstance(expr, str) else _expr_words(expr, roles)
         once = " (once per order)" if isinstance(expr, str) and pack.roles[expr].level == "order" \
             and pack.order_key in roles else ""
         return scaled(f"{'sum of |' + cols + '|' if t.sum_abs is not None else 'sum of ' + cols}{once}",
@@ -399,20 +412,27 @@ def unit_said(text: str, start: int = 0, end: int | None = None) -> str | None:
     return "count" if _COUNT_BEFORE.search(text[:start]) else None
 
 
-def _glossary_matches(pack: Pack, question: str, columns: list[str]):
+def _glossary_matches(pack: Pack, question: str, columns: list[str],
+                      roles: dict[str, str] | None = None):
     """(concept, the words used, the unit they clash in or None) per glossary concept the
     question names as whole words, unless the words are just one of the data's own column names
-    ("revenue" in a file with a revenue column needs no glossary)."""
+    ("revenue" in a file with a revenue column needs no glossary). The same words in two
+    concepts' lists name the one `roles` can compute (on-time: delivery on shipments, arrival on
+    a dock log); without roles, the first in the pack."""
     q = question.lower()
     own = {normalize_header(c) for c in columns}
     found = [(m.start(), m.end(), concept, w)
              for concept, said in [*pack.glossary.items(), (None, pack.consumed)]
              for w in said for m in re.finditer(rf"(?<![\w-]){re.escape(w.lower())}(?![\w-])", q)]
+
+    def unanswerable(concept: str | None) -> bool:
+        return roles is not None and concept is not None and pack.kpi(concept) is not None \
+            and not computable(pack, concept, roles)
     taken: list[tuple[int, int]] = []
     hits: dict[str, tuple[str, str | None]] = {}
     # the longest phrase consumes its words ("gross sales", "sales tax" never also mean "sales"),
     # a clashing one too: "revenue churn rate" is asked, never read as "churn rate"
-    for start, end, concept, w in sorted(found, key=lambda f: f[0] - f[1]):
+    for start, end, concept, w in sorted(found, key=lambda f: (f[0] - f[1], unanswerable(f[2]))):
         if any(start < e and s < end for s, e in taken):
             continue
         taken.append((start, end))
@@ -423,10 +443,11 @@ def _glossary_matches(pack: Pack, question: str, columns: list[str]):
     return [(c, w, clash) for c, (w, clash) in hits.items()]
 
 
-def glossary_hits(pack: Pack, question: str, columns: list[str]) -> list[tuple[str, str]]:
+def glossary_hits(pack: Pack, question: str, columns: list[str],
+                  roles: dict[str, str] | None = None) -> list[tuple[str, str]]:
     """[(concept, the words used)] for each glossary concept the question names as whole words
     (_glossary_matches), never a KPI asked in another unit (unit_clashes)."""
-    return [(c, w) for c, w, clash in _glossary_matches(pack, question, columns) if not clash]
+    return [(c, w) for c, w, clash in _glossary_matches(pack, question, columns, roles) if not clash]
 
 
 def unit_clashes(pack: Pack, question: str, columns: list[str]) -> list[tuple[str, str, str]]:
@@ -521,10 +542,8 @@ def pack_brief(pack: Pack, roles: dict[str, str], concepts: list[str], grain: st
         elif c in pack.unsupported:
             lines.append(f"{c}: needs {pack.unsupported[c]}; it cannot be computed here.")
     for r, expr in pack.derived.items():   # with_derived adds these to the frame code reads
-        if r not in roles and expr[0] in roles and expr[2] in roles:
-            how = (f"days from {named[expr[2]]} to {named[expr[0]]} (same day = 0)" if expr[1] == "days"
-                   else f"exact hours from {named[expr[2]]} to {named[expr[0]]}" if expr[1] == "hours"
-                   else f"{named[expr[0]]} {'×' if expr[1] == '*' else '−'} {named[expr[2]]}")
+        if r not in roles and all(o in roles for o in operands(pack, expr)):
+            how = _expr_words(expr, named, brief=True)
             lines.append(f"Column {pack.roles[r].headers[0]} is in the data for you: {how}. Use it; "
                          "never compute your own, and never report a KPI as if it were a column.")
     return lines

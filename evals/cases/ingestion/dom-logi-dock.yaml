@@ -1,0 +1,38 @@
+id: dom-logi-dock
+category: domain
+dataset:
+  name: dock_appointments
+  seed: 1
+roles:
+  Appointment ID: id
+  Facility: category
+  Door: category
+  Carrier: category
+  Direction: category
+  Appointment Time: date
+  Arrived At: date
+  Departed At: date
+  Status: category
+  Driver Name: category
+  Trailer Number: id
+  License Plate: id
+pii:
+  Driver Name: name
+  License Plate: vehicle
+traps:
+- Trailer Number
+- Door
+expect_domain: logistics
+expect_roles:
+  date: Appointment Time
+  arrived: Arrived At
+  departed: Departed At
+  appointment: Appointment ID
+  facility: Facility
+  door: Door
+  carrier: Carrier
+  direction: Direction
+  status: Status
+  driver: Driver Name
+label_note: 'Domain 8 dock log (T18): driver names and plates are personal data, a trailer number is not; a door
+  is a place, never a measure.'
