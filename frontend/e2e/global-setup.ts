@@ -10,7 +10,8 @@ export default function globalSetup() {
   rmSync(`../${FIXTURES}/scenario`, { force: true });
   for (const args of [[FIXTURES, "--dashboard-only"],
     [`${FIXTURES}/saas_mrr_snapshots`, "--dataset", "saas_mrr_snapshots"],
-    [`${FIXTURES}/shift_production`, "--dataset", "shift_production"]]) {
+    [`${FIXTURES}/shift_production`, "--dataset", "shift_production"],
+    [`${FIXTURES}/tms_shipments`, "--dataset", "tms_shipments"]]) {
     execFileSync("uv", ["run", "python", "scripts/ui_check/make_fixture.py", ...args],
       { cwd: "..", stdio: ["ignore", "ignore", "inherit"] });
   }
