@@ -105,6 +105,16 @@ def test_the_same_words_name_the_kpi_this_data_can_compute(roles, want):
     assert [c for c, _ in dp.glossary_hits(LOGI, "on-time rate by carrier", [])] == ["on_time_delivery"]
 
 
+def test_an_answer_names_a_signed_difference_it_was_counted_on():
+    """$0 rehearsal: 'OTIF (lines): 85.4%. How: , divided by …' — a derived difference (shipped −
+    ordered) had no name, so the numerator's words were empty."""
+    roles = {"date": "Order Date", "promised_date": "Requested Date", "delivered": "Delivered Date",
+             "order_line_id": "Order Line ID", "qty_ordered": "Qty Ordered", "qty_shipped": "Qty Shipped",
+             "status": "Status"}
+    how = dp.describe_kpi(LOGI, "otif_line", roles)
+    assert how.startswith("Distinct Order Line ID where") and "Qty Shipped − Qty Ordered ≥ 0" in how
+
+
 def _domain(csv: str):
     from tests.test_retail_pack import _contract, _load
     return _contract(_load(csv)).domain

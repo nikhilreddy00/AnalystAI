@@ -263,6 +263,12 @@ def _ledger_story(pack: Pack, df: pd.DataFrame, roles: dict[str, str], w: Window
     return out
 
 
+def _expr_words(expr: list[str], roles: dict[str, str]) -> str:
+    """THE words for a two-role expression: 'days from A to B', 'A × B', 'A − B'."""
+    a, op, b = roles[expr[0]], expr[1], roles[expr[2]]
+    return f"{op} from {b} to {a}" if op in DURATION_OPS else f"{a} {'×' if op == '*' else '−'} {b}"
+
+
 def describe_kpi(pack: Pack, name: str, roles: dict[str, str],
                  present: set[str] = frozenset(ROW_KINDS), parts: bool = False) -> str:
     """How a KPI was computed on this data, in words, from the alternative that applied. Only
@@ -270,9 +276,10 @@ def describe_kpi(pack: Pack, name: str, roles: dict[str, str],
     also says how each part was counted (an answer's 'How': the 12 month-ends, exits as events,
     who is out), never just 'separations ÷ headcount'."""
     kpi = pack.kpi(name)
-    # a derived role (measure adds it) is named by what it is: 'hours from start to finish'
-    roles = {**{r: f"{e[1]} from {roles[e[2]]} to {roles[e[0]]}" for r, e in pack.derived.items()
-                if e[1] in DURATION_OPS and e[0] in roles and e[2] in roles}, **roles}
+    # a derived role (measure adds it) is named by what it is: 'hours from start to finish',
+    # 'Qty Shipped − Qty Ordered'
+    roles = {**{r: _expr_words(e, roles) for r, e in pack.derived.items()
+                if e[0] in roles and e[2] in roles}, **roles}
 
     def scaled(text: str, times: float) -> str:   # ÷ 60 (minutes to hours), never '0.0166667 ×'
         n = round(1 / times) if times else 0
@@ -317,9 +324,7 @@ def describe_kpi(pack: Pack, name: str, roles: dict[str, str],
                     f"{roles[w.entity]} starting 1–{w.days} days after {roles[w.end]}{then}") + (
                 f" where {where(t.where)}" if t.where else "")
         expr = t.sum if t.sum is not None else t.sum_abs
-        cols = roles[expr] if isinstance(expr, str) else (
-            f"{expr[1]} from {roles[expr[2]]} to {roles[expr[0]]}" if expr[1] in DURATION_OPS else
-            f"{roles[expr[0]]} {'×' if expr[1] == '*' else '−'} {roles[expr[2]]}")
+        cols = roles[expr] if isinstance(expr, str) else _expr_words(expr, roles)
         once = " (once per order)" if isinstance(expr, str) and pack.roles[expr].level == "order" \
             and pack.order_key in roles else ""
         return scaled(f"{'sum of |' + cols + '|' if t.sum_abs is not None else 'sum of ' + cols}{once}",
