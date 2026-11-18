@@ -77,6 +77,10 @@ _SAAS_AUDIT1 = ("Domain 6 audit 1: the SaaS pack's caveat (a one-month customer 
                 "figure), the ledger story in generic words and the cohort window words changed the "
                 "deterministic text after the model")
 CHANGED = {
+    # Domain 8: on-time's numerator no longer reads 'Status has a value' (the no-status guard moved
+    # to the flag denominator after the model copied it into broken code, logi-4); its How changed
+    ("insight-20261118T174137Z.json", "ins-54-logi-shipments-overview"):
+        "Domain 8: on-time's How drops 'Status has a value'",
     # Domain 7 quality run: 'shifts' left the iot pack's small-cell nouns (they are categories,
     # never people) and its operator caveat counts operators; the stored ins-51 run predates it
     **{(r, "ins-51-iot-shift-overview"): "Domain 7: small cells count operators, never shifts"
