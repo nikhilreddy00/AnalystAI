@@ -265,7 +265,8 @@ def latest_day(cols: list[pd.Series]) -> pd.Timestamp | None:
     """THE latest calendar day in these date columns not after today (a pre-boarded hire, a
     promise in the future: not yet)."""
     from agents.utils import today
-    days = pd.concat([_day(c) for c in cols] or [pd.Series(dtype="datetime64[ns]")])
+    walls = [d.dt.tz_localize(None) if d.dt.tz is not None else d for d in map(_day, cols)]
+    days = pd.concat(walls or [pd.Series(dtype="datetime64[ns]")])   # a zoned day as written
     days = days[days <= today()]
     return days.max() if days.notna().any() else None
 
@@ -738,12 +739,13 @@ def _column(df: pd.DataFrame, roles: dict[str, str], expr: str | list[str],
     duration (blank); `signed` keeps it negative, for the check that says it (ranges)."""
     if isinstance(expr, str):
         return pd.to_numeric(df[roles[expr]], errors="coerce")
-    if expr[1] == "days":   # whole days from b to a (a stay: discharge − admit; same day = 0)
-        d = (_day(df[roles[expr[0]]]) - _day(df[roles[expr[2]]])).dt.days
-        return d.astype(float) if signed else d.where(d >= 0).astype(float)
-    if expr[1] == "hours":   # exact hours from b to a (a repair: finish − start), never negative
-        from connectors.base import as_times
-        h = (as_times(df[roles[expr[0]]]) - as_times(df[roles[expr[2]]])).dt.total_seconds() / 3600
+    if expr[1] in DURATION_OPS:
+        a, b = _paired_times(df[roles[expr[0]]], df[roles[expr[2]]])
+        if expr[1] == "days":   # whole days from b to a (a stay: discharge − admit; same day = 0)
+            d = (a.dt.normalize() - b.dt.normalize()).dt.days
+            return d.astype(float) if signed else d.where(d >= 0).astype(float)
+        # exact hours from b to a (a repair: finish − start), never negative
+        h = (a - b).dt.total_seconds() / 3600
         return h.astype(float) if signed else h.where(h >= 0).astype(float)
     a, op, b = (pd.to_numeric(df[roles[expr[0]]], errors="coerce"), expr[1],
                 pd.to_numeric(df[roles[expr[2]]], errors="coerce"))
@@ -753,6 +755,17 @@ def _column(df: pd.DataFrame, roles: dict[str, str], expr: str | list[str],
 def _day(s: pd.Series) -> pd.Series:
     from connectors.base import as_times
     return as_times(s).dt.normalize()
+
+
+def _paired_times(a: pd.Series, b: pd.Series) -> tuple[pd.Series, pd.Series]:
+    """Two date columns of one span, comparable: both zoned stay exact (a UTC repair across a
+    clock change); one zoned beside a naive one is read at its own wall time, as written (a
+    carrier's '…Z' delivery beside a TMS's naive promise date: audit, Domain 8)."""
+    from connectors.base import as_times
+    a, b = as_times(a), as_times(b)
+    if (a.dt.tz is None) != (b.dt.tz is None):
+        a, b = (s.dt.tz_localize(None) if s.dt.tz is not None else s for s in (a, b))
+    return a, b
 
 
 def snapshot_role(pack: Pack) -> str | None:

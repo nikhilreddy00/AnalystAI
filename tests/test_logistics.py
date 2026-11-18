@@ -3,6 +3,7 @@ Definitions: docs/research/2026-11-18-logistics.md; the plan's traps T1–T20.""
 import pandas as pd
 import pytest
 
+import domain_pack
 import domain_pack as dp
 
 LOGI = dp.pack_for("logistics")
@@ -206,6 +207,45 @@ def test_without_a_status_column_on_time_is_never_a_delivered_only_rate():
                 ("S1", "2026-01-01", "2026-01-03", None, "In Transit")).drop(columns="status")
     roles = {k: v for k, v in SHIP.items() if k != "status"}
     assert dp.compute_kpi(df, roles, LOGI, "on_time_delivery") is None
+
+
+def test_a_zoned_delivery_beside_naive_dates_is_read_at_its_own_wall_time():
+    """Audit pass 1 (C0): a delivered column written '…Z' or with offsets beside naive ship and
+    promise dates crashed cleaning ('Cannot subtract tz-naive and tz-aware'). Each side is read
+    as written (its wall date); two zoned sides stay exact."""
+    df = _ships(("S0", "2026-01-01", "2026-01-03", "2026-01-03T22:00:00Z", "Delivered"),
+                ("S1", "2026-01-01", "2026-01-03", "2026-01-05T08:00:00-05:00", "Delivered"))
+    from domain_pack.columns import derived_roles
+    out, roles = derived_roles(df, SHIP_DUE, LOGI, signed=True)
+    assert out[roles["transit_days"]].tolist() == [2.0, 4.0]
+    assert dp.compute_kpi(df, SHIP, LOGI, "on_time_delivery") == 0.5
+    both = domain_pack.pack._column(pd.DataFrame({"a": ["2026-10-25T02:15:00Z"], "b": ["2026-10-24T23:30:00Z"]}),
+                                    {"a": "a", "b": "b"}, ["a", "hours", "b"])
+    assert both.tolist() == [2.75]
+
+
+@pytest.mark.parametrize("q,want", [
+    ("How many shipments are late?", "late_shipments"), ("How many late shipments do we have?", "late_shipments"),
+    ("How many shipments were returned?", "returned_shipments"),
+    ("How many trucks arrived late?", "late_arrivals"), ("What is our on-time rate by carrier?", "on_time_delivery"),
+])
+def test_a_count_question_names_the_count_never_the_total_or_the_rate(q, want):
+    """Audit pass 1 (C6, D1-16): 'how many shipments are late' answered the 2,840 shipments."""
+    assert [c for c, _ in dp.glossary_hits(LOGI, q, [])][:1] == [want]
+
+
+def test_late_counts_equal_the_truth():
+    from tests.test_oracle import _built
+    _, clean, contract, truth = _built("tms_shipments")
+    roles = {r: c for r, c in contract.roles.items() if c in clean.columns}
+    late = dp.compute_kpi(clean, roles, LOGI, "late_shipments")
+    on = dp.compute_kpi(clean, roles, LOGI, "on_time_delivery")
+    base = truth["shipments_by_carrier"]
+    assert late == pytest.approx(sum(base.values()) * (1 - on) - truth["returned"])
+    _, clean, contract, truth = _built("dock_appointments")
+    roles = {r: c for r, c in contract.roles.items() if c in clean.columns}
+    arrived = dp.compute_kpi(clean, roles, LOGI, "late_arrivals")
+    assert arrived == pytest.approx(round((1 - truth["on_time_arrival"]) * (truth["visits"] - truth["no_shows"])))
 
 
 def _domain(csv: str):
