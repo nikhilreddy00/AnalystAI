@@ -1,7 +1,7 @@
 # Phase 5.7 — Domain 8: Logistics (2026-11-18)
 
-Wall clock: 3.6 h (first commit 2026-11-18 10:07 → merge 2026-11-18 ~13:45; plan mode before,
-~0.5 h). Domain 7: 20.4 h + a 4.7 h review; Domain 6: ~7.5 h. The breaker never fired (5 h before
+Wall clock: 3.6 h (first commit 2026-11-18 10:07 → merge 2026-11-18 ~13:45)
+Plan mode before it: ~0.5 h. Domain 7: 20.4 h + a 4.7 h review; Domain 6: ~7.5 h. The breaker never fired (5 h before
 the smoke and a 12 h projection were never approached: smoke at 0.9 h, projection ≤ 4 h).
 
 Plan: `~/.claude/plans/pasted-content-id-0c60-start-phase-adaptive-metcalfe.md` (v2). It checks
