@@ -264,12 +264,17 @@ def _ledger_story(pack: Pack, df: pd.DataFrame, roles: dict[str, str], w: Window
     return out
 
 
-def _expr_words(expr: list[str], roles: dict[str, str]) -> str:
+def _expr_words(expr: list[str], roles: dict[str, str], brief: bool = False) -> str:
     """THE words for a two-role expression: 'days from A to B', 'A × B', 'A − B'; the as-of
-    is the data's own date ('days from Promised Date to the data's last date')."""
+    is the data's own date ('days from Promised Date to the data's last date'). `brief`: the
+    model's frame note says how a span counts ('(same day = 0)', 'exact hours')."""
     a = "the data's last date" if expr[0] == AS_OF else roles[expr[0]]
     op, b = expr[1], roles[expr[2]]
-    return f"{op} from {b} to {a}" if op in DURATION_OPS else f"{a} {'×' if op == '*' else '−'} {b}"
+    if op not in DURATION_OPS:
+        return f"{a} {'×' if op == '*' else '−'} {b}"
+    if brief:
+        return f"days from {b} to {a} (same day = 0)" if op == "days" else f"exact hours from {b} to {a}"
+    return f"{op} from {b} to {a}"
 
 
 def describe_kpi(pack: Pack, name: str, roles: dict[str, str],
@@ -538,10 +543,7 @@ def pack_brief(pack: Pack, roles: dict[str, str], concepts: list[str], grain: st
             lines.append(f"{c}: needs {pack.unsupported[c]}; it cannot be computed here.")
     for r, expr in pack.derived.items():   # with_derived adds these to the frame code reads
         if r not in roles and all(o in roles for o in operands(pack, expr)):
-            named = {**named, AS_OF: "the data's last date"}
-            how = (f"days from {named[expr[2]]} to {named[expr[0]]} (same day = 0)" if expr[1] == "days"
-                   else f"exact hours from {named[expr[2]]} to {named[expr[0]]}" if expr[1] == "hours"
-                   else f"{named[expr[0]]} {'×' if expr[1] == '*' else '−'} {named[expr[2]]}")
+            how = _expr_words(expr, named, brief=True)
             lines.append(f"Column {pack.roles[r].headers[0]} is in the data for you: {how}. Use it; "
                          "never compute your own, and never report a KPI as if it were a column.")
     return lines

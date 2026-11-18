@@ -165,7 +165,7 @@ kind_codes: {cancel: cancelled}
 row_flags:
   cancel: "cancelled shipments, lines or appointments: left out of every count and rate"
 text:
-  rows_brief: "First keep only row_kind 'sale' rows: cancelled ones (row_kind 'cancelled') and other currencies are in no figure, counts and cost per lb included (a cancelled shipment keeps its weight at $0). Ratios pool their parts: on-time, OTIF, fill and cost per lb are Σ numerator ÷ Σ denominator over those rows, never a mean of per-shipment, per-lane or per-carrier ratios. On-time delivery = shipments delivered on or before the promised date (dates as written: local; an early delivery is on time) ÷ (shipments delivered + returned to sender + shipments still open whose promised date is before the data's last ship date: those are late); open ones not yet due are not in it. OTIF (line) = lines delivered by the requested date AND shipped in full (shipped ≥ ordered) ÷ (lines delivered + lines still open whose requested date is before the data's last order date: those failed); OTIF (order) = orders whose every such line is OTIF ÷ orders with at least one such line. Unit fill = Σ shipped ÷ Σ ordered and line fill = lines shipped in full ÷ lines, over lines past release (not open, allocated, picked or packed). Cost per lb = Σ cost ÷ Σ pounds over rows with a weight in a stated unit (kg × 2.20462). Transit = delivered − ship date in calendar days. Dwell = departed − arrived in hours, averaged per visit, never summed."
+  rows_brief: "First keep only row_kind 'sale' rows: cancelled ones (row_kind 'cancelled') and other currencies are in no figure, counts and cost per lb included (a cancelled shipment keeps its weight at $0). Ratios pool their parts: on-time, OTIF, fill and cost per lb are Σ numerator ÷ Σ denominator over those rows, never a mean of per-shipment, per-lane or per-carrier ratios. On-time delivery = shipments delivered on or before the promised date (dates as written: local; an early delivery is on time) ÷ (shipments delivered + returned to sender + shipments still open whose promised date is before the data's last ship date: those are late); open ones not yet due are not in it. OTIF (line) = lines delivered by the requested date AND shipped in full (shipped ≥ ordered) ÷ (lines delivered + lines still open whose requested date is before the data's last order date: those failed); OTIF (order) = orders whose every such line is OTIF ÷ orders with at least one such line. Unit fill = Σ shipped ÷ Σ ordered and line fill = lines shipped in full ÷ lines, over lines that have left the warehouse or were backordered (lines still open, allocated, released, picked or packed are not judged yet). Cost per lb = Σ cost ÷ Σ pounds over rows with a weight in a stated unit (kg × 2.20462). Transit = delivered − ship date in calendar days. Dwell = departed − arrived in hours, averaged per visit, never summed."
   grain_line: "One row is one shipment, one order line or one dock visit: count shipments, orders or visits as distinct {key}, never rows."
   unsupported_alternatives: "I can answer with what the data has: on-time delivery, transit days and cost per shipment or per lb by carrier, mode or lane; OTIF and fill rates by warehouse; or dwell and on-time arrival by facility. Which would help?"
   kpis_default: its shipment, order-line or dock-visit columns
@@ -176,7 +176,10 @@ kpis:
   - {name: on_time_delivery, label: On-time delivery, unit: percent, tile: true,
      zero_words: "no shipment delivered yet",
      says: "Delivered on or before the promised date (dates as written; an early delivery is on time); {returned_shipments} returned to sender and the shipments still open past their promised date (as of the data's last ship date) count as late; open ones not yet due are not in it.",
-     num: [[{nunique: shipment, where: [[{role: slack_days, ge: 0}, {role: transit_days, ge: 0}]]}],
+     # with no status column open shipments can't be told apart: never a delivered-only rate
+     # (the file's own on-time flag, or unavailable)
+     num: [[{nunique: shipment, where: [[{role: slack_days, ge: 0}, {role: transit_days, ge: 0},
+                                         {role: status, not_in: []}]]}],
            [{sum: on_time_flag}]],
      den: [[{nunique: shipment, where: [[{role: slack_days, ge: 0}, {role: transit_days, ge: 0}],
                                         [{role: days_late, gt: 0}, {role: transit_days, ge: 0}],
@@ -191,8 +194,6 @@ kpis:
                                            dispatched, pending, shipped, partially shipped,
                                            backordered, back ordered, short shipped, open,
                                            allocated, released, picked, packed]}]]}],
-           [{nunique: shipment, where: [[{role: slack_days, ge: 0}, {role: transit_days, ge: 0}],
-                                        [{role: days_late, gt: 0}, {role: transit_days, ge: 0}]]}],
            [{nunique: shipment}]]}
   - {name: avg_transit_days, label: Average transit time, unit: number, unit_word: days, tile: true,
      says: "Calendar days from the ship date to delivery, over delivered shipments (business days are not counted apart).",
@@ -226,7 +227,7 @@ kpis:
      num: [[{nunique: order_line_id, where: [[{role: slack_days, ge: 0}, {role: short_qty, ge: 0}]]}]],
      den: [[{nunique: order_line_id, where: *judged_line}]]}
   - {name: unit_fill, label: Unit fill rate, unit: percent, tile: true,
-     says: "Units shipped over units ordered, on lines past picking (open lines are not yet judged); over-shipped units count.",
+     says: "Units shipped over units ordered, on lines that have left the warehouse or were backordered (lines still open, allocated, released, picked or packed are not judged yet); over-shipped units count.",
      num: [[{sum: qty_shipped, where: [[{role: status, not_in: &unreleased [open, pending, allocated,
                                                                          released, picked, packed]}]]}],
            [{sum: qty_shipped}]],
@@ -301,6 +302,8 @@ glossary:
   claims: [damage rate, claims rate, freight claims, damaged shipments]
   eta: [predict delivery, eta prediction, when will it arrive, predicted delivery]
   cwt: [cost per cwt, per hundredweight, per cwt]
+  on_time_pickup: [on-time pickup, on time pickup, pickup performance, missed pickups]
+  cycle_time: [order cycle time, lead time, order to delivery time, order-to-delivery]
   yoy: [year over year, yoy, same period last year, vs last year, versus last year]
 definitions:
   yoy: "Year over year compares a period with the same calendar period one year earlier (full periods only); with less than 13 months of data there is none."
@@ -311,6 +314,8 @@ unsupported:
   tender_acceptance: "the loads tendered to each carrier and whether each accepted; this data has only shipments that moved"
   claims: "freight claims (damage or loss) per shipment; this data has none"
   eta: "a validated transit-time model; this data only describes past deliveries"
+  on_time_pickup: "a scheduled pickup time beside the actual pickup; this data has the ship date only"
+  cycle_time: "the order date beside the delivery on the same rows; transit here runs from the ship date"
 
 caveats:
   read_as_domain: "Read as logistics data ({kpis}). Rates pool their parts (on-time, OTIF, fill and cost per lb are totals divided, never averages of per-shipment rates). On time means on or before the promised date, dates as written (local); an early delivery is on time. Transit is in calendar days from the ship date. Cost is in the main currency only."

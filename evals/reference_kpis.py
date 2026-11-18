@@ -640,22 +640,20 @@ LOG_RETURNED = {"returned to sender", "return to sender", "rts", "returned", "re
 LOG_OPEN = {"in transit", "intransit", "out for delivery", "picked up", "exception",
             "delivery exception", "delayed", "tendered", "booked", "dispatched", "pending"}
 LOG_UNRELEASED = {"open", "pending", "allocated", "released", "picked", "packed"}
-LOG_UNDELIVERED = {"in transit", "intransit", "out for delivery", "picked up", "exception",
-                   "delivery exception", "delayed", "tendered", "booked", "dispatched", "pending",
-                   "shipped", "partially shipped", "backordered", "back ordered", "short shipped",
-                   "open", "allocated", "released", "picked", "packed"}
-
-
-def _as_of(df: pd.DataFrame, col: str):
-    """The data's last day on its time axis, not after today (U1: what 'past due' is judged at)."""
-    today = pd.Timestamp(os.environ.get("ANALYSTAI_TODAY") or pd.Timestamp.today()).normalize()
-    days = pd.to_datetime(df[col], errors="coerce").dt.normalize()
-    days = days[days <= today]
-    return days.max() if days.notna().any() else None
+# still open: a shipment's open states and a line's not delivered yet
+LOG_UNDELIVERED = LOG_OPEN | LOG_UNRELEASED | {"shipped", "partially shipped", "backordered",
+                                               "back ordered", "short shipped"}
 LOG_NO_SHOW = {"no show", "no-show", "noshow", "missed"}
 _LB = {"lb": 1.0, "lbs": 1.0, "l": 1.0, "pound": 1.0, "pounds": 1.0, "kg": 2.20462, "kgs": 2.20462,
        "k": 2.20462, "kilogram": 2.20462, "kilograms": 2.20462, "oz": 0.0625, "ounce": 0.0625,
        "ounces": 0.0625}
+
+
+def _as_of(df: pd.DataFrame, col: str, today: pd.Timestamp):
+    """The data's last day on its time axis, not after today (U1: what 'past due' is judged at)."""
+    days = pd.to_datetime(df[col], errors="coerce").dt.normalize()
+    days = days[days <= today.normalize()]
+    return days.max() if days.notna().any() else None
 
 
 def _day(v):
@@ -666,13 +664,13 @@ def _ratio(num, den):
     return num / den if den else None
 
 
-def shipment_kpis(df: pd.DataFrame, c: dict) -> dict:
+def shipment_kpis(df: pd.DataFrame, c: dict, today: pd.Timestamp) -> dict:
     """On time = delivered on or before the promise (whole days, early is on time) ÷ delivered +
     returned with a promise; transit = delivered − ship date in whole days, ≥ 0; cost per lb =
     Σ cost ÷ Σ lb over rows with a weight in a known unit. Cancelled rows count nowhere."""
     on, base, transit, ids, open_, ret = set(), set(), {}, set(), set(), set()
     late, cost, wcost, lb = {}, 0.0, 0.0, 0.0
-    as_of = _as_of(df, c["ship"])
+    as_of = _as_of(df, c["ship"], today)
     for _, r in df.iterrows():
         st = _w(r[c["status"]])
         if st in LOG_CANCELLED:
@@ -711,14 +709,14 @@ def shipment_kpis(df: pd.DataFrame, c: dict) -> dict:
             "avg_days_late": _ratio(sum(late.values()), len(late))}
 
 
-def order_line_kpis(df: pd.DataFrame, c: dict) -> dict:
+def order_line_kpis(df: pd.DataFrame, c: dict, today: pd.Timestamp) -> dict:
     """OTIF (line) = delivered lines on time (by the requested date) and in full ÷ delivered
     lines; OTIF (order) = orders whose every delivered line is OTIF ÷ orders with a delivered
     line; fills over lines past release: Σ shipped ÷ Σ ordered, full lines ÷ lines."""
     ok_lines, deliv_lines, orders, order_ok = set(), set(), set(), {}
     shipped = ordered = 0.0
     released, full = set(), set()
-    as_of = _as_of(df, c["date"])
+    as_of = _as_of(df, c["date"], today)
     for _, r in df.iterrows():
         st = _w(r[c["status"]])
         if st in LOG_CANCELLED:
@@ -746,7 +744,7 @@ def order_line_kpis(df: pd.DataFrame, c: dict) -> dict:
             "orders": float(len(orders)) if orders else None}
 
 
-def dock_kpis(df: pd.DataFrame, c: dict) -> dict:
+def dock_kpis(df: pd.DataFrame, c: dict, today: pd.Timestamp) -> dict:   # noqa: ARG001 (no as-of)
     """Dwell = departed − arrived in exact hours, ≥ 0, averaged per visit; on-time arrival =
     arrived at or before the appointment ÷ visits that arrived; no-shows apart."""
     dwell, on, arrived, visits, no_show = {}, set(), set(), set(), set()
@@ -789,11 +787,14 @@ LOGISTICS = {
 
 def reference(name: str, df: pd.DataFrame, today: pd.Timestamp | None = None) -> dict:
     """Every spell or ledger KPI of a dataset, from the definitions alone."""
-    if name in IOT or name in LOGISTICS:
-        f, cols = {**IOT, **LOGISTICS}[name]
-        return f(df, cols)
-    spec = SPECS[name]
     today = today or pd.Timestamp(os.environ.get("ANALYSTAI_TODAY") or pd.Timestamp.today())
+    if name in IOT:
+        f, cols = IOT[name]
+        return f(df, cols)
+    if name in LOGISTICS:   # past due is judged at the as-of, never after today
+        f, cols = LOGISTICS[name]
+        return f(df, cols, today)
+    spec = SPECS[name]
     rows = prepare(df, spec)
     lo, at, month_ends = window(rows, spec, as_of(rows, spec, today.normalize()))
     out = {"as_of": f"{at:%Y-%m-%d}", "window_start": f"{lo:%Y-%m-%d}"}

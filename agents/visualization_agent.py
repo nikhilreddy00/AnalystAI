@@ -2151,7 +2151,7 @@ def build_context(df: pd.DataFrame, task: AnalysisTask | None = None,
     ids = set(contract.id_columns) if contract is not None else set()
     roles = {k: [c for c in v if c not in ids] if isinstance(v, list) and k != "id_cols" else v
              for k, v in roles.items()}
-    return VizContext(df=df, roles=roles, measures=measure_columns(df, roles) - ids,
+    return VizContext(df=df, roles=roles, measures=measure_columns(df, roles),
                       date=date, task=task, findings=findings,
                       evidence={e.id: e for e in (findings.evidence if findings else [])},
                       narrative=narrative, contract=contract)

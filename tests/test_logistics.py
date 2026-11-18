@@ -141,7 +141,8 @@ def test_the_brief_names_every_population_the_kpis_read():
     where reads (past due, returned, release, the cancelled kind) is in the brief."""
     brief = LOGI.say("rows_brief")
     for said in ("still open whose promised date is before", "still open whose requested date is before",
-                 "returned to sender", "past release", f"row_kind '{LOGI.code('cancel')}'"):
+                 "returned to sender", "left the warehouse or were backordered",
+                 f"row_kind '{LOGI.code('cancel')}'"):
         assert said in brief, said
 
 
@@ -196,6 +197,15 @@ def test_a_tracking_number_and_a_plate_are_masked_by_their_names_alone():
     from guardrails import is_pii_column
     assert is_pii_column("tracking_number") and is_pii_column("license_plate")
     assert not is_pii_column("tracking_events")
+
+
+def test_without_a_status_column_on_time_is_never_a_delivered_only_rate():
+    """Spec review: with no status, open shipments can't be told apart, and on-time fell to a
+    delivered-only rate while its note said past-due ones count late. Unavailable instead."""
+    df = _ships(("S0", "2026-01-01", "2026-01-03", "2026-01-02", "Delivered"),
+                ("S1", "2026-01-01", "2026-01-03", None, "In Transit")).drop(columns="status")
+    roles = {k: v for k, v in SHIP.items() if k != "status"}
+    assert dp.compute_kpi(df, roles, LOGI, "on_time_delivery") is None
 
 
 def _domain(csv: str):
