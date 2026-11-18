@@ -292,6 +292,9 @@ def test_a_kpi_by_the_key_it_counts_is_its_overall_value_said():
     text, _ = answer("order_lines", "segment_compare", "What is OTIF by order?", kpi="otif_order",
                      group_by="Order ID")
     assert "63.3%" in text and "SO50000" not in text and "each group is one" in text
+    plain, _ = answer("order_lines", "top_n", "What is OTIF?", kpi="otif_order")
+    assert plain.startswith("OTIF (orders): 63.3%.") and "each group is one" not in plain
+    assert "XX" not in plain
 
 
 def _domain(csv: str):

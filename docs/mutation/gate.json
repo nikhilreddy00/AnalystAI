@@ -171,6 +171,12 @@
   "equivalents": [
    {
     "n": 1,
+    "new": "own = \"\"",
+    "old": "own = None",
+    "reason": "own is read only for its truth (the note and the group check): None and an empty string are both false"
+   },
+   {
+    "n": 1,
     "new": "over = measure(df, roles, pack, kpi.name, full=all_rows, window=None, cut=cut)",
     "old": "over = measure(df, roles, pack, kpi.name, full=all_rows, window=win, cut=cut)",
     "reason": "the overall lead runs only for KPIs that are neither state nor spell, for which win is always None"
