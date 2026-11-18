@@ -208,7 +208,7 @@ def _pack_params(params: dict, contract: DataContract | None, message: str) -> d
     # a KPI the question names in another unit ("revenue churn rate" is no money KPI) is asked
     # about, never answered (run_intake_agent): the model's pick of it is dropped too
     if params.get("kpi") in {c for c, _, _ in unit_clashes(
-            pack, message, [c.name for c in contract.columns])}:
+            pack, message, [c.name for c in contract.columns], dict(contract.roles))}:
         params["kpi"] = None
     # words that are a column's own name are the column ("average revenue" in a file with a
     # revenue column is that column's mean), unless they are the KPI's own name and the column one
@@ -392,7 +392,8 @@ async def run_intake_agent(
     data["targeted_params"] = _targeted_params(_pack_params(
         data.get("targeted_params") or {}, session.data_contract, user_message))
     pack = pack_for(session.data_contract.domain) if session.data_contract else None
-    unsupported = [c for c, _ in glossary_hits(pack, user_message, list(known or []))
+    roles = dict(session.data_contract.roles) if session.data_contract else None
+    unsupported = [c for c, _ in glossary_hits(pack, user_message, list(known or []), roles)
                    if c in pack.unsupported] if pack else []
     if unsupported and not is_overview_request:   # sell-through: never computed from sales alone
         data["clarification_needed"] = True
@@ -402,7 +403,7 @@ async def run_intake_agent(
 
     named = (data.get("targeted_params") or {}).get("kpi") if isinstance(
         data.get("targeted_params"), dict) else getattr(data.get("targeted_params"), "kpi", None)
-    clashes = unit_clashes(pack, user_message, list(known or [])) if pack else []
+    clashes = unit_clashes(pack, user_message, list(known or []), roles) if pack else []
     if clashes and not named and not is_overview_request:   # PR1-06: asked, never guessed
         data["clarification_needed"] = True
         data["clarification_question"] = unit_question(pack, clashes[0])

@@ -1413,7 +1413,7 @@ def test_every_retail_intake_case_measures_the_model():
         case = yaml.safe_load(open(f))
         e = case["expect"]
         params = e.get("params") or {}
-        named = [c for c, _ in glossary_hits(pack, case["question"], []) if pack.kpi(c)]
+        named = [c for c, _ in glossary_hits(pack, case["question"], [], None) if pack.kpi(c)]
         model_kpi = params.get("kpi") and named != [params["kpi"]]
         model = model_kpi or e.get("columns") or e.get("period") or "compare" in params \
             or case.get("prior_task")
@@ -1646,8 +1646,8 @@ def test_first_questions_are_ones_this_data_answers():
 def test_sales_returns_rate_is_the_return_rate():
     """Audit pass 2 (m6): the consumed phrase 'sales returns' must not hide the KPI around it."""
     from domain_pack import glossary_hits
-    assert [c for c, _ in glossary_hits(RETAIL, "sales returns rate by month", [])] == ["return_rate"]
-    assert [c for c, _ in glossary_hits(RETAIL, "total sales returns by month", [])] == []
+    assert [c for c, _ in glossary_hits(RETAIL, "sales returns rate by month", [], None)] == ["return_rate"]
+    assert [c for c, _ in glossary_hits(RETAIL, "total sales returns by month", [], None)] == []
 
 
 def test_one_month_asked_is_compared_with_the_same_month_last_year(shop):

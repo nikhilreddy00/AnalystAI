@@ -200,8 +200,10 @@ def _inputs(pack: Pack, role: str, roles: dict[str, str]) -> list[str] | None:
 
 
 def _words_only(where: list[list[Cond]]) -> bool:
-    """Every alternative names a kind of row by its words (a status, a work type): no such row
-    anywhere may mean the export leaves them out. A numeric bound no row meets is a 0."""
+    """Every alternative names a kind of row by its words (`in`: a status, a work type): no such
+    row anywhere may mean the export leaves them out. A numeric bound no row meets is a 0, and so
+    is a `not_in` (it names what is left out: `not_in: []` is "filled", and no row outside a
+    no-show list means every visit was one): measured, never unknown (standards review, D8)."""
     return all(any(c.in_ is not None for c in group) for group in where)
 
 

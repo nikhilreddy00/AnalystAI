@@ -103,7 +103,21 @@ def test_the_same_words_name_the_kpi_this_data_can_compute(roles, want):
     arrival on a dock log; one word routed to one KPI asked a dock log for a promised date."""
     hits = dp.glossary_hits(LOGI, "What is our on-time rate by carrier?", [], roles=roles)
     assert [c for c, _ in hits] == [want]
-    assert [c for c, _ in dp.glossary_hits(LOGI, "on-time rate by carrier", [])] == ["on_time_delivery"]
+    assert [c for c, _ in dp.glossary_hits(LOGI, "on-time rate by carrier", [], None)] == ["on_time_delivery"]
+
+
+def test_every_reader_names_the_kpi_this_data_can_compute():
+    """Standards review (D1-16, C6): the tie-break reached intake only; analysis's brief (and
+    insight's named tiles) still read "on-time rate" on a dock log as on-time delivery. Through
+    the real reader: the brief names arrival, never delivery."""
+    from agents.analysis_agent import _domain
+    from orchestrator.state import AnalysisTask
+    from tests.test_oracle import _built
+    s, _, contract, _ = _built("dock_appointments")
+    task = AnalysisTask(raw_query="What is our on-time rate by carrier?", target_metrics=[],
+                        analysis_types=["eda"])
+    brief = "\n".join(_domain(contract, task, s.cleaning_audit)["domain"])
+    assert "(on_time_arrival)" in brief and "(on_time_delivery)" not in brief   # the KPI lines
 
 
 def test_an_answer_names_a_signed_difference_it_was_counted_on():
@@ -189,9 +203,9 @@ def test_the_as_of_is_named_in_words_in_answers_and_the_brief():
 def test_the_longest_phrase_names_the_concept():
     """Mutation gate (_glossary_matches): 'shipments in transit' is open shipments, never the
     shipment count; 'line fill rate' is line fill, never unit fill."""
-    assert [c for c, _ in dp.glossary_hits(LOGI, "How many shipments in transit by carrier?", [])] == \
+    assert [c for c, _ in dp.glossary_hits(LOGI, "How many shipments in transit by carrier?", [], None)] == \
         ["open_shipments"]
-    assert [c for c, _ in dp.glossary_hits(LOGI, "line fill rate by warehouse", [])] == ["line_fill"]
+    assert [c for c, _ in dp.glossary_hits(LOGI, "line fill rate by warehouse", [], None)] == ["line_fill"]
 
 
 def test_a_tracking_number_and_a_plate_are_masked_by_their_names_alone():
@@ -231,7 +245,7 @@ def test_a_zoned_delivery_beside_naive_dates_is_read_at_its_own_wall_time():
 ])
 def test_a_count_question_names_the_count_never_the_total_or_the_rate(q, want):
     """Audit pass 1 (C6, D1-16): 'how many shipments are late' answered the 2,840 shipments."""
-    assert [c for c, _ in dp.glossary_hits(LOGI, q, [])][:1] == [want]
+    assert [c for c, _ in dp.glossary_hits(LOGI, q, [], None)][:1] == [want]
 
 
 def test_late_counts_equal_the_truth():
@@ -255,21 +269,23 @@ def test_a_share_of_late_ones_is_the_rate_never_the_count(q, want):
     """Audit pass 2 (C6): 'what percent of shipments were late' got the count 285. A shared
     'percent of' rule moved three finished domains' contexts and was backed out; the pack's
     longer phrase names the rate."""
-    assert [c for c, _ in dp.glossary_hits(LOGI, q, [])][:1] == [want]
+    assert [c for c, _ in dp.glossary_hits(LOGI, q, [], None)][:1] == [want]
 
 
 @pytest.mark.parametrize("name", ["tms_shipments", "order_lines", "dock_appointments"])
 def test_dates_written_with_a_zone_read_as_their_naive_twin(name):
     """Audit pass 2: zoned ship, promise and delivery dates read the same tiles."""
     from tests.test_oracle import tiles
-    assert tiles(name, transform="zoned") == pytest.approx(tiles(name))
+    naive = tiles(name)
+    assert naive and tiles(name, transform="zoned") == pytest.approx(naive)   # never empty == empty
 
 
-@pytest.mark.xfail(strict=True, reason="D8-03 (Open): the spell code compares zoned HR dates with a "
-                   "naive as-of; pre-existing on main (it crashed in cleaning's as-of before)")
 def test_an_hr_roster_with_zoned_dates_reads_as_its_naive_twin():
+    """D8-03: one calendar day (pack._day reads wall_times), so the spell code's zoned dates
+    compare with its naive as-of; the tiles exist (not a vacuous empty == empty)."""
     from tests.test_oracle import tiles
-    assert tiles("hr_roster", transform="zoned") == pytest.approx(tiles("hr_roster"))
+    naive = tiles("hr_roster")
+    assert naive and tiles("hr_roster", transform="zoned") == pytest.approx(naive)
 
 
 def test_a_day_span_never_loses_a_row_across_zones():
@@ -371,3 +387,38 @@ def test_a_kind_of_row_the_export_may_omit_is_still_unknown():
     shipments only), never "0 open"."""
     df = _ships(("S0", "2026-01-01", "2026-01-02", "2026-01-02", "Delivered"))
     assert dp.compute_kpi(df, SHIP, LOGI, "open_shipments") is None
+
+
+@pytest.mark.xfail(strict=True, reason="D7-19 (Open; U3): the model's own on-time-by-carrier code "
+                   "is delivered-only (UPS 96.2%, truth 93.7%); standard_stats never replaces a "
+                   "ratio by group with the pack KPI's. logi-4 0/3 at the final re-measure")
+def test_logi_4s_on_time_by_carrier_is_the_products():
+    """logi-4's stored run (analysis-20261118T175343Z, $0): its Carrier segment through
+    standard_stats must come out as the truth's on-time by carrier."""
+    import json
+    from pathlib import Path
+
+    from agents.analysis_agent import standard_stats
+    from orchestrator.state import AnalysisTask
+    from tests.test_oracle import _built
+    run = json.loads((Path(__file__).parents[1] / "evals" / "reports" /
+                      "analysis-20261118T175343Z.json").read_text())["runs"]["logi-4"][0]
+    raw = {"segments": [s for s in run["output"]["segments"] if s["segment_column"] == "Carrier"]}
+    assert raw["segments"]   # the stored failure is there (no vacuous pass)
+    _, df, contract, truth = _built("tms_shipments")
+    standard_stats(raw, df, contract, AnalysisTask(
+        raw_query="What is on-time delivery by carrier?", target_metrics=["Promised Date", "Delivered At"],
+        segments=["Carrier"], analysis_types=["segmentation"]))
+    got = {r["name"]: r["value"] for r in raw["segments"][0]["results"]}
+    assert got == pytest.approx(truth["on_time_by_carrier"], abs=0.005)
+
+
+def test_the_dock_log_has_one_stale_visit_and_its_truth_counts_it():
+    """Domain 8 audit: the late-by-a-minute plant keeps its 28 Aug departure (612.6 h). Kept as
+    the one stale visit, never a second by accident; the truth's average dwell includes it."""
+    from evals import datagen
+    df, truth = datagen.make("dock_appointments", 1)
+    dwell = (pd.to_datetime(df["Departed At"]) - pd.to_datetime(df["Arrived At"])).dt.total_seconds() / 3600
+    assert dwell[dwell > 24].round(1).tolist() == [612.6]
+    valid = (df["Status"] != "Cancelled") & (dwell >= 0)
+    assert truth["avg_dwell_hours"] == pytest.approx(dwell[valid].mean())

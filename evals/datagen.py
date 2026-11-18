@@ -3413,6 +3413,9 @@ def make_dock_appointments(seed: int) -> tuple[pd.DataFrame, dict]:
         df.loc[i, "Departed At"] = f"{a - pd.Timedelta(minutes=40 + k):%Y-%m-%d %H:%M}"
     df.loc[done[3], ["Appointment Time", "Arrived At", "Departed At"]] = [                   # overnight
         "2026-07-14 20:30", "2026-07-14 20:41", "2026-07-15 07:11"]
+    # late by a minute; its departure stays on 28 Aug: a 612.6 h visit left open (an accident of
+    # this plant, kept on purpose after the Domain 8 audit as the one stale visit: truth and product
+    # both count it, the report flags it; test_logistics pins it as the only dwell over 24 h)
     df.loc[done[4], ["Appointment Time", "Arrived At"]] = ["2026-08-03 09:00", "2026-08-03 09:01"]
     return df, _dock_truth(df)
 

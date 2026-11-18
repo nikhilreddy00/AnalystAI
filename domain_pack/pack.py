@@ -265,7 +265,7 @@ def latest_day(cols: list[pd.Series]) -> pd.Timestamp | None:
     """THE latest calendar day in these date columns not after today (a pre-boarded hire, a
     promise in the future: not yet)."""
     from agents.utils import today
-    days = pd.concat([wall_times(c).dt.normalize() for c in cols]   # a zoned day as written
+    days = pd.concat([_day(c) for c in cols]
                      or [pd.Series(dtype="datetime64[ns]")])
     days = days[days <= today()]
     return days.max() if days.notna().any() else None
@@ -754,8 +754,9 @@ def _column(df: pd.DataFrame, roles: dict[str, str], expr: str | list[str],
 
 
 def _day(s: pd.Series) -> pd.Series:
-    from connectors.base import as_times
-    return as_times(s).dt.normalize()
+    """THE calendar day of a date: its writer's day, as written (wall_times). One definition:
+    a zoned day beside a naive as-of compares (D8-03)."""
+    return wall_times(s).dt.normalize()
 
 
 def wall_times(s: pd.Series) -> pd.Series:
