@@ -100,6 +100,13 @@ The filter read used the API the page calls (`/dashboard/latest/filtered`), not 
 the page is covered by `frontend/e2e/logistics_dashboard.spec.ts` at 1440 px (41/41 Playwright).
 REST API and Sheets sources: not run (as in Domain 7).
 
+## Gates
+
+- live browser at 1440 px: not done (tms_shipments CSV only, headed, after the merge; order_lines, dock_appointments and Postgres went through the API, not the browser: time and budget)
+- finished domains' filter reads: not done (the golden and `domain_diff` stood in; no $0 `make_fixture.py` read per finished pack)
+- all-domain answer probe: not done (the $0 senior audit probed logistics only; RT-13 unmet)
+- playwright specs: done (`logistics_dashboard.spec.ts`, `logistics_chat.spec.ts`; 44/44)
+
 ## Spend: $4.45 of $5 (ask $4.40, stop $4.70)
 
 Eval reports $3.71 (smoke $0.26 incl. the lost $0.049, analysis gate $0.76, logi-5/7 $0.16, E2E

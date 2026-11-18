@@ -126,8 +126,8 @@ connector or UI component lives, and update it in the commit that adds or moves 
 - **Frontend**: TypeScript strict, Tailwind v4 with `@import "tailwindcss"`, `"use client"` on all interactive components
 - **Frontend colours**: theme tokens only (`bg-card`, `text-muted-foreground`, `bg-primary`, `text-success`, `--chart-N` …,
   defined for light + dark in `globals.css`). Raw palette classes / hex fail `tests/test_frontend_tokens.py`.
-  UI checks without keys: `scripts/ui_check/README.md`; the live stack for a domain's end check (production mode, asyncpg, real
-  worker): `scripts/live_check/README.md`
+  UI checks without keys: `scripts/ui_check/README.md`; any browser run against the live stack (a domain's end check, a
+  headed walk the user watches; production mode, asyncpg, real worker): `scripts/live_check/README.md`
 - **Untrusted data**: dataset text in a prompt goes through `delimit_untrusted()` with `UNTRUSTED_NOTE` in the system prompt (`tests/test_untrusted_data.py` fails CI for any LLM-calling agent without both); PII is masked once in `build_data_contract` (mask anything else you send with `mask_row(row, pii_columns(contract))`). **PII hard rule**: each run sets `llm.client.pii_values` (chat route, eval harness), ingestion fills it, and `ClaudeClient` tokenizes those values in every request (`[PII_xxxxxxxx]`, restored in the reply). A `pii_tokenized` trace label means a builder leaked: fix the builder
 - **LLM calls**: through `llm/client.py` — never a new `AsyncAnthropic`. Contract agents (all but drill-down) take `llm: LLMClient` as a parameter; the rest still call `get_client()` until their Phase 5 PR. Every system prompt is a module constant and is prompt-cached by `ClaudeClient` (keep it constant: per-call text belongs in messages). Model is pinned in `settings.llm_model`; traces go to `traces/<date>.jsonl` (metadata, tool names and guardrail rule labels only)
 - **Agent contract**: new/refactored agents follow `docs/agent-contract.md` (card, prompt file, context builder, tools, evidence, guardrails)

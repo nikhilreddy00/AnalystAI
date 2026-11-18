@@ -42,3 +42,28 @@ def test_every_session_note_says_its_wall_clock():
     assert "phase5_7_iot.md" in due
     assert sorted(n for n in due if not WALL.search(notes[n])) == []
     assert not WALL.search("Wall clock: about a day")
+
+
+# ROADMAP 5.7 "Domain regression contract": the gates a domain's end check runs.
+GATES = ("live browser at 1440 px", "finished domains' filter reads", "all-domain answer probe",
+         "playwright specs")
+GATE_LINE = re.compile(r"^- (.+?): (done|not done \(.+\))", re.M)
+
+
+def gate_status(text: str) -> dict[str, str]:
+    """{gate: 'done' | 'not done (why)'} from the note's '## Gates' section."""
+    section = text.split("\n## Gates", 1)[1].split("\n## ", 1)[0] if "\n## Gates" in text else ""
+    return {g: s for g, s in GATE_LINE.findall(section) if g in GATES}
+
+
+def test_every_session_note_states_each_regression_gate():
+    """Retro Domain 8: three contract gates were trimmed (the live 1440 px check on three
+    sources, the finished domains' filter reads, the all-domain probe) and only a post-merge
+    review found it. From Domain 8 on, the note says each gate: done, or not done and why."""
+    notes = {p.name: p.read_text() for p in sorted(BASELINES.glob("phase5_7*.md"))}
+    due = {n: t for n, t in notes.items() if (_dated(t) or "") >= "2026-11-18"}
+    assert "phase5_7_logistics.md" in due
+    assert {n: sorted(set(GATES) - set(gate_status(t))) for n, t in due.items()
+            if set(gate_status(t)) != set(GATES)} == {}
+    assert gate_status("# Note\n\n## Gates\n- playwright specs: done\n- live browser at 1440 px: skipped\n") == {
+        "playwright specs": "done"}   # "skipped" says no reason: not a status
