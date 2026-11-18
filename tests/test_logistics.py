@@ -387,3 +387,38 @@ def test_a_kind_of_row_the_export_may_omit_is_still_unknown():
     shipments only), never "0 open"."""
     df = _ships(("S0", "2026-01-01", "2026-01-02", "2026-01-02", "Delivered"))
     assert dp.compute_kpi(df, SHIP, LOGI, "open_shipments") is None
+
+
+@pytest.mark.xfail(strict=True, reason="D7-19 (Open; U3): the model's own on-time-by-carrier code "
+                   "is delivered-only (UPS 96.2%, truth 93.7%); standard_stats never replaces a "
+                   "ratio by group with the pack KPI's. logi-4 0/3 at the final re-measure")
+def test_logi_4s_on_time_by_carrier_is_the_products():
+    """logi-4's stored run (analysis-20261118T175343Z, $0): its Carrier segment through
+    standard_stats must come out as the truth's on-time by carrier."""
+    import json
+    from pathlib import Path
+
+    from agents.analysis_agent import standard_stats
+    from orchestrator.state import AnalysisTask
+    from tests.test_oracle import _built
+    run = json.loads((Path(__file__).parents[1] / "evals" / "reports" /
+                      "analysis-20261118T175343Z.json").read_text())["runs"]["logi-4"][0]
+    raw = {"segments": [s for s in run["output"]["segments"] if s["segment_column"] == "Carrier"]}
+    assert raw["segments"]   # the stored failure is there (no vacuous pass)
+    _, df, contract, truth = _built("tms_shipments")
+    standard_stats(raw, df, contract, AnalysisTask(
+        raw_query="What is on-time delivery by carrier?", target_metrics=["Promised Date", "Delivered At"],
+        segments=["Carrier"], analysis_types=["segmentation"]))
+    got = {r["name"]: r["value"] for r in raw["segments"][0]["results"]}
+    assert got == pytest.approx(truth["on_time_by_carrier"], abs=0.005)
+
+
+def test_the_dock_log_has_one_stale_visit_and_its_truth_counts_it():
+    """Domain 8 audit: the late-by-a-minute plant keeps its 28 Aug departure (612.6 h). Kept as
+    the one stale visit, never a second by accident; the truth's average dwell includes it."""
+    from evals import datagen
+    df, truth = datagen.make("dock_appointments", 1)
+    dwell = (pd.to_datetime(df["Departed At"]) - pd.to_datetime(df["Arrived At"])).dt.total_seconds() / 3600
+    assert dwell[dwell > 24].round(1).tolist() == [612.6]
+    valid = (df["Status"] != "Cancelled") & (dwell >= 0)
+    assert truth["avg_dwell_hours"] == pytest.approx(dwell[valid].mean())

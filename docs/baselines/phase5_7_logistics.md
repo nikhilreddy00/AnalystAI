@@ -1,6 +1,6 @@
 # Phase 5.7 — Domain 8: Logistics (2026-11-18)
 
-Wall clock: 3.6 h (first commit 2026-11-18 10:07 → merge 2026-11-18 ~13:45)
+Wall clock: 3.9 h (first commit 2026-11-18 10:07 → merge 2026-11-18 14:03)
 Plan mode before it: ~0.5 h. Domain 7: 20.4 h + a 4.7 h review; Domain 6: ~7.5 h. The breaker never fired (5 h before
 the smoke and a 12 h projection were never approached: smoke at 0.9 h, projection ≤ 4 h).
 
@@ -25,7 +25,7 @@ off every plan-mode step of the ROADMAP 5.7 contract by name:
 - **red-team:** one fresh subagent: 3 blockers, 7 majors, 4 minors, all folded in (RT-1..RT-14);
 - **grilling:** G1–G8 answered as a senior engineer; the user's calls U1 (open past their promise
   are late), U2 (all three datasets), U3 (D7-19 in its own PR);
-- **sizing:** cost and hours per build step, ≈ 11 h / ≈ $4.3 projected; actual 3.6 h / $4.45.
+- **sizing:** cost and hours per build step, ≈ 11 h / ≈ $4.3 projected; actual 3.9 h / $4.45.
 
 **Stop rule (the audit procedure):** stop when the properties, the mutation gate and the ledger
 checks (`tests/test_retro_ledger.py`) are green after a pass. Met after pass 2.
@@ -120,8 +120,8 @@ survivors on changed lines (two named equivalents), `--check main` clean. Code r
 reference dropped `today`), both fixed; Spec: the on-time no-status fallback and the fill wording
 fixed, the rest below as deviations.
 
-Ledger: D4-21, D1-40, D7-19, D1-20, D1-16 raised; new D8-01, D8-02, D8-03 (Open, pinned
-xfail-strict). UNENFORCED 77 (≤ 77).
+Ledger: D4-21, D1-40, D7-19, D1-20, D1-16 raised; new D8-01 and D8-02 (fixed),
+D8-03 (Open at merge, pinned xfail-strict; fixed in the follow-up below). UNENFORCED 77 (≤ 77).
 
 Golden re-pinned (`evals.snapshot pin`, CHANGES emptied). Its diff: `shipments` reads as
 logistics (K4: logi-1, logi-3 contexts; its tiles and trend now a rate). `domain_diff.py main`:
@@ -159,7 +159,30 @@ order beyond OTIF, billable detention, appointment grace minutes, ETA prediction
 
 - D7-19's PR: hand the analysis model the product's numbers by group (closes logi-4, the overview
   headline, the weight sum and the generic donuts reading cancelled and other-currency rows).
-- D8-03: the spell code reads dates through `wall_times` (HR rosters with zoned dates).
 - e2e-97: a narrowing follow-up after an overview (D1-16).
+
+## Post-merge audit and follow-up PR (2026-11-18, $0.16)
+
+A senior audit (`mattpocock-skills:code-review`, Standards + Spec, 87d1391..8d534e4) after the
+merge. Fixed in the follow-up PR, each red-first, golden unchanged (64/64):
+- **D8-03 fixed:** one calendar day, `pack._day` reads `wall_times`; the xfail is a plain test.
+- **Tie-break reached intake only (D1-16, C6):** `glossary_hits` / `unit_clashes` take `roles`
+  as a required argument, so analysis, insight and every intake check break a shared phrase's
+  tie the same way (a dock log's "on-time rate" is arrival everywhere).
+- **Note corrected:** wall clock 3.9 h (merge 14:03, not ~13:45); D8-01/02 were fixed, not open;
+  README's e2e-97 count.
+- **The dock log's 612.6 h visit** (the late-by-a-minute plant kept its 28 Aug departure) is kept
+  on purpose as the one stale visit and pinned by a test; changing it moves logi-8, e2e-93 and
+  e2e-96, whose re-measure the budget doesn't cover.
+- **logi-4** is pinned (`tests/test_logistics.py`, xfail-strict on its stored outputs) to D7-19, per U3.
+- **Browser:** `frontend/e2e/logistics_chat.spec.ts` replays the three live runs through the chat
+  at 1440 px and filters the dashboard on the real `filtered_dashboard` (3/3). A headed live run
+  on `tms_shipments` CSV ($0.16): the run's tiles and carrier chart equal the truth, the UPS
+  filter reads 1,160 of 3,000 records and 93.7%. (A click in the watched window ended the
+  script's wait early; diagnosed at $0 by replaying the run.)
+
+Not done (gates the audit found unmet, said): the 1440 px live check on order_lines, dock and
+Postgres; the finished domains' $0 filter reads; RT-13's all-domain probe; quality and
+visualization cases; the planted traps T9, T12, T21, S-a, S-b.
 - The group answers' plain-words basis (`says` only on single values); "leads" on lower-is-better
   KPIs; '(lbs)' headers; lines per order.

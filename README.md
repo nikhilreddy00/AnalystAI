@@ -277,7 +277,7 @@ JSON), 5 intake cases; `docs/baselines/phase5_7_iot.md`.
 Logistics, not yet passing every run: the analysis model's own on-time-by-carrier code leaves out
 shipments still open past their promise (logi-4, 0 of 3 at the final re-measure; ledger D1-20),
 and a narrowing follow-up after an overview ("and only for LTL?") isn't carried by intake (e2e-97,
-2 of 2; D1-16). The product's own tiles, answers and dashboard are right on both. What passes: a
+failed all 4 runs; D1-16). The product's own tiles, answers and dashboard are right on both. What passes: a
 TMS export's on-time delivery against the promised date (early is on time; returned to sender
 and shipments still open past their promise, as of the data's last ship date, are late; never a
 mean of carriers' rates), transit in calendar days, cost per shipment and per pound with kg
