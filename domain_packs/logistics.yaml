@@ -299,7 +299,8 @@ glossary:
   shipments: [number of shipments, shipment count, how many shipments, total shipments, shipment volume,
               number of loads]
   otif_order: [otif, on time in full, on-time in-full, otif by order, order otif, perfect orders]
-  otif_line: [line otif, otif by line, line-level otif]
+  # "OTIF by order and by line" asks for both levels, never a breakdown by line number (e2e-95)
+  otif_line: [line otif, otif by line, line-level otif, by line, at the line level, line level]
   unit_fill: [fill rate, unit fill, unit fill rate, units filled, fill]
   line_fill: [line fill, line fill rate, lines filled complete]
   orders: [number of orders, order count, how many orders, total orders]
