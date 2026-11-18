@@ -262,14 +262,16 @@ def test_a_share_of_late_ones_is_the_rate_never_the_count(q, want):
 def test_dates_written_with_a_zone_read_as_their_naive_twin(name):
     """Audit pass 2: zoned ship, promise and delivery dates read the same tiles."""
     from tests.test_oracle import tiles
-    assert tiles(name, transform="zoned") == pytest.approx(tiles(name))
+    naive = tiles(name)
+    assert naive and tiles(name, transform="zoned") == pytest.approx(naive)   # never empty == empty
 
 
-@pytest.mark.xfail(strict=True, reason="D8-03 (Open): the spell code compares zoned HR dates with a "
-                   "naive as-of; pre-existing on main (it crashed in cleaning's as-of before)")
 def test_an_hr_roster_with_zoned_dates_reads_as_its_naive_twin():
+    """D8-03: one calendar day (pack._day reads wall_times), so the spell code's zoned dates
+    compare with its naive as-of; the tiles exist (not a vacuous empty == empty)."""
     from tests.test_oracle import tiles
-    assert tiles("hr_roster", transform="zoned") == pytest.approx(tiles("hr_roster"))
+    naive = tiles("hr_roster")
+    assert naive and tiles("hr_roster", transform="zoned") == pytest.approx(naive)
 
 
 def test_a_day_span_never_loses_a_row_across_zones():
