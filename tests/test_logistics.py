@@ -124,6 +124,17 @@ def test_a_line_number_is_a_label_never_a_measure():
     assert contract.roles.get("line_number") == "Line No" and not col.is_metric
 
 
+def test_an_id_is_never_a_chart_breakdown():
+    """$0 browser read, D4-21 (C7): the overview drew 'Line No Breakdown — 10 Leads at 33%': a
+    line number the contract calls an id was still a few-valued category to the charts."""
+    from agents.visualization_agent import build_context
+    from tests.test_oracle import _built
+    _, clean, contract, _ = _built("order_lines")
+    roles = build_context(clean, contract=contract).roles
+    assert "Line No" in contract.id_columns
+    assert not any("Line No" in v for k, v in roles.items() if isinstance(v, list) and k != "id_cols")
+
+
 def _domain(csv: str):
     from tests.test_retail_pack import _contract, _load
     return _contract(_load(csv)).domain

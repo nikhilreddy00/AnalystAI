@@ -54,9 +54,9 @@ roles:
                                       sales_order_number, so_number, order]}
   order_line_id: {kind: id, headers: [order_line_id, order_line_key, line_id, line_key,
                                       line_item_id, order_line]}
-  # a line number restarting in each order (10, 20, 30): a label, never a measure (D4-21)
-  line_number:   {kind: category, pattern: '\d{1,4}', headers: [line_no, line_number, line_nbr,
-                                                              line_num, line_item_number]}
+  # a line number restarting in each order (10, 20, 30): an identifier within its order, never a
+  # measure (D4-21) nor a breakdown ('Line No 10 leads at 33%')
+  line_number:   {kind: id, headers: [line_no, line_number, line_nbr, line_num, line_item_number]}
   appointment:   {kind: id, headers: [appointment_id, appointment_number, appointment_no,
                                       appointment, visit_id, dock_appointment_id]}
   sku:           {kind: id, headers: [sku, item, item_id, item_number, product_id]}
@@ -150,7 +150,8 @@ ranges: {transit_days: {ge: 0}, dwell_hours: {ge: 0}, short_qty: {le: 0}}
 conditional_fields: {delivered: [delivered], arrived: [arrived, checked in, at door, departed,
                                                        checked out, completed, complete],
                      departed: [departed, checked out, completed, complete]}
-overview_groups: [carrier, mode, warehouse, facility, direction]
+# the first a file has: OTIF by warehouse, dwell by facility, on-time by carrier
+overview_groups: [warehouse, facility, carrier, mode, direction]
 overview_kpis: [on_time_delivery, avg_transit_days, cost_per_shipment, otif_order, unit_fill,
                 avg_dwell, on_time_arrival]
 protected_roles: [driver]
@@ -158,10 +159,13 @@ role_caveats:
   driver: "Drivers are people: figures by driver describe the visits, never rank the people, and groups of fewer than 11 drivers are not shown."
   carrier: "A carrier's figures depend on its lanes, modes and shippers: a difference between carriers is an association, not the carrier's doing, and every rate is given with its number of shipments."
 row_labels: {sale: counted rows, cancel: cancelled rows}
+# the frame's row_kind says the brief's word (gate: a model kept kind 'cancel' rows the brief
+# called 'cancelled', and a cancelled shipment's weight lowered cost per lb)
+kind_codes: {cancel: cancelled}
 row_flags:
   cancel: "cancelled shipments, lines or appointments: left out of every count and rate"
 text:
-  rows_brief: "Ratios pool their parts: on-time, OTIF, fill and cost per lb are Σ numerator ÷ Σ denominator over the rows, never a mean of per-shipment, per-lane or per-carrier ratios. On-time delivery = shipments delivered on or before the promised date (dates as written: local; an early delivery is on time) ÷ shipments delivered plus returned to sender; a shipment not yet delivered is not in it. OTIF (line) = lines delivered on time AND shipped in full (shipped ≥ ordered) ÷ lines delivered; OTIF (order) counts an order only when every delivered line is OTIF. Unit fill = Σ shipped ÷ Σ ordered; line fill = lines shipped in full ÷ lines. Transit = delivered − ship date in calendar days. Dwell = departed − arrived in hours, averaged per visit, never summed. Cancelled rows are left out (kind 'cancelled'). Cost is the main currency only."
+  rows_brief: "First keep only row_kind 'sale' rows: cancelled ones (row_kind 'cancelled') and other currencies are in no figure, counts and cost per lb included (a cancelled shipment keeps its weight at $0). Ratios pool their parts: on-time, OTIF, fill and cost per lb are Σ numerator ÷ Σ denominator over those rows, never a mean of per-shipment, per-lane or per-carrier ratios. On-time delivery = shipments delivered on or before the promised date (dates as written: local; an early delivery is on time) ÷ (shipments delivered + returned to sender + shipments still open whose promised date is before the data's last ship date: those are late); open ones not yet due are not in it. OTIF (line) = lines delivered by the requested date AND shipped in full (shipped ≥ ordered) ÷ (lines delivered + lines still open whose requested date is before the data's last order date: those failed); OTIF (order) = orders whose every such line is OTIF ÷ orders with at least one such line. Unit fill = Σ shipped ÷ Σ ordered and line fill = lines shipped in full ÷ lines, over lines past release (not open, allocated, picked or packed). Cost per lb = Σ cost ÷ Σ pounds over rows with a weight in a stated unit (kg × 2.20462). Transit = delivered − ship date in calendar days. Dwell = departed − arrived in hours, averaged per visit, never summed."
   grain_line: "One row is one shipment, one order line or one dock visit: count shipments, orders or visits as distinct {key}, never rows."
   unsupported_alternatives: "I can answer with what the data has: on-time delivery, transit days and cost per shipment or per lb by carrier, mode or lane; OTIF and fill rates by warehouse; or dwell and on-time arrival by facility. Which would help?"
   kpis_default: its shipment, order-line or dock-visit columns
