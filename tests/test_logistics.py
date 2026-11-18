@@ -145,6 +145,59 @@ def test_the_brief_names_every_population_the_kpis_read():
         assert said in brief, said
 
 
+SHIP_DUE = {**SHIP, "date": "ship_date"}
+
+
+def test_past_due_is_signed_for_the_range_check_and_never_replaces_a_users_column():
+    """Mutation gate (derived_roles): cleaning reads spans signed, so a promise after the as-of
+    is a negative number there (blank for a KPI); a column of the user's named like a derived
+    role is never overwritten."""
+    from domain_pack.columns import derived_roles
+    df = _ships(("S0", "2026-01-01", "2026-01-03", None, "In Transit"),
+                ("S1", "2026-01-10", "2026-01-20", None, "In Transit"))
+    signed, roles = derived_roles(df, SHIP_DUE, LOGI, signed=True)
+    assert signed[roles["past_due_days"]].tolist() == [7.0, -10.0]
+    unsigned, _ = derived_roles(df, SHIP_DUE, LOGI)
+    assert unsigned["days_past_due"].iloc[0] == 7.0 and pd.isna(unsigned["days_past_due"].iloc[1])
+    mine = df.assign(days_past_due=["x", "y"])
+    kept, roles = derived_roles(mine, SHIP_DUE, LOGI)
+    assert kept["days_past_due"].tolist() == ["x", "y"] and "past_due_days" not in roles
+
+
+def test_a_promise_column_blank_on_every_row_is_unknown_never_a_rate():
+    """Mutation gate (_blank): a span's input column empty everywhere (an export without
+    promise dates) can't be measured: on-time is unknown, never a number from another base."""
+    df = _ships(("S0", "2026-01-01", None, "2026-01-02", "Delivered"),
+                ("S1", "2026-01-01", None, "2026-01-03", "Delivered"))
+    v = dp.measure(df, SHIP, LOGI, "on_time_delivery")
+    assert isinstance(v, dp.Unavailable) and v.reason == "blank_column"
+
+
+def test_the_as_of_is_named_in_words_in_answers_and_the_brief():
+    roles = {**SHIP_DUE, "carrier": "carrier"}
+    assert "days from promised to the data's last date > 0" in dp.describe_kpi(LOGI, "on_time_delivery", roles)
+    brief = "\n".join(dp.pack_brief(LOGI, roles, []))
+    assert "Column days_past_due is in the data for you: days from promised_date to the data's last date" in brief
+    no_promise = {k: v for k, v in roles.items() if k != "promised_date"}
+    assert "days_past_due" not in "\n".join(dp.pack_brief(LOGI, no_promise, []))
+    own = "\n".join(dp.pack_brief(LOGI, {**roles, "past_due_days": "overdue"}, []))
+    assert "Column days_past_due is in the data" not in own
+
+
+def test_the_longest_phrase_names_the_concept():
+    """Mutation gate (_glossary_matches): 'shipments in transit' is open shipments, never the
+    shipment count; 'line fill rate' is line fill, never unit fill."""
+    assert [c for c, _ in dp.glossary_hits(LOGI, "How many shipments in transit by carrier?", [])] == \
+        ["open_shipments"]
+    assert [c for c, _ in dp.glossary_hits(LOGI, "line fill rate by warehouse", [])] == ["line_fill"]
+
+
+def test_a_tracking_number_and_a_plate_are_masked_by_their_names_alone():
+    from guardrails import is_pii_column
+    assert is_pii_column("tracking_number") and is_pii_column("license_plate")
+    assert not is_pii_column("tracking_events")
+
+
 def _domain(csv: str):
     from tests.test_retail_pack import _contract, _load
     return _contract(_load(csv)).domain
