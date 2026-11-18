@@ -426,7 +426,7 @@
  },
  "domain_pack/story.py::_expr_words": {
   "equivalents": [],
-  "hash": "aab04b4396f8d8c0"
+  "hash": "82da4543711540d8"
  },
  "domain_pack/story.py::_glossary_matches": {
   "equivalents": [],
@@ -480,7 +480,7 @@
  },
  "domain_pack/story.py::pack_brief": {
   "equivalents": [],
-  "hash": "33370f1ba5ec3a74"
+  "hash": "951c056c92b35785"
  },
  "domain_pack/story.py::unit_said": {
   "equivalents": [
