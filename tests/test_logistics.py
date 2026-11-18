@@ -115,6 +115,15 @@ def test_an_answer_names_a_signed_difference_it_was_counted_on():
     assert how.startswith("Distinct Order Line ID where") and "Qty Shipped − Qty Ordered ≥ 0" in how
 
 
+def test_a_line_number_is_a_label_never_a_measure():
+    """Golden, D4-21 (C7): 'Line No trended up 11.4% (agg=sum)' — a line number restarting in
+    each order (10, 20, 30) was summed by month. The pack names it a category."""
+    from tests.test_oracle import _built
+    _, _, contract, _ = _built("order_lines")
+    col = next(c for c in contract.columns if c.name == "Line No")
+    assert contract.roles.get("line_number") == "Line No" and not col.is_metric
+
+
 def _domain(csv: str):
     from tests.test_retail_pack import _contract, _load
     return _contract(_load(csv)).domain

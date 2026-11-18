@@ -54,6 +54,9 @@ roles:
                                       sales_order_number, so_number, order]}
   order_line_id: {kind: id, headers: [order_line_id, order_line_key, line_id, line_key,
                                       line_item_id, order_line]}
+  # a line number restarting in each order (10, 20, 30): a label, never a measure (D4-21)
+  line_number:   {kind: category, pattern: '\d{1,4}', headers: [line_no, line_number, line_nbr,
+                                                              line_num, line_item_number]}
   appointment:   {kind: id, headers: [appointment_id, appointment_number, appointment_no,
                                       appointment, visit_id, dock_appointment_id]}
   sku:           {kind: id, headers: [sku, item, item_id, item_number, product_id]}
