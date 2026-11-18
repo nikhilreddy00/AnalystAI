@@ -285,7 +285,7 @@
  },
  "domain_pack/columns.py::derived_roles": {
   "equivalents": [],
-  "hash": "5d50a720548bb313"
+  "hash": "b4aa996bb892b48d"
  },
  "domain_pack/columns.py::pack_columns": {
   "equivalents": [],
@@ -323,6 +323,14 @@
   "equivalents": [],
   "hash": "bde71c77d88b7363"
  },
+ "domain_pack/kpi.py::_blank": {
+  "equivalents": [],
+  "hash": "ca0c673746accdb2"
+ },
+ "domain_pack/kpi.py::_inputs": {
+  "equivalents": [],
+  "hash": "5a6f06f2c6a82788"
+ },
  "domain_pack/kpi.py::_kpi_value": {
   "equivalents": [
    {
@@ -343,11 +351,15 @@
     "reason": "the column name only reaches rate_values' notes, which _term drops (`rate, _ =`)"
    }
   ],
-  "hash": "c44482d43d599a73"
+  "hash": "0f0f4825016b70cb"
+ },
+ "domain_pack/kpi.py::_words_only": {
+  "equivalents": [],
+  "hash": "d0967eb60ed6d202"
  },
  "domain_pack/kpi.py::computable": {
   "equivalents": [],
-  "hash": "bcd14fb09d358025"
+  "hash": "9a53eab448d825a5"
  },
  "domain_pack/kpi.py::kpi_measures": {
   "equivalents": [
@@ -362,7 +374,7 @@
  },
  "domain_pack/kpi.py::kpi_roles": {
   "equivalents": [],
-  "hash": "4bb039540023616a"
+  "hash": "56b8ffae03c1e6e0"
  },
  "domain_pack/kpi.py::measure": {
   "equivalents": [
@@ -373,7 +385,7 @@
     "reason": "astype(None) gives float64 as astype(float) does (checked)"
    }
   ],
-  "hash": "94d59547f0f51c12"
+  "hash": "923c114c75534b5d"
  },
  "domain_pack/kpi.py::unavailable_words": {
   "equivalents": [],
@@ -400,6 +412,10 @@
    }
   ]
  },
+ "domain_pack/spell.py::_spell_as_of": {
+  "equivalents": [],
+  "hash": "62fd5d5fcb9add9b"
+ },
  "domain_pack/spell.py::window_span": {
   "equivalents": [],
   "hash": "6606e561bc3dd779"
@@ -407,6 +423,14 @@
  "domain_pack/spell.py::window_words": {
   "equivalents": [],
   "hash": "3a96e0d6c123e360"
+ },
+ "domain_pack/story.py::_expr_words": {
+  "equivalents": [],
+  "hash": "aab04b4396f8d8c0"
+ },
+ "domain_pack/story.py::_glossary_matches": {
+  "equivalents": [],
+  "hash": "515c0816bc795998"
  },
  "domain_pack/story.py::_ledger_story": {
   "equivalents": [
@@ -444,15 +468,19 @@
     "reason": "an exact 1e-9 error of 1/N in floating point does not occur: < and <= decide alike"
    }
   ],
-  "hash": "fb939fa88efba138"
+  "hash": "913fd5df95fd8561"
  },
  "domain_pack/story.py::first_questions": {
   "equivalents": [],
   "hash": "9658cea9faad84fb"
  },
+ "domain_pack/story.py::glossary_hits": {
+  "equivalents": [],
+  "hash": "587f75f58aa7fe65"
+ },
  "domain_pack/story.py::pack_brief": {
   "equivalents": [],
-  "hash": "e8896d16d8f03fdf"
+  "hash": "33370f1ba5ec3a74"
  },
  "domain_pack/story.py::unit_said": {
   "equivalents": [
@@ -471,5 +499,13 @@
  "evals/scoring.py::score_quality": {
   "equivalents": [],
   "hash": "157a12e6f433673e"
+ },
+ "guardrails.py::is_pii_column": {
+  "equivalents": [],
+  "hash": "438f734f8ab4a5e4"
+ },
+ "guardrails.py::pii_kind": {
+  "equivalents": [],
+  "hash": "b27083e5173a8056"
  }
 }
