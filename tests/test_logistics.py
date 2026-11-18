@@ -1,0 +1,146 @@
+"""Domain 8 (logistics): the pack's own rules, on its datasets and small frames.
+Definitions: docs/research/2026-11-18-logistics.md; the plan's traps T1–T20."""
+import pandas as pd
+import pytest
+
+import domain_pack as dp
+
+LOGI = dp.pack_for("logistics")
+SHIP = {"date": "ship_date", "promised_date": "promised", "delivered": "delivered",
+        "shipment": "id", "status": "status"}
+DOCK = {"date": "appt", "arrived": "arr", "departed": "dep", "appointment": "id", "status": "status"}
+
+
+def _ships(*rows) -> pd.DataFrame:
+    return pd.DataFrame(rows, columns=["id", "ship_date", "promised", "delivered", "status"])
+
+
+def test_none_late_is_a_measured_rate_not_an_unknown_one():
+    """D1-40 (C5): a span blank on every row because no row qualifies (no shipment late: days
+    late is blank on each) is no missing column. On-time was read off every shipment instead
+    (the denominator fell to its last alternative): 0.5 for 1 of 1."""
+    df = _ships(("S0", "2026-01-01", None, "2026-01-01", "Delivered"),
+                ("S1", "2026-01-01", "2026-01-02", "2026-01-01", "Delivered"))
+    assert dp.compute_kpi(df, SHIP, LOGI, "on_time_delivery") == 1.0
+
+
+def test_every_delivery_late_is_zero_percent_on_time():
+    """D1-40 (C5): no row meets a numeric condition anywhere (not one shipment on time) is a
+    measured 0%, never "unknown" — that answer is for a kind of row an export may omit."""
+    df = _ships(("S0", "2026-01-01", "2026-01-02", "2026-01-05", "Delivered"),
+                ("S1", "2026-01-01", "2026-01-02", "2026-01-04", "Delivered"))
+    assert dp.compute_kpi(df, SHIP, LOGI, "on_time_delivery") == 0.0
+    assert dp.compute_kpi(df, SHIP, LOGI, "avg_days_late") == 2.5
+
+
+def test_no_long_dwell_is_zero_percent_over_two_hours():
+    df = pd.DataFrame({"id": ["A1", "A2"], "status": ["Completed"] * 2,
+                       "appt": ["2026-06-01 08:00"] * 2, "arr": ["2026-06-01 07:50"] * 2,
+                       "dep": ["2026-06-01 09:00", "2026-06-01 08:30"]})
+    assert dp.compute_kpi(df, DOCK, LOGI, "visits_over_2h") == 0.0
+
+
+TRUTH = {   # dataset → {kpi: truth key}
+    "tms_shipments": {"on_time_delivery": "on_time_rate", "avg_transit_days": "avg_transit_days",
+                      "cost_per_shipment": "cost_per_shipment", "cost_per_lb": "cost_per_lb",
+                      "shipments": "shipments", "open_shipments": "open_shipments",
+                      "returned_shipments": "returned", "avg_days_late": "avg_days_late",
+                      "fuel_share": "fuel_share"},
+    "order_lines": {"otif_line": "otif_line", "otif_order": "otif_order", "unit_fill": "unit_fill",
+                    "line_fill": "line_fill", "orders": "orders"},
+    "dock_appointments": {"avg_dwell": "avg_dwell_hours", "on_time_arrival": "on_time_arrival",
+                          "visits_over_2h": "visits_over_2h", "no_shows": "no_shows",
+                          "visits": "visits"},
+}
+
+
+@pytest.mark.parametrize("name", list(TRUTH))
+def test_each_dataset_through_the_production_path_is_the_truth(name):
+    """T1–T20 on the three datasets (CSV, the production reader and cleaning): LB/KG converted,
+    a blank unit left out of cost per lb, CAD rows out (one population), cancelled out, early
+    deliveries on time, a delivery before its ship date no span, returned shipments not on time,
+    no-shows apart, an overnight dwell exact."""
+    from tests.test_oracle import _built
+    _, clean, contract, truth = _built(name)
+    assert contract.domain == "logistics"
+    roles = {r: c for r, c in contract.roles.items() if c in clean.columns}
+    got = {k: dp.compute_kpi(clean, roles, LOGI, k) for k in TRUTH[name]}
+    assert got == pytest.approx({k: truth[t] for k, t in TRUTH[name].items()}, rel=1e-9)
+
+
+@pytest.mark.parametrize("by,truth_key,kpi", [("Carrier", "on_time_by_carrier", "on_time_delivery"),
+                                               ("Mode", "transit_by_mode", "avg_transit_days"),
+                                               ("Mode", "cost_per_lb_by_mode", "cost_per_lb")])
+def test_shipments_by_group_are_pooled_per_group(by, truth_key, kpi):
+    """T1: each carrier's own on-time (its delivered on time ÷ its own base), never a mean."""
+    from tests.test_oracle import _built
+    _, clean, contract, truth = _built("tms_shipments")
+    roles = {r: c for r, c in contract.roles.items() if c in clean.columns}
+    got = dp.compute_kpi(clean, roles, LOGI, kpi, by=by)
+    assert got.to_dict() == pytest.approx(truth[truth_key], rel=1e-9)
+    if kpi == "on_time_delivery":
+        assert dp.compute_kpi(clean, roles, LOGI, kpi) != pytest.approx(truth["naive_mean_of_carrier_rates"])
+
+
+def test_the_old_shipments_file_pairs_its_flag_with_its_own_base():
+    """RT-11: alternatives are picked per side; a flag numerator (Σ on_time) must divide by all
+    shipments (e2e-34's pooled carrier X), never by a delivered base it doesn't have."""
+    from evals import datagen
+    from tests.test_oracle import _built
+    _, clean, contract, truth = _built("shipments")
+    roles = {r: c for r, c in contract.roles.items() if c in clean.columns}
+    got = dp.compute_kpi(clean, roles, LOGI, "on_time_delivery", by="carrier")
+    assert got.to_dict() == pytest.approx(truth["pooled_ontime"], rel=1e-9)
+    df, _ = datagen.make("shipments", 1)
+    assert dp.compute_kpi(clean, roles, LOGI, "cost_per_lb") == pytest.approx(
+        df["cost"].sum() / (df["weight_kg"] * 2.20462).sum(), rel=1e-9)
+
+
+@pytest.mark.parametrize("roles,want", [(DOCK, "on_time_arrival"), (SHIP, "on_time_delivery")])
+def test_the_same_words_name_the_kpi_this_data_can_compute(roles, want):
+    """RT-7 (D1-16, C6): "on-time rate" is on-time delivery on a shipment file and on-time
+    arrival on a dock log; one word routed to one KPI asked a dock log for a promised date."""
+    hits = dp.glossary_hits(LOGI, "What is our on-time rate by carrier?", [], roles=roles)
+    assert [c for c, _ in hits] == [want]
+    assert [c for c, _ in dp.glossary_hits(LOGI, "on-time rate by carrier", [])] == ["on_time_delivery"]
+
+
+def _domain(csv: str):
+    from tests.test_retail_pack import _contract, _load
+    return _contract(_load(csv)).domain
+
+
+@pytest.mark.parametrize("csv", [
+    # a fulfilment export with prices (RT-12: retail's SKU + quantity + price + order shape)
+    "Order ID,SKU,Quantity Ordered,Qty Shipped,Unit Price,Revenue,Order Date\n"
+    "O1,A-1,4,4,20,80,2026-01-02\nO2,A-2,2,1,15,15,2026-01-03\n",
+    # research §7 header variants: a PRO number, a SCAC, a committed and an actual delivery date
+    "PRO Number,SCAC,Ship Date,Committed Date,Actual Delivery Date,Total Charges\n"
+    "P1,ODFL,2026-01-02,2026-01-05,2026-01-05,410.5\nP2,SAIA,2026-01-03,2026-01-06,2026-01-08,388\n",
+    "Load ID,Carrier Name,Pickup Date,Delivery Date,Weight (lbs)\n"
+    "L1,J.B. Hunt,2026-02-01,2026-02-03,41000\nL2,XPO,2026-02-02,2026-02-05,38000\n",
+    "Appt ID,Facility,Appointment Time,Check In Time,Check Out Time,Driver\n"
+    "A1,Reno DC,2026-06-01 08:00,2026-06-01 07:52,2026-06-01 09:40,Ann Lee\n"
+    "A2,Reno DC,2026-06-01 09:00,2026-06-01 09:20,2026-06-01 12:05,Raj Patel\n",
+])
+def test_logistics_exports_read_as_logistics(csv):
+    assert _domain(csv) == "logistics"
+
+
+@pytest.mark.parametrize("csv", [
+    # an insurer's carrier is no freight carrier: a policy file stays insurance or nothing
+    "Policy ID,Carrier,Effective Date,Written Premium\nP1,Chubb,2026-01-01,1200\n"
+    "P2,Travelers,2026-02-01,900\n",
+    # a store's sales with a ship date are retail
+    "Order ID,SKU,Quantity,Unit Price,Revenue,Ship Date\nO1,A-1,1,20,20,2026-01-02\n"
+    "O2,A-2,2,15,30,2026-01-03\n",
+])
+def test_other_domains_with_a_logistics_word_are_not_logistics(csv):
+    assert _domain(csv) != "logistics"
+
+
+def test_a_kind_of_row_the_export_may_omit_is_still_unknown():
+    """The other side of the rule: no open shipment anywhere is unknown (an export of delivered
+    shipments only), never "0 open"."""
+    df = _ships(("S0", "2026-01-01", "2026-01-02", "2026-01-02", "Delivered"))
+    assert dp.compute_kpi(df, SHIP, LOGI, "open_shipments") is None

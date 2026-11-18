@@ -1,0 +1,28 @@
+id: logi-9
+domain: logistics
+category: ratio
+pipeline: production
+dataset:
+  name: tms_shipments
+  seed: 3
+question: How does average transit time compare by mode?
+task:
+  analysis_types:
+  - segmentation
+  target_metrics:
+  - Ship Date
+  - Delivered At
+  segments:
+  - Mode
+checks:
+- kind: segment_value_truth
+  planted: true
+  segment: Mode
+  truth_key: transit_by_mode
+  rel_tol: 0.01
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
+- numbers_grounded
+label_note: 'Domain 8 (T4): calendar days from ship date to delivery over delivered shipments; a delivery
+  dated before its ship date is no transit time.'

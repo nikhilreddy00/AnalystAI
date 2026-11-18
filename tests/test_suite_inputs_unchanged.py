@@ -26,6 +26,10 @@ CHANGES: dict[str, dict[str, str]] = {
         "iot-5": "review: a work order's actual dates are blank by its status (layout), never missing"},
     "intake": {"intake-iot-03": "review: a work order's actual dates are blank by its status, never missing"},
 }
+# Domain 8 (logistics, 2026-11-18): the old `shipments` file reads as the new pack (K4, D3-31):
+# its contract, tiles (on-time from its flag, cost per lb from kg) and cleaning notes are logistics'
+CHANGES["deterministic"] |= {f"shipments-{s}": "Domain 8: read as logistics (K4)" for s in (1, 2, 3)}
+CHANGES["analysis"] |= {"logi-3": "Domain 8: read as logistics (K4): the pack's brief and tiles"}
 
 
 GOLDEN_NOW = json.loads(GOLDEN.read_text())

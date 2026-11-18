@@ -1,0 +1,29 @@
+id: logi-7
+domain: logistics
+category: ratio
+pipeline: production
+dataset:
+  name: tms_shipments
+  seed: 2
+question: What is freight cost per pound by mode?
+task:
+  analysis_types:
+  - segmentation
+  target_metrics:
+  - Total Charge
+  - Weight
+  - Weight UOM
+  segments:
+  - Mode
+checks:
+- kind: segment_value_truth
+  planted: true
+  segment: Mode
+  truth_key: cost_per_lb_by_mode
+  rel_tol: 0.01
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
+- numbers_grounded
+label_note: 'Domain 8 (T7, T8): kg rows converted to lb, rows with no unit left out of both sides, CAD
+  rows out; pooled cost over pounds, never a mean of per-shipment rates.'

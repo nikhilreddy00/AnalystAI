@@ -113,7 +113,8 @@ def test_the_retail_datasets_are_retail_with_every_role(name, roles):
 @pytest.mark.parametrize("name", ["simpson", "subscriptions", "bank_balances", "encounters",
                                   "claims", "employees", "saas_accounts", "sensor_readings",
                                   "shipments", "shift_production", "work_orders",
-                                  "machine_readings"])
+                                  "machine_readings", "tms_shipments", "order_lines",
+                                  "dock_appointments"])
 def test_no_other_domains_dataset_is_retail(name):
     c = _contract(_gen(name))   # bank_balances is banking (Domain 2); never retail
     assert c.domain != "retail" and (c.domain or name == "bank_balances" or c.roles == {})
@@ -1217,7 +1218,7 @@ def test_invoicing_shapes_are_never_a_strong_retail_match(csv):
 def test_a_3pl_shipment_file_is_not_retail():
     csv = ("Shipment ID,Order ID,SKU,Quantity,Unit Price,Ship Date,Carrier\n"
            "S1,O1,A-1,1,20,2025-01-02,UPS\nS2,O2,A-2,2,15,2025-01-03,UPS\n")
-    assert _contract(_load(csv)).domain is None
+    assert _contract(_load(csv)).domain == "logistics"   # Domain 8: no pack before, never retail
 
 
 def test_kpi_answers_on_a_weak_match_say_how_the_file_was_read():

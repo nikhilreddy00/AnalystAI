@@ -399,20 +399,27 @@ def unit_said(text: str, start: int = 0, end: int | None = None) -> str | None:
     return "count" if _COUNT_BEFORE.search(text[:start]) else None
 
 
-def _glossary_matches(pack: Pack, question: str, columns: list[str]):
+def _glossary_matches(pack: Pack, question: str, columns: list[str],
+                      roles: dict[str, str] | None = None):
     """(concept, the words used, the unit they clash in or None) per glossary concept the
     question names as whole words, unless the words are just one of the data's own column names
-    ("revenue" in a file with a revenue column needs no glossary)."""
+    ("revenue" in a file with a revenue column needs no glossary). The same words in two
+    concepts' lists name the one `roles` can compute (on-time: delivery on shipments, arrival on
+    a dock log); without roles, the first in the pack."""
     q = question.lower()
     own = {normalize_header(c) for c in columns}
     found = [(m.start(), m.end(), concept, w)
              for concept, said in [*pack.glossary.items(), (None, pack.consumed)]
              for w in said for m in re.finditer(rf"(?<![\w-]){re.escape(w.lower())}(?![\w-])", q)]
+
+    def unanswerable(concept: str | None) -> bool:
+        return roles is not None and concept is not None and pack.kpi(concept) is not None \
+            and not computable(pack, concept, roles)
     taken: list[tuple[int, int]] = []
     hits: dict[str, tuple[str, str | None]] = {}
     # the longest phrase consumes its words ("gross sales", "sales tax" never also mean "sales"),
     # a clashing one too: "revenue churn rate" is asked, never read as "churn rate"
-    for start, end, concept, w in sorted(found, key=lambda f: f[0] - f[1]):
+    for start, end, concept, w in sorted(found, key=lambda f: (f[0] - f[1], unanswerable(f[2]))):
         if any(start < e and s < end for s, e in taken):
             continue
         taken.append((start, end))
@@ -423,10 +430,11 @@ def _glossary_matches(pack: Pack, question: str, columns: list[str]):
     return [(c, w, clash) for c, (w, clash) in hits.items()]
 
 
-def glossary_hits(pack: Pack, question: str, columns: list[str]) -> list[tuple[str, str]]:
+def glossary_hits(pack: Pack, question: str, columns: list[str],
+                  roles: dict[str, str] | None = None) -> list[tuple[str, str]]:
     """[(concept, the words used)] for each glossary concept the question names as whole words
     (_glossary_matches), never a KPI asked in another unit (unit_clashes)."""
-    return [(c, w) for c, w, clash in _glossary_matches(pack, question, columns) if not clash]
+    return [(c, w) for c, w, clash in _glossary_matches(pack, question, columns, roles) if not clash]
 
 
 def unit_clashes(pack: Pack, question: str, columns: list[str]) -> list[tuple[str, str, str]]:

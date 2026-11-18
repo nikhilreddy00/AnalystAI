@@ -1,0 +1,28 @@
+id: logi-8
+domain: logistics
+category: ratio
+pipeline: production
+dataset:
+  name: dock_appointments
+  seed: 1
+question: Which facilities have the longest average dwell time?
+task:
+  analysis_types:
+  - segmentation
+  target_metrics:
+  - Arrived At
+  - Departed At
+  segments:
+  - Facility
+checks:
+- kind: segment_value_truth
+  planted: true
+  segment: Facility
+  truth_key: dwell_by_facility
+  rel_tol: 0.01
+hard_rules:
+- no_unknown_columns
+- non_empty_or_error
+- numbers_grounded
+label_note: 'Domain 8 (T17): dwell = departed minus arrived in exact hours per visit (overnight visits
+  included); a departure before arrival is no dwell; no-shows have none.'

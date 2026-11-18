@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from .pack import (KPI, KPIValue, TERM_OPS, Measured, MeasuredBy, Pack, Term, Unavailable, Within,
+from .pack import (KPI, KPIValue, TERM_OPS, Cond, Measured, MeasuredBy, Pack, Term, Unavailable, Within,
                    _column, _day, _meets, _snapshot_column, and_list, normalize_header, pack_for,
                    snapshot_role, spell_terms)
 from .detect import main_currency, row_kinds
@@ -180,9 +180,28 @@ def _blank(term: Term, roles: dict[str, str], pack: Pack, whole: pd.DataFrame) -
     (no end date: nobody ended) and an optional term's mean 0: those are read."""
     if term.optional:
         return None
-    blank = [r for r in term.roles() if r in roles and r not in pack.marker_fields
+    # a span the product derives is judged by its two inputs: blank on every row because no row
+    # qualifies (days late when nothing was late) is a measurement, never a missing column (C5)
+    read = {i for r in term.roles() for i in (_inputs(pack, r, roles) or [r])}
+    blank = [r for r in sorted(read) if r in roles and r not in pack.marker_fields
              and whole[roles[r]].isna().all()]
     return Unavailable("blank_column", tuple(blank)) if blank else None
+
+
+def _inputs(pack: Pack, role: str, roles: dict[str, str]) -> list[str] | None:
+    """A derived role's two input roles when the product computed it here (its column is named
+    after its first header and both inputs are in the data); None for a column of the data's."""
+    expr = pack.derived.get(role)
+    if expr and expr[0] in roles and expr[2] in roles and \
+            roles.get(role) == pack.roles[role].headers[0]:
+        return [expr[0], expr[2]]
+    return None
+
+
+def _words_only(where: list[list[Cond]]) -> bool:
+    """Every alternative names a kind of row by its words (a status, a work type): no such row
+    anywhere may mean the export leaves them out. A numeric bound no row meets is a 0."""
+    return all(any(c.in_ is not None for c in group) for group in where)
 
 
 def _term(df, kinds, roles, pack, kpi, term: Term, by):
@@ -197,7 +216,7 @@ def _term(df, kinds, roles, pack, kpi, term: Term, by):
     if met is not None:
         rows &= met
         whole = kinds.attrs.get("frame", df)
-        if not met.any() and not _meets(whole, roles, term.where).any():
+        if not met.any() and _words_only(term.where) and not _meets(whole, roles, term.where).any():
             # no interest rows anywhere in the data: unknown, never a $0.00
             return Unavailable("no_kind_rows", tuple(c.role for alt in term.where for c in alt))
     part = df[rows]

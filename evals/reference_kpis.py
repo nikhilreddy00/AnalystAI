@@ -633,10 +633,144 @@ IOT = {   # dataset or book → (KPI function, its columns)
 }
 
 
+# ── Logistics (Domain 8; docs/research/2026-11-18-logistics.md §2) ────────────────────────────
+# logistics.yaml's words, copied (test_the_references_word_lists_are_the_packs checks them)
+LOG_CANCELLED = {"cancelled", "canceled", "cancel", "void", "voided"}
+LOG_RETURNED = {"returned to sender", "return to sender", "rts", "returned", "refused"}
+LOG_OPEN = {"in transit", "intransit", "out for delivery", "picked up", "exception",
+            "delivery exception", "delayed", "tendered", "booked", "dispatched", "pending"}
+LOG_UNRELEASED = {"open", "pending", "allocated", "released", "picked", "packed"}
+LOG_NO_SHOW = {"no show", "no-show", "noshow", "missed"}
+_LB = {"lb": 1.0, "lbs": 1.0, "l": 1.0, "pound": 1.0, "pounds": 1.0, "kg": 2.20462, "kgs": 2.20462,
+       "k": 2.20462, "kilogram": 2.20462, "kilograms": 2.20462, "oz": 0.0625, "ounce": 0.0625,
+       "ounces": 0.0625}
+
+
+def _day(v):
+    return None if v is None or pd.isna(v) else pd.Timestamp(v).normalize()
+
+
+def _ratio(num, den):
+    return num / den if den else None
+
+
+def shipment_kpis(df: pd.DataFrame, c: dict) -> dict:
+    """On time = delivered on or before the promise (whole days, early is on time) ÷ delivered +
+    returned with a promise; transit = delivered − ship date in whole days, ≥ 0; cost per lb =
+    Σ cost ÷ Σ lb over rows with a weight in a known unit. Cancelled rows count nowhere."""
+    on, base, transit, ids, open_, ret = set(), set(), {}, set(), set(), set()
+    late, cost, wcost, lb = {}, 0.0, 0.0, 0.0
+    for _, r in df.iterrows():
+        st = _w(r[c["status"]])
+        if st in LOG_CANCELLED:
+            continue
+        sid = r[c["id"]]
+        ids.add(sid)
+        open_ |= {sid} if st in LOG_OPEN else set()
+        ret |= {sid} if st in LOG_RETURNED else set()
+        ship, deliv, prom = _day(r[c["ship"]]), _day(r[c["delivered"]]), _day(r[c["promised"]])
+        span = (deliv - ship).days if deliv is not None and ship is not None else None
+        if span is not None and span >= 0:
+            transit[sid] = transit.get(sid, 0) + span
+            if prom is not None:
+                base.add(sid)
+                if deliv <= prom:
+                    on.add(sid)
+                else:
+                    late[sid] = late.get(sid, 0) + (deliv - prom).days
+        if prom is not None and st in LOG_RETURNED:
+            base.add(sid)
+        cost += _n(r[c["cost"]])
+        w, unit = _n(r[c["weight"]]), _LB.get(_w(r[c["uom"]]))
+        if w > 0 and unit:
+            wcost += _n(r[c["cost"]])
+            lb += w * unit
+    # no delivery date on any row: the export has none, so on time is unknown (never 0%)
+    dated = df[c["delivered"]].notna().any()
+    return {"on_time_delivery": _ratio(len(on), len(base)) if dated else None,
+            "avg_transit_days": _ratio(sum(transit.values()), len(transit)),
+            "cost_per_shipment": _ratio(cost, len(ids)), "cost_per_lb": _ratio(wcost, lb),
+            "shipments": float(len(ids)) if ids else None,
+            "open_shipments": float(len(open_)) if open_ else None,
+            "returned_shipments": float(len(ret)) if ret else None,
+            "avg_days_late": _ratio(sum(late.values()), len(late))}
+
+
+def order_line_kpis(df: pd.DataFrame, c: dict) -> dict:
+    """OTIF (line) = delivered lines on time (by the requested date) and in full ÷ delivered
+    lines; OTIF (order) = orders whose every delivered line is OTIF ÷ orders with a delivered
+    line; fills over lines past release: Σ shipped ÷ Σ ordered, full lines ÷ lines."""
+    ok_lines, deliv_lines, orders, order_ok = set(), set(), set(), {}
+    shipped = ordered = 0.0
+    released, full = set(), set()
+    for _, r in df.iterrows():
+        st = _w(r[c["status"]])
+        if st in LOG_CANCELLED:
+            continue
+        line, order = r[c["line"]], r[c["order"]]
+        orders.add(order)
+        deliv, req = _day(r[c["delivered"]]), _day(r[c["promised"]])
+        is_full = _n(r[c["shipped"]]) - _n(r[c["ordered"]]) >= 0
+        if deliv is not None and req is not None:
+            deliv_lines.add(line)
+            ok = deliv <= req and is_full
+            ok_lines |= {line} if ok else set()
+            order_ok[order] = order_ok.get(order, True) and ok
+        if st not in LOG_UNRELEASED:
+            released.add(line)
+            full |= {line} if is_full else set()
+            shipped += _n(r[c["shipped"]])
+            ordered += _n(r[c["ordered"]])
+    return {"otif_line": _ratio(len(ok_lines), len(deliv_lines)),
+            "otif_order": _ratio(sum(order_ok.values()), len(order_ok)),
+            "unit_fill": _ratio(shipped, ordered), "line_fill": _ratio(len(full), len(released)),
+            "orders": float(len(orders)) if orders else None}
+
+
+def dock_kpis(df: pd.DataFrame, c: dict) -> dict:
+    """Dwell = departed − arrived in exact hours, ≥ 0, averaged per visit; on-time arrival =
+    arrived at or before the appointment ÷ visits that arrived; no-shows apart."""
+    dwell, on, arrived, visits, no_show = {}, set(), set(), set(), set()
+    for _, r in df.iterrows():
+        st = _w(r[c["status"]])
+        if st in LOG_CANCELLED:
+            continue
+        v = r[c["id"]]
+        visits.add(v)
+        no_show |= {v} if st in LOG_NO_SHOW else set()
+        appt, arr, dep = (None if pd.isna(r[c[k]]) else pd.Timestamp(r[c[k]])
+                          for k in ("appointment", "arrived", "departed"))
+        if arr is not None and appt is not None:
+            arrived.add(v)
+            on |= {v} if arr <= appt else set()
+        if arr is not None and dep is not None and dep >= arr:
+            dwell[v] = (dep - arr).total_seconds() / 3600
+    return {"avg_dwell": _ratio(sum(dwell.values()), len(dwell)),
+            "on_time_arrival": _ratio(len(on), len(arrived)),
+            "visits_over_2h": _ratio(sum(h > 2 for h in dwell.values()), len(dwell)),
+            "no_shows": float(len(no_show)) if no_show else None,
+            "visits": float(len(visits)) if visits else None}
+
+
+LOGISTICS = {
+    "book_shipments": (shipment_kpis, {"id": "shipment_id", "status": "status", "ship": "ship_date",
+                                       "delivered": "delivered_at", "promised": "promised_date",
+                                       "cost": "total_charge", "weight": "weight",
+                                       "uom": "weight_uom"}),
+    "book_order_lines": (order_line_kpis, {"line": "order_line_id", "order": "order_id",
+                                           "status": "status", "delivered": "delivered_date",
+                                           "promised": "requested_date", "ordered": "qty_ordered",
+                                           "shipped": "qty_shipped"}),
+    "book_dock_visits": (dock_kpis, {"id": "appointment_id", "status": "status",
+                                     "appointment": "appointment_time", "arrived": "arrived_at",
+                                     "departed": "departed_at"}),
+}
+
+
 def reference(name: str, df: pd.DataFrame, today: pd.Timestamp | None = None) -> dict:
     """Every spell or ledger KPI of a dataset, from the definitions alone."""
-    if name in IOT:
-        f, cols = IOT[name]
+    if name in IOT or name in LOGISTICS:
+        f, cols = {**IOT, **LOGISTICS}[name]
         return f(df, cols)
     spec = SPECS[name]
     today = today or pd.Timestamp(os.environ.get("ANALYSTAI_TODAY") or pd.Timestamp.today())
