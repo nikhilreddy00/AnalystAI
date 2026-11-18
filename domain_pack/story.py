@@ -385,7 +385,7 @@ def named_kpis(pack: Pack, contract, message: str) -> list[str]:
     customers', 'NRR and GRR') is answered for each (targeted_analysis_agent)."""
     by_name = {normalize_header(c): r for r, c in contract.roles.items()}
     own = {normalize_header(x.name) for x in contract.columns}
-    return [c for c, w in glossary_hits(pack, message, []) if pack.kpi(c)
+    return [c for c, w in glossary_hits(pack, message, [], dict(contract.roles)) if pack.kpi(c)
             and (normalize_header(w) not in own
                  or (normalize_header(w) in {c, normalize_header(pack.kpi(c).label)}
                      and by_name.get(normalize_header(w)) in kpi_roles(pack, c)))]
@@ -413,7 +413,7 @@ def unit_said(text: str, start: int = 0, end: int | None = None) -> str | None:
 
 
 def _glossary_matches(pack: Pack, question: str, columns: list[str],
-                      roles: dict[str, str] | None = None):
+                      roles: dict[str, str] | None):
     """(concept, the words used, the unit they clash in or None) per glossary concept the
     question names as whole words, unless the words are just one of the data's own column names
     ("revenue" in a file with a revenue column needs no glossary). The same words in two
@@ -444,16 +444,19 @@ def _glossary_matches(pack: Pack, question: str, columns: list[str],
 
 
 def glossary_hits(pack: Pack, question: str, columns: list[str],
-                  roles: dict[str, str] | None = None) -> list[tuple[str, str]]:
+                  roles: dict[str, str] | None) -> list[tuple[str, str]]:
     """[(concept, the words used)] for each glossary concept the question names as whole words
-    (_glossary_matches), never a KPI asked in another unit (unit_clashes)."""
+    (_glossary_matches), never a KPI asked in another unit (unit_clashes). `roles` is required
+    (the data's contract roles; None only with no data): every reader breaks a shared phrase's
+    tie the same way, by what the data computes (standards review, Domain 8 follow-up)."""
     return [(c, w) for c, w, clash in _glossary_matches(pack, question, columns, roles) if not clash]
 
 
-def unit_clashes(pack: Pack, question: str, columns: list[str]) -> list[tuple[str, str, str]]:
+def unit_clashes(pack: Pack, question: str, columns: list[str],
+                 roles: dict[str, str] | None) -> list[tuple[str, str, str]]:
     """[(KPI, the words used, the unit asked)] for each KPI the question names in another unit:
     no answer reads it, and intake asks which was meant (unit_question)."""
-    return [(c, w, clash) for c, w, clash in _glossary_matches(pack, question, columns) if clash]
+    return [(c, w, clash) for c, w, clash in _glossary_matches(pack, question, columns, roles) if clash]
 
 
 _UNIT_NAMES = {"money": "an amount", "percent": "a rate", "count": "a count", "number": "a number"}

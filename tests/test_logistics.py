@@ -103,7 +103,21 @@ def test_the_same_words_name_the_kpi_this_data_can_compute(roles, want):
     arrival on a dock log; one word routed to one KPI asked a dock log for a promised date."""
     hits = dp.glossary_hits(LOGI, "What is our on-time rate by carrier?", [], roles=roles)
     assert [c for c, _ in hits] == [want]
-    assert [c for c, _ in dp.glossary_hits(LOGI, "on-time rate by carrier", [])] == ["on_time_delivery"]
+    assert [c for c, _ in dp.glossary_hits(LOGI, "on-time rate by carrier", [], None)] == ["on_time_delivery"]
+
+
+def test_every_reader_names_the_kpi_this_data_can_compute():
+    """Standards review (D1-16, C6): the tie-break reached intake only; analysis's brief (and
+    insight's named tiles) still read "on-time rate" on a dock log as on-time delivery. Through
+    the real reader: the brief names arrival, never delivery."""
+    from agents.analysis_agent import _domain
+    from orchestrator.state import AnalysisTask
+    from tests.test_oracle import _built
+    s, _, contract, _ = _built("dock_appointments")
+    task = AnalysisTask(raw_query="What is our on-time rate by carrier?", target_metrics=[],
+                        analysis_types=["eda"])
+    brief = "\n".join(_domain(contract, task, s.cleaning_audit)["domain"])
+    assert "(on_time_arrival)" in brief and "(on_time_delivery)" not in brief   # the KPI lines
 
 
 def test_an_answer_names_a_signed_difference_it_was_counted_on():
@@ -189,9 +203,9 @@ def test_the_as_of_is_named_in_words_in_answers_and_the_brief():
 def test_the_longest_phrase_names_the_concept():
     """Mutation gate (_glossary_matches): 'shipments in transit' is open shipments, never the
     shipment count; 'line fill rate' is line fill, never unit fill."""
-    assert [c for c, _ in dp.glossary_hits(LOGI, "How many shipments in transit by carrier?", [])] == \
+    assert [c for c, _ in dp.glossary_hits(LOGI, "How many shipments in transit by carrier?", [], None)] == \
         ["open_shipments"]
-    assert [c for c, _ in dp.glossary_hits(LOGI, "line fill rate by warehouse", [])] == ["line_fill"]
+    assert [c for c, _ in dp.glossary_hits(LOGI, "line fill rate by warehouse", [], None)] == ["line_fill"]
 
 
 def test_a_tracking_number_and_a_plate_are_masked_by_their_names_alone():
@@ -231,7 +245,7 @@ def test_a_zoned_delivery_beside_naive_dates_is_read_at_its_own_wall_time():
 ])
 def test_a_count_question_names_the_count_never_the_total_or_the_rate(q, want):
     """Audit pass 1 (C6, D1-16): 'how many shipments are late' answered the 2,840 shipments."""
-    assert [c for c, _ in dp.glossary_hits(LOGI, q, [])][:1] == [want]
+    assert [c for c, _ in dp.glossary_hits(LOGI, q, [], None)][:1] == [want]
 
 
 def test_late_counts_equal_the_truth():
@@ -255,7 +269,7 @@ def test_a_share_of_late_ones_is_the_rate_never_the_count(q, want):
     """Audit pass 2 (C6): 'what percent of shipments were late' got the count 285. A shared
     'percent of' rule moved three finished domains' contexts and was backed out; the pack's
     longer phrase names the rate."""
-    assert [c for c, _ in dp.glossary_hits(LOGI, q, [])][:1] == [want]
+    assert [c for c, _ in dp.glossary_hits(LOGI, q, [], None)][:1] == [want]
 
 
 @pytest.mark.parametrize("name", ["tms_shipments", "order_lines", "dock_appointments"])

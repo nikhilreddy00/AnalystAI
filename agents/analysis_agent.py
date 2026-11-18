@@ -579,8 +579,8 @@ def _domain(contract: DataContract, task: AnalysisTask, audit, parquet: bytes | 
     if pack is None:
         return {}
     question = task.raw_query or ""
-    concepts = [c for c, _ in glossary_hits(pack, question, [c.name for c in contract.columns])]
     roles = dict(contract.roles)
+    concepts = [c for c, _ in glossary_hits(pack, question, [c.name for c in contract.columns], roles)]
     if defaults_pack(contract) is None and not concepts:
         return {}   # a weak match changes nothing by default: only a KPI the user names
     if _OVERVIEW_WORDS.search(question) and defaults_pack(contract):

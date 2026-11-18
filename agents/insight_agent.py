@@ -276,7 +276,8 @@ def build_context(session: AnalysisSession, past: list[str] | None = None) -> In
     tiles = [k for k in (findings.kpis if findings else []) if k.recipe and k.recipe.kind == "pack"]
     question = session.task_plan.raw_query if session.task_plan else ""
     pack = pack_for(contract.domain) if contract else None
-    named = {c for c, _ in glossary_hits(pack, question, [c.name for c in contract.columns])} if pack else set()
+    named = {c for c, _ in glossary_hits(pack, question, [c.name for c in contract.columns],
+                                         dict(contract.roles))} if pack else set()
     tiles = [k for k in tiles if _OVERVIEW_WORDS.search(question) or k.recipe.kpi in named]
     facts += [f"{k.label}: {k.value}" + (f" ({k.context})" if k.context else "") for k in tiles]
     if tiles:
