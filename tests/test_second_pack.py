@@ -325,6 +325,28 @@ kpis:
 """)
 
 
+SHARED = BANK.replace("kpis:\n", """glossary:
+  volume: [activity, volume]
+  accounts: [activity, active accounts]
+kpis:
+  - {name: volume, label: Volume, unit: money, num: [[{sum: amount}]]}
+  - {name: accounts, label: Active accounts, unit: count, num: [[{nunique: account_id}]]}
+""")
+
+
+def test_a_phrase_two_kpis_share_names_the_one_the_data_computes_in_every_reader():
+    """Domain 8 follow-up (D1-16, mutation gate): a non-rate phrase two KPIs share ('activity')
+    goes to the one the data can compute, also when it is asked in another unit (unit_clashes)
+    and in named_kpis; with no data, the first in the pack."""
+    from types import SimpleNamespace
+    pack = Pack.model_validate(__import__("yaml").safe_load(SHARED))
+    no_amount = {"account_id": "account_id", "txn_date": "txn_date"}
+    assert [c for c, _, _ in domain_pack.unit_clashes(pack, "activity % by month", [], no_amount)] == ["accounts"]
+    assert [c for c, _, _ in domain_pack.unit_clashes(pack, "activity % by month", [], None)] == ["volume"]
+    contract = SimpleNamespace(roles=no_amount, columns=[])
+    assert domain_pack.named_kpis(pack, contract, "activity by month") == ["accounts"]
+
+
 def test_an_open_item_is_overdue_as_of_the_whole_datas_last_date():
     """Domain 8 (L1), a second reader of the as-of operand: a bill due 10 Jan is overdue as of
     the data's last posting (20 Jan), whichever part is asked; the as-of is no role of the data
