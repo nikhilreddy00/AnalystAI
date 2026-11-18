@@ -20,6 +20,11 @@ The real API + worker in production mode on asyncpg, the real frontend, a mocked
    ab screenshot 'figure' .live/<name>.png              # one element, never the full page
    ab close                                             # drops the login: set it again after
    ```
+   A run is finished when its `done` event is stored (`GET /runs/<id>/events`, or `ab wait --text`
+   on a line only the finished report shows), never when an element is gone: leaving the page
+   removes it too. Check the URL before each read. A headed run the user watches: ask them to
+   watch, not click (Domain 8: a click on Dashboard mid-run passed a "Stop button gone" wait, and
+   the Dashboard read the previous analysis, saved 3 s before this one).
 4. Dashboard: `/dashboard`; apply a filter and read a tile AND a chart before/after (ROADMAP 5.7).
 5. `scripts/live_check/down.sh` (`--pg` also stops Postgres).
 Spend: each overview is a paid run (~$0.13) and a targeted question runs the whole pipeline too

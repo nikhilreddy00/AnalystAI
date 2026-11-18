@@ -173,12 +173,34 @@ def check(ref: str, root: Path = ROOT) -> list[str]:
     return problems
 
 
-def rerun(problems: list[str], ref: str) -> str | None:
+def _grep(pattern: str, *paths: str, root: Path = ROOT) -> list[str]:
+    got = subprocess.run(["git", "-C", str(root), "grep", "-l", *pattern.split("\0"), "--", *paths],
+                         capture_output=True, text=True)
+    return got.stdout.split()
+
+
+def caller_tests(names: list[str], root: Path = ROOT) -> list[str]:
+    """The test files that name a function, and those that import a module calling it (retro
+    Domain 8: a hand-picked list missed one), so the gate's rerun runs as printed."""
+    # ponytail: module-level importers over-include (35 files for story's tie-break); narrow to the
+    # calling functions' names if a gate run gets slow
+    tests: set[str] = set()
+    for name in {n.rsplit(".", 1)[-1] for n in names}:
+        for f in _grep(f"-w\0{name}", "*.py", root=root):
+            if f.startswith("tests/"):
+                tests.add(f)
+            else:
+                tests.update(_grep(f"-F\0{f[:-3].replace('/', '.')}", "tests/*.py", root=root))
+    return sorted(t for t in tests if t.startswith("tests/test_"))
+
+
+def rerun(problems: list[str], ref: str, root: Path = ROOT) -> str | None:
     """The run that clears check's refusals: only the refused functions, never --changed-since
-    (it mutates every changed function, gated or not); None when only orphans are left."""
+    (it mutates every changed function, gated or not), over their callers' tests; None when only
+    orphans are left."""
     names = [p.split("::", 1)[1].split(":", 1)[0] for p in problems if "no clean mutation" in p]
     return (f"run: uv run python scripts/mutation.py {' '.join(names)} --lines {ref} --record "
-            "--tests <each function's callers' test files>") if names else None
+            f"--tests {' '.join(caller_tests(names, root)) or '<the callers test files>'}") if names else None
 
 
 def unnamed(entry: dict, mutants: list[tuple[str, str, str]]) -> list[tuple[str, str, str]]:

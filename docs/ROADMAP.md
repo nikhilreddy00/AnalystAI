@@ -571,6 +571,8 @@ dataset should land in a workspace users can come back to. Expected size: 2 sess
     charts, a follow-up's chart, the Dashboard page and the KPI tiles a senior analyst of that
     domain expects, **and apply one dashboard filter: a tile and a chart must change** (a first
     render proves nothing about an interaction; filters were broken for three domains). Fix what it finds before "Domain N done".
+    The session note's `## Gates` section states each gate: `done`, or `not done (why)`
+    (`tests/test_plan_steps.py`; Domain 8 trimmed three silently).
     The finished domains' part runs at $0 on the mock stack: `scripts/ui_check` with
     `make_fixture.py --dataset <name>` (the real `filtered_dashboard` on that dataset; spend paid
     live runs on the new domain only, and read their cost with `scripts/live_check/spend.py`).

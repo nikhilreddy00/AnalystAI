@@ -42,6 +42,16 @@ in the same commit (`tests/test_answer_paths.py`, the golden, the oracle).
 changed an answer path or domain no test was reading (a partial quarter headlined, a small cell's
 count shown).
 
+## A parameter that changes a shared rule's answer is required
+
+A parameter that decides which answer a shared rule gives (the data's roles behind a tie-break, a
+population, an as-of date) has no default: every caller passes it, `None` on purpose where there
+is no data.
+
+**Why:** in Domain 8 `glossary_hits(..., roles=None)` let four readers skip the tie-break, so a
+dock log's "on-time rate" was arrival for intake and delivery for analysis and insight; only a
+post-merge review found it.
+
 ## Review scope includes the eval harness
 
 `evals/` (the runner, scorers, the cost estimator, the generators) is product code for review: a
