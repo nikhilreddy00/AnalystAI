@@ -251,6 +251,14 @@ def standard_stats(raw: dict, df: pd.DataFrame, contract: DataContract, task: An
     for c in (c for c in contract.metric_columns if c in names):
         if (summary := counted_summary(df, contract, c)) is not None:
             raw.setdefault("eda_summary", {})[c] = summary
+    # a category's distribution over the counted records, as its count charts (D7-19, e2e-89:
+    # the sandbox's every-row value counts gave the report 333 failure codes beside a 311 tile)
+    for c, dist in list((raw.get("distributions") or {}).items()):
+        if c in names and isinstance(dist, list):
+            rows, how = rows_for(df, contract, c, count=True)
+            if how:
+                raw["distributions"][c] = [{"label": str(k), "count": int(v)}
+                                           for k, v in rows[c].value_counts().head(10).items()]
     for key, empty in (("builtin", []), ("correlations", {}), ("trends", []), ("segments", []),
                        ("assumptions", [])):
         raw.setdefault(key, empty)
@@ -440,6 +448,20 @@ def product_breakdowns(raw: dict, df: pd.DataFrame, contract: DataContract) -> N
             notes.append(f"{metric} count by {col}: {how}")
         if not s["results"]:
             raw["segments"].remove(s)
+    # each segment's rows behind it: the counted records with a value in its columns, never the
+    # sandbox's every-row count (e2e-89 re-measure: 'among the 333 work orders with a failure code')
+    for s in raw.get("segments") or []:
+        cols = [c for c in str(s.get("segment_column") if isinstance(s, dict) else "").split("|") if c]
+        cols += [s["metric_column"]] if isinstance(s.get("metric_column"), str) else []
+        if cols and all(c in df.columns for c in cols):
+            rows = rows_for(df, contract, cols[0], count=True)[0]
+            raw.setdefault("segment_n", {})[segment_key(s)] = int(rows[cols].notna().all(axis=1).sum())
+
+
+def segment_key(s) -> str:
+    """One key for a segment in raw (a dict) and in findings (a SegmentResult): its columns and label."""
+    get = s.get if isinstance(s, dict) else lambda k: getattr(s, k, None)
+    return json.dumps([str(get("segment_column")), str(get("metric_column")), str(get("label") or "")])
 
 
 def _number(v) -> float:
@@ -1311,13 +1333,15 @@ def build_evidence(f: AnalysisFindings, raw: dict, body: str, standard: str,
         out.append(item("trend", f"trend:{t.column}{seg}:{t.period}",
                         f"{t.column}{seg} {t.period}{months}: {t.pct_change:+.1f}%", [t.column],
                         t.model_dump(), n=trend_n.get((t.column, t.period, t.segment))))
+    seg_n = raw.get("segment_n") if isinstance(raw.get("segment_n"), dict) else {}
     for s in f.segments:
         cols = [c for c in s.segment_column.split("|") if c] + [s.metric_column]
         what = (f"{s.label or 'ratio'} (from {s.metric_column})" if s.aggregation == "ratio"
                 else f"{s.aggregation} {s.metric_column}")
         out.append(item("segment", segment_id(s.segment_column, s.metric_column, s.aggregation, s.label),
                         f"{what} by {s.segment_column} ({len(s.results)} groups)", cols,
-                        s.model_dump(exclude={"label"} if s.label is None else None)))
+                        s.model_dump(exclude={"label"} if s.label is None else None),
+                        n=seg_n.get(segment_key(s))))
     by_col: dict[str, list] = {}
     for a in f.anomalies:
         by_col.setdefault(a.column, []).append(a)

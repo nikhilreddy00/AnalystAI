@@ -67,6 +67,35 @@ def test_a_kpi_built_on_derived_roles_is_the_products_on_the_models_frame():
     assert {r["name"]: r["value"] for r in raw["segments"][0]["results"]} == pytest.approx(truth, abs=1e-6)
 
 
+def test_a_segments_rows_behind_it_are_the_counted_records():
+    """e2e-89 paid re-measure (e2e-20261119T184927Z, 0/3): the counts were recounted to 311, but
+    each segment's evidence n was the sandbox's every-row count (333 with a failure code), and the
+    report said 'among the 333 work orders with a Failure Code'. n is the counted records with a
+    value in the segment's columns, for the model's own segments too."""
+    from agents.analysis_agent import _parse_findings, build_evidence
+    _, df, _, truth = _built("work_orders")
+    every = df.groupby("FAILURECODE")["WONUM"].count()
+    raw = _stats({"segments": [{"segment_column": "FAILURECODE", "metric_column": "WONUM", "aggregation": "count",
+                                "results": [{"name": k, "value": float(v)} for k, v in every.items()]},
+                               {"segment_column": "FAILURECODE", "metric_column": "WONUM", "aggregation": "mean",
+                                "results": [{"name": k, "value": 1.0} for k in every.index]}],
+                  "non_null": {"FAILURECODE": 333, "WONUM": 640}, "n_rows": 640}, "work_orders", ["FAILURECODE"])
+    ev = build_evidence(_parse_findings(raw, "", []), raw, "", "", None)
+    assert [e.row_count for e in ev if e.kind == "segment"] == [truth["corrective_wos"]] * 2
+
+
+def test_a_categorys_builtin_distribution_counts_the_counted_records():
+    """e2e-89 re-measure: the sandbox's built-in value counts (every row) gave the report its
+    failure codes (SEAL 82 … = 333) beside a 311 tile. standard_stats replaces them, as it replaces
+    a column's summary (counted_summary)."""
+    _, df, _, truth = _built("work_orders")
+    every = [{"label": k, "count": int(v)} for k, v in df["FAILURECODE"].value_counts().items()]
+    raw = _stats({"distributions": {"FAILURECODE": every, "WORKTYPE": [{"label": "PM", "count": 1}]}},
+                 "work_orders", [])
+    assert sum(d["count"] for d in raw["distributions"]["FAILURECODE"]) == truth["corrective_wos"]
+    assert {d["label"] for d in raw["distributions"]["WORKTYPE"]} == {"PM", "CM", "EM"}
+
+
 def test_a_label_with_its_own_window_or_qualifier_stays_the_models():
     """$0 replay (scripts/replay_breakdowns.py): a glossary match turned 'on-time for LTL' and
     'spend_2026_08' into the all-time KPI, 16 stored runs flipped to fail. Only the KPI's exact
