@@ -28,7 +28,10 @@ def _sha(text: str) -> str:
     return hashlib.sha256(text.encode()).hexdigest()[:16]
 
 
-async def snapshot(suites: tuple[str, ...] = ("analysis", "intake", "insight", "e2e", "deterministic"),
+SUITES = ("analysis", "intake", "insight", "e2e", "deterministic")
+
+
+async def snapshot(suites: tuple[str, ...] = SUITES,
                    datasets: set[tuple[str, int]] | None = None) -> dict:
     """`datasets`: the deterministic suite for only these (name, seed) (one golden test each)."""
     from agents import analysis_agent, insight_agent, intake_agent
@@ -267,12 +270,17 @@ def text_changes(a, b, path: str = "") -> list[tuple[tuple[str, str], str]]:
             for op, i, j, k, m in ops if op != "equal"]
 
 
-def _raw_in(tree: Path, out: Path) -> None:
+def _raw_in(tree: Path, out: Path, suites: list[str] | None = None, datasets: str | None = None) -> None:
     import subprocess
     import sys
-    # the hash patched out from outside: works on a ref older than SNAPSHOT_RAW
+    # the hash patched out from outside: works on a ref older than SNAPSHOT_RAW; the narrowing is
+    # passed only when asked (an old ref's snapshot() may not take `datasets`)
+    call = "s.snapshot()" if not (suites or datasets) else (
+        f"s.snapshot({tuple(suites or SUITES)!r}"
+        + (f", {{(n.rsplit('-', 1)[0], int(n.rsplit('-', 1)[1])) for n in {datasets.split(',')!r}}})"
+           if datasets else ")"))
     code = ("import asyncio, json, sys; from evals import snapshot as s; s._sha = lambda t: t; "
-            "open(sys.argv[1], 'w').write(json.dumps(asyncio.run(s.snapshot()), default=str))")
+            f"open(sys.argv[1], 'w').write(json.dumps(asyncio.run({call}), default=str))")
     subprocess.run([sys.executable, "-c", code, str(out)], cwd=tree, check=True,
                    env={**os.environ, "PYTHONPATH": str(tree)}, stdout=subprocess.DEVNULL)
 
@@ -287,29 +295,35 @@ def main(argv: list[str] | None = None) -> None:
     d.add_argument("a")
     d.add_argument("b")
     sub.add_parser("write", help="write a snapshot to a path").add_argument("path")
-    sub.add_parser("text", help="each text change against a ref, unhashed (a rename: only it)"
-                   ).add_argument("ref", nargs="?", default="HEAD")
+    t = sub.add_parser("text", help="each text change against a ref, unhashed (a rename: only it)")
+    t.add_argument("ref", nargs="?", default="HEAD")
+    t.add_argument("--suite", action="append", choices=SUITES, help="only these suites (repeatable)")
+    t.add_argument("--datasets", help="deterministic datasets only, e.g. work_orders-1,tms_shipments-1")
     args = ap.parse_args(argv)
     if args.cmd == "text":
         import subprocess
+        import sys
         import tempfile
         root = Path(__file__).resolve().parents[1]
-        with tempfile.TemporaryDirectory() as tmp:
+        sys.path.insert(0, str(root))
+        from scripts.live import live
+        suites = args.suite or (["deterministic"] if args.datasets else None)
+        with live("snapshot-text", minutes=20), tempfile.TemporaryDirectory() as tmp:
             wt = Path(tmp) / "base"
             subprocess.run(["git", "-C", str(root), "worktree", "add", "--detach", str(wt), args.ref],
                            check=True, capture_output=True)
             try:
-                _raw_in(wt, Path(tmp) / "a.json")
-                _raw_in(root, Path(tmp) / "b.json")
+                _raw_in(wt, Path(tmp) / "a.json", suites, args.datasets)
+                _raw_in(root, Path(tmp) / "b.json", suites, args.datasets)
                 a, b = (json.loads((Path(tmp) / f).read_text()) for f in ("a.json", "b.json"))
             finally:
                 subprocess.run(["git", "-C", str(root), "worktree", "remove", "--force", str(wt)])
-        seen: set[tuple[str, str]] = set()
-        for core, line in text_changes(a, b):   # one change, once (its context windows differ)
-            if core not in seen:
-                seen.add(core)
-                print(line)
-        print(f"{len(seen)} distinct change(s) against {args.ref}")
+            seen: set[tuple[str, str]] = set()
+            for core, line in text_changes(a, b):   # one change, once (its context windows differ)
+                if core not in seen:
+                    seen.add(core)
+                    print(line)
+            print(f"{len(seen)} distinct change(s) against {args.ref}")
         return
     if args.cmd == "diff":
         load = lambda p: json.loads(Path(p).read_text())   # noqa: E731
