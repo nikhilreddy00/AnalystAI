@@ -169,7 +169,7 @@
  },
  "agents/targeted_analysis_agent.py::handle_distribution": {
   "equivalents": [],
-  "hash": "5a6da3cf9a62fa09"
+  "hash": "49e0a6cc93aeec02"
  },
  "agents/targeted_analysis_agent.py::handle_kpi": {
   "equivalents": [
@@ -430,6 +430,10 @@
     "reason": "hours are floats already, and astype(None) gives float64 (checked)"
    }
   ]
+ },
+ "domain_pack/rows.py::count_rows": {
+  "equivalents": [],
+  "hash": "e7e3f19e48ce3cb2"
  },
  "domain_pack/rows.py::kind_labels": {
   "equivalents": [],
