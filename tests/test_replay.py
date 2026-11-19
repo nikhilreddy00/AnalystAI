@@ -223,14 +223,20 @@ def test_every_suite_that_stores_replies_replays_or_says_why():
 
 
 def _analysis_runs():
-    out = []
-    for path in sorted(REPORTS.glob("analysis-2*Z.json"), reverse=True)[:3]:
+    """Every analysis case, once: its first stored run in the newest report that has it (the whole
+    suite, as the retired scripts/replay_breakdowns.py covered; the three newest reports held one
+    domain, and every run of every case took 4 min a push)."""
+    latest: dict[str, tuple[str, dict]] = {}
+    for path in sorted(REPORTS.glob("analysis-2*Z.json")):   # names sort by time: later wins
         for cid, runs in json.loads(path.read_text()).get("runs", {}).items():
-            out += [(path.name, cid, r) for r in runs if r.get("replies") and r.get("checks")]
-    return out
+            if run := next((r for r in runs if r.get("replies") and r.get("checks")), None):
+                latest[cid] = (path.name, run)
+    return [(report, cid, run) for cid, (report, run) in sorted(latest.items())]
 
 
-# An analysis run replayed later than a change it met on purpose: (report, case) → why.
+# A run that loses a check it passed: a later change moved it on purpose, or its code fails only
+# under this machine's pandas, never E2B's (health-6's second run: KeyError 'Claim ID' here):
+# (report, case) → why. A listed run that loses nothing fails (the list never rots).
 CHANGED_ANALYSIS: dict[tuple[str, str], str] = {}
 
 
@@ -246,10 +252,14 @@ async def test_a_stored_analysis_run_keeps_every_check_it_passed(report, cid, ru
     monkeypatch.setattr(analysis_agent, "run_code", harness.local_sandbox)
     case = next(c for c in harness.load_cases("analysis", None) if c["id"] == cid)
     again = await _replay("analysis", case, run["replies"])
+    from collections import Counter
+    passed = lambda checks: Counter(c["kind"] for c in checks if c["ok"])  # noqa: E731  by kind, any order
+    lost = passed(run["checks"]) - passed(again["checks"])
+    lost_run = run["passed"] and not again["passed"]
     if (report, cid) in CHANGED_ANALYSIS:
+        assert lost or lost_run, f"{report} {cid}: listed in CHANGED_ANALYSIS but loses nothing: drop it"
         return
-    lost = [c["detail"] for c, n in zip(run["checks"], again["checks"]) if c["ok"] and not n["ok"]]
-    assert not lost and not (run["passed"] and not again["passed"]), f"{report} {cid}: {lost or again['checks']}"
+    assert not lost and not lost_run, f"{report} {cid}: lost {dict(lost)}: {again['checks']}"
 
 
 async def test_replay_mode_replays_the_models_and_calls_only_the_judge():

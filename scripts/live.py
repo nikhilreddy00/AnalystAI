@@ -2,7 +2,7 @@
 logged to .live/ while mutation.py's survivors scrolled away; evals.snapshot text ran over an hour
 twice with nothing to stop it, and macOS has no `timeout`).
 
-    with live("mutation", minutes=90):   # .live/mutation-<sha>.log, stopped after 90 min
+    with live("mutation", minutes=90):   # .live/mutation-<sha>-<pid>.log, stopped after 90 min
         ...
 
 Everything printed (stdout and stderr) also goes to the log, whose path is printed first. The
@@ -29,6 +29,10 @@ class _Tee:
         self.log.flush()   # a reader that tails sees it at once
         return self.stream.write(text)
 
+    def writelines(self, lines):
+        for line in lines:
+            self.write(line)
+
     def flush(self):
         self.stream.flush()
 
@@ -40,7 +44,9 @@ class _Tee:
 def live(name: str, minutes: float):
     head = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "--short", "HEAD"],
                           capture_output=True, text=True).stdout.strip() or "nohead"
-    log_path = ROOT / ".live" / f"{name}-{head}.log"
+    # one log per process: a second run at the same commit (a --status, a nested suite) never
+    # truncates a run still writing (review of this PR)
+    log_path = ROOT / ".live" / f"{name}-{head}-{os.getpid()}.log"
     log_path.parent.mkdir(exist_ok=True)
     budget = float(os.environ.get("LIVE_MAX_MINUTES") or minutes)
 
@@ -55,6 +61,11 @@ def live(name: str, minutes: float):
         signal.alarm(max(1, int(budget * 60)))
         try:
             yield log_path
+        except BaseException as exc:   # the crash's traceback into the log, before the streams go
+            if not (isinstance(exc, SystemExit) and exc.code in (0, None)):
+                import traceback
+                traceback.print_exc()
+            raise
         finally:
             signal.alarm(0)
             signal.signal(signal.SIGALRM, previous)

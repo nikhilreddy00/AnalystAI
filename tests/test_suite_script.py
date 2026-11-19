@@ -42,6 +42,19 @@ def test_a_script_over_its_budget_stops_and_its_output_is_kept(monkeypatch, caps
     log.unlink()
 
 
+def test_a_crash_leaves_its_traceback_in_the_log():
+    """Review of this PR: the streams were restored before the uncaught error printed, so the
+    one line a reader of .live/ needs was missing."""
+    import pytest
+
+    from scripts.live import live
+    with pytest.raises(KeyError):
+        with live("crash-test", minutes=1) as log:
+            raise KeyError("the column a run could not find")
+    assert "the column a run could not find" in log.read_text() and "Traceback" in log.read_text()
+    log.unlink()
+
+
 def test_a_linked_worktree_is_refused_with_the_main_checkout_named(monkeypatch, capsys):
     with worktree() as wt:
         assert suite.linked_worktree(wt) is True

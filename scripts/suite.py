@@ -6,7 +6,7 @@ committed (PR7-06). Uncommitted changes are listed, never measured.
     uv run python scripts/suite.py tests/test_saas.py -k moved   # any pytest arguments
 
 From the main checkout only (a linked worktree's .venv isn't the repo's: exit 2). The whole
-output, every failure line included, goes to .live/suite-<sha>.log as well.
+output, every failure line included, goes to .live/suite-<sha>-<pid>.log as well (scripts/live.py).
 Exit: pytest's. $0: no model call."""
 import os
 import subprocess
@@ -40,9 +40,14 @@ def main(args: list[str]) -> int:
         run = subprocess.Popen([str(ROOT / ".venv/bin/python"), "-m", "pytest",
                                 *(args or ["-q", "-n", "8", "-rxfE"])], cwd=wt, env=os.environ,
                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-        for line in run.stdout:
-            sys.stdout.write(line)
-        return run.wait()
+        try:
+            for line in run.stdout:
+                sys.stdout.write(line)
+            return run.wait()
+        finally:   # past the budget (or any stop): no pytest left running in a removed worktree
+            if run.poll() is None:
+                run.kill()
+                run.wait()
 
 
 if __name__ == "__main__":

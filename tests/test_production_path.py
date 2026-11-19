@@ -35,5 +35,14 @@ def test_the_built_ins_give_one_answer_on_the_plain_and_the_models_frame(name):
                     "results": [{"name": str(n), "value": 0.0} for n in every.index]}
                    for k in pack.overview_kpis]}
     plain = builtin_result(clean, contract, task, raw())
-    framed = builtin_result(model_frame(clean, contract)[0], contract, task, raw())
+    model = model_frame(clean, contract)[0]
+    framed = builtin_result(model, contract, task, raw())
     assert json.dumps(framed, sort_keys=True, default=str) == json.dumps(plain, sort_keys=True, default=str)
+    # the next step that takes a frame, repair_breakdowns, on its run's findings: one answer too
+    from agents.analysis_agent import _parse_findings, repair_breakdowns
+    repaired = []
+    for frame, result in ((clean, plain), (model, framed)):
+        f = _parse_findings(json.loads(json.dumps(result, default=str)), "", [])
+        notes = repair_breakdowns(f, frame, contract, task, set(result.get("builtin") or []))
+        repaired.append(json.dumps([[s.model_dump(mode="json") for s in f.segments], notes], default=str))
+    assert repaired[0] == repaired[1]
