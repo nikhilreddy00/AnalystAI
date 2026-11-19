@@ -24,18 +24,25 @@ def test_the_built_ins_give_one_answer_on_the_plain_and_the_models_frame(name):
                         target_metrics=contract.metric_columns[:3], segments=[group] if group else [])
     pack = domain_pack.pack_for(contract.domain)
 
-    def raw() -> dict | None:   # the model's shapes D7-19 corrects: a plain count, a KPI by name
-        if not group:
+    model = model_frame(clean, contract)[0]
+    # a number only the model's frame has (a derived span: repair hours, days late)
+    spans = [c for c in model.columns if c not in clean.columns and str(model[c].dtype).startswith(("float", "int"))]
+
+    def raw() -> dict | None:   # the model's shapes D7-19 corrects: a plain count, a KPI by name,
+        if not group:           # and a plain total of a derived span (repair_breakdowns' input)
             return None
         first = clean.columns[0]
         every = clean.groupby(group)[first].count()
+        sums = model.groupby(group)[spans[0]].sum() if spans else None
         return {"segments": [{"segment_column": group, "metric_column": first, "aggregation": "count",
                               "results": [{"name": str(k), "value": float(v)} for k, v in every.items()]}]
                 + [{"segment_column": group, "metric_column": first, "aggregation": "ratio", "label": k,
                     "results": [{"name": str(n), "value": 0.0} for n in every.index]}
-                   for k in pack.overview_kpis]}
+                   for k in pack.overview_kpis]
+                + ([{"segment_column": group, "metric_column": spans[0], "aggregation": "sum",
+                     "results": [{"name": str(k), "value": float(v)} for k, v in sums.items()]}]
+                   if spans else [])}
     plain = builtin_result(clean, contract, task, raw())
-    model = model_frame(clean, contract)[0]
     framed = builtin_result(model, contract, task, raw())
     assert json.dumps(framed, sort_keys=True, default=str) == json.dumps(plain, sort_keys=True, default=str)
     # the next step that takes a frame, repair_breakdowns, on its run's findings: one answer too
