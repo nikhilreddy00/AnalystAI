@@ -208,6 +208,50 @@ async def test_stored_replies_reproduce_their_stored_output(suite, report, cid, 
     assert _same(again["output"], run["output"]), f"{report} {cid}: a post-model step changed"
 
 
+# Suites that store replies but replay elsewhere or not at all, and why (D1-15 said "every suite
+# stores replies; test_replay replays them" while two were replayed: the claim is this list now).
+NOT_REPLAYED = {
+    "e2e": "a whole run (database, every agent); its analysis and insight steps replay here",
+    "quality": "the prose judge is a model call by design (evals.run --replay keeps it live)",
+}
+
+
+def test_every_suite_that_stores_replies_replays_or_says_why():
+    suites = {p.name.split("-")[0] for p in REPORTS.glob("*.json")
+              if any(r.get("replies") for rs in json.loads(p.read_text()).get("runs", {}).values() for r in rs)}
+    assert suites - {*REPLAYABLE, "analysis", *NOT_REPLAYED} == set()
+
+
+def _analysis_runs():
+    out = []
+    for path in sorted(REPORTS.glob("analysis-2*Z.json"), reverse=True)[:3]:
+        for cid, runs in json.loads(path.read_text()).get("runs", {}).items():
+            out += [(path.name, cid, r) for r in runs if r.get("replies") and r.get("checks")]
+    return out
+
+
+# An analysis run replayed later than a change it met on purpose: (report, case) → why.
+CHANGED_ANALYSIS: dict[tuple[str, str], str] = {}
+
+
+@pytest.mark.parametrize("report, cid, run", _analysis_runs())
+async def test_a_stored_analysis_run_keeps_every_check_it_passed(report, cid, run, monkeypatch):
+    """D1-15 / D3-10 (PR24: two paid fix rounds a free replay would have caught): the analysis
+    agent's stored replies through the real run_analysis_agent, its model code run by a local
+    stand-in for E2B (evals.run.local_sandbox) on the upload a run sends. The sandbox's pandas is
+    not this one, so outputs differ in dtypes; the verdicts may not: every check that passed
+    still passes."""
+    from agents import analysis_agent
+    monkeypatch.setitem(harness._budget, "max", 1.0)
+    monkeypatch.setattr(analysis_agent, "run_code", harness.local_sandbox)
+    case = next(c for c in harness.load_cases("analysis", None) if c["id"] == cid)
+    again = await _replay("analysis", case, run["replies"])
+    if (report, cid) in CHANGED_ANALYSIS:
+        return
+    lost = [c["detail"] for c, n in zip(run["checks"], again["checks"]) if c["ok"] and not n["ok"]]
+    assert not lost and not (run["passed"] and not again["passed"]), f"{report} {cid}: {lost or again['checks']}"
+
+
 async def test_replay_mode_replays_the_models_and_calls_only_the_judge():
     """evals.run --replay (5.7b-3): a stored run's model replies come back in order, its stored
     judge replies are dropped, and only the prose judge reaches the live client."""
