@@ -919,8 +919,9 @@ async def run_analysis_agent(session: AnalysisSession, llm: LLMClient) -> Analys
             return buf.getvalue(), extra
         new_bytes, extra = await asyncio.to_thread(framed_bytes)
         if extra:   # from here on df_parquet is the MODEL's frame (row kind, derived spans, spell
-            # events): the upload, standard_stats and repair_breakdowns read it; the steps after
-            # the sandbox take their own frames from it (analysis_frames, rule 1)
+            # events): the upload, standard_stats and repair_breakdowns read it; standard_stats
+            # takes its two frames from it (analysis_frames, rule 1); repair_breakdowns reads
+            # only the data's roles, so either frame gives one answer (tests/test_production_path.py)
             df_parquet, known = new_bytes, known + extra
     df: pd.DataFrame | None = None   # loaded only if the model calls a tool
     upload: bytes | None = None      # what E2B receives: personal values pseudonymised
@@ -1152,7 +1153,6 @@ def repair_breakdowns(f: AnalysisFindings, df: pd.DataFrame, contract: DataContr
     evidence."""
     from agents.utils import LevelUnavailable, aggregate, column_hint
     from domain_pack import rows_for
-    df = analysis_frames(df, contract)[1]   # the model's frame, whichever the caller passed (rule 1)
     notes = []
     timeframe = task.timeframe if task is not None else None
     moves = _moves_asked(task, contract)
