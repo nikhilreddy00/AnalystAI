@@ -87,6 +87,57 @@ def test_a_count_by_the_column_that_decides_a_kind_keeps_that_kind():
     assert (rows["Currency"] == "USD").all()
 
 
+def test_a_count_by_an_id_keeps_every_other_rule():
+    """Doubt review of the first draft: judging kinds without the group column switched off its
+    other rules: by Claim ID, health_claims counted 663 earlier versions (5,999 for 5,336); by
+    Claim Number, loss_run counted every valuation (38,255 for 3,975). Only a column whose values
+    name a kind (status, currency, a void or non-product code) puts that kind back."""
+    from domain_pack import rows_for
+    for name, col, counted in (("health_claims", "Claim ID", 5336), ("loss_run", "Claim Number", 3975)):
+        _, df, contract, _ = _built(name)
+        assert len(rows_for(df, contract, col, count=True)[0]) == counted, name
+
+
+def test_a_kpi_label_on_a_status_breakdown_keeps_the_cancelled_group():
+    """Doubt review: 'Order count by status' matched the orders KPI and dropped Cancelled (110),
+    while 'Orders by Status' kept it. A breakdown by a kind's own column is a count, whatever
+    its label."""
+    _, df, _, _ = _built("order_lines")
+    every = df.groupby("Status")["Order ID"].count()
+    seg = {"segment_column": "Status", "metric_column": "Order ID", "aggregation": "count",
+           "label": "order count by status", "results": [{"name": k, "value": float(v)} for k, v in every.items()]}
+    raw = _stats({"segments": [seg]}, "order_lines", ["Status"])
+    got = {r["name"]: r["value"] for r in raw["segments"][0]["results"]}
+    assert got[next(k for k in got if k.lower() == "cancelled")] == 110
+
+
+def test_group_names_written_as_column_equals_value_are_matched():
+    """Doubt review: names 'Mode=LTL' wiped the segment while the note claimed it was replaced."""
+    run = json.loads((REPORTS / "analysis-20261118T161409Z.json").read_text())["runs"]["logi-7"][0]
+    seg = json.loads(json.dumps(next(s for s in run["output"]["segments"] if s.get("label") == "cost_per_lb")))
+    for r in seg["results"]:
+        r["name"] = f"Mode={r['name']}"
+    raw = _stats({"segments": [seg]}, "tms_shipments", ["Mode"])
+    assert len(raw["segments"][0]["results"]) == 3
+
+
+def test_a_malformed_model_segment_never_crashes_the_run():
+    raw = _stats({"segments": [{"segment_column": ["Mode"], "metric_column": "Weight", "aggregation": "count",
+                                "results": [{"name": "LTL", "value": 1}]},
+                               {"segment_column": "Mode", "metric_column": "Weight", "aggregation": "count",
+                                "results": [{"name": "LTL", "value": "n/a"}]}]}, "tms_shipments", ["Mode"])
+    assert len(raw["segments"]) == 2
+
+
+def test_a_mean_of_a_number_a_kpi_averages_reads_the_kpis_rows():
+    """Doubt review: counted() still required `additive`, so a mapped Transit Days column (a KPI
+    averages it) kept cancelled rows in its mean by mode."""
+    from domain_pack import pack_for
+    from domain_pack.kpi import counted
+    pack = pack_for("logistics")
+    assert [r for r in ("transit_days", "dwell_hours") if not counted(pack, r)] == []
+
+
 def test_a_sum_of_a_measure_a_kpi_sums_reads_the_kpis_rows():
     """D8 audit pass 1: 'sum of Weight by Mode' read cancelled rows (a weight at $0); cost per lb
     sums Weight over counted rows, so every total of Weight does."""

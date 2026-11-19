@@ -130,6 +130,12 @@ def rows_for(df: pd.DataFrame, contract, column: str,
                               n=f"{int((~kept).sum()):,}")
 
 
+def kind_labels(pack: Pack) -> set[str]:
+    """The roles whose values name a row's kind (GLOSSARY Kind-deciding column): the status, the
+    currency, a non-product code, a version's void code. A breakdown by one shows those kinds."""
+    return {"status", "currency", *pack.non_product, *pack.version_void}
+
+
 def _counted_records(df, contract, by: str, full, pack) -> tuple[pd.DataFrame, str]:
     """The rows a count by `by` reads: the rows a count tile reads (`KPI.rows` default, sale, in
     the main currency), except the kinds `by` itself decides: a Status breakdown keeps its
@@ -142,7 +148,9 @@ def _counted_records(df, contract, by: str, full, pack) -> tuple[pd.DataFrame, s
     keep, _, _ = main_currency(df, roles)
     if own == "currency":
         keep = pd.Series(True, index=df.index)
-    judged = {r: c for r, c in roles.items() if r != own}
+    # only a column whose values NAME a kind puts it back (a status, a void code, a non-product
+    # code); an id, a test marker or a version order never does (a claim id keeps its chain)
+    judged = {r: c for r, c in roles.items() if r != own or r not in kind_labels(pack)}
     whole = full if full is not None and df.index.isin(full.index).all() else df
     kinds = row_kinds(whole, judged, pack).reindex(df.index)
     kept = keep & kinds.eq("sale")

@@ -396,32 +396,35 @@ def product_breakdowns(raw: dict, df: pd.DataFrame, contract: DataContract) -> N
     do); a plain every-row count takes the counted records (rows_for count=True). The model's
     groups are kept; one the product hides or can't compute is dropped, and each change is said
     in an assumption. Matched by the label, never by the values (C4)."""
-    from domain_pack import MeasuredBy, defaults_pack, measure, named_kpis, rows_for, unavailable_words
+    from domain_pack import MeasuredBy, defaults_pack, kind_labels, measure, named_kpis, rows_for, unavailable_words
     pack = defaults_pack(contract)
     if pack is None:
         return
     roles = {r: c for r, c in contract.roles.items() if c in df.columns}
+    labels = {roles[r] for r in kind_labels(pack) - {"currency"} if r in roles}   # a Status breakdown
     notes = raw.setdefault("assumptions", [])
     for s in list(raw.get("segments") or []):
         col = s.get("segment_column") if isinstance(s, dict) else None
-        got = [r for r in (s.get("results") or []) if isinstance(r, dict)] if col else []
-        if col not in df.columns or not got:   # a joint 'a|b' breakdown stays the model's
+        got = [r for r in (s.get("results") or []) if isinstance(r, dict)] \
+            if isinstance(col, str) and col in df.columns else []
+        if not got:   # a joint 'a|b' breakdown (or a malformed one) stays the model's
             continue
-        names = [str(r.get("name")) for r in got]
+        names = [str(r.get("name")).removeprefix(f"{col}=") for r in got]   # 'Mode=LTL' is LTL
         label = str(s.get("label") or "").strip()
         kpi = (label if pack.kpi(label) else next(iter(named_kpis(pack, contract, label.replace("_", " "))),
-                                                  None)) if label else None
+                                                  None)) if label and col not in labels else None
         if kpi:
             v = measure(df, roles, pack, kpi, by=col)
             vals = {str(k): float(x) for k, x in v.values.items()} if isinstance(v, MeasuredBy) else {}
             s["results"] = [{"name": n, "value": round(vals[n], 6)} for n in names if n in vals]
             why = "" if vals else f" ({unavailable_words(v, pack, pack.kpi(kpi))})"
-            notes.append(f"{label} by {col}: the product's own {pack.kpi(kpi).label} per {col}, the rows "
-                         f"and definition its tiles use{why}.")
-        elif str(s.get("aggregation") or "").lower() == "count" and s.get("metric_column") in df.columns:
+            notes.append(f"{pack.kpi(kpi).label} per {col}: the product's own values, the rows and "
+                         f"definition its tiles use{why}.")
+        elif str(s.get("aggregation") or "").lower() == "count" and isinstance(s.get("metric_column"), str) \
+                and s["metric_column"] in df.columns:
             metric = s["metric_column"]
             every = {str(k): float(n) for k, n in df.groupby(col)[metric].count().items()}
-            if not all(abs(float(r.get("value") or 0) - every.get(n, -1)) < 0.5 for n, r in zip(names, got)):
+            if not all(abs(_number(r.get("value")) - every.get(n, -1)) < 0.5 for n, r in zip(names, got)):
                 continue   # the model's own filter (cancelled orders by machine): its question
             rows, how = rows_for(df, contract, col, count=True)
             if not how:
@@ -431,6 +434,14 @@ def product_breakdowns(raw: dict, df: pd.DataFrame, contract: DataContract) -> N
             notes.append(f"{metric} count by {col}: {how}")
         if not s["results"]:
             raw["segments"].remove(s)
+
+
+def _number(v) -> float:
+    """A model-written value as a number; unreadable ('n/a') is NaN, which matches nothing."""
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return float("nan")
 
 
 def _drop_protected_cells(raw: dict, df: pd.DataFrame, contract: DataContract) -> None:
