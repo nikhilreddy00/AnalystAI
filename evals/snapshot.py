@@ -145,6 +145,42 @@ def _behaviour(df, contract) -> dict:
         r = run_targeted_analysis(s)
         more.append([r.answer_text, [c.data for c in r.chart_configs]])
     out["answers_by_group"] = more
+    out.update(_counts_by_group(df, contract, group, buf.getvalue()))
+    return out
+
+
+def _counts_by_group(df, contract, group, parquet: bytes) -> dict:
+    """D7-19: a count or rate by group, unseen by the probes above: the generic dashboard's
+    charts, a categorical distribution answer, and the model's plain count and KPI-labelled
+    segments as `standard_stats` leaves them."""
+    from agents.analysis_agent import standard_stats
+    from agents.targeted_analysis_agent import run_targeted_analysis
+    from agents.visualization_agent import build_context, classify_columns, generate_dashboard_charts
+    from orchestrator.state import QuestionIntent, TargetedParams
+    import domain_pack
+    charts = generate_dashboard_charts(df, classify_columns(df), ctx=build_context(df, contract=contract))
+    out = {"dashboard": [[c.title, c.data, c.rationale.reason if c.rationale else None] for c in charts]}
+    if not group:
+        return out
+    s = AnalysisSession(session_id="snap", data_contract=contract, task_plan=AnalysisTask(
+        raw_query="q", analysis_types=["eda"], target_metrics=[], question_intent=QuestionIntent.DISTRIBUTION,
+        targeted_params=TargetedParams(target_columns=[group])))
+    s.__dict__["_df_parquet"] = parquet
+    r = run_targeted_analysis(s)
+    out["count_answer"] = [r.answer_text, [c.data for c in r.chart_configs]]
+    first = df.columns[0]
+    every = df.groupby(group)[first].count()
+    names = [str(k) for k in every.index]
+    segs = [{"segment_column": group, "metric_column": first, "aggregation": "count",
+             "results": [{"name": str(k), "value": float(v)} for k, v in every.items()]}]
+    pack = domain_pack.pack_for(contract.domain)
+    for k in (pack.overview_kpis if pack else []):
+        segs.append({"segment_column": group, "metric_column": first, "aggregation": "ratio", "label": k,
+                     "results": [{"name": n, "value": 0.0} for n in names]})
+    raw = {"segments": segs}
+    standard_stats(raw, df, contract, AnalysisTask(raw_query="q", analysis_types=["eda"],
+                                                   target_metrics=[], segments=[group]))
+    out["model_segments"] = [raw["segments"], raw.get("assumptions")]
     return out
 
 
