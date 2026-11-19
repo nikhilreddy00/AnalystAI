@@ -381,6 +381,41 @@ def test_no_shared_sentence_writes_the_window_span():
     assert not bad, bad
 
 
+# Defaulted flags that select a different question (a view), not a skipped rule; each named. The
+# list only shrinks: a new one fails below (CODING_STANDARDS "A parameter that changes a shared
+# rule's answer is required", retro Domain 8; prose only until retro D7-19, where `rows_for`'s
+# `count=False` reached the reviewer).
+VIEW_FLAGS = {
+    "derived_roles.signed": "the range check's signed span, a separate question from the span",
+    "kpi_measures.num_only": "the numerator's roles only, asked by name",
+    "describe_kpi.parts": "the description with its parts listed, a longer view",
+    "pack_caveats.always": "the caveats shown whatever the confidence, asked by the overview",
+}
+
+
+def _defaulted_flags(src: str) -> set[str]:
+    """`function.parameter` for each public function's `bool` parameter that has a default."""
+    import ast
+    found = set()
+    for f in (n for n in ast.walk(ast.parse(src)) if isinstance(n, ast.FunctionDef) and not n.name.startswith("_")):
+        args = [*f.args.args, *f.args.kwonlyargs]
+        defaults = [*[None] * (len(f.args.args) - len(f.args.defaults)), *f.args.defaults, *f.args.kw_defaults]
+        found |= {f"{f.name}.{a.arg}" for a, d in zip(args, defaults)
+                  if isinstance(d, ast.Constant) and isinstance(d.value, bool)}
+    return found
+
+
+def test_a_shared_rule_takes_no_defaulted_flag():
+    """The mechanical half of the rule: a public domain_pack function has no `bool` parameter with
+    a default, so no caller skips a choice by forgetting it."""
+    found = set().union(*(_defaulted_flags(p.read_text()) for p in PACKAGE))
+    assert found - set(VIEW_FLAGS) == set(), sorted(found - set(VIEW_FLAGS))
+    # the guard catches the D7-19 draft (a planted violation), and a required flag passes
+    assert _defaulted_flags("def rows_for(df, c, col, full=None, *, count: bool = False): pass") == {"rows_for.count"}
+    assert _defaulted_flags("def count_rows(df, c, by, full, *, strict: bool): pass") == set()
+    assert set(VIEW_FLAGS) - found == set(), f"fixed, drop from VIEW_FLAGS: {sorted(set(VIEW_FLAGS) - found)}"
+
+
 def test_the_window_in_force_and_moves_are_defined_once():
     """5.7b-1 (the domain_pack split): the window, the as-of and who is in force are defined in
     domain_pack/spell.py only; the ledger and its moves in domain_pack/ledger.py only. A second
