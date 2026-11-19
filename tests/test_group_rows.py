@@ -167,6 +167,59 @@ def test_a_categorys_distribution_answer_counts_the_counted_records():
                              f"{truth['cancelled_wos']} cancelled work orders.")
 
 
+def test_a_distribution_by_a_kind_column_a_number_or_a_clean_file_is_as_before():
+    """Mutation gate: a Status distribution keeps its cancelled orders (the kind it names); a
+    number's distribution reads every row; a file with nothing left out says nothing more."""
+    from agents.targeted_analysis_agent import handle_distribution
+    from orchestrator.state import TargetedParams
+    _, df, contract, truth = _built("work_orders")
+    r = handle_distribution(df, TargetedParams(target_columns=["STATUS"]), contract)
+    assert {d["value"]: d["count"] for d in r.chart_configs[0].data}["CAN"] == truth["cancelled_wos"]
+    r = handle_distribution(df.assign(n=range(len(df))), TargetedParams(target_columns=["n"]), contract)
+    assert "mean=319.50" in r.answer_text
+    _, df, contract, _ = _built("shipments")
+    r = handle_distribution(df, TargetedParams(target_columns=["carrier"]), contract)
+    assert r.answer_text.endswith("%).")
+
+
+def test_a_kpi_the_data_cannot_give_by_group_drops_the_segment_and_says_why():
+    """No order lines in a shipment file: OTIF by order is unavailable, so the model's figure is
+    dropped (never shown beside tiles that can't make it) and the reason is said."""
+    raw = _stats({"segments": [{"segment_column": "Carrier", "metric_column": "Delivered At", "aggregation": "ratio",
+                                "label": "otif_order", "results": [{"name": "UPS", "value": 0.9}]}]},
+                 "tms_shipments", ["Carrier"])
+    assert raw["segments"] == [] and any("the data has no" in a for a in raw["assumptions"])
+
+
+def test_each_segment_is_judged_on_its_own():
+    """A filtered count is kept, a plain count after it is still recounted, a count one off the
+    plain one (the model's own filter) is kept; the recount keeps the model's group names."""
+    _, df, _, truth = _built("work_orders")
+    plain = df.groupby("FAILURECODE")["WONUM"].count()
+    near = [{"name": k, "value": float(v) - (k == plain.index[0])} for k, v in plain.items()]
+    own = [{"name": "M01", "value": 3.0}]
+    raw = _stats({"segments": [
+        {"segment_column": "ASSETNUM", "metric_column": "WONUM", "aggregation": "count", "results": [dict(r) for r in own]},
+        {"segment_column": "FAILURECODE", "metric_column": "WONUM", "aggregation": "count",
+         "results": [{"name": k, "value": float(v)} for k, v in plain.items()]},
+        {"segment_column": "FAILURECODE", "metric_column": "WONUM", "aggregation": "Count",
+         "results": [dict(r) for r in near]}]}, "work_orders", ["FAILURECODE"])
+    first, second, third = raw["segments"]
+    assert first["results"] == own and third["results"] == near
+    assert sum(r["value"] for r in second["results"]) == truth["corrective_wos"]
+    assert {r["name"] for r in second["results"]} <= set(plain.index.astype(str))
+    assert raw["assumptions"] == ["WONUM count by FAILURECODE: Left out, as the tiles count: 39 cancelled work orders."]
+
+
+def test_a_number_a_kpi_sums_by_absolute_value_reads_the_kpis_rows_too():
+    from domain_pack import pack_for
+    from domain_pack.kpi import counted
+    pack = pack_for("logistics").model_copy(deep=True)
+    term = pack.kpi("cost_per_lb").den[0][0]
+    term.sum_abs, term.sum = term.sum, None
+    assert counted(pack, "weight")
+
+
 def test_a_sum_of_a_measure_a_kpi_sums_reads_the_kpis_rows():
     """D8 audit pass 1: 'sum of Weight by Mode' read cancelled rows (a weight at $0); cost per lb
     sums Weight over counted rows, so every total of Weight does."""
