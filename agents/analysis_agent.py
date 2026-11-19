@@ -454,8 +454,9 @@ def product_breakdowns(raw: dict, df: pd.DataFrame, contract: DataContract) -> N
         cols = [c for c in str(s.get("segment_column") if isinstance(s, dict) else "").split("|") if c]
         cols += [s["metric_column"]] if isinstance(s.get("metric_column"), str) else []
         if cols and all(c in df.columns for c in cols):
-            rows = rows_for(df, contract, cols[0], count=True)[0]
-            raw.setdefault("segment_n", {})[segment_key(s)] = int(rows[cols].notna().all(axis=1).sum())
+            rows, left = rows_for(df, contract, cols[0], count=True)
+            if left:   # nothing left out: the sandbox's count stands
+                raw.setdefault("segment_n", {})[segment_key(s)] = int(rows[cols].notna().all(axis=1).sum())
 
 
 def segment_key(s) -> str:
