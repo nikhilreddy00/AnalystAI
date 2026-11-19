@@ -100,3 +100,28 @@ def test_the_prose_only_fixes_never_grow():
     n = sum(r[5] == "unenforced" for r in _table(COLUMNS))
     assert n <= UNENFORCED, f"{n} prose-only rows, the cap is {UNENFORCED}: give the finding a check"
     assert n == UNENFORCED, f"{n} prose-only rows: lower UNENFORCED to {n}"
+
+
+LEDGER_BORN = "1d04153"   # the commit that made the retro ledger
+# Retro commits since then that changed no ledger row, and where their rows are now (the list
+# only shrinks; retro D7-19: Domain 8's six fixes had no rows, two of them failed a day later).
+UNLEDGERED = {"d0b4d28": "Domain 8's six fixes: rows PR26-01..06, added by the retro D7-19 classes PR"}
+
+
+def test_every_retro_commit_changes_the_ledger():
+    """A retro's fix is a ledger row with its check, or it is prose that comes back (the ledger's
+    own rule, skipped by the Domain 8 retro)."""
+    import os
+    import subprocess
+
+    import pytest
+    git = lambda *a: subprocess.run(["git", "-C", str(ROOT), *a], capture_output=True, text=True)  # noqa: E731
+    if git("cat-file", "-e", f"{LEDGER_BORN}^{{commit}}").returncode:
+        if os.environ.get("CI"):
+            pytest.fail("CI checked out without history: set fetch-depth 0 (.github/workflows/ci.yml)")
+        pytest.skip("a shallow clone: no retro history to read")
+    log = git("log", "--no-merges", "--format=%h %s", f"{LEDGER_BORN}..HEAD").stdout.splitlines()
+    retros = [ln.split(" ", 1)[0] for ln in log if re.search(r"\bretro\b", ln.split(" ", 1)[1], re.I)]
+    missing = [h for h in retros if h not in UNLEDGERED and "docs/retro-ledger.md" not in
+               git("show", "--name-only", "--format=", h).stdout.split()]
+    assert missing == [], f"retro commits with no ledger row: {missing}"

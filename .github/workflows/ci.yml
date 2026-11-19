@@ -53,6 +53,8 @@ jobs:
       HYPOTHESIS_PROFILE: ${{ github.event_name == 'schedule' && 'deep' || '' }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # tests/test_retro_ledger.py reads the retro commits (37 MB)
       - uses: astral-sh/setup-uv@v6
         with:
           python-version: "3.11"

@@ -17,3 +17,12 @@ def test_a_status_row_is_a_line_not_a_log():
     the line cap; the detail is ROADMAP's status log."""
     rows = [r for r in (ROOT / "CLAUDE.md").read_text().splitlines() if r.startswith("| ")]
     assert rows and not [r for r in rows if len(r) > 160], "keep the detail in docs/ROADMAP.md"
+
+
+def test_every_pointer_in_claude_md_names_a_file_that_exists():
+    """Retro Domain 8 added the live-check pointer (a browser run against the live stack); a
+    pointer to a moved or deleted doc sends every session to nothing."""
+    import re
+    text = (ROOT / "CLAUDE.md").read_text()
+    paths = set(re.findall(r"`((?:docs|scripts)/[\w/.-]+\.md)`", text))
+    assert "scripts/live_check/README.md" in paths and [p for p in paths if not (ROOT / p).exists()] == []
