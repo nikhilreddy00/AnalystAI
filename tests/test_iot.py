@@ -369,7 +369,7 @@ def test_a_work_orders_actual_dates_are_blank_by_its_status_never_missing():
 def test_the_generic_charts_count_the_rows_the_tiles_count():
     """Review browser read (D7-19's class, product side): 'Worktype Breakdown — PM Leads at 48%'
     counted all 640 work orders, cancelled ones too (CM + EM = 333, the planted naive count);
-    the tiles say 311 corrective orders. The builders read rows_for(count=True)."""
+    the tiles say 311 corrective orders. The builders read domain_pack.count_rows."""
     from agents.visualization_agent import build_context, classify_columns, generate_dashboard_charts
     from tests.test_oracle import _built
     _, df, contract, truth = _built("work_orders")

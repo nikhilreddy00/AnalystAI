@@ -56,6 +56,7 @@ from domain_pack import (
     money_columns,
     entity_rows,
     rows_for,
+    count_rows,
     row_kinds,
     Unavailable,
     unavailable_words,
@@ -488,9 +489,9 @@ def _best_correlated_pair(df: pd.DataFrame, cols: list[str], threshold: float = 
 # ── Chart builders ───────────────────────────────────────────────────────────
 
 def _build_target_rate_by_cat(
-    df: pd.DataFrame, cat_col: str, target: str, ctx: "VizContext | None" = None
+    df: pd.DataFrame, cat_col: str, target: str, *, ctx: "VizContext | None"
 ) -> ChartConfig | None:
-    df, _ = rows_for(df, getattr(ctx, "contract", None), cat_col, getattr(ctx, "full", None), count=True)
+    df, _ = count_rows(df, getattr(ctx, "contract", None), cat_col, getattr(ctx, "full", None))
     sub = df[[cat_col, target]].dropna()
     if sub.empty or sub[cat_col].nunique() < 2:
         return None
@@ -656,9 +657,9 @@ def _build_histogram(df: pd.DataFrame, col: str) -> ChartConfig | None:
     )
 
 
-def _build_value_counts(df: pd.DataFrame, col: str, ordinal: bool = False,
-                        ctx: "VizContext | None" = None) -> ChartConfig | None:
-    s = rows_for(df, getattr(ctx, "contract", None), col, getattr(ctx, "full", None), count=True)[0][col].dropna()
+def _build_value_counts(df: pd.DataFrame, col: str, ordinal: bool = False, *,
+                        ctx: "VizContext | None") -> ChartConfig | None:
+    s = count_rows(df, getattr(ctx, "contract", None), col, getattr(ctx, "full", None))[0][col].dropna()
     if s.empty:
         return None
     if ordinal:
@@ -1456,10 +1457,10 @@ def _colors_for_values(values, color_map: dict[str, str]) -> list[str]:
 
 def _build_donut(
     df: pd.DataFrame, col: str, color_map: dict[str, str],
-    narrative: DataNarrative | None = None, ctx: "VizContext | None" = None,
+    narrative: DataNarrative | None = None, *, ctx: "VizContext | None",
 ) -> ChartConfig | None:
     """Donut composition: each slice = a category value, sized by share."""
-    s = rows_for(df, getattr(ctx, "contract", None), col, getattr(ctx, "full", None), count=True)[0][col].dropna()
+    s = count_rows(df, getattr(ctx, "contract", None), col, getattr(ctx, "full", None))[0][col].dropna()
     if s.empty:
         return None
     vc = s.value_counts().head(7)
@@ -1489,11 +1490,11 @@ def _build_donut(
 
 def _build_horizontal_bar_top_n(
     df: pd.DataFrame, col: str, color_map: dict[str, str],
-    narrative: DataNarrative | None = None, ctx: "VizContext | None" = None,
+    narrative: DataNarrative | None = None, *, ctx: "VizContext | None",
 ) -> ChartConfig | None:
     """Horizontal bar of the top categories by count — works when cardinality
     is too high for a donut but still useful (8-15 unique values)."""
-    s = rows_for(df, getattr(ctx, "contract", None), col, getattr(ctx, "full", None), count=True)[0][col].dropna()
+    s = count_rows(df, getattr(ctx, "contract", None), col, getattr(ctx, "full", None))[0][col].dropna()
     if s.empty:
         return None
     vc = s.value_counts().head(15)
@@ -1519,13 +1520,12 @@ def _build_horizontal_bar_top_n(
 
 def _build_stacked_bar_normalized(
     df: pd.DataFrame, cat_col: str, target: str,
-    narrative: DataNarrative | None = None, ctx: "VizContext | None" = None,
+    narrative: DataNarrative | None = None, *, ctx: "VizContext | None",
 ) -> ChartConfig | None:
     """Composition stack: each bar = one category value, segments = target
     values, normalized to 100%. Lets the reader compare composition across
     categories at a glance."""
-    sub = rows_for(df, getattr(ctx, "contract", None), cat_col, getattr(ctx, "full", None),
-                   count=True)[0][[cat_col, target]].dropna()
+    sub = count_rows(df, getattr(ctx, "contract", None), cat_col, getattr(ctx, "full", None))[0][[cat_col, target]].dropna()
     if sub.empty or sub[cat_col].nunique() < 2 or sub[target].nunique() < 2:
         return None
 
@@ -1926,7 +1926,7 @@ def _profile_rationale(ch: ChartConfig, ctx: VizContext) -> None:
     else:   # value counts, donut, top-N composition, stacked composition: describe the table
         ch.placement = "data"
         stacked = src == "composition_stacked" and target
-        rows, left = rows_for(ctx.df, ctx.contract, col, ctx.full, count=True) if col in ctx.df.columns \
+        rows, left = count_rows(ctx.df, ctx.contract, col, ctx.full) if col in ctx.df.columns \
             else (ctx.df, "")   # the rows the builder counted, and what it left out (D7-19)
         _why(ch, ctx, "profile:row_count", f"How many rows fall in each {col}" +
              (f", split by {target}." if stacked else ".") + (f" {left}" if left else ""),
@@ -2244,7 +2244,7 @@ def group_bars(df: pd.DataFrame, x: str, metric: str, agg: str, ctx: VizContext,
     if agg == "pct":
         agg = "mean"
     # a domain's money: the rows its tiles count; a count per x: the counted records (D7-19)
-    df, _ = rows_for(df, ctx.contract, x, ctx.full, count=True) if agg == "count" \
+    df, _ = count_rows(df, ctx.contract, x, ctx.full) if agg == "count" \
         else rows_for(df, ctx.contract, metric, ctx.full)
     level = None
     if agg not in ("last", "first") and not split:   # a level's mean: the answer's rows (utils)
@@ -2947,7 +2947,7 @@ def build_single_chart(
     elif numeric_y:
         chart = group_bars(df, x_key, y, agg, ctx, top=20)
     if chart is None:   # non-numeric y or nothing to aggregate: rows per x, the counted records
-        counted = rows_for(df, contract, x_key, ctx.full, count=True)[0]   # (D7-19)
+        counted = count_rows(df, contract, x_key, ctx.full)[0]   # (D7-19)
         vc = counted[x_key].astype(str).value_counts().head(20)
         used = used or (len(counted), f"df[{x_key!r}].value_counts()")
         chart = ChartConfig(id=str(uuid.uuid4()), chart_type=chart_type, title=f"Rows by {x_key}",
@@ -2959,8 +2959,10 @@ def build_single_chart(
     chart.source_finding = "user_chart_request"
     chart.error_key = chart.error_key if chart_type in (ChartType.BAR, ChartType.HORIZONTAL_BAR) else None
     r = chart.rationale
+    left = count_rows(df, contract, x_key, ctx.full)[1] if agg == "count" else ""   # said (D7-19)
     _why(chart, ctx, "user:chart_request", f"Drawn as you asked: {chart_type.value} of "
-         f"{agg if agg not in ('none', 'count') else ''} {y} by {x_key}.".replace("  ", " "),
+         f"{agg if agg not in ('none', 'count') else ''} {y} by {x_key}.".replace("  ", " ")
+         + (f" {left}" if left else ""),
          r.x if r else x_key, r.y if r else y, agg,
          r.n_rows if r else used[0] if used else len(df),
          code=r.code if r else used[1] if used else "")

@@ -18,7 +18,7 @@ from evals.snapshot import GOLDEN, snapshot
 # Re-pinned at Domain 8's end (2026-11-18); its diff is named in
 # docs/baselines/phase5_7_logistics.md.
 # D7-19 PR (2026-11-19, docs/baselines/phase5_7_d7_19.md): a count by group reads the counted
-# records (rows_for count=True) and a KPI-named model segment takes the product's value. Every
+# records (domain_pack.count_rows) and a KPI-named model segment takes the product's value. Every
 # pack dataset's model_segments probe moves (its dummy 0.0 values become the KPI's); the
 # datasets with left-out rows also move their generic count charts and count answers, each
 # total now the tiles' (truth from evals/datagen, seed 1).

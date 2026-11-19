@@ -145,7 +145,8 @@ def test_one_percent_change_rule_in_answers():
 
 _REDUCES = re.compile(r"\.(?:quantile|mean|median|sum|corr|std|nunique)\(|value_counts\(|aggregate\(|np\.histogram\(")
 _ROW_RULES = ("rows_for(", "entity_rows(", "compute_kpi(", "handle_kpi(", "pack_kpis(",
-              "superseded(")   # a version chain's earlier rows (domain_pack): counted rows only
+              "superseded(",   # a version chain's earlier rows (domain_pack): counted rows only
+              "count_rows(")   # a count of rows by a column: the counted records (D7-19)
 # Whole-table profile functions: they describe the table's shape (which column is a category,
 # how many rows per value), never a measure's value a tile also states. A new entry needs a
 # reason here; anything that states a measure's number takes rows_for (Domain 3: the outlier
@@ -155,7 +156,7 @@ PROFILE = {"classify_columns", "_build_color_map", "_pick_primary_metric", "_pic
            "_highest_cv_kpi", "_comparison_kpi_chi2", "_best_correlated_pair",
            "_build_correlation_heatmap",
            # D7-19: the count builders (value counts, donut, top-N bar, stacked, target rate)
-           # left this list: they count rows_for(count=True), never every row
+           # left this list: they count count_rows, never every row
            "_build_continuous_split_by_target", "_build_time_series", "compute_briefing_extras",
            "generate_dashboard_charts", "build_single_chart", "handle_ab_significance",
            # OPEN (2026-11-03): the profile histogram of a measure still reads every row; moving

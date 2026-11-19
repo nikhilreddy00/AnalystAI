@@ -14,7 +14,7 @@ import pandas as pd
 
 from agents.errors import LLMOutputError
 from agents.utils import aggregate, ranked, strip_markdown_fences
-from domain_pack import entity_rows, pack_for, rows_for
+from domain_pack import count_rows, entity_rows, pack_for, rows_for
 from guardrails import (
     _SENTENCE_RE,
     UNTRUSTED_NOTE,
@@ -269,7 +269,7 @@ def _chart_data(df_parquet: bytes | None, chart_type: str, x: str, y: str,
         return []
     if x == y or not pd.api.types.is_numeric_dtype(df[y]):
         # non-numeric y: count rows per x, the counted records (D7-19)
-        grouped = rows_for(df, contract, x, count=True)[0].groupby(x).size()
+        grouped = count_rows(df, contract, x, None)[0].groupby(x).size()
     else:
         grouped = aggregate(df, [x], y, "mean", contract)   # a level: latest per entity
     if chart_type == ChartType.LINE.value:

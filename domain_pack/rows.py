@@ -92,17 +92,14 @@ def with_spell_events(df: pd.DataFrame, pack: Pack, roles: dict[str, str]) -> pd
 
 
 def rows_for(df: pd.DataFrame, contract, column: str,
-             full: pd.DataFrame | None = None, *, count: bool = False) -> tuple[pd.DataFrame, str]:
+             full: pd.DataFrame | None = None) -> tuple[pd.DataFrame, str]:
     """(rows, how): THE rows every answer, chart and drill-down of `column` reads (plan v2 R1:
     one entry point; tests/test_one_definition.py guards it). On a strong-matched pack's additive
     money or count column (or a number a KPI sums: weight): sale and return rows in the main
     currency, as its tiles count them; a level (a balance) keeps every row with its value blanked
     where the row is left out, so `utils.aggregate` / `latest_rows` judge each entity's latest row
-    first. `count`: rows counted BY `column` (a count by group), the counted records (D7-19).
-    Anything else: every row, no note."""
+    first. A count of rows BY a column reads `count_rows`. Anything else: every row, no note."""
     pack = defaults_pack(contract)
-    if count:
-        return _counted_records(df, contract, column, full, pack)
     role = next((r for r, c in contract.roles.items() if c == column), None) if pack else None
     if role and pack.roles[role].over_time == "last" and (gone := ended_records(df, contract)).any():
         # a spell's snapshot row past its end (its exit record) holds no one: its level is
@@ -136,11 +133,14 @@ def kind_labels(pack: Pack) -> set[str]:
     return {"status", "currency", *pack.non_product, *pack.version_void}
 
 
-def _counted_records(df, contract, by: str, full, pack) -> tuple[pd.DataFrame, str]:
-    """The rows a count by `by` reads: the rows a count tile reads (`KPI.rows` default, sale, in
-    the main currency), except the kinds `by` itself decides: a Status breakdown keeps its
-    cancelled rows, a Currency breakdown every currency (GLOSSARY Kind-deciding column). The
-    kinds are judged as if `by` were not there; on the whole data when `df` is a part of it."""
+def count_rows(df: pd.DataFrame, contract, by: str, full: pd.DataFrame | None) -> tuple[pd.DataFrame, str]:
+    """(rows, what was left out): THE rows a count of rows by `by` reads, from the model's code or a
+    generic chart (D7-19; GLOSSARY Counted record): the rows a count tile reads (`KPI.rows`
+    default, sale, in the main currency), except the kinds `by` itself names: a Status breakdown
+    keeps its cancelled rows, a Currency breakdown every currency (Kind-deciding column). The
+    kinds are judged as if `by` were not there; on `full`, the whole data, when `df` is a part of
+    it (None on purpose: `df` is the whole). No pack: every row, no note."""
+    pack = defaults_pack(contract)
     if pack is None:
         return df, ""
     roles = {r: c for r, c in contract.roles.items() if c in df.columns}

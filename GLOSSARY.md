@@ -75,7 +75,7 @@ Domain words (ALOS, readmission, NPL …) live in `domain_packs/<domain>.yaml`, 
   its condition (paying, not a contractor).
 - **Counted record** — a row a count tile counts: of kind sale, in the main currency (`KPI.rows`'
   default). A count by group, from the model's code or a generic chart, reads these
-  (`rows_for(count=True)`); a cancelled, test or superseded row, a return line and another
+  (`count_rows`); a cancelled, test or superseded row, a return line and another
   currency's row are not counted records. Rows ≠ records where a record has lines (a claim).
 - **Kind-deciding column** — a column whose values name a row's kind: the status, the currency, a
   non-product code, a version's void code (`kind_labels`). A breakdown by one keeps the kinds it

@@ -85,6 +85,7 @@ from domain_pack import (
     entity_rows,
     layout_columns,
     rows_for,
+    count_rows,
     computable,
     Unavailable,
     unavailable_words,
@@ -433,7 +434,8 @@ def handle_distribution(df: pd.DataFrame, params: TargetedParams, contract: Data
         )
 
     # the rows its tiles count (class 1); a category's value counts: the counted records (D7-19)
-    rows, left = rows_for(df, contract, col, count=not pd.api.types.is_numeric_dtype(df[col]))
+    rows, left = rows_for(df, contract, col) if pd.api.types.is_numeric_dtype(df[col]) \
+        else count_rows(df, contract, col, None)
     series = rows[col].dropna()
     if series.empty:
         return _unanswerable(

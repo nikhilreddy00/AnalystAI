@@ -241,7 +241,7 @@ def standard_stats(raw: dict, df: pd.DataFrame, contract: DataContract, task: An
     replaces only the model's totals and means of it. Ids go to raw['builtin'] (evidence)."""
     from agents.utils import (LevelUnavailable, aggregate, cut_partial, effective_agg, latest_rows, pct_change, ranked,
                               time_axis, weekly_cadence)
-    from domain_pack import entity_rows, rows_for
+    from domain_pack import count_rows, entity_rows, rows_for
     types = {t.value if hasattr(t, "value") else t for t in task.analysis_types}
     names = set(df.columns)
     targets = [c for c in task.target_metrics if c in contract.metric_columns and c in names]
@@ -255,10 +255,12 @@ def standard_stats(raw: dict, df: pd.DataFrame, contract: DataContract, task: An
     # the sandbox's every-row value counts gave the report 333 failure codes beside a 311 tile)
     for c, dist in list((raw.get("distributions") or {}).items()):
         if c in names and isinstance(dist, list):
-            rows, how = rows_for(df, contract, c, count=True)
+            rows, how = count_rows(df, contract, c, None)
             if how:
                 raw["distributions"][c] = [{"label": str(k), "count": int(v)}
                                            for k, v in rows[c].value_counts().head(10).items()]
+                if (note := f"{c} value counts: {how}") not in raw.setdefault("assumptions", []):
+                    raw["assumptions"].append(note)
     for key, empty in (("builtin", []), ("correlations", {}), ("trends", []), ("segments", []),
                        ("assumptions", [])):
         raw.setdefault(key, empty)
@@ -401,10 +403,10 @@ def standard_stats(raw: dict, df: pd.DataFrame, contract: DataContract, task: An
 def product_breakdowns(raw: dict, df: pd.DataFrame, contract: DataContract) -> None:
     """The model's breakdowns the product computes itself (D7-19; e2e-89, logi-4, logi-7): one
     labelled with a pack KPI takes the KPI per group (domain_pack.measure by=, as tiles and answers
-    do); a plain every-row count takes the counted records (rows_for count=True). The model's
+    do); a plain every-row count takes the counted records (domain_pack.count_rows). The model's
     groups are kept; one the product hides or can't compute is dropped, and each change is said
     in an assumption. Matched by the label, never by the values (C4)."""
-    from domain_pack import MeasuredBy, defaults_pack, kind_labels, measure, rows_for, unavailable_words
+    from domain_pack import MeasuredBy, count_rows, defaults_pack, kind_labels, measure, unavailable_words
     pack = defaults_pack(contract)
     if pack is None:
         return
@@ -431,7 +433,9 @@ def product_breakdowns(raw: dict, df: pd.DataFrame, contract: DataContract) -> N
             v = measure(df[own], roles, pack, kpi, by=col)
             vals = {str(k): float(x) for k, x in v.values.items()} if isinstance(v, MeasuredBy) else {}
             s["results"] = [{"name": n, "value": round(vals[n], 6)} for n in names if n in vals]
-            why = "" if vals else f" ({unavailable_words(v, pack, pack.kpi(kpi))})"
+            gone = [n for n in names if n not in vals]   # hidden (a small cell) or no base
+            why = f" ({unavailable_words(v, pack, pack.kpi(kpi))})" if not vals else \
+                f" (not shown, the product can't give them: {', '.join(gone[:5])})" if gone else ""
             notes.append(f"{pack.kpi(kpi).label} per {col}: the product's own values, the rows and "
                          f"definition its tiles use{why}.")
         elif str(s.get("aggregation") or "").lower() == "count" and isinstance(s.get("metric_column"), str) \
@@ -440,11 +444,12 @@ def product_breakdowns(raw: dict, df: pd.DataFrame, contract: DataContract) -> N
             every = {str(k): float(n) for k, n in df.groupby(col)[metric].count().items()}
             if not all(abs(_number(r.get("value")) - every.get(n, -1)) < 0.5 for n, r in zip(names, got)):
                 continue   # the model's own filter (cancelled orders by machine): its question
-            rows, how = rows_for(df, contract, col, count=True)
+            rows, how = count_rows(df, contract, col, None)
             if not how:
                 continue
             counts = {str(k): float(n) for k, n in rows.groupby(col)[metric].count().items()}
-            s["results"] = [{"name": n, "value": counts[n]} for n in names if counts.get(n)]
+            # every one of its groups, 0 where all its rows are left out (as the tile's count)
+            s["results"] = [{"name": n, "value": counts.get(n, 0.0)} for n in names]
             notes.append(f"{metric} count by {col}: {how}")
         if not s["results"]:
             raw["segments"].remove(s)
@@ -454,7 +459,7 @@ def product_breakdowns(raw: dict, df: pd.DataFrame, contract: DataContract) -> N
         cols = [c for c in str(s.get("segment_column") if isinstance(s, dict) else "").split("|") if c]
         cols += [s["metric_column"]] if isinstance(s.get("metric_column"), str) else []
         if cols and all(c in df.columns for c in cols):
-            rows, left = rows_for(df, contract, cols[0], count=True)
+            rows, left = count_rows(df, contract, cols[0], None)
             if left:   # nothing left out: the sandbox's count stands
                 raw.setdefault("segment_n", {})[segment_key(s)] = int(rows[cols].notna().all(axis=1).sum())
 

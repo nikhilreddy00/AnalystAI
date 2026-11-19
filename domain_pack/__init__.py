@@ -162,6 +162,7 @@ from .rows import (  # noqa: F401
     in_force_counted,
     with_spell_events,
     rows_for,
+    count_rows,
     kind_labels,
     ended_records,
     snapshot_entity,

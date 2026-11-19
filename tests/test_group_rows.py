@@ -18,15 +18,15 @@ COUNT_CHARTS = {"composition_donut": ("name", "value"), "composition_horizontal_
 @pytest.mark.parametrize("name", PACK_DATASETS)
 def test_every_generic_count_chart_counts_the_records_the_tiles_count(name):
     """D7-19, truth-free over every pack: a generic breakdown chart's bars are the counted records
-    per value (rows_for count=True), never every row. Fails for any builder that counts the
+    per value (domain_pack.count_rows), never every row. Fails for any builder that counts the
     frame it was handed."""
-    from domain_pack import rows_for
+    from domain_pack import count_rows
     from tests.test_dashboard_filters import _dashboard
     clean, contract, charts, *_ = _dashboard(name)
     for c in (c for c in charts if c.source_finding in COUNT_CHARTS and c.rationale):
         col = c.rationale.x
         key, val = COUNT_CHARTS[c.source_finding]
-        want = rows_for(clean, contract, col, count=True)[0][col].dropna().astype(str).value_counts()
+        want = count_rows(clean, contract, col, None)[0][col].dropna().astype(str).value_counts()
         got = {str(r[key or col]): r[val] for r in c.data}
         assert got == {k: int(want[k]) for k in got}, (name, c.title)
 
@@ -94,6 +94,23 @@ def test_a_categorys_builtin_distribution_counts_the_counted_records():
                  "work_orders", [])
     assert sum(d["count"] for d in raw["distributions"]["FAILURECODE"]) == truth["corrective_wos"]
     assert {d["label"] for d in raw["distributions"]["WORKTYPE"]} == {"PM", "CM", "EM"}
+    assert "FAILURECODE value counts: Left out, as the tiles count: 39 cancelled work orders." in raw["assumptions"]
+
+
+def test_every_count_a_user_reads_says_what_it_left_out():
+    """Q2 (the user's call, from the Spec review): a chart the user asks for counts the counted
+    records and says so; a KPI group the product can't give is named, never dropped silently."""
+    from agents.visualization_agent import build_single_chart
+    from orchestrator.state import TargetedParams
+    _, df, contract, _ = _built("work_orders")
+    ch = build_single_chart(df, TargetedParams(group_by="WORKTYPE", metric_column="STATUS"), contract)
+    assert sum(r["count"] for r in ch.data) == 640 - 39
+    assert "39 cancelled work orders" in ch.rationale.reason
+    raw = _stats({"segments": [{"segment_column": "Carrier", "metric_column": "Delivered At", "aggregation": "ratio",
+                                "label": "on_time_delivery", "results": [{"name": "UPS", "value": 0.9},
+                                                                         {"name": "Nowhere", "value": 0.5}]}]},
+                 "tms_shipments", ["Carrier"])
+    assert any("Nowhere" in a for a in raw["assumptions"])
 
 
 def test_a_label_with_its_own_window_or_qualifier_stays_the_models():
@@ -125,9 +142,9 @@ def test_a_count_the_model_filtered_on_purpose_is_left_as_written():
 def test_a_count_by_group_reads_the_counted_records():
     """The generic Carrier donut counted 3,000 rows beside the 2,840-shipment tile: cancelled
     and other-currency rows are no shipments."""
-    from domain_pack import rows_for
+    from domain_pack import count_rows
     _, df, contract, truth = _built("tms_shipments")
-    rows, how = rows_for(df, contract, "Carrier", count=True)
+    rows, how = count_rows(df, contract, "Carrier", None)
     live = df[(df["Status"].str.lower() != "cancelled") & (df["Currency"] == "USD")]
     assert rows.groupby("Carrier").size().to_dict() == live.groupby("Carrier").size().to_dict()
     assert len(rows) == truth["shipments"] and "cancelled" in how
@@ -137,9 +154,9 @@ def test_a_count_by_the_column_that_decides_a_kind_keeps_that_kind():
     """The ruled-out one-filter fix: a Status breakdown exists to show the cancelled rows. Put
     back only the kind Status decides; other currencies stay out (as the tiles): 62 cancelled,
     4 of them in another currency."""
-    from domain_pack import rows_for
+    from domain_pack import count_rows
     _, df, contract, truth = _built("tms_shipments")
-    rows, _ = rows_for(df, contract, "Status", count=True)
+    rows, _ = count_rows(df, contract, "Status", None)
     assert (rows["Status"].str.lower() == "cancelled").sum() == truth["cancelled"] - 4 == 58
     assert (rows["Currency"] == "USD").all()
 
@@ -149,10 +166,10 @@ def test_a_count_by_an_id_keeps_every_other_rule():
     other rules: by Claim ID, health_claims counted 663 earlier versions (5,999 for 5,336); by
     Claim Number, loss_run counted every valuation (38,255 for 3,975). Only a column whose values
     name a kind (status, currency, a void or non-product code) puts that kind back."""
-    from domain_pack import rows_for
+    from domain_pack import count_rows
     for name, col, counted in (("health_claims", "Claim ID", 5336), ("loss_run", "Claim Number", 3975)):
         _, df, contract, _ = _built(name)
-        assert len(rows_for(df, contract, col, count=True)[0]) == counted, name
+        assert len(count_rows(df, contract, col, None)[0]) == counted, name
 
 
 def test_a_kpi_label_on_a_status_breakdown_keeps_the_cancelled_group():
@@ -261,6 +278,20 @@ def test_a_number_a_kpi_sums_by_absolute_value_reads_the_kpis_rows_too():
     term = pack.kpi("cost_per_lb").den[0][0]
     term.sum_abs, term.sum = term.sum, None
     assert counted(pack, "weight")
+
+
+@pytest.mark.xfail(strict=True, reason="PR24-03 (Open): a count of rows by group counts rows, the count "
+                   "tile distinct records or entities in force (loss_run: 1,098 claimant rows of Collision "
+                   "for 940 claims); counting by record key needs a partition rule (a line-level group "
+                   "counts one claim in several groups)")
+def test_a_count_by_group_counts_the_records_the_count_tile_counts():
+    """D7-19 audit pass (Sonnet): the kind rule is the tiles', the unit is not."""
+    import domain_pack as dp
+    _, df, contract, _ = _built("loss_run")
+    roles = {r: c for r, c in contract.roles.items() if c in df.columns}
+    tile = dp.compute_kpi(df, roles, dp.pack_for(contract.domain), "claims", by="Coverage")
+    rows = dp.count_rows(df, contract, "Coverage", None)[0]["Coverage"].value_counts()
+    assert rows.to_dict() == tile.astype(int).to_dict()
 
 
 def test_a_sum_of_a_measure_a_kpi_sums_reads_the_kpis_rows():
