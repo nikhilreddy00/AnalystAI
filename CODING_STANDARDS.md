@@ -12,7 +12,10 @@ functions: `prepare_frame` (PHI mode), `time_axis`, `runout_months`, `rows_for`,
 gets a test that compares the two.
 
 **Why:** Domain 3's oracle skipped PHI mode and the insight harness skipped PHI mode, the run-out
-and the pack's time axis; each hid a real bug until a paid run.
+and the pack's time axis; each hid a real bug until a paid run. The class's checks:
+`tests/test_production_path.py` (the steps after the sandbox give one answer on any frame,
+`analysis_frames`) and the analysis replay in `tests/test_replay.py`; a new production step joins
+them rather than getting a per-harness test (D3-10 recurred six times that way).
 
 ## Guards match the behaviour, not one spelling
 

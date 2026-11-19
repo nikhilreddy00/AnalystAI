@@ -188,6 +188,13 @@ After `insight_node`, the graph routes to either `error_node` (if `session.error
 ### Errors (Phase 2)
 Agents raise typed `AgentError` subclasses (`agents/errors.py`); graph nodes route every failure through `_fail()`, which puts `exc.user_message` into `session.error_message` → `error_node` → SSE `error`. Never return empty output on failure, and never `except ...: pass` in `orchestrator/` (a test enforces it). `targeted_analysis` / `drill_down` failures also route to `error_node`.
 
+### The analysis agent's frames
+On pack data `run_analysis_agent` swaps the loaded frame for the **model's frame** (`model_frame`:
+row kind, derived spans, spell events) before the upload. The steps after the sandbox
+(`standard_stats`, `repair_breakdowns`) take their frames from `analysis_frames` (the data's own
+columns for the product's rules, the model's frame for the model's column names), so a test or
+harness passing the plain frame gets the run's answer (`tests/test_production_path.py`).
+
 ### Multi-Turn Resume
 When `task.resume_from == "analysis"`, routing skips intake + cleaning and jumps directly from ingestion to analysis. The DataFrame is re-loaded from the connector (not stored in DB).
 
