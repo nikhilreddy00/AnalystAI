@@ -15,8 +15,8 @@ import pytest
 from evals.snapshot import GOLDEN, snapshot
 
 # The domain being built: {suite: {case or dataset: why}}. Empty right after a pin.
-# Re-pinned at Domain 8's end (2026-11-18); its diff is named in
-# docs/baselines/phase5_7_logistics.md.
+# Re-pinned at the D7-19 PR's end (2026-11-19); its diff (43 datasets, each with its truth) is
+# named in docs/baselines/phase5_7_d7_19.md.
 CHANGES: dict[str, dict[str, str]] = {}
 
 

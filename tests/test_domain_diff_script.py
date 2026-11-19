@@ -17,6 +17,15 @@ def test_show_imports_its_text_diff_when_run_as_a_script():
     assert "CalledProcessError" in run.stderr   # git worktree add on the bad ref
 
 
+def test_snapshot_text_reads_a_list_item_by_item():
+    """D7-19: a whole chart list compared as one string ran difflib for over an hour; a changed
+    bar is now its own line, its path naming the item."""
+    from evals.snapshot import text_changes
+    a = [{"name": "UPS", "value": 1160}] * 400 + [{"name": "XPO", "value": 225}]
+    b = [{"name": "UPS", "value": 1160}] * 400 + [{"name": "XPO", "value": 213}]
+    assert [line.split(" |")[0] for _, line in text_changes(a, b, "d")] == ["d[400]/value"]
+
+
 def test_the_suite_runs_on_head_in_a_worktree_never_the_edited_tree():
     """Retro 5.7b-2b: a pack edited mid-run failed 330 tests. scripts/suite.py runs pytest in a
     worktree of HEAD, so the tests it runs are the committed ones; the pytest args pass through."""

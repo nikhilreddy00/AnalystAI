@@ -95,10 +95,10 @@ def rows_for(df: pd.DataFrame, contract, column: str,
              full: pd.DataFrame | None = None) -> tuple[pd.DataFrame, str]:
     """(rows, how): THE rows every answer, chart and drill-down of `column` reads (plan v2 R1:
     one entry point; tests/test_one_definition.py guards it). On a strong-matched pack's additive
-    money or count column: sale and return rows in the main currency, as its tiles count them;
-    a level (a balance) keeps every row with its value blanked where the row is left out, so
-    `utils.aggregate` / `latest_rows` judge each entity's latest row first. Anything else: every
-    row, no note."""
+    money or count column (or a number a KPI sums: weight): sale and return rows in the main
+    currency, as its tiles count them; a level (a balance) keeps every row with its value blanked
+    where the row is left out, so `utils.aggregate` / `latest_rows` judge each entity's latest row
+    first. A count of rows BY a column reads `count_rows`. Anything else: every row, no note."""
     pack = defaults_pack(contract)
     role = next((r for r, c in contract.roles.items() if c == column), None) if pack else None
     if role and pack.roles[role].over_time == "last" and (gone := ended_records(df, contract)).any():
@@ -125,6 +125,41 @@ def rows_for(df: pd.DataFrame, contract, column: str,
         else df[kept]
     return out, pack.say("money_rows_note", currency=f" in {currency}" if currency else "",
                               n=f"{int((~kept).sum()):,}")
+
+
+def kind_labels(pack: Pack) -> set[str]:
+    """The roles whose values name a row's kind (GLOSSARY Kind-deciding column): the status, the
+    currency, a non-product code, a version's void code. A breakdown by one shows those kinds."""
+    return {"status", "currency", *pack.non_product, *pack.version_void}
+
+
+def count_rows(df: pd.DataFrame, contract, by: str, full: pd.DataFrame | None) -> tuple[pd.DataFrame, str]:
+    """(rows, what was left out): THE rows a count of rows by `by` reads, from the model's code or a
+    generic chart (D7-19; GLOSSARY Counted record): the rows a count tile reads (`KPI.rows`
+    default, sale, in the main currency), except the kinds `by` itself names: a Status breakdown
+    keeps its cancelled rows, a Currency breakdown every currency (Kind-deciding column). The
+    kinds are judged as if `by` were not there; on `full`, the whole data, when `df` is a part of
+    it (None on purpose: `df` is the whole). No pack: every row, no note."""
+    pack = defaults_pack(contract)
+    if pack is None:
+        return df, ""
+    roles = {r: c for r, c in contract.roles.items() if c in df.columns}
+    own = next((r for r, c in roles.items() if c == by), None)
+    keep, _, _ = main_currency(df, roles)
+    if own == "currency":
+        keep = pd.Series(True, index=df.index)
+    # only a column whose values NAME a kind puts it back (a status, a void code, a non-product
+    # code); an id, a test marker or a version order never does (a claim id keeps its chain)
+    judged = {r: c for r, c in roles.items() if r != own or r not in kind_labels(pack)}
+    whole = full if full is not None and df.index.isin(full.index).all() else df
+    kinds = row_kinds(whole, judged, pack).reindex(df.index)
+    kept = keep & kinds.eq("sale")
+    if kept.all():
+        return df, ""
+    left = kinds.where(keep, "other_currency")[~kept].value_counts()
+    words = [f"{n:,} {pack.row_labels.get(k) or pack.code(k).replace('_', ' ')}" if k != "other_currency"
+             else f"{n:,} rows in other currencies" for k, n in left.items()]
+    return df[kept], f"Left out, as the tiles count: {', '.join(words)}."
 
 
 def ended_records(df: pd.DataFrame, contract) -> pd.Series:

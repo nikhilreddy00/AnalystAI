@@ -73,6 +73,14 @@ Domain words (ALOS, readmission, NPL …) live in `domain_packs/<domain>.yaml`, 
   outside it are a part too.
 - **Term rows** — the rows a term reads at a date: in force then, of the KPI's row kinds, meeting
   its condition (paying, not a contractor).
+- **Counted record** — a row a count tile counts: of kind sale, in the main currency (`KPI.rows`'
+  default). A count by group, from the model's code or a generic chart, reads these
+  (`count_rows`); a cancelled, test or superseded row, a return line and another
+  currency's row are not counted records. Rows ≠ records where a record has lines (a claim).
+- **Kind-deciding column** — a column whose values name a row's kind: the status, the currency, a
+  non-product code, a version's void code (`kind_labels`). A breakdown by one keeps the kinds it
+  names (a Status breakdown shows its cancelled rows); an id, a test marker or a version order is
+  not one (a breakdown by claim id still counts each claim's latest version only).
 - **Ledger** — each entity's value in each part at each month-end: one **ledger line** per
   (entity, part), its term rows in that part summed (a role), or 1 for being there. An entity's
   value is the sum of its lines. Built on all rows. MRR movements and a bridge's opening are read

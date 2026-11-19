@@ -167,6 +167,10 @@
    }
   ]
  },
+ "agents/targeted_analysis_agent.py::handle_distribution": {
+  "equivalents": [],
+  "hash": "49e0a6cc93aeec02"
+ },
  "agents/targeted_analysis_agent.py::handle_kpi": {
   "equivalents": [
    {
@@ -349,6 +353,10 @@
   ],
   "hash": "151fa0cb63df31c3"
  },
+ "domain_pack/kpi.py::_summed": {
+  "equivalents": [],
+  "hash": "d2493a9b1f966ec8"
+ },
  "domain_pack/kpi.py::_term": {
   "equivalents": [
    {
@@ -367,6 +375,10 @@
  "domain_pack/kpi.py::computable": {
   "equivalents": [],
   "hash": "9a53eab448d825a5"
+ },
+ "domain_pack/kpi.py::counted": {
+  "equivalents": [],
+  "hash": "96dc7c1c50472bc8"
  },
  "domain_pack/kpi.py::kpi_measures": {
   "equivalents": [
@@ -418,6 +430,18 @@
     "reason": "hours are floats already, and astype(None) gives float64 (checked)"
    }
   ]
+ },
+ "domain_pack/rows.py::count_rows": {
+  "equivalents": [],
+  "hash": "e7e3f19e48ce3cb2"
+ },
+ "domain_pack/rows.py::kind_labels": {
+  "equivalents": [],
+  "hash": "6a3a0ed64d1ee8e7"
+ },
+ "domain_pack/rows.py::rows_for": {
+  "equivalents": [],
+  "hash": "d397d4c02a630113"
  },
  "domain_pack/spell.py::_spell_as_of": {
   "equivalents": [],

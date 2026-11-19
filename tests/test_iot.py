@@ -366,13 +366,10 @@ def test_a_work_orders_actual_dates_are_blank_by_its_status_never_missing():
                                 f"are blank by design; {pct:g}% of those rows have no value. Kept as it is."), got
 
 
-@pytest.mark.xfail(strict=True, reason="D7-19 (Open): the generic count charts read every row; the "
-                   "rows to leave out differ by kind and domain (a cancelled order out, an "
-                   "other-currency deposit still an account), a reviewed rule per kind, not one filter")
 def test_the_generic_charts_count_the_rows_the_tiles_count():
     """Review browser read (D7-19's class, product side): 'Worktype Breakdown — PM Leads at 48%'
     counted all 640 work orders, cancelled ones too (CM + EM = 333, the planted naive count);
-    the tiles say 311 corrective orders."""
+    the tiles say 311 corrective orders. The builders read domain_pack.count_rows."""
     from agents.visualization_agent import build_context, classify_columns, generate_dashboard_charts
     from tests.test_oracle import _built
     _, df, contract, truth = _built("work_orders")
@@ -432,10 +429,10 @@ def test_mttr_reads_finished_corrective_orders_in_exact_hours():
     assert dp.compute_kpi(_wos(), WO_ROLES, IOT, "corrective_wos") == 3   # W1, W2, W4; W5 cancelled
 
 
-@pytest.mark.xfail(strict=True, reason="D7-19 (Open): a count by group the model's code writes reads "
-                   "every row; standard_stats replaces a level's totals and means, never a count, so "
-                   "e2e-89's failure codes counted 22 cancelled orders (333, truth 311)")
 def test_a_models_count_by_group_reads_the_counted_rows():
+    """D7-19 (e2e-89): the model's failure-code counts read every row, 22 cancelled corrective
+    orders too (333, truth 311); standard_stats (product_breakdowns) recounts a plain count over
+    the counted records."""
     from agents.analysis_agent import model_frame, standard_stats
     from orchestrator.state import AnalysisTask
     from tests.test_oracle import _built
