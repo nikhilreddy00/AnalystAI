@@ -253,6 +253,9 @@ def text_changes(a, b, path: str = "") -> list[tuple[tuple[str, str], str]]:
     import difflib
     if isinstance(a, dict) and isinstance(b, dict):
         return [x for k in sorted(set(a) | set(b)) for x in text_changes(a.get(k), b.get(k), f"{path}/{k}")]
+    if isinstance(a, list) and isinstance(b, list) and len(a) == len(b):
+        # item by item (D7-19: a whole chart list as one string made difflib run for over an hour)
+        return [x for i, (u, v) in enumerate(zip(a, b)) for x in text_changes(u, v, f"{path}[{i}]")]
     sa, sb = (x if isinstance(x, str) else json.dumps(x, sort_keys=True, default=str) for x in (a, b))
     if sa == sb:
         return []
