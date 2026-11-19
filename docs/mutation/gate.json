@@ -431,10 +431,6 @@
    }
   ]
  },
- "domain_pack/rows.py::_counted_records": {
-  "equivalents": [],
-  "hash": "c2fb45e416e6869b"
- },
  "domain_pack/rows.py::kind_labels": {
   "equivalents": [],
   "hash": "6a3a0ed64d1ee8e7"
