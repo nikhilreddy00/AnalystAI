@@ -396,12 +396,13 @@ def product_breakdowns(raw: dict, df: pd.DataFrame, contract: DataContract) -> N
     do); a plain every-row count takes the counted records (rows_for count=True). The model's
     groups are kept; one the product hides or can't compute is dropped, and each change is said
     in an assumption. Matched by the label, never by the values (C4)."""
-    from domain_pack import MeasuredBy, defaults_pack, kind_labels, measure, named_kpis, rows_for, unavailable_words
+    from domain_pack import MeasuredBy, defaults_pack, kind_labels, measure, rows_for, unavailable_words
     pack = defaults_pack(contract)
     if pack is None:
         return
     roles = {r: c for r, c in contract.roles.items() if c in df.columns}
     labels = {roles[r] for r in kind_labels(pack) - {"currency"} if r in roles}   # a Status breakdown
+    dates = {*contract.date_columns, *(c for c in df.columns if pd.api.types.is_datetime64_any_dtype(df[c]))}
     notes = raw.setdefault("assumptions", [])
     for s in list(raw.get("segments") or []):
         col = s.get("segment_column") if isinstance(s, dict) else None
@@ -410,9 +411,11 @@ def product_breakdowns(raw: dict, df: pd.DataFrame, contract: DataContract) -> N
         if not got:   # a joint 'a|b' breakdown (or a malformed one) stays the model's
             continue
         names = [str(r.get("name")).removeprefix(f"{col}=") for r in got]   # 'Mode=LTL' is LTL
+        # the KPI's exact name only: a label with a window or a qualifier ('spend_2026_08',
+        # 'billings_by_month', 'growth_52w') is the model's own question ($0 replay: the glossary
+        # match gave 16 stored runs the all-time KPI); never by a date (a trend, not a group)
         label = str(s.get("label") or "").strip()
-        kpi = (label if pack.kpi(label) else next(iter(named_kpis(pack, contract, label.replace("_", " "))),
-                                                  None)) if label and col not in labels else None
+        kpi = label if pack.kpi(label) and col not in labels and col not in dates else None
         if kpi:
             v = measure(df, roles, pack, kpi, by=col)
             vals = {str(k): float(x) for k, x in v.values.items()} if isinstance(v, MeasuredBy) else {}

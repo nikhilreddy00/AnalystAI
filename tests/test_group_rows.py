@@ -53,6 +53,20 @@ def test_a_models_kpi_by_group_is_the_products():
     assert any("cost_per_lb" in a or "Cost per lb" in a for a in raw["assumptions"])
 
 
+def test_a_label_with_its_own_window_or_qualifier_stays_the_models():
+    """$0 replay (scripts/replay_breakdowns.py): a glossary match turned 'on-time for LTL' and
+    'spend_2026_08' into the all-time KPI, 16 stored runs flipped to fail. Only the KPI's exact
+    name is replaced; never a breakdown by a date (a trend)."""
+    truth = _built("tms_shipments")[3]
+    ltl =[{"name": k, "value": round(v, 6)} for k, v in truth["on_time_by_carrier_ltl"].items()]
+    raw = _stats({"segments": [{"segment_column": "Carrier", "metric_column": "Delivered At", "aggregation": "ratio",
+                                "label": "on_time_delivery_ltl", "results": [dict(r) for r in ltl]},
+                               {"segment_column": "Ship Date", "metric_column": "Delivered At", "aggregation": "ratio",
+                                "label": "on_time_delivery", "results": [{"name": "2026-08-03", "value": 0.5}]}]},
+                 "tms_shipments", ["Carrier"])
+    assert raw["segments"][0]["results"] == ltl and raw["segments"][1]["results"][0]["value"] == 0.5
+
+
 def test_a_count_the_model_filtered_on_purpose_is_left_as_written():
     """Only a plain every-row count is the bug: 'cancelled work orders by machine' is the model's
     own filter and answers its question."""
