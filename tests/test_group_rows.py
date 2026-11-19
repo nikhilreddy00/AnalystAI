@@ -32,11 +32,14 @@ def test_every_generic_count_chart_counts_the_records_the_tiles_count(name):
 
 
 def _stats(raw: dict, name: str, segments: list[str], query: str = "overview") -> dict:
-    from agents.analysis_agent import standard_stats
+    """standard_stats as a run calls it: on the model's frame (row kind and derived columns
+    added; run_analysis_agent swaps df_parquet for it). logi-4's paid re-measure: on that frame
+    measure() found no derived roles, so the KPI segment was emptied and the run had no findings."""
+    from agents.analysis_agent import model_frame, standard_stats
     from orchestrator.state import AnalysisTask
     _, df, contract, _ = _built(name)
-    standard_stats(raw, df, contract, AnalysisTask(raw_query=query, target_metrics=[], segments=segments,
-                                                   analysis_types=["eda"]))
+    standard_stats(raw, model_frame(df, contract)[0], contract, AnalysisTask(
+        raw_query=query, target_metrics=[], segments=segments, analysis_types=["eda"]))
     return raw
 
 
@@ -51,6 +54,17 @@ def test_a_models_kpi_by_group_is_the_products():
     got = {r["name"]: r["value"] for r in raw["segments"][0]["results"]}
     assert got == pytest.approx(_built("tms_shipments")[3]["cost_per_lb_by_mode"], abs=0.0005)
     assert any("cost_per_lb" in a or "Cost per lb" in a for a in raw["assumptions"])
+
+
+def test_a_kpi_built_on_derived_roles_is_the_products_on_the_models_frame():
+    """logi-4 paid re-measure (analysis-20261119T181740Z, 0/3): on-time reads derived roles (days
+    late, days past due); on the model's frame, which already holds those columns, measure() said
+    role_missing, the segment was emptied, and the run failed 'every finding section is empty'."""
+    truth = _built("tms_shipments")[3]["on_time_by_carrier"]
+    raw = _stats({"segments": [{"segment_column": "Carrier", "metric_column": "Delivered At", "aggregation": "ratio",
+                                "label": "on_time_delivery", "results": [{"name": k, "value": 0.5} for k in truth]}]},
+                 "tms_shipments", ["Carrier"])
+    assert {r["name"]: r["value"] for r in raw["segments"][0]["results"]} == pytest.approx(truth, abs=1e-6)
 
 
 def test_a_label_with_its_own_window_or_qualifier_stays_the_models():

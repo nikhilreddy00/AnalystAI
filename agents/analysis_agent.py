@@ -403,6 +403,8 @@ def product_breakdowns(raw: dict, df: pd.DataFrame, contract: DataContract) -> N
     roles = {r: c for r, c in contract.roles.items() if c in df.columns}
     labels = {roles[r] for r in kind_labels(pack) - {"currency"} if r in roles}   # a Status breakdown
     dates = {*contract.date_columns, *(c for c in df.columns if pd.api.types.is_datetime64_any_dtype(df[c]))}
+    own = [c.name for c in contract.columns if c.name in df.columns]   # never the model frame's
+    # added columns (row kind, spell events, derived spans): measure() derives its own
     notes = raw.setdefault("assumptions", [])
     for s in list(raw.get("segments") or []):
         col = s.get("segment_column") if isinstance(s, dict) else None
@@ -415,9 +417,10 @@ def product_breakdowns(raw: dict, df: pd.DataFrame, contract: DataContract) -> N
         # 'billings_by_month', 'growth_52w') is the model's own question ($0 replay: the glossary
         # match gave 16 stored runs the all-time KPI); never by a date (a trend, not a group)
         label = str(s.get("label") or "").strip()
-        kpi = label if pack.kpi(label) and col not in labels and col not in dates else None
-        if kpi:
-            v = measure(df, roles, pack, kpi, by=col)
+        kpi = label if pack.kpi(label) and col in own and col not in labels and col not in dates else None
+        if kpi:   # on the data's own columns (logi-4 paid re-measure: on the model's frame,
+            # measure() found no derived roles, the segment was emptied and the run failed)
+            v = measure(df[own], roles, pack, kpi, by=col)
             vals = {str(k): float(x) for k, x in v.values.items()} if isinstance(v, MeasuredBy) else {}
             s["results"] = [{"name": n, "value": round(vals[n], 6)} for n in names if n in vals]
             why = "" if vals else f" ({unavailable_words(v, pack, pack.kpi(kpi))})"

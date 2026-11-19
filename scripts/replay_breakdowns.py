@@ -31,7 +31,7 @@ def latest_runs() -> dict[str, tuple[str, list[dict]]]:
 
 
 def main(argv: list[str] | None = None) -> None:
-    from agents.analysis_agent import product_breakdowns
+    from agents.analysis_agent import model_frame, product_breakdowns
     from evals.run import cleaned_for_analysis, load_cases, score_analysis, working_frame
     from orchestrator.state import AnalysisFindings
     ap = argparse.ArgumentParser()
@@ -45,6 +45,8 @@ def main(argv: list[str] | None = None) -> None:
         case = cases[cid]
         df, contract = working_frame(case)
         df = cleaned_for_analysis(case, df, contract)[0]
+        if contract is not None and contract.domain:   # as a run: standard_stats gets the
+            df = model_frame(df, contract)[0]           # model's frame (logi-4 re-measure)
         for i, r in enumerate(runs):
             out = r.get("output")
             if not out or not out.get("segments"):
