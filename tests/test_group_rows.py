@@ -152,6 +152,21 @@ def test_a_mean_of_a_number_a_kpi_averages_reads_the_kpis_rows():
     assert [r for r in ("transit_days", "dwell_hours") if not counted(pack, r)] == []
 
 
+def test_a_categorys_distribution_answer_counts_the_counted_records():
+    """'How are work types distributed?' counted all 640 orders (CM + EM 333); the answer reads
+    the counted records and says what it left out. A number's distribution is unchanged."""
+    from agents.targeted_analysis_agent import handle_distribution
+    from orchestrator.state import TargetedParams
+    _, df, contract, truth = _built("work_orders")
+    r = handle_distribution(df, TargetedParams(target_columns=["WORKTYPE"]), contract)
+    counts = {d["value"]: d["count"] for d in r.chart_configs[0].data}
+    assert counts["CM"] + counts["EM"] == truth["corrective_wos"]
+    n = truth["row_count"] - truth["cancelled_wos"]
+    assert r.answer_text == (f"WORKTYPE: 3 unique values; top = 'PM' ({counts['PM']} rows, "
+                             f"{counts['PM'] / n * 100:.1f}%). Left out, as the tiles count: "
+                             f"{truth['cancelled_wos']} cancelled work orders.")
+
+
 def test_a_sum_of_a_measure_a_kpi_sums_reads_the_kpis_rows():
     """D8 audit pass 1: 'sum of Weight by Mode' read cancelled rows (a weight at $0); cost per lb
     sums Weight over counted rows, so every total of Weight does."""
