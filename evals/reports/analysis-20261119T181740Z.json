@@ -1,0 +1,1562 @@
+{
+ "meta": {
+  "suite": "analysis",
+  "report": "analysis-20261119T181740Z",
+  "k": 3,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "33a0ab2",
+  "started_at": "20261119T181740Z",
+  "only": "logi-4",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 1,
+  "runs": 3,
+  "pass_rate": 0.0,
+  "case_majority_pass_rate": 0.0,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "hard_rules_na": 0,
+  "errors": 1,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 1,
+  "runs_with_prose_rewritten": 0,
+  "runs_with_pii_guard_hit": 0,
+  "cost_per_question_usd": 0.0604,
+  "latency_p50_s": 58.86,
+  "latency_p95_s": 91.96,
+  "numeric_accuracy": 0.0,
+  "insight_recall": 0.0,
+  "false_finding_rate": 0.0,
+  "verifiable_claims": 60,
+  "by_domain": {
+   "logistics": {
+    "cases": 1,
+    "k_min": 3,
+    "k_max": 3,
+    "cases_passed_all_runs": 0,
+    "pass_rate": 0.0,
+    "hard_rule_violations": 0,
+    "hard_rules_na": 0,
+    "builtin_only_cases": [],
+    "model_dependent_passed": 0,
+    "model_dependent_cases": 1,
+    "numeric_accuracy": 0.0,
+    "insight_recall": 0.0,
+    "false_finding_rate": 0.0,
+    "verifiable_claims": 60,
+    "model_dependent_quality": {
+     "numeric_accuracy": 0.0,
+     "insight_recall": 0.0,
+     "false_finding_rate": 0.0,
+     "verifiable_claims": 60
+    }
+   }
+  }
+ },
+ "runs": {
+  "logi-4": [
+   {
+    "checks": [
+     {
+      "kind": "segment_value_truth",
+      "ok": false,
+      "detail": "no findings",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "no findings"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "explicit error"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "no findings"
+     },
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_exits",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": "GuardrailViolation: analysis: every finding section is empty. Report what you computed, even a null result (a near-zero correlation or a non-significant test is a finding)",
+    "false_findings": null,
+    "builtin_only": false,
+    "pii_exits": {
+     "rule": "pii_exits",
+     "ok": true,
+     "detail": "ok"
+    },
+    "pii_canary_hits": 0,
+    "pii_model_hits": 0,
+    "pii_planted": 5533,
+    "output": null,
+    "domain": "logistics",
+    "latency_s": 95.64,
+    "cost_usd": 0.11994,
+    "llm_calls": 5,
+    "truncated_calls": 0,
+    "rejections": [
+     "empty",
+     "empty"
+    ],
+    "replies": [
+     {
+      "text": "```python\ntry:\n    sale_mask = (df['row_kind'] == 'sale') & (df['Currency'] == 'USD')\n    dfs = df[sale_mask].copy()\n\n    last_ship_date = dfs['Ship Date'].max()\n\n    def is_otd_numerator(row):\n        return (\n            row['days_before_promise'] >= 0 and\n            row['transit_days'] >= 0\n        )\n\n    def is_otd_denominator(row):\n        if row['transit_days'] >= 0:\n            if row['days_before_promise'] >= 0:\n                return True\n            if row['days_late'] > 0:\n                return True\n        status_lower = str(row['Status']).strip().lower()\n        rts_statuses = {'returned to sender', 'return to sender', 'rts', 'returned', 'refused'}\n        if status_lower in rts_statuses and row['transit_days'] >= 0:\n            return True\n        open_statuses = {\n            'in transit', 'out for delivery', 'picked up', 'exception',\n            'delivery exception', 'delayed', 'tendered', 'booked', 'dispatched',\n            'pending', 'shipped', 'partially shipped', 'backordered',\n            'short shipped', 'open', 'allocated', 'released', 'picked', 'packed'\n        }\n        if status_lower in open_statuses and row['days_past_due'] > 0:\n            return True\n        return False\n\n    dfs['_otd_num'] = dfs.apply(is_otd_numerator, axis=1).astype(int)\n    dfs['_otd_den'] = dfs.apply(is_otd_denominator, axis=1).astype(int)\n\n    carriers = dfs.groupby('Carrier')\n    carrier_results = []\n    for carrier_name, grp in carriers:\n        num = grp['_otd_num'].sum()\n        den = grp['_otd_den'].sum()\n        rate = float(num) / float(den) if den > 0 else float('nan')\n        carrier_results.append({\"name\": str(carrier_name), \"value\": round(rate, 6)})\n\n    carrier_results_sorted = sorted(\n        [r for r in carrier_results if not (r['value'] != r['value'])],\n        key=lambda x: x['value'], reverse=True\n    )\n\n    total_num = dfs['_otd_num'].sum()\n    total_den = dfs['_otd_den'].sum()\n    overall_rate = float(total_num) / float(total_den) if total_den > 0 else float('nan')\n\n    result['segments'].append({\n        \"segment_column\": \"Carrier\",\n        \"metric_column\": \"Delivered At\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"on_time_delivery\",\n        \"results\": carrier_results_sorted\n    })\n\n    result['assumptions'].append(\n        \"on_time_delivery = \u03a3 on-time shipments \u00f7 \u03a3 eligible shipments per carrier; \"\n        f\"overall rate across all carriers = {overall_rate:.4f}\"\n    )\n    result['assumptions'].append(\n        \"Eligible denominator includes: delivered on-time, delivered late, \"\n        \"returned-to-sender (transit_days>=0), and open/in-transit past due date.\"\n    )\n    result['assumptions'].append(\n        \"Only sale rows in USD are included; cancelled and non-USD rows excluded.\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Carrier\",\n        \"metric_column\": \"Delivered At\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"on_time_delivery\",\n        \"results\": [{\"name\": \"error\", \"value\": -1.0}]\n    })\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "",
+      "stop_reason": "tool_use",
+      "tool_calls": [
+       {
+        "id": "toolu_013mKgK24F872U6yKYArGDks",
+        "name": "sample_rows",
+        "input": {
+         "columns": [
+          "row_kind",
+          "Carrier",
+          "Status",
+          "transit_days",
+          "days_before_promise",
+          "days_late",
+          "days_past_due",
+          "Currency"
+         ],
+         "n": 10
+        }
+       }
+      ]
+     },
+     {
+      "text": "",
+      "stop_reason": "tool_use",
+      "tool_calls": [
+       {
+        "id": "toolu_014qJUVTWpwmCwyzgoMuDjFq",
+        "name": "get_schema",
+        "input": {
+         "column": "transit_days"
+        }
+       },
+       {
+        "id": "toolu_011VsbGa3Z2NAkx1A56ZGHuc",
+        "name": "get_schema",
+        "input": {
+         "column": "days_before_promise"
+        }
+       },
+       {
+        "id": "toolu_01VVa5bBKQqxyfYHiNfC8t3Q",
+        "name": "get_schema",
+        "input": {
+         "column": "days_late"
+        }
+       },
+       {
+        "id": "toolu_0121PzYVeupaw3YWZjhye2nM",
+        "name": "get_schema",
+        "input": {
+         "column": "days_past_due"
+        }
+       }
+      ]
+     },
+     {
+      "text": "",
+      "stop_reason": "tool_use",
+      "tool_calls": [
+       {
+        "id": "toolu_01MZvUqPNGeFeE6Cy7c2qYJ3",
+        "name": "sample_rows",
+        "input": {
+         "columns": [
+          "row_kind",
+          "Carrier",
+          "Status",
+          "transit_days",
+          "days_before_promise",
+          "days_late",
+          "days_past_due",
+          "Currency",
+          "Shipment ID"
+         ],
+         "n": 10
+        }
+       }
+      ]
+     },
+     {
+      "text": "Good \u2014 now I can see the data clearly. Key observations:\n- Many rows have `transit_days = null` but valid `days_before_promise` (these are delivered rows where the ship\u2192delivered gap was flagged out-of-range by cleaning, but the promise comparison is still valid).\n- The OTD numerator condition is `days_before_promise >= 0` (delivered on or before promise).\n- The denominator also includes rows with `days_late > 0` (delivered late), RTS statuses, and open/past-due rows.\n- `transit_days` being null doesn't disqualify a row from OTD \u2014 the domain rule checks `days from date to delivered \u2265 0`, which is `transit_days >= 0`, but null rows with valid `days_before_promise` are clearly delivered rows. I'll treat null `transit_days` on delivered rows as valid (cleaning flagged 6 out-of-range, not null-delivered).\n\n```python\ntry:\n    dfs = df[(df['row_kind'] == 'sale') & (df['Currency'] == 'USD')].copy()\n\n    status_col = dfs['Status'].str.strip().str.lower()\n\n    rts_set = {'returned to sender', 'return to sender', 'rts', 'returned', 'refused'}\n    open_set = {\n        'in transit', 'out for delivery', 'picked up', 'exception',\n        'delivery exception', 'delayed', 'tendered', 'booked', 'dispatched',\n        'pending', 'shipped', 'partially shipped', 'backordered',\n        'short shipped', 'open', 'allocated', 'released', 'picked', 'packed'\n    }\n\n    delivered_mask = status_col == 'delivered'\n\n    otd_num = (\n        delivered_mask &\n        (dfs['days_before_promise'] >= 0)\n    )\n\n    otd_den = (\n        otd_num |\n        (delivered_mask & (dfs['days_late'] > 0)) |\n        (status_col.isin(rts_set) & (dfs['transit_days'] >= 0)) |\n        (status_col.isin(open_set) & (dfs['days_past_due'] > 0))\n    )\n\n    dfs = dfs.assign(_num=otd_num.astype(int), _den=otd_den.astype(int))\n\n    overall_num = int(dfs['_num'].sum())\n    overall_den = int(dfs['_den'].sum())\n    overall_rate = overall_num / overall_den if overall_den > 0 else float('nan')\n\n    grp = dfs.groupby('Carrier')[['_num', '_den']].sum()\n    grp['rate'] = grp['_num'] / grp['_den'].replace(0, float('nan'))\n    grp = grp.sort_values('rate', ascending=False)\n\n    carrier_results = [\n        {\"name\": str(idx), \"value\": round(float(row['rate']), 6)}\n        for idx, row in grp.iterrows()\n        if not (row['rate'] != row['rate'])\n    ]\n\n    result['segments'].append({\n        \"segment_column\": \"Carrier\",\n        \"metric_column\": \"Delivered At\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"on_time_delivery\",\n        \"results\": carrier_results\n    })\n\n    result['assumptions'].append(\n        f\"OTD numerator: delivered rows with days_before_promise >= 0; \"\n        f\"overall OTD = {overall_num} / {overall_den} = {overall_rate:.4f}\"\n    )\n    result['assumptions'].append(\n        \"Denominator adds: delivered-late rows (days_late > 0), \"\n        \"RTS rows (transit_days >= 0), open/in-transit rows past due (days_past_due > 0).\"\n    )\n    result['assumptions'].append(\n        \"Rows with null transit_days but valid days_before_promise are included \"\n        \"as delivered (cleaning flagged 6 out-of-range transit values, not nulls).\"\n    )\n    result['assumptions'].append(\n        \"Only sale rows in USD included; cancelled and other-currency rows excluded.\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Carrier\",\n        \"metric_column\": \"Delivered At\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"on_time_delivery\",\n        \"results\": [{\"name\": \"error\", \"value\": -1.0}]\n    })\n    result['assumptions'].append(f\"Segmentation failed: {str(e)}\")\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value_truth",
+      "ok": false,
+      "detail": "no Carrier breakdown matches on_time_by_carrier (tried ['Delivered At'])",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_exits",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 30,
+     "details": []
+    },
+    "builtin_only": false,
+    "pii_exits": {
+     "rule": "pii_exits",
+     "ok": true,
+     "detail": "ok"
+    },
+    "pii_canary_hits": 0,
+    "pii_model_hits": 0,
+    "pii_planted": 5533,
+    "output": {
+     "eda_summary": {
+      "Weight": {
+       "mean": 1128.3923,
+       "std": 1253.9624,
+       "min": 1.5432,
+       "max": 8754.2,
+       "median": 672.5,
+       "count": 2835
+      },
+      "Linehaul": {
+       "mean": 185.0379,
+       "std": 134.1782,
+       "min": 5.64,
+       "max": 1069.81,
+       "median": 147.615,
+       "count": 2840
+      },
+      "Fuel Surcharge": {
+       "mean": 41.723,
+       "std": 31.2014,
+       "min": 1.3,
+       "max": 258.09,
+       "median": 32.98,
+       "count": 2840
+      },
+      "Accessorials": {
+       "mean": 20.9542,
+       "std": 29.4296,
+       "min": 0.0,
+       "max": 75.0,
+       "median": 0.0,
+       "count": 2840
+      },
+      "Total Charge": {
+       "mean": 247.7152,
+       "std": 167.4151,
+       "min": 6.94,
+       "max": 1338.03,
+       "median": 205.7,
+       "count": 2840
+      }
+     },
+     "correlations": {},
+     "trends": [],
+     "segments": [
+      {
+       "segment_column": "Carrier",
+       "metric_column": "Delivered At",
+       "aggregation": "ratio",
+       "results": [
+        {
+         "name": "overall",
+         "value": 0.889088
+        }
+       ],
+       "label": "on_time_delivery_overall"
+      }
+     ],
+     "anomalies": [],
+     "statistical_tests": [],
+     "forecast_points": [],
+     "distributions": {
+      "Weight": [
+       {
+        "label": "(-7.209, 876.809]",
+        "count": 1640
+       },
+       {
+        "label": "(876.809, 1752.075]",
+        "count": 575
+       },
+       {
+        "label": "(1752.075, 2627.34]",
+        "count": 386
+       },
+       {
+        "label": "(2627.34, 3502.606]",
+        "count": 215
+       },
+       {
+        "label": "(3502.606, 4377.872]",
+        "count": 111
+       },
+       {
+        "label": "(4377.872, 5253.137]",
+        "count": 40
+       },
+       {
+        "label": "(5253.137, 6128.403]",
+        "count": 19
+       },
+       {
+        "label": "(6128.403, 7003.669]",
+        "count": 3
+       },
+       {
+        "label": "(7003.669, 7878.934]",
+        "count": 4
+       },
+       {
+        "label": "(7878.934, 8754.2]",
+        "count": 2
+       }
+      ],
+      "Linehaul": [
+       {
+        "label": "(-1.07, 106.981]",
+        "count": 1037
+       },
+       {
+        "label": "(106.981, 213.962]",
+        "count": 1039
+       },
+       {
+        "label": "(213.962, 320.943]",
+        "count": 501
+       },
+       {
+        "label": "(320.943, 427.924]",
+        "count": 233
+       },
+       {
+        "label": "(427.924, 534.905]",
+        "count": 120
+       },
+       {
+        "label": "(534.905, 641.886]",
+        "count": 43
+       },
+       {
+        "label": "(641.886, 748.867]",
+        "count": 18
+       },
+       {
+        "label": "(748.867, 855.848]",
+        "count": 3
+       },
+       {
+        "label": "(855.848, 962.829]",
+        "count": 4
+       },
+       {
+        "label": "(962.829, 1069.81]",
+        "count": 2
+       }
+      ],
+      "Fuel Surcharge": [
+       {
+        "label": "(-0.258, 25.809]",
+        "count": 1168
+       },
+       {
+        "label": "(25.809, 51.618]",
+        "count": 1014
+       },
+       {
+        "label": "(51.618, 77.427]",
+        "count": 451
+       },
+       {
+        "label": "(77.427, 103.236]",
+        "count": 216
+       },
+       {
+        "label": "(103.236, 129.045]",
+        "count": 89
+       },
+       {
+        "label": "(129.045, 154.854]",
+        "count": 39
+       },
+       {
+        "label": "(154.854, 180.663]",
+        "count": 16
+       },
+       {
+        "label": "(180.663, 206.472]",
+        "count": 3
+       },
+       {
+        "label": "(206.472, 232.281]",
+        "count": 1
+       },
+       {
+        "label": "(232.281, 258.09]",
+        "count": 3
+       }
+      ],
+      "Accessorials": [
+       {
+        "label": "(-0.075, 25.0]",
+        "count": 1877
+       },
+       {
+        "label": "(25.0, 50.0]",
+        "count": 564
+       },
+       {
+        "label": "(50.0, 75.0]",
+        "count": 559
+       }
+      ],
+      "Total Charge": [
+       {
+        "label": "(-1.338, 133.803]",
+        "count": 848
+       },
+       {
+        "label": "(133.803, 267.606]",
+        "count": 1124
+       },
+       {
+        "label": "(267.606, 401.409]",
+        "count": 552
+       },
+       {
+        "label": "(401.409, 535.212]",
+        "count": 271
+       },
+       {
+        "label": "(535.212, 669.015]",
+        "count": 127
+       },
+       {
+        "label": "(669.015, 802.818]",
+        "count": 45
+       },
+       {
+        "label": "(802.818, 936.621]",
+        "count": 24
+       },
+       {
+        "label": "(936.621, 1070.424]",
+        "count": 3
+       },
+       {
+        "label": "(1070.424, 1204.227]",
+        "count": 3
+       },
+       {
+        "label": "(1204.227, 1338.03]",
+        "count": 3
+       }
+      ],
+      "Carrier": [
+       {
+        "label": "UPS",
+        "count": 1160
+       },
+       {
+        "label": "FedEx Freight",
+        "count": 715
+       },
+       {
+        "label": "Old Dominion",
+        "count": 610
+       },
+       {
+        "label": "J.B. Hunt",
+        "count": 290
+       },
+       {
+        "label": "XPO",
+        "count": 225
+       }
+      ],
+      "Mode": [
+       {
+        "label": "LTL",
+        "count": 1325
+       },
+       {
+        "label": "Parcel",
+        "count": 1160
+       },
+       {
+        "label": "FTL",
+        "count": 515
+       }
+      ],
+      "Origin City": [
+       {
+        "label": "Columbus",
+        "count": 1025
+       },
+       {
+        "label": "Reno",
+        "count": 1021
+       },
+       {
+        "label": "Dallas",
+        "count": 954
+       }
+      ],
+      "Dest City": [
+       {
+        "label": "Chicago",
+        "count": 643
+       },
+       {
+        "label": "Atlanta",
+        "count": 600
+       },
+       {
+        "label": "Seattle",
+        "count": 599
+       },
+       {
+        "label": "Denver",
+        "count": 580
+       },
+       {
+        "label": "Phoenix",
+        "count": 578
+       }
+      ],
+      "Status": [
+       {
+        "label": "Delivered",
+        "count": 2850
+       },
+       {
+        "label": "Cancelled",
+        "count": 62
+       },
+       {
+        "label": "In Transit",
+        "count": 33
+       },
+       {
+        "label": "Exception",
+        "count": 30
+       },
+       {
+        "label": "Returned to Sender",
+        "count": 25
+       }
+      ]
+     },
+     "code_executed": "import pandas as pd\nimport numpy as np\nimport json\nfrom scipy import stats as scipy_stats\n\ndf = pd.read_csv('/data/df.csv')\n\nresult = {\n    \"eda_summary\": {},\n    \"correlations\": {},\n    \"trends\": [],\n    \"segments\": [],\n    \"anomalies\": [],\n    \"statistical_tests\": [],\n    \"forecast_points\": [],\n    \"distributions\": {},\n    \"head_preview\": [],\n    \"dtypes_summary\": {},\n    \"missing_pct\": {},\n    \"assumptions\": [],\n}\n\ntry:\n    sale_mask = (df['row_kind'] == 'sale') & (df['Currency'] == 'USD')\n    dfs = df[sale_mask].copy()\n\n    last_ship_date = dfs['Ship Date'].max()\n\n    def is_otd_numerator(row):\n        delivered_ok = (\n            row['days_before_promise'] >= 0 and\n            row['transit_days'] >= 0\n        )\n        return delivered_ok\n\n    def is_otd_denominator(row):\n        delivered_ok = (\n            row['days_before_promise'] >= 0 and\n            row['transit_days'] >= 0\n        )\n        late_delivered = (\n            row['days_late'] > 0 and\n            row['transit_days'] >= 0\n        )\n        rts_statuses = {'returned to sender', 'return to sender', 'rts', 'returned', 'refused'}\n        is_rts = str(row['Status']).strip().lower() in rts_statuses and \\\n                 not (row['Promised Date'] != row['Promised Date'])\n        open_statuses = {\n            'in transit', 'out for delivery', 'picked up', 'exception',\n            'delivery exception', 'delayed', 'tendered', 'booked', 'dispatched',\n            'pending', 'shipped', 'partially shipped', 'backordered',\n            'short shipped', 'open', 'allocated', 'released', 'picked', 'packed'\n        }\n        is_open_past_due = (\n            str(row['Status']).strip().lower() in open_statuses and\n            not (row['Promised Date'] != row['Promised Date']) and\n            row['days_past_due'] > 0\n        )\n        return delivered_ok or late_delivered or is_rts or is_open_past_due\n\n    dfs['_otd_num'] = dfs.apply(is_otd_numerator, axis=1).astype(int)\n    dfs['_otd_den'] = dfs.apply(is_otd_denominator, axis=1).astype(int)\n\n    carriers = dfs['Carrier'].dropna().unique()\n    carrier_results = []\n\n    for carrier in carriers:\n        cdf = dfs[dfs['Carrier'] == carrier]\n        num_ids = cdf[cdf['_otd_num'] == 1]['Shipment ID'].nunique()\n        den_ids = cdf[cdf['_otd_den'] == 1]['Shipment ID'].nunique()\n        rate = num_ids / den_ids if den_ids > 0 else float('nan')\n        carrier_results.append({\"name\": str(carrier), \"value\": round(rate, 6)})\n\n    carrier_results_sorted = sorted(\n        [r for r in carrier_results if r['value'] == r['value']],\n        key=lambda x: x['value'], reverse=True\n    )\n\n    overall_num = dfs[dfs['_otd_num'] == 1]['Shipment ID'].nunique()\n    overall_den = dfs[dfs['_otd_den'] == 1]['Shipment ID'].nunique()\n    overall_rate = overall_num / overall_den if overall_den > 0 else float('nan')\n\n    result['segments'].append({\n        \"segment_column\": \"Carrier\",\n        \"metric_column\": \"Delivered At\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"on_time_delivery\",\n        \"results\": carrier_results_sorted\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Carrier\",\n        \"metric_column\": \"Delivered At\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"on_time_delivery_overall\",\n        \"results\": [{\"name\": \"overall\", \"value\": round(overall_rate, 6)}]\n    })\n\n    result['assumptions'].append(\n        \"on_time_delivery denominator includes: delivered on-time, delivered late, RTS with a promised date, and open/in-transit past promised date\"\n    )\n    result['assumptions'].append(\n        \"Cancelled rows (row_kind='cancelled') and non-USD rows excluded from all figures\"\n    )\n    result['assumptions'].append(\n        f\"last_ship_date used for days_past_due reference: {last_ship_date}\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Carrier\",\n        \"metric_column\": \"Delivered At\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"on_time_delivery\",\n        \"results\": [{\"name\": \"error\", \"value\": -1.0}]\n    })\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")\n\n# \u2500\u2500\u2500 Guaranteed EDA + chart distributions + briefing (always runs) \u2500\u2500\u2500\n\ntry:\n    _head_df = df.head(5).replace({float('nan'): None})\n    result['head_preview'] = _head_df.to_dict('records')\nexcept Exception:\n    pass\n\ntry:\n    result['dtypes_summary'] = {str(k): str(v) for k, v in df.dtypes.items()}\n    result['non_null'] = {str(k): int(v) for k, v in df.notna().sum().items()}\n    result['n_rows'] = int(len(df))\nexcept Exception:\n    pass\n\ntry:\n    _miss = df.isna().mean() * 100\n    result['missing_pct'] = {str(k): round(float(v), 2) for k, v in _miss.items()}\nexcept Exception:\n    pass\n\ntry:\n    if 'Weight' in df.columns and pd.api.types.is_numeric_dtype(df['Weight']):\n        _s = df['Weight'].dropna()\n        if len(_s) > 0 and 'Weight' not in result['eda_summary']:\n            result['eda_summary']['Weight'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Linehaul' in df.columns and pd.api.types.is_numeric_dtype(df['Linehaul']):\n        _s = df['Linehaul'].dropna()\n        if len(_s) > 0 and 'Linehaul' not in result['eda_summary']:\n            result['eda_summary']['Linehaul'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Fuel Surcharge' in df.columns and pd.api.types.is_numeric_dtype(df['Fuel Surcharge']):\n        _s = df['Fuel Surcharge'].dropna()\n        if len(_s) > 0 and 'Fuel Surcharge' not in result['eda_summary']:\n            result['eda_summary']['Fuel Surcharge'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Accessorials' in df.columns and pd.api.types.is_numeric_dtype(df['Accessorials']):\n        _s = df['Accessorials'].dropna()\n        if len(_s) > 0 and 'Accessorials' not in result['eda_summary']:\n            result['eda_summary']['Accessorials'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Total Charge' in df.columns and pd.api.types.is_numeric_dtype(df['Total Charge']):\n        _s = df['Total Charge'].dropna()\n        if len(_s) > 0 and 'Total Charge' not in result['eda_summary']:\n            result['eda_summary']['Total Charge'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Weight' in df.columns and pd.api.types.is_numeric_dtype(df['Weight']):\n        _col_data = df['Weight'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Weight'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Linehaul' in df.columns and pd.api.types.is_numeric_dtype(df['Linehaul']):\n        _col_data = df['Linehaul'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Linehaul'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Fuel Surcharge' in df.columns and pd.api.types.is_numeric_dtype(df['Fuel Surcharge']):\n        _col_data = df['Fuel Surcharge'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Fuel Surcharge'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Accessorials' in df.columns and pd.api.types.is_numeric_dtype(df['Accessorials']):\n        _col_data = df['Accessorials'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Accessorials'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Total Charge' in df.columns and pd.api.types.is_numeric_dtype(df['Total Charge']):\n        _col_data = df['Total Charge'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Total Charge'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Carrier' in df.columns:\n        _vc = df['Carrier'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Carrier'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Mode' in df.columns:\n        _vc = df['Mode'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Mode'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Origin City' in df.columns:\n        _vc = df['Origin City'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Origin City'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Dest City' in df.columns:\n        _vc = df['Dest City'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Dest City'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Status' in df.columns:\n        _vc = df['Status'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Status'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\nprint(json.dumps(result, default=str))",
+     "figures_base64": [],
+     "head_preview": [
+      {
+       "Shipment ID": "SH200000",
+       "Tracking Number": "1Z0753513108674806",
+       "Carrier": "FedEx Freight",
+       "Mode": "LTL",
+       "Origin City": "Reno",
+       "Dest City": "Seattle",
+       "Ship Date": "2026-08-19",
+       "Promised Date": "2026-08-23",
+       "Delivered At": "2026-08-17 00:00:00",
+       "Status": "Delivered",
+       "Weight": 2080.7,
+       "Weight UOM": "LB",
+       "Linehaul": 266.51,
+       "Fuel Surcharge": 67.69,
+       "Accessorials": 0.0,
+       "Total Charge": 334.2,
+       "Currency": "USD",
+       "Consignee Name": "Umbrella Co",
+       "Consignee Phone": "+1 312 555 5073",
+       "row_kind": "sale",
+       "transit_days": null,
+       "days_before_promise": 6.0,
+       "days_late": null,
+       "days_past_due": 69.0
+      },
+      {
+       "Shipment ID": "SH200001",
+       "Tracking Number": "1Z0980737199801238",
+       "Carrier": "UPS",
+       "Mode": "Parcel",
+       "Origin City": "Columbus",
+       "Dest City": "Seattle",
+       "Ship Date": "2026-08-29",
+       "Promised Date": "2026-09-01",
+       "Delivered At": "2026-08-27 00:00:00",
+       "Status": "Delivered",
+       "Weight": 81.4,
+       "Weight UOM": "LB",
+       "Linehaul": 94.7,
+       "Fuel Surcharge": 24.05,
+       "Accessorials": 0.0,
+       "Total Charge": 118.75,
+       "Currency": "USD",
+       "Consignee Name": "Ann Lee",
+       "Consignee Phone": "+1 312 555 5870",
+       "row_kind": "sale",
+       "transit_days": null,
+       "days_before_promise": 5.0,
+       "days_late": null,
+       "days_past_due": 60.0
+      },
+      {
+       "Shipment ID": "SH200002",
+       "Tracking Number": "1Z0528589263260021",
+       "Carrier": "UPS",
+       "Mode": "Parcel",
+       "Origin City": "Reno",
+       "Dest City": "Seattle",
+       "Ship Date": "2026-08-10",
+       "Promised Date": "2026-08-13",
+       "Delivered At": "2026-08-08 00:00:00",
+       "Status": "Delivered",
+       "Weight": 36.2,
+       "Weight UOM": "LB",
+       "Linehaul": 50.84,
+       "Fuel Surcharge": 12.91,
+       "Accessorials": 0.0,
+       "Total Charge": 63.75,
+       "Currency": "USD",
+       "Consignee Name": "Kim Moss",
+       "Consignee Phone": "+1 312 555 5114",
+       "row_kind": "sale",
+       "transit_days": null,
+       "days_before_promise": 5.0,
+       "days_late": null,
+       "days_past_due": 79.0
+      },
+      {
+       "Shipment ID": "SH200003",
+       "Tracking Number": "1Z0683286906003257",
+       "Carrier": "J.B. Hunt",
+       "Mode": "FTL",
+       "Origin City": "Columbus",
+       "Dest City": "Phoenix",
+       "Ship Date": "2026-07-16",
+       "Promised Date": "2026-07-19",
+       "Delivered At": "2026-07-14 00:00:00",
+       "Status": "Delivered",
+       "Weight": 1613.7,
+       "Weight UOM": "LB",
+       "Linehaul": 211.61,
+       "Fuel Surcharge": 51.21,
+       "Accessorials": 75.0,
+       "Total Charge": 337.82,
+       "Currency": "USD",
+       "Consignee Name": "Umbrella Co",
+       "Consignee Phone": "+1 312 555 8220",
+       "row_kind": "sale",
+       "transit_days": null,
+       "days_before_promise": 5.0,
+       "days_late": null,
+       "days_past_due": 104.0
+      },
+      {
+       "Shipment ID": "SH200004",
+       "Tracking Number": "1Z0835569216500274",
+       "Carrier": "UPS",
+       "Mode": "Parcel",
+       "Origin City": "Columbus",
+       "Dest City": "Seattle",
+       "Ship Date": "2026-05-28",
+       "Promised Date": "2026-05-31",
+       "Delivered At": "2026-05-26 00:00:00",
+       "Status": "Delivered",
+       "Weight": 31.1,
+       "Weight UOM": "LB",
+       "Linehaul": 44.36,
+       "Fuel Surcharge": 9.67,
+       "Accessorials": 0.0,
+       "Total Charge": 54.03,
+       "Currency": "USD",
+       "Consignee Name": "Ann Lee",
+       "Consignee Phone": "+1 312 555 7232",
+       "row_kind": "sale",
+       "transit_days": null,
+       "days_before_promise": 5.0,
+       "days_late": null,
+       "days_past_due": 153.0
+      }
+     ],
+     "dtypes_summary": {
+      "Shipment ID": "object",
+      "Tracking Number": "object",
+      "Carrier": "object",
+      "Mode": "object",
+      "Origin City": "object",
+      "Dest City": "object",
+      "Ship Date": "object",
+      "Promised Date": "object",
+      "Delivered At": "object",
+      "Status": "object",
+      "Weight": "float64",
+      "Weight UOM": "object",
+      "Linehaul": "float64",
+      "Fuel Surcharge": "float64",
+      "Accessorials": "float64",
+      "Total Charge": "float64",
+      "Currency": "object",
+      "Consignee Name": "object",
+      "Consignee Phone": "object",
+      "row_kind": "object",
+      "transit_days": "float64",
+      "days_before_promise": "float64",
+      "days_late": "float64",
+      "days_past_due": "float64"
+     },
+     "missing_pct": {
+      "Shipment ID": 0.0,
+      "Tracking Number": 0.0,
+      "Carrier": 0.0,
+      "Mode": 0.0,
+      "Origin City": 0.0,
+      "Dest City": 0.0,
+      "Ship Date": 0.0,
+      "Promised Date": 0.5,
+      "Delivered At": 5.13,
+      "Status": 0.0,
+      "Weight": 0.17,
+      "Weight UOM": 0.0,
+      "Linehaul": 0.0,
+      "Fuel Surcharge": 0.0,
+      "Accessorials": 0.0,
+      "Total Charge": 0.0,
+      "Currency": 0.0,
+      "Consignee Name": 0.0,
+      "Consignee Phone": 0.0,
+      "row_kind": 0.0,
+      "transit_days": 5.33,
+      "days_before_promise": 14.0,
+      "days_late": 48.97,
+      "days_past_due": 1.4
+     },
+     "kpis": [],
+     "pre_cleaning_missing_pct": {},
+     "unique_counts": {},
+     "sample_values_per_col": {},
+     "skewness": {},
+     "target_correlations": {},
+     "target_col": null,
+     "column_roles_summary": {},
+     "column_units": {},
+     "evidence": [
+      {
+       "id": "seg:Carrier/Delivered At:ratio:on_time_delivery_overall",
+       "kind": "segment",
+       "claim": "on_time_delivery_overall (from Delivered At) by Carrier (1 groups)",
+       "code": "try:\n    sale_mask = (df['row_kind'] == 'sale') & (df['Currency'] == 'USD')\n    dfs = df[sale_mask].copy()\n\n    last_ship_date = dfs['Ship Date'].max()\n\n    def is_otd_numerator(row):\n        delivered_ok = (\n            row['days_before_promise'] >= 0 and\n            row['transit_days'] >= 0\n        )\n        return delivered_ok\n\n    def is_otd_denominator(row):\n        delivered_ok = (\n            row['days_before_promise'] >= 0 and\n            row['transit_days'] >= 0\n        )\n        late_delivered = (\n            row['days_late'] > 0 and\n            row['transit_days'] >= 0\n        )\n        rts_statuses = {'returned to sender', 'return to sender', 'rts', 'returned', 'refused'}\n        is_rts = str(row['Status']).strip().lower() in rts_statuses and \\\n                 not (row['Promised Date'] != row['Promised Date'])\n        open_statuses = {\n            'in transit', 'out for delivery', 'picked up', 'exception',\n            'delivery exception', 'delayed', 'tendered', 'booked', 'dispatched',\n            'pending', 'shipped', 'partially shipped', 'backordered',\n            'short shipped', 'open', 'allocated', 'released', 'picked', 'packed'\n        }\n        is_open_past_due = (\n            str(row['Status']).strip().lower() in open_statuses and\n            not (row['Promised Date'] != row['Promised Date']) and\n            row['days_past_due'] > 0\n        )\n        return delivered_ok or late_delivered or is_rts or is_open_past_due\n\n    dfs['_otd_num'] = dfs.apply(is_otd_numerator, axis=1).astype(int)\n    dfs['_otd_den'] = dfs.apply(is_otd_denominator, axis=1).astype(int)\n\n    carriers = dfs['Carrier'].dropna().unique()\n    carrier_results = []\n\n    for carrier in carriers:\n        cdf = dfs[dfs['Carrier'] == carrier]\n        num_ids = cdf[cdf['_otd_num'] == 1]['Shipment ID'].nunique()\n        den_ids = cdf[cdf['_otd_den'] == 1]['Shipment ID'].nunique()\n        rate = num_ids / den_ids if den_ids > 0 else float('nan')\n        carrier_results.append({\"name\": str(carrier), \"value\": round(rate, 6)})\n\n    carrier_results_sorted = sorted(\n        [r for r in carrier_results if r['value'] == r['value']],\n        key=lambda x: x['value'], reverse=True\n    )\n\n    overall_num = dfs[dfs['_otd_num'] == 1]['Shipment ID'].nunique()\n    overall_den = dfs[dfs['_otd_den'] == 1]['Shipment ID'].nunique()\n    overall_rate = overall_num / overall_den if overall_den > 0 else float('nan')\n\n    result['segments'].append({\n        \"segment_column\": \"Carrier\",\n        \"metric_column\": \"Delivered At\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"on_time_delivery\",\n        \"results\": carrier_results_sorted\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Carrier\",\n        \"metric_column\": \"Delivered At\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"on_time_delivery_overall\",\n        \"results\": [{\"name\": \"overall\", \"value\": round(overall_rate, 6)}]\n    })\n\n    result['assumptions'].append(\n        \"on_time_delivery denominator includes: delivered on-time, delivered late, RTS with a promised date, and open/in-transit past promised date\"\n    )\n    result['assumptions'].append(\n        \"Cancelled rows (row_kind='cancelled') and non-USD rows excluded from all figures\"\n    )\n    result['assumptions'].append(\n        f\"last_ship_date used for days_past_due reference: {last_ship_date}\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Carrier\",\n        \"metric_column\": \"Delivered At\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"on_time_delivery\",\n        \"results\": [{\"name\": \"error\", \"value\": -1.0}]\n    })\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"segment_column\": \"Carrier\", \"metric_column\": \"Delivered At\", \"aggregation\": \"ratio\", \"results\": [{\"name\": \"overall\", \"value\": 0.889088}], \"label\": \"on_time_delivery_overall\"}",
+       "row_count": 2846,
+       "confidence": "high",
+       "confidence_reason": "2846 rows",
+       "assumptions": [
+        "On-time delivery per Carrier: the product's own values, the rows and definition its tiles use (the data has no slack days and transit days)."
+       ]
+      },
+      {
+       "id": "eda:Weight",
+       "kind": "eda",
+       "claim": "Weight: median 672.50, mean 1,128.39, range 1.54 to 8,754.20",
+       "code": "try:\n    sale_mask = (df['row_kind'] == 'sale') & (df['Currency'] == 'USD')\n    dfs = df[sale_mask].copy()\n\n    last_ship_date = dfs['Ship Date'].max()\n\n    def is_otd_numerator(row):\n        delivered_ok = (\n            row['days_before_promise'] >= 0 and\n            row['transit_days'] >= 0\n        )\n        return delivered_ok\n\n    def is_otd_denominator(row):\n        delivered_ok = (\n            row['days_before_promise'] >= 0 and\n            row['transit_days'] >= 0\n        )\n        late_delivered = (\n            row['days_late'] > 0 and\n            row['transit_days'] >= 0\n        )\n        rts_statuses = {'returned to sender', 'return to sender', 'rts', 'returned', 'refused'}\n        is_rts = str(row['Status']).strip().lower() in rts_statuses and \\\n                 not (row['Promised Date'] != row['Promised Date'])\n        open_statuses = {\n            'in transit', 'out for delivery', 'picked up', 'exception',\n            'delivery exception', 'delayed', 'tendered', 'booked', 'dispatched',\n            'pending', 'shipped', 'partially shipped', 'backordered',\n            'short shipped', 'open', 'allocated', 'released', 'picked', 'packed'\n        }\n        is_open_past_due = (\n            str(row['Status']).strip().lower() in open_statuses and\n            not (row['Promised Date'] != row['Promised Date']) and\n            row['days_past_due'] > 0\n        )\n        return delivered_ok or late_delivered or is_rts or is_open_past_due\n\n    dfs['_otd_num'] = dfs.apply(is_otd_numerator, axis=1).astype(int)\n    dfs['_otd_den'] = dfs.apply(is_otd_denominator, axis=1).astype(int)\n\n    carriers = dfs['Carrier'].dropna().unique()\n    carrier_results = []\n\n    for carrier in carriers:\n        cdf = dfs[dfs['Carrier'] == carrier]\n        num_ids = cdf[cdf['_otd_num'] == 1]['Shipment ID'].nunique()\n        den_ids = cdf[cdf['_otd_den'] == 1]['Shipment ID'].nunique()\n        rate = num_ids / den_ids if den_ids > 0 else float('nan')\n        carrier_results.append({\"name\": str(carrier), \"value\": round(rate, 6)})\n\n    carrier_results_sorted = sorted(\n        [r for r in carrier_results if r['value'] == r['value']],\n        key=lambda x: x['value'], reverse=True\n    )\n\n    overall_num = dfs[dfs['_otd_num'] == 1]['Shipment ID'].nunique()\n    overall_den = dfs[dfs['_otd_den'] == 1]['Shipment ID'].nunique()\n    overall_rate = overall_num / overall_den if overall_den > 0 else float('nan')\n\n    result['segments'].append({\n        \"segment_column\": \"Carrier\",\n        \"metric_column\": \"Delivered At\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"on_time_delivery\",\n        \"results\": carrier_results_sorted\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Carrier\",\n        \"metric_column\": \"Delivered At\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"on_time_delivery_overall\",\n        \"results\": [{\"name\": \"overall\", \"value\": round(overall_rate, 6)}]\n    })\n\n    result['assumptions'].append(\n        \"on_time_delivery denominator includes: delivered on-time, delivered late, RTS with a promised date, and open/in-transit past promised date\"\n    )\n    result['assumptions'].append(\n        \"Cancelled rows (row_kind='cancelled') and non-USD rows excluded from all figures\"\n    )\n    result['assumptions'].append(\n        f\"last_ship_date used for days_past_due reference: {last_ship_date}\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Carrier\",\n        \"metric_column\": \"Delivered At\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"on_time_delivery\",\n        \"results\": [{\"name\": \"error\", \"value\": -1.0}]\n    })\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 1128.3923, \"std\": 1253.9624, \"min\": 1.5432, \"max\": 8754.2, \"median\": 672.5, \"count\": 2835}",
+       "row_count": 2835,
+       "confidence": "high",
+       "confidence_reason": "2835 rows",
+       "assumptions": [
+        "Weight: 0% missing, left out of this result"
+       ]
+      },
+      {
+       "id": "eda:Linehaul",
+       "kind": "eda",
+       "claim": "Linehaul: median 147.62, mean 185.04, range 5.64 to 1,069.81",
+       "code": "try:\n    sale_mask = (df['row_kind'] == 'sale') & (df['Currency'] == 'USD')\n    dfs = df[sale_mask].copy()\n\n    last_ship_date = dfs['Ship Date'].max()\n\n    def is_otd_numerator(row):\n        delivered_ok = (\n            row['days_before_promise'] >= 0 and\n            row['transit_days'] >= 0\n        )\n        return delivered_ok\n\n    def is_otd_denominator(row):\n        delivered_ok = (\n            row['days_before_promise'] >= 0 and\n            row['transit_days'] >= 0\n        )\n        late_delivered = (\n            row['days_late'] > 0 and\n            row['transit_days'] >= 0\n        )\n        rts_statuses = {'returned to sender', 'return to sender', 'rts', 'returned', 'refused'}\n        is_rts = str(row['Status']).strip().lower() in rts_statuses and \\\n                 not (row['Promised Date'] != row['Promised Date'])\n        open_statuses = {\n            'in transit', 'out for delivery', 'picked up', 'exception',\n            'delivery exception', 'delayed', 'tendered', 'booked', 'dispatched',\n            'pending', 'shipped', 'partially shipped', 'backordered',\n            'short shipped', 'open', 'allocated', 'released', 'picked', 'packed'\n        }\n        is_open_past_due = (\n            str(row['Status']).strip().lower() in open_statuses and\n            not (row['Promised Date'] != row['Promised Date']) and\n            row['days_past_due'] > 0\n        )\n        return delivered_ok or late_delivered or is_rts or is_open_past_due\n\n    dfs['_otd_num'] = dfs.apply(is_otd_numerator, axis=1).astype(int)\n    dfs['_otd_den'] = dfs.apply(is_otd_denominator, axis=1).astype(int)\n\n    carriers = dfs['Carrier'].dropna().unique()\n    carrier_results = []\n\n    for carrier in carriers:\n        cdf = dfs[dfs['Carrier'] == carrier]\n        num_ids = cdf[cdf['_otd_num'] == 1]['Shipment ID'].nunique()\n        den_ids = cdf[cdf['_otd_den'] == 1]['Shipment ID'].nunique()\n        rate = num_ids / den_ids if den_ids > 0 else float('nan')\n        carrier_results.append({\"name\": str(carrier), \"value\": round(rate, 6)})\n\n    carrier_results_sorted = sorted(\n        [r for r in carrier_results if r['value'] == r['value']],\n        key=lambda x: x['value'], reverse=True\n    )\n\n    overall_num = dfs[dfs['_otd_num'] == 1]['Shipment ID'].nunique()\n    overall_den = dfs[dfs['_otd_den'] == 1]['Shipment ID'].nunique()\n    overall_rate = overall_num / overall_den if overall_den > 0 else float('nan')\n\n    result['segments'].append({\n        \"segment_column\": \"Carrier\",\n        \"metric_column\": \"Delivered At\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"on_time_delivery\",\n        \"results\": carrier_results_sorted\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Carrier\",\n        \"metric_column\": \"Delivered At\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"on_time_delivery_overall\",\n        \"results\": [{\"name\": \"overall\", \"value\": round(overall_rate, 6)}]\n    })\n\n    result['assumptions'].append(\n        \"on_time_delivery denominator includes: delivered on-time, delivered late, RTS with a promised date, and open/in-transit past promised date\"\n    )\n    result['assumptions'].append(\n        \"Cancelled rows (row_kind='cancelled') and non-USD rows excluded from all figures\"\n    )\n    result['assumptions'].append(\n        f\"last_ship_date used for days_past_due reference: {last_ship_date}\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Carrier\",\n        \"metric_column\": \"Delivered At\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"on_time_delivery\",\n        \"results\": [{\"name\": \"error\", \"value\": -1.0}]\n    })\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 185.0379, \"std\": 134.1782, \"min\": 5.64, \"max\": 1069.81, \"median\": 147.615, \"count\": 2840}",
+       "row_count": 2840,
+       "confidence": "high",
+       "confidence_reason": "2840 rows",
+       "assumptions": []
+      },
+      {
+       "id": "eda:Fuel Surcharge",
+       "kind": "eda",
+       "claim": "Fuel Surcharge: median 32.98, mean 41.72, range 1.30 to 258.09",
+       "code": "try:\n    sale_mask = (df['row_kind'] == 'sale') & (df['Currency'] == 'USD')\n    dfs = df[sale_mask].copy()\n\n    last_ship_date = dfs['Ship Date'].max()\n\n    def is_otd_numerator(row):\n        delivered_ok = (\n            row['days_before_promise'] >= 0 and\n            row['transit_days'] >= 0\n        )\n        return delivered_ok\n\n    def is_otd_denominator(row):\n        delivered_ok = (\n            row['days_before_promise'] >= 0 and\n            row['transit_days'] >= 0\n        )\n        late_delivered = (\n            row['days_late'] > 0 and\n            row['transit_days'] >= 0\n        )\n        rts_statuses = {'returned to sender', 'return to sender', 'rts', 'returned', 'refused'}\n        is_rts = str(row['Status']).strip().lower() in rts_statuses and \\\n                 not (row['Promised Date'] != row['Promised Date'])\n        open_statuses = {\n            'in transit', 'out for delivery', 'picked up', 'exception',\n            'delivery exception', 'delayed', 'tendered', 'booked', 'dispatched',\n            'pending', 'shipped', 'partially shipped', 'backordered',\n            'short shipped', 'open', 'allocated', 'released', 'picked', 'packed'\n        }\n        is_open_past_due = (\n            str(row['Status']).strip().lower() in open_statuses and\n            not (row['Promised Date'] != row['Promised Date']) and\n            row['days_past_due'] > 0\n        )\n        return delivered_ok or late_delivered or is_rts or is_open_past_due\n\n    dfs['_otd_num'] = dfs.apply(is_otd_numerator, axis=1).astype(int)\n    dfs['_otd_den'] = dfs.apply(is_otd_denominator, axis=1).astype(int)\n\n    carriers = dfs['Carrier'].dropna().unique()\n    carrier_results = []\n\n    for carrier in carriers:\n        cdf = dfs[dfs['Carrier'] == carrier]\n        num_ids = cdf[cdf['_otd_num'] == 1]['Shipment ID'].nunique()\n        den_ids = cdf[cdf['_otd_den'] == 1]['Shipment ID'].nunique()\n        rate = num_ids / den_ids if den_ids > 0 else float('nan')\n        carrier_results.append({\"name\": str(carrier), \"value\": round(rate, 6)})\n\n    carrier_results_sorted = sorted(\n        [r for r in carrier_results if r['value'] == r['value']],\n        key=lambda x: x['value'], reverse=True\n    )\n\n    overall_num = dfs[dfs['_otd_num'] == 1]['Shipment ID'].nunique()\n    overall_den = dfs[dfs['_otd_den'] == 1]['Shipment ID'].nunique()\n    overall_rate = overall_num / overall_den if overall_den > 0 else float('nan')\n\n    result['segments'].append({\n        \"segment_column\": \"Carrier\",\n        \"metric_column\": \"Delivered At\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"on_time_delivery\",\n        \"results\": carrier_results_sorted\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Carrier\",\n        \"metric_column\": \"Delivered At\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"on_time_delivery_overall\",\n        \"results\": [{\"name\": \"overall\", \"value\": round(overall_rate, 6)}]\n    })\n\n    result['assumptions'].append(\n        \"on_time_delivery denominator includes: delivered on-time, delivered late, RTS with a promised date, and open/in-transit past promised date\"\n    )\n    result['assumptions'].append(\n        \"Cancelled rows (row_kind='cancelled') and non-USD rows excluded from all figures\"\n    )\n    result['assumptions'].append(\n        f\"last_ship_date used for days_past_due reference: {last_ship_date}\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Carrier\",\n        \"metric_column\": \"Delivered At\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"on_time_delivery\",\n        \"results\": [{\"name\": \"error\", \"value\": -1.0}]\n    })\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 41.723, \"std\": 31.2014, \"min\": 1.3, \"max\": 258.09, \"median\": 32.98, \"count\": 2840}",
+       "row_count": 2840,
+       "confidence": "high",
+       "confidence_reason": "2840 rows",
+       "assumptions": []
+      },
+      {
+       "id": "eda:Accessorials",
+       "kind": "eda",
+       "claim": "Accessorials: median 0, mean 20.95, range 0 to 75.00",
+       "code": "try:\n    sale_mask = (df['row_kind'] == 'sale') & (df['Currency'] == 'USD')\n    dfs = df[sale_mask].copy()\n\n    last_ship_date = dfs['Ship Date'].max()\n\n    def is_otd_numerator(row):\n        delivered_ok = (\n            row['days_before_promise'] >= 0 and\n            row['transit_days'] >= 0\n        )\n        return delivered_ok\n\n    def is_otd_denominator(row):\n        delivered_ok = (\n            row['days_before_promise'] >= 0 and\n            row['transit_days'] >= 0\n        )\n        late_delivered = (\n            row['days_late'] > 0 and\n            row['transit_days'] >= 0\n        )\n        rts_statuses = {'returned to sender', 'return to sender', 'rts', 'returned', 'refused'}\n        is_rts = str(row['Status']).strip().lower() in rts_statuses and \\\n                 not (row['Promised Date'] != row['Promised Date'])\n        open_statuses = {\n            'in transit', 'out for delivery', 'picked up', 'exception',\n            'delivery exception', 'delayed', 'tendered', 'booked', 'dispatched',\n            'pending', 'shipped', 'partially shipped', 'backordered',\n            'short shipped', 'open', 'allocated', 'released', 'picked', 'packed'\n        }\n        is_open_past_due = (\n            str(row['Status']).strip().lower() in open_statuses and\n            not (row['Promised Date'] != row['Promised Date']) and\n            row['days_past_due'] > 0\n        )\n        return delivered_ok or late_delivered or is_rts or is_open_past_due\n\n    dfs['_otd_num'] = dfs.apply(is_otd_numerator, axis=1).astype(int)\n    dfs['_otd_den'] = dfs.apply(is_otd_denominator, axis=1).astype(int)\n\n    carriers = dfs['Carrier'].dropna().unique()\n    carrier_results = []\n\n    for carrier in carriers:\n        cdf = dfs[dfs['Carrier'] == carrier]\n        num_ids = cdf[cdf['_otd_num'] == 1]['Shipment ID'].nunique()\n        den_ids = cdf[cdf['_otd_den'] == 1]['Shipment ID'].nunique()\n        rate = num_ids / den_ids if den_ids > 0 else float('nan')\n        carrier_results.append({\"name\": str(carrier), \"value\": round(rate, 6)})\n\n    carrier_results_sorted = sorted(\n        [r for r in carrier_results if r['value'] == r['value']],\n        key=lambda x: x['value'], reverse=True\n    )\n\n    overall_num = dfs[dfs['_otd_num'] == 1]['Shipment ID'].nunique()\n    overall_den = dfs[dfs['_otd_den'] == 1]['Shipment ID'].nunique()\n    overall_rate = overall_num / overall_den if overall_den > 0 else float('nan')\n\n    result['segments'].append({\n        \"segment_column\": \"Carrier\",\n        \"metric_column\": \"Delivered At\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"on_time_delivery\",\n        \"results\": carrier_results_sorted\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Carrier\",\n        \"metric_column\": \"Delivered At\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"on_time_delivery_overall\",\n        \"results\": [{\"name\": \"overall\", \"value\": round(overall_rate, 6)}]\n    })\n\n    result['assumptions'].append(\n        \"on_time_delivery denominator includes: delivered on-time, delivered late, RTS with a promised date, and open/in-transit past promised date\"\n    )\n    result['assumptions'].append(\n        \"Cancelled rows (row_kind='cancelled') and non-USD rows excluded from all figures\"\n    )\n    result['assumptions'].append(\n        f\"last_ship_date used for days_past_due reference: {last_ship_date}\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Carrier\",\n        \"metric_column\": \"Delivered At\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"on_time_delivery\",\n        \"results\": [{\"name\": \"error\", \"value\": -1.0}]\n    })\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 20.9542, \"std\": 29.4296, \"min\": 0.0, \"max\": 75.0, \"median\": 0.0, \"count\": 2840}",
+       "row_count": 2840,
+       "confidence": "high",
+       "confidence_reason": "2840 rows",
+       "assumptions": []
+      },
+      {
+       "id": "eda:Total Charge",
+       "kind": "eda",
+       "claim": "Total Charge: median 205.70, mean 247.72, range 6.94 to 1,338.03",
+       "code": "try:\n    sale_mask = (df['row_kind'] == 'sale') & (df['Currency'] == 'USD')\n    dfs = df[sale_mask].copy()\n\n    last_ship_date = dfs['Ship Date'].max()\n\n    def is_otd_numerator(row):\n        delivered_ok = (\n            row['days_before_promise'] >= 0 and\n            row['transit_days'] >= 0\n        )\n        return delivered_ok\n\n    def is_otd_denominator(row):\n        delivered_ok = (\n            row['days_before_promise'] >= 0 and\n            row['transit_days'] >= 0\n        )\n        late_delivered = (\n            row['days_late'] > 0 and\n            row['transit_days'] >= 0\n        )\n        rts_statuses = {'returned to sender', 'return to sender', 'rts', 'returned', 'refused'}\n        is_rts = str(row['Status']).strip().lower() in rts_statuses and \\\n                 not (row['Promised Date'] != row['Promised Date'])\n        open_statuses = {\n            'in transit', 'out for delivery', 'picked up', 'exception',\n            'delivery exception', 'delayed', 'tendered', 'booked', 'dispatched',\n            'pending', 'shipped', 'partially shipped', 'backordered',\n            'short shipped', 'open', 'allocated', 'released', 'picked', 'packed'\n        }\n        is_open_past_due = (\n            str(row['Status']).strip().lower() in open_statuses and\n            not (row['Promised Date'] != row['Promised Date']) and\n            row['days_past_due'] > 0\n        )\n        return delivered_ok or late_delivered or is_rts or is_open_past_due\n\n    dfs['_otd_num'] = dfs.apply(is_otd_numerator, axis=1).astype(int)\n    dfs['_otd_den'] = dfs.apply(is_otd_denominator, axis=1).astype(int)\n\n    carriers = dfs['Carrier'].dropna().unique()\n    carrier_results = []\n\n    for carrier in carriers:\n        cdf = dfs[dfs['Carrier'] == carrier]\n        num_ids = cdf[cdf['_otd_num'] == 1]['Shipment ID'].nunique()\n        den_ids = cdf[cdf['_otd_den'] == 1]['Shipment ID'].nunique()\n        rate = num_ids / den_ids if den_ids > 0 else float('nan')\n        carrier_results.append({\"name\": str(carrier), \"value\": round(rate, 6)})\n\n    carrier_results_sorted = sorted(\n        [r for r in carrier_results if r['value'] == r['value']],\n        key=lambda x: x['value'], reverse=True\n    )\n\n    overall_num = dfs[dfs['_otd_num'] == 1]['Shipment ID'].nunique()\n    overall_den = dfs[dfs['_otd_den'] == 1]['Shipment ID'].nunique()\n    overall_rate = overall_num / overall_den if overall_den > 0 else float('nan')\n\n    result['segments'].append({\n        \"segment_column\": \"Carrier\",\n        \"metric_column\": \"Delivered At\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"on_time_delivery\",\n        \"results\": carrier_results_sorted\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Carrier\",\n        \"metric_column\": \"Delivered At\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"on_time_delivery_overall\",\n        \"results\": [{\"name\": \"overall\", \"value\": round(overall_rate, 6)}]\n    })\n\n    result['assumptions'].append(\n        \"on_time_delivery denominator includes: delivered on-time, delivered late, RTS with a promised date, and open/in-transit past promised date\"\n    )\n    result['assumptions'].append(\n        \"Cancelled rows (row_kind='cancelled') and non-USD rows excluded from all figures\"\n    )\n    result['assumptions'].append(\n        f\"last_ship_date used for days_past_due reference: {last_ship_date}\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Carrier\",\n        \"metric_column\": \"Delivered At\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"on_time_delivery\",\n        \"results\": [{\"name\": \"error\", \"value\": -1.0}]\n    })\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 247.7152, \"std\": 167.4151, \"min\": 6.94, \"max\": 1338.03, \"median\": 205.7, \"count\": 2840}",
+       "row_count": 2840,
+       "confidence": "high",
+       "confidence_reason": "2840 rows",
+       "assumptions": []
+      }
+     ]
+    },
+    "domain": "logistics",
+    "latency_s": 58.86,
+    "cost_usd": 0.03175,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```python\ntry:\n    sale_mask = (df['row_kind'] == 'sale') & (df['Currency'] == 'USD')\n    dfs = df[sale_mask].copy()\n\n    last_ship_date = dfs['Ship Date'].max()\n\n    def is_otd_numerator(row):\n        delivered_ok = (\n            row['days_before_promise'] >= 0 and\n            row['transit_days'] >= 0\n        )\n        return delivered_ok\n\n    def is_otd_denominator(row):\n        delivered_ok = (\n            row['days_before_promise'] >= 0 and\n            row['transit_days'] >= 0\n        )\n        late_delivered = (\n            row['days_late'] > 0 and\n            row['transit_days'] >= 0\n        )\n        rts_statuses = {'returned to sender', 'return to sender', 'rts', 'returned', 'refused'}\n        is_rts = str(row['Status']).strip().lower() in rts_statuses and \\\n                 not (row['Promised Date'] != row['Promised Date'])\n        open_statuses = {\n            'in transit', 'out for delivery', 'picked up', 'exception',\n            'delivery exception', 'delayed', 'tendered', 'booked', 'dispatched',\n            'pending', 'shipped', 'partially shipped', 'backordered',\n            'short shipped', 'open', 'allocated', 'released', 'picked', 'packed'\n        }\n        is_open_past_due = (\n            str(row['Status']).strip().lower() in open_statuses and\n            not (row['Promised Date'] != row['Promised Date']) and\n            row['days_past_due'] > 0\n        )\n        return delivered_ok or late_delivered or is_rts or is_open_past_due\n\n    dfs['_otd_num'] = dfs.apply(is_otd_numerator, axis=1).astype(int)\n    dfs['_otd_den'] = dfs.apply(is_otd_denominator, axis=1).astype(int)\n\n    carriers = dfs['Carrier'].dropna().unique()\n    carrier_results = []\n\n    for carrier in carriers:\n        cdf = dfs[dfs['Carrier'] == carrier]\n        num_ids = cdf[cdf['_otd_num'] == 1]['Shipment ID'].nunique()\n        den_ids = cdf[cdf['_otd_den'] == 1]['Shipment ID'].nunique()\n        rate = num_ids / den_ids if den_ids > 0 else float('nan')\n        carrier_results.append({\"name\": str(carrier), \"value\": round(rate, 6)})\n\n    carrier_results_sorted = sorted(\n        [r for r in carrier_results if r['value'] == r['value']],\n        key=lambda x: x['value'], reverse=True\n    )\n\n    overall_num = dfs[dfs['_otd_num'] == 1]['Shipment ID'].nunique()\n    overall_den = dfs[dfs['_otd_den'] == 1]['Shipment ID'].nunique()\n    overall_rate = overall_num / overall_den if overall_den > 0 else float('nan')\n\n    result['segments'].append({\n        \"segment_column\": \"Carrier\",\n        \"metric_column\": \"Delivered At\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"on_time_delivery\",\n        \"results\": carrier_results_sorted\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Carrier\",\n        \"metric_column\": \"Delivered At\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"on_time_delivery_overall\",\n        \"results\": [{\"name\": \"overall\", \"value\": round(overall_rate, 6)}]\n    })\n\n    result['assumptions'].append(\n        \"on_time_delivery denominator includes: delivered on-time, delivered late, RTS with a promised date, and open/in-transit past promised date\"\n    )\n    result['assumptions'].append(\n        \"Cancelled rows (row_kind='cancelled') and non-USD rows excluded from all figures\"\n    )\n    result['assumptions'].append(\n        f\"last_ship_date used for days_past_due reference: {last_ship_date}\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Carrier\",\n        \"metric_column\": \"Delivered At\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"on_time_delivery\",\n        \"results\": [{\"name\": \"error\", \"value\": -1.0}]\n    })\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": false
+   },
+   {
+    "checks": [
+     {
+      "kind": "segment_value_truth",
+      "ok": false,
+      "detail": "no Carrier breakdown matches on_time_by_carrier (tried ['Delivered At'])",
+      "planted": true
+     }
+    ],
+    "hard": [
+     {
+      "rule": "no_unknown_columns",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "numbers_grounded",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_exits",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "error": null,
+    "false_findings": {
+     "false": 0,
+     "verifiable": 30,
+     "details": []
+    },
+    "builtin_only": false,
+    "pii_exits": {
+     "rule": "pii_exits",
+     "ok": true,
+     "detail": "ok"
+    },
+    "pii_canary_hits": 0,
+    "pii_model_hits": 0,
+    "pii_planted": 5533,
+    "output": {
+     "eda_summary": {
+      "Weight": {
+       "mean": 1128.3923,
+       "std": 1253.9624,
+       "min": 1.5432,
+       "max": 8754.2,
+       "median": 672.5,
+       "count": 2835
+      },
+      "Linehaul": {
+       "mean": 185.0379,
+       "std": 134.1782,
+       "min": 5.64,
+       "max": 1069.81,
+       "median": 147.615,
+       "count": 2840
+      },
+      "Fuel Surcharge": {
+       "mean": 41.723,
+       "std": 31.2014,
+       "min": 1.3,
+       "max": 258.09,
+       "median": 32.98,
+       "count": 2840
+      },
+      "Accessorials": {
+       "mean": 20.9542,
+       "std": 29.4296,
+       "min": 0.0,
+       "max": 75.0,
+       "median": 0.0,
+       "count": 2840
+      },
+      "Total Charge": {
+       "mean": 247.7152,
+       "std": 167.4151,
+       "min": 6.94,
+       "max": 1338.03,
+       "median": 205.7,
+       "count": 2840
+      }
+     },
+     "correlations": {},
+     "trends": [],
+     "segments": [
+      {
+       "segment_column": "Carrier",
+       "metric_column": "Delivered At",
+       "aggregation": "ratio",
+       "results": [
+        {
+         "name": "Overall",
+         "value": 0.887183
+        }
+       ],
+       "label": "on_time_delivery_overall"
+      }
+     ],
+     "anomalies": [],
+     "statistical_tests": [],
+     "forecast_points": [],
+     "distributions": {
+      "Weight": [
+       {
+        "label": "(-7.209, 876.809]",
+        "count": 1640
+       },
+       {
+        "label": "(876.809, 1752.075]",
+        "count": 575
+       },
+       {
+        "label": "(1752.075, 2627.34]",
+        "count": 386
+       },
+       {
+        "label": "(2627.34, 3502.606]",
+        "count": 215
+       },
+       {
+        "label": "(3502.606, 4377.872]",
+        "count": 111
+       },
+       {
+        "label": "(4377.872, 5253.137]",
+        "count": 40
+       },
+       {
+        "label": "(5253.137, 6128.403]",
+        "count": 19
+       },
+       {
+        "label": "(6128.403, 7003.669]",
+        "count": 3
+       },
+       {
+        "label": "(7003.669, 7878.934]",
+        "count": 4
+       },
+       {
+        "label": "(7878.934, 8754.2]",
+        "count": 2
+       }
+      ],
+      "Linehaul": [
+       {
+        "label": "(-1.07, 106.981]",
+        "count": 1037
+       },
+       {
+        "label": "(106.981, 213.962]",
+        "count": 1039
+       },
+       {
+        "label": "(213.962, 320.943]",
+        "count": 501
+       },
+       {
+        "label": "(320.943, 427.924]",
+        "count": 233
+       },
+       {
+        "label": "(427.924, 534.905]",
+        "count": 120
+       },
+       {
+        "label": "(534.905, 641.886]",
+        "count": 43
+       },
+       {
+        "label": "(641.886, 748.867]",
+        "count": 18
+       },
+       {
+        "label": "(748.867, 855.848]",
+        "count": 3
+       },
+       {
+        "label": "(855.848, 962.829]",
+        "count": 4
+       },
+       {
+        "label": "(962.829, 1069.81]",
+        "count": 2
+       }
+      ],
+      "Fuel Surcharge": [
+       {
+        "label": "(-0.258, 25.809]",
+        "count": 1168
+       },
+       {
+        "label": "(25.809, 51.618]",
+        "count": 1014
+       },
+       {
+        "label": "(51.618, 77.427]",
+        "count": 451
+       },
+       {
+        "label": "(77.427, 103.236]",
+        "count": 216
+       },
+       {
+        "label": "(103.236, 129.045]",
+        "count": 89
+       },
+       {
+        "label": "(129.045, 154.854]",
+        "count": 39
+       },
+       {
+        "label": "(154.854, 180.663]",
+        "count": 16
+       },
+       {
+        "label": "(180.663, 206.472]",
+        "count": 3
+       },
+       {
+        "label": "(206.472, 232.281]",
+        "count": 1
+       },
+       {
+        "label": "(232.281, 258.09]",
+        "count": 3
+       }
+      ],
+      "Accessorials": [
+       {
+        "label": "(-0.075, 25.0]",
+        "count": 1877
+       },
+       {
+        "label": "(25.0, 50.0]",
+        "count": 564
+       },
+       {
+        "label": "(50.0, 75.0]",
+        "count": 559
+       }
+      ],
+      "Total Charge": [
+       {
+        "label": "(-1.338, 133.803]",
+        "count": 848
+       },
+       {
+        "label": "(133.803, 267.606]",
+        "count": 1124
+       },
+       {
+        "label": "(267.606, 401.409]",
+        "count": 552
+       },
+       {
+        "label": "(401.409, 535.212]",
+        "count": 271
+       },
+       {
+        "label": "(535.212, 669.015]",
+        "count": 127
+       },
+       {
+        "label": "(669.015, 802.818]",
+        "count": 45
+       },
+       {
+        "label": "(802.818, 936.621]",
+        "count": 24
+       },
+       {
+        "label": "(936.621, 1070.424]",
+        "count": 3
+       },
+       {
+        "label": "(1070.424, 1204.227]",
+        "count": 3
+       },
+       {
+        "label": "(1204.227, 1338.03]",
+        "count": 3
+       }
+      ],
+      "Carrier": [
+       {
+        "label": "UPS",
+        "count": 1160
+       },
+       {
+        "label": "FedEx Freight",
+        "count": 715
+       },
+       {
+        "label": "Old Dominion",
+        "count": 610
+       },
+       {
+        "label": "J.B. Hunt",
+        "count": 290
+       },
+       {
+        "label": "XPO",
+        "count": 225
+       }
+      ],
+      "Mode": [
+       {
+        "label": "LTL",
+        "count": 1325
+       },
+       {
+        "label": "Parcel",
+        "count": 1160
+       },
+       {
+        "label": "FTL",
+        "count": 515
+       }
+      ],
+      "Origin City": [
+       {
+        "label": "Columbus",
+        "count": 1025
+       },
+       {
+        "label": "Reno",
+        "count": 1021
+       },
+       {
+        "label": "Dallas",
+        "count": 954
+       }
+      ],
+      "Dest City": [
+       {
+        "label": "Chicago",
+        "count": 643
+       },
+       {
+        "label": "Atlanta",
+        "count": 600
+       },
+       {
+        "label": "Seattle",
+        "count": 599
+       },
+       {
+        "label": "Denver",
+        "count": 580
+       },
+       {
+        "label": "Phoenix",
+        "count": 578
+       }
+      ],
+      "Status": [
+       {
+        "label": "Delivered",
+        "count": 2850
+       },
+       {
+        "label": "Cancelled",
+        "count": 62
+       },
+       {
+        "label": "In Transit",
+        "count": 33
+       },
+       {
+        "label": "Exception",
+        "count": 30
+       },
+       {
+        "label": "Returned to Sender",
+        "count": 25
+       }
+      ]
+     },
+     "code_executed": "import pandas as pd\nimport numpy as np\nimport json\nfrom scipy import stats as scipy_stats\n\ndf = pd.read_csv('/data/df.csv')\n\nresult = {\n    \"eda_summary\": {},\n    \"correlations\": {},\n    \"trends\": [],\n    \"segments\": [],\n    \"anomalies\": [],\n    \"statistical_tests\": [],\n    \"forecast_points\": [],\n    \"distributions\": {},\n    \"head_preview\": [],\n    \"dtypes_summary\": {},\n    \"missing_pct\": {},\n    \"assumptions\": [],\n}\n\ntry:\n    sale_mask = (df['row_kind'] == 'sale') & (df['Currency'] == 'USD')\n    dfs = df[sale_mask].copy()\n\n    last_ship_date = dfs['Ship Date'].max()\n\n    def is_otd_numerator(row):\n        return (\n            row['days_before_promise'] >= 0 and\n            row['transit_days'] >= 0\n        )\n\n    def is_otd_denominator(row):\n        if row['transit_days'] < 0:\n            return False\n        if row['days_before_promise'] >= 0:\n            return True\n        if row['days_late'] > 0:\n            return True\n        status_rts = str(row['Status']).strip().lower() in [\n            'returned to sender', 'return to sender', 'rts', 'returned', 'refused'\n        ]\n        if row['Promised Date'] is not None and status_rts:\n            return True\n        open_statuses = {\n            'in transit', 'out for delivery', 'picked up', 'exception',\n            'delivery exception', 'delayed', 'tendered', 'booked', 'dispatched',\n            'pending', 'shipped', 'partially shipped', 'backordered',\n            'short shipped', 'open', 'allocated', 'released', 'picked', 'packed'\n        }\n        if (str(row['Status']).strip().lower() in open_statuses and\n                row['days_past_due'] > 0):\n            return True\n        return False\n\n    dfs['_otd_num'] = dfs.apply(is_otd_numerator, axis=1).astype(int)\n    dfs['_otd_den'] = dfs.apply(is_otd_denominator, axis=1).astype(int)\n\n    carriers = dfs.groupby('Carrier')\n    carrier_results = []\n    for carrier_name, grp in carriers:\n        num = grp['_otd_num'].sum()\n        den = grp['_otd_den'].sum()\n        rate = float(num) / float(den) if den > 0 else float('nan')\n        carrier_results.append({\"name\": str(carrier_name), \"value\": round(rate, 6)})\n\n    carrier_results_sorted = sorted(\n        [r for r in carrier_results if r['value'] == r['value']],\n        key=lambda x: x['value'], reverse=True\n    )\n\n    total_num = dfs['_otd_num'].sum()\n    total_den = dfs['_otd_den'].sum()\n    overall_rate = float(total_num) / float(total_den) if total_den > 0 else float('nan')\n\n    result['segments'].append({\n        \"segment_column\": \"Carrier\",\n        \"metric_column\": \"Delivered At\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"on_time_delivery\",\n        \"results\": carrier_results_sorted\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Carrier\",\n        \"metric_column\": \"Delivered At\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"on_time_delivery_overall\",\n        \"results\": [{\"name\": \"Overall\", \"value\": round(overall_rate, 6)}]\n    })\n\n    result['assumptions'].append(\n        \"on_time_delivery: numerator = distinct shipments with days_before_promise>=0 and transit_days>=0; \"\n        \"denominator adds late (days_late>0), RTS, and open-past-due shipments; cancelled and non-USD rows excluded.\"\n    )\n    result['assumptions'].append(\n        f\"Last ship date used for days_past_due threshold: {last_ship_date}\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Carrier\",\n        \"metric_column\": \"Delivered At\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"on_time_delivery\",\n        \"results\": [{\"name\": \"error\", \"value\": -1.0}]\n    })\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")\n\n# \u2500\u2500\u2500 Guaranteed EDA + chart distributions + briefing (always runs) \u2500\u2500\u2500\n\ntry:\n    _head_df = df.head(5).replace({float('nan'): None})\n    result['head_preview'] = _head_df.to_dict('records')\nexcept Exception:\n    pass\n\ntry:\n    result['dtypes_summary'] = {str(k): str(v) for k, v in df.dtypes.items()}\n    result['non_null'] = {str(k): int(v) for k, v in df.notna().sum().items()}\n    result['n_rows'] = int(len(df))\nexcept Exception:\n    pass\n\ntry:\n    _miss = df.isna().mean() * 100\n    result['missing_pct'] = {str(k): round(float(v), 2) for k, v in _miss.items()}\nexcept Exception:\n    pass\n\ntry:\n    if 'Weight' in df.columns and pd.api.types.is_numeric_dtype(df['Weight']):\n        _s = df['Weight'].dropna()\n        if len(_s) > 0 and 'Weight' not in result['eda_summary']:\n            result['eda_summary']['Weight'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Linehaul' in df.columns and pd.api.types.is_numeric_dtype(df['Linehaul']):\n        _s = df['Linehaul'].dropna()\n        if len(_s) > 0 and 'Linehaul' not in result['eda_summary']:\n            result['eda_summary']['Linehaul'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Fuel Surcharge' in df.columns and pd.api.types.is_numeric_dtype(df['Fuel Surcharge']):\n        _s = df['Fuel Surcharge'].dropna()\n        if len(_s) > 0 and 'Fuel Surcharge' not in result['eda_summary']:\n            result['eda_summary']['Fuel Surcharge'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Accessorials' in df.columns and pd.api.types.is_numeric_dtype(df['Accessorials']):\n        _s = df['Accessorials'].dropna()\n        if len(_s) > 0 and 'Accessorials' not in result['eda_summary']:\n            result['eda_summary']['Accessorials'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Total Charge' in df.columns and pd.api.types.is_numeric_dtype(df['Total Charge']):\n        _s = df['Total Charge'].dropna()\n        if len(_s) > 0 and 'Total Charge' not in result['eda_summary']:\n            result['eda_summary']['Total Charge'] = {\n                'mean': round(float(_s.mean()), 4),\n                'std': round(float(_s.std()), 4),\n                'min': round(float(_s.min()), 4),\n                'max': round(float(_s.max()), 4),\n                'median': round(float(_s.median()), 4),\n                'count': int(_s.count()),\n            }\nexcept Exception:\n    pass\n\ntry:\n    if 'Weight' in df.columns and pd.api.types.is_numeric_dtype(df['Weight']):\n        _col_data = df['Weight'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Weight'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Linehaul' in df.columns and pd.api.types.is_numeric_dtype(df['Linehaul']):\n        _col_data = df['Linehaul'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Linehaul'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Fuel Surcharge' in df.columns and pd.api.types.is_numeric_dtype(df['Fuel Surcharge']):\n        _col_data = df['Fuel Surcharge'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Fuel Surcharge'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Accessorials' in df.columns and pd.api.types.is_numeric_dtype(df['Accessorials']):\n        _col_data = df['Accessorials'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Accessorials'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Total Charge' in df.columns and pd.api.types.is_numeric_dtype(df['Total Charge']):\n        _col_data = df['Total Charge'].dropna()\n        if len(_col_data) >= 5:\n            _n_bins = min(10, max(2, _col_data.nunique()))\n            _bins = pd.cut(_col_data, bins=_n_bins)\n            _vc = _bins.value_counts().sort_index()\n            result['distributions']['Total Charge'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items() if _v > 0\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Carrier' in df.columns:\n        _vc = df['Carrier'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Carrier'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Mode' in df.columns:\n        _vc = df['Mode'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Mode'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Origin City' in df.columns:\n        _vc = df['Origin City'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Origin City'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Dest City' in df.columns:\n        _vc = df['Dest City'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Dest City'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\n\ntry:\n    if 'Status' in df.columns:\n        _vc = df['Status'].value_counts().head(10)\n        if len(_vc) > 0:\n            result['distributions']['Status'] = [\n                {'label': str(_k), 'count': int(_v)} for _k, _v in _vc.items()\n            ]\nexcept Exception:\n    pass\nprint(json.dumps(result, default=str))",
+     "figures_base64": [],
+     "head_preview": [
+      {
+       "Shipment ID": "SH200000",
+       "Tracking Number": "1Z0753513108674806",
+       "Carrier": "FedEx Freight",
+       "Mode": "LTL",
+       "Origin City": "Reno",
+       "Dest City": "Seattle",
+       "Ship Date": "2026-08-19",
+       "Promised Date": "2026-08-23",
+       "Delivered At": "2026-08-17 00:00:00",
+       "Status": "Delivered",
+       "Weight": 2080.7,
+       "Weight UOM": "LB",
+       "Linehaul": 266.51,
+       "Fuel Surcharge": 67.69,
+       "Accessorials": 0.0,
+       "Total Charge": 334.2,
+       "Currency": "USD",
+       "Consignee Name": "Umbrella Co",
+       "Consignee Phone": "+1 312 555 5073",
+       "row_kind": "sale",
+       "transit_days": null,
+       "days_before_promise": 6.0,
+       "days_late": null,
+       "days_past_due": 69.0
+      },
+      {
+       "Shipment ID": "SH200001",
+       "Tracking Number": "1Z0980737199801238",
+       "Carrier": "UPS",
+       "Mode": "Parcel",
+       "Origin City": "Columbus",
+       "Dest City": "Seattle",
+       "Ship Date": "2026-08-29",
+       "Promised Date": "2026-09-01",
+       "Delivered At": "2026-08-27 00:00:00",
+       "Status": "Delivered",
+       "Weight": 81.4,
+       "Weight UOM": "LB",
+       "Linehaul": 94.7,
+       "Fuel Surcharge": 24.05,
+       "Accessorials": 0.0,
+       "Total Charge": 118.75,
+       "Currency": "USD",
+       "Consignee Name": "Ann Lee",
+       "Consignee Phone": "+1 312 555 5870",
+       "row_kind": "sale",
+       "transit_days": null,
+       "days_before_promise": 5.0,
+       "days_late": null,
+       "days_past_due": 60.0
+      },
+      {
+       "Shipment ID": "SH200002",
+       "Tracking Number": "1Z0528589263260021",
+       "Carrier": "UPS",
+       "Mode": "Parcel",
+       "Origin City": "Reno",
+       "Dest City": "Seattle",
+       "Ship Date": "2026-08-10",
+       "Promised Date": "2026-08-13",
+       "Delivered At": "2026-08-08 00:00:00",
+       "Status": "Delivered",
+       "Weight": 36.2,
+       "Weight UOM": "LB",
+       "Linehaul": 50.84,
+       "Fuel Surcharge": 12.91,
+       "Accessorials": 0.0,
+       "Total Charge": 63.75,
+       "Currency": "USD",
+       "Consignee Name": "Kim Moss",
+       "Consignee Phone": "+1 312 555 5114",
+       "row_kind": "sale",
+       "transit_days": null,
+       "days_before_promise": 5.0,
+       "days_late": null,
+       "days_past_due": 79.0
+      },
+      {
+       "Shipment ID": "SH200003",
+       "Tracking Number": "1Z0683286906003257",
+       "Carrier": "J.B. Hunt",
+       "Mode": "FTL",
+       "Origin City": "Columbus",
+       "Dest City": "Phoenix",
+       "Ship Date": "2026-07-16",
+       "Promised Date": "2026-07-19",
+       "Delivered At": "2026-07-14 00:00:00",
+       "Status": "Delivered",
+       "Weight": 1613.7,
+       "Weight UOM": "LB",
+       "Linehaul": 211.61,
+       "Fuel Surcharge": 51.21,
+       "Accessorials": 75.0,
+       "Total Charge": 337.82,
+       "Currency": "USD",
+       "Consignee Name": "Umbrella Co",
+       "Consignee Phone": "+1 312 555 8220",
+       "row_kind": "sale",
+       "transit_days": null,
+       "days_before_promise": 5.0,
+       "days_late": null,
+       "days_past_due": 104.0
+      },
+      {
+       "Shipment ID": "SH200004",
+       "Tracking Number": "1Z0835569216500274",
+       "Carrier": "UPS",
+       "Mode": "Parcel",
+       "Origin City": "Columbus",
+       "Dest City": "Seattle",
+       "Ship Date": "2026-05-28",
+       "Promised Date": "2026-05-31",
+       "Delivered At": "2026-05-26 00:00:00",
+       "Status": "Delivered",
+       "Weight": 31.1,
+       "Weight UOM": "LB",
+       "Linehaul": 44.36,
+       "Fuel Surcharge": 9.67,
+       "Accessorials": 0.0,
+       "Total Charge": 54.03,
+       "Currency": "USD",
+       "Consignee Name": "Ann Lee",
+       "Consignee Phone": "+1 312 555 7232",
+       "row_kind": "sale",
+       "transit_days": null,
+       "days_before_promise": 5.0,
+       "days_late": null,
+       "days_past_due": 153.0
+      }
+     ],
+     "dtypes_summary": {
+      "Shipment ID": "object",
+      "Tracking Number": "object",
+      "Carrier": "object",
+      "Mode": "object",
+      "Origin City": "object",
+      "Dest City": "object",
+      "Ship Date": "object",
+      "Promised Date": "object",
+      "Delivered At": "object",
+      "Status": "object",
+      "Weight": "float64",
+      "Weight UOM": "object",
+      "Linehaul": "float64",
+      "Fuel Surcharge": "float64",
+      "Accessorials": "float64",
+      "Total Charge": "float64",
+      "Currency": "object",
+      "Consignee Name": "object",
+      "Consignee Phone": "object",
+      "row_kind": "object",
+      "transit_days": "float64",
+      "days_before_promise": "float64",
+      "days_late": "float64",
+      "days_past_due": "float64"
+     },
+     "missing_pct": {
+      "Shipment ID": 0.0,
+      "Tracking Number": 0.0,
+      "Carrier": 0.0,
+      "Mode": 0.0,
+      "Origin City": 0.0,
+      "Dest City": 0.0,
+      "Ship Date": 0.0,
+      "Promised Date": 0.5,
+      "Delivered At": 5.13,
+      "Status": 0.0,
+      "Weight": 0.17,
+      "Weight UOM": 0.0,
+      "Linehaul": 0.0,
+      "Fuel Surcharge": 0.0,
+      "Accessorials": 0.0,
+      "Total Charge": 0.0,
+      "Currency": 0.0,
+      "Consignee Name": 0.0,
+      "Consignee Phone": 0.0,
+      "row_kind": 0.0,
+      "transit_days": 5.33,
+      "days_before_promise": 14.0,
+      "days_late": 48.97,
+      "days_past_due": 1.4
+     },
+     "kpis": [],
+     "pre_cleaning_missing_pct": {},
+     "unique_counts": {},
+     "sample_values_per_col": {},
+     "skewness": {},
+     "target_correlations": {},
+     "target_col": null,
+     "column_roles_summary": {},
+     "column_units": {},
+     "evidence": [
+      {
+       "id": "seg:Carrier/Delivered At:ratio:on_time_delivery_overall",
+       "kind": "segment",
+       "claim": "on_time_delivery_overall (from Delivered At) by Carrier (1 groups)",
+       "code": "try:\n    sale_mask = (df['row_kind'] == 'sale') & (df['Currency'] == 'USD')\n    dfs = df[sale_mask].copy()\n\n    last_ship_date = dfs['Ship Date'].max()\n\n    def is_otd_numerator(row):\n        return (\n            row['days_before_promise'] >= 0 and\n            row['transit_days'] >= 0\n        )\n\n    def is_otd_denominator(row):\n        if row['transit_days'] < 0:\n            return False\n        if row['days_before_promise'] >= 0:\n            return True\n        if row['days_late'] > 0:\n            return True\n        status_rts = str(row['Status']).strip().lower() in [\n            'returned to sender', 'return to sender', 'rts', 'returned', 'refused'\n        ]\n        if row['Promised Date'] is not None and status_rts:\n            return True\n        open_statuses = {\n            'in transit', 'out for delivery', 'picked up', 'exception',\n            'delivery exception', 'delayed', 'tendered', 'booked', 'dispatched',\n            'pending', 'shipped', 'partially shipped', 'backordered',\n            'short shipped', 'open', 'allocated', 'released', 'picked', 'packed'\n        }\n        if (str(row['Status']).strip().lower() in open_statuses and\n                row['days_past_due'] > 0):\n            return True\n        return False\n\n    dfs['_otd_num'] = dfs.apply(is_otd_numerator, axis=1).astype(int)\n    dfs['_otd_den'] = dfs.apply(is_otd_denominator, axis=1).astype(int)\n\n    carriers = dfs.groupby('Carrier')\n    carrier_results = []\n    for carrier_name, grp in carriers:\n        num = grp['_otd_num'].sum()\n        den = grp['_otd_den'].sum()\n        rate = float(num) / float(den) if den > 0 else float('nan')\n        carrier_results.append({\"name\": str(carrier_name), \"value\": round(rate, 6)})\n\n    carrier_results_sorted = sorted(\n        [r for r in carrier_results if r['value'] == r['value']],\n        key=lambda x: x['value'], reverse=True\n    )\n\n    total_num = dfs['_otd_num'].sum()\n    total_den = dfs['_otd_den'].sum()\n    overall_rate = float(total_num) / float(total_den) if total_den > 0 else float('nan')\n\n    result['segments'].append({\n        \"segment_column\": \"Carrier\",\n        \"metric_column\": \"Delivered At\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"on_time_delivery\",\n        \"results\": carrier_results_sorted\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Carrier\",\n        \"metric_column\": \"Delivered At\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"on_time_delivery_overall\",\n        \"results\": [{\"name\": \"Overall\", \"value\": round(overall_rate, 6)}]\n    })\n\n    result['assumptions'].append(\n        \"on_time_delivery: numerator = distinct shipments with days_before_promise>=0 and transit_days>=0; \"\n        \"denominator adds late (days_late>0), RTS, and open-past-due shipments; cancelled and non-USD rows excluded.\"\n    )\n    result['assumptions'].append(\n        f\"Last ship date used for days_past_due threshold: {last_ship_date}\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Carrier\",\n        \"metric_column\": \"Delivered At\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"on_time_delivery\",\n        \"results\": [{\"name\": \"error\", \"value\": -1.0}]\n    })\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"segment_column\": \"Carrier\", \"metric_column\": \"Delivered At\", \"aggregation\": \"ratio\", \"results\": [{\"name\": \"Overall\", \"value\": 0.887183}], \"label\": \"on_time_delivery_overall\"}",
+       "row_count": 2846,
+       "confidence": "high",
+       "confidence_reason": "2846 rows",
+       "assumptions": [
+        "On-time delivery per Carrier: the product's own values, the rows and definition its tiles use (the data has no slack days and transit days)."
+       ]
+      },
+      {
+       "id": "eda:Weight",
+       "kind": "eda",
+       "claim": "Weight: median 672.50, mean 1,128.39, range 1.54 to 8,754.20",
+       "code": "try:\n    sale_mask = (df['row_kind'] == 'sale') & (df['Currency'] == 'USD')\n    dfs = df[sale_mask].copy()\n\n    last_ship_date = dfs['Ship Date'].max()\n\n    def is_otd_numerator(row):\n        return (\n            row['days_before_promise'] >= 0 and\n            row['transit_days'] >= 0\n        )\n\n    def is_otd_denominator(row):\n        if row['transit_days'] < 0:\n            return False\n        if row['days_before_promise'] >= 0:\n            return True\n        if row['days_late'] > 0:\n            return True\n        status_rts = str(row['Status']).strip().lower() in [\n            'returned to sender', 'return to sender', 'rts', 'returned', 'refused'\n        ]\n        if row['Promised Date'] is not None and status_rts:\n            return True\n        open_statuses = {\n            'in transit', 'out for delivery', 'picked up', 'exception',\n            'delivery exception', 'delayed', 'tendered', 'booked', 'dispatched',\n            'pending', 'shipped', 'partially shipped', 'backordered',\n            'short shipped', 'open', 'allocated', 'released', 'picked', 'packed'\n        }\n        if (str(row['Status']).strip().lower() in open_statuses and\n                row['days_past_due'] > 0):\n            return True\n        return False\n\n    dfs['_otd_num'] = dfs.apply(is_otd_numerator, axis=1).astype(int)\n    dfs['_otd_den'] = dfs.apply(is_otd_denominator, axis=1).astype(int)\n\n    carriers = dfs.groupby('Carrier')\n    carrier_results = []\n    for carrier_name, grp in carriers:\n        num = grp['_otd_num'].sum()\n        den = grp['_otd_den'].sum()\n        rate = float(num) / float(den) if den > 0 else float('nan')\n        carrier_results.append({\"name\": str(carrier_name), \"value\": round(rate, 6)})\n\n    carrier_results_sorted = sorted(\n        [r for r in carrier_results if r['value'] == r['value']],\n        key=lambda x: x['value'], reverse=True\n    )\n\n    total_num = dfs['_otd_num'].sum()\n    total_den = dfs['_otd_den'].sum()\n    overall_rate = float(total_num) / float(total_den) if total_den > 0 else float('nan')\n\n    result['segments'].append({\n        \"segment_column\": \"Carrier\",\n        \"metric_column\": \"Delivered At\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"on_time_delivery\",\n        \"results\": carrier_results_sorted\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Carrier\",\n        \"metric_column\": \"Delivered At\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"on_time_delivery_overall\",\n        \"results\": [{\"name\": \"Overall\", \"value\": round(overall_rate, 6)}]\n    })\n\n    result['assumptions'].append(\n        \"on_time_delivery: numerator = distinct shipments with days_before_promise>=0 and transit_days>=0; \"\n        \"denominator adds late (days_late>0), RTS, and open-past-due shipments; cancelled and non-USD rows excluded.\"\n    )\n    result['assumptions'].append(\n        f\"Last ship date used for days_past_due threshold: {last_ship_date}\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Carrier\",\n        \"metric_column\": \"Delivered At\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"on_time_delivery\",\n        \"results\": [{\"name\": \"error\", \"value\": -1.0}]\n    })\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 1128.3923, \"std\": 1253.9624, \"min\": 1.5432, \"max\": 8754.2, \"median\": 672.5, \"count\": 2835}",
+       "row_count": 2835,
+       "confidence": "high",
+       "confidence_reason": "2835 rows",
+       "assumptions": [
+        "Weight: 0% missing, left out of this result"
+       ]
+      },
+      {
+       "id": "eda:Linehaul",
+       "kind": "eda",
+       "claim": "Linehaul: median 147.62, mean 185.04, range 5.64 to 1,069.81",
+       "code": "try:\n    sale_mask = (df['row_kind'] == 'sale') & (df['Currency'] == 'USD')\n    dfs = df[sale_mask].copy()\n\n    last_ship_date = dfs['Ship Date'].max()\n\n    def is_otd_numerator(row):\n        return (\n            row['days_before_promise'] >= 0 and\n            row['transit_days'] >= 0\n        )\n\n    def is_otd_denominator(row):\n        if row['transit_days'] < 0:\n            return False\n        if row['days_before_promise'] >= 0:\n            return True\n        if row['days_late'] > 0:\n            return True\n        status_rts = str(row['Status']).strip().lower() in [\n            'returned to sender', 'return to sender', 'rts', 'returned', 'refused'\n        ]\n        if row['Promised Date'] is not None and status_rts:\n            return True\n        open_statuses = {\n            'in transit', 'out for delivery', 'picked up', 'exception',\n            'delivery exception', 'delayed', 'tendered', 'booked', 'dispatched',\n            'pending', 'shipped', 'partially shipped', 'backordered',\n            'short shipped', 'open', 'allocated', 'released', 'picked', 'packed'\n        }\n        if (str(row['Status']).strip().lower() in open_statuses and\n                row['days_past_due'] > 0):\n            return True\n        return False\n\n    dfs['_otd_num'] = dfs.apply(is_otd_numerator, axis=1).astype(int)\n    dfs['_otd_den'] = dfs.apply(is_otd_denominator, axis=1).astype(int)\n\n    carriers = dfs.groupby('Carrier')\n    carrier_results = []\n    for carrier_name, grp in carriers:\n        num = grp['_otd_num'].sum()\n        den = grp['_otd_den'].sum()\n        rate = float(num) / float(den) if den > 0 else float('nan')\n        carrier_results.append({\"name\": str(carrier_name), \"value\": round(rate, 6)})\n\n    carrier_results_sorted = sorted(\n        [r for r in carrier_results if r['value'] == r['value']],\n        key=lambda x: x['value'], reverse=True\n    )\n\n    total_num = dfs['_otd_num'].sum()\n    total_den = dfs['_otd_den'].sum()\n    overall_rate = float(total_num) / float(total_den) if total_den > 0 else float('nan')\n\n    result['segments'].append({\n        \"segment_column\": \"Carrier\",\n        \"metric_column\": \"Delivered At\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"on_time_delivery\",\n        \"results\": carrier_results_sorted\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Carrier\",\n        \"metric_column\": \"Delivered At\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"on_time_delivery_overall\",\n        \"results\": [{\"name\": \"Overall\", \"value\": round(overall_rate, 6)}]\n    })\n\n    result['assumptions'].append(\n        \"on_time_delivery: numerator = distinct shipments with days_before_promise>=0 and transit_days>=0; \"\n        \"denominator adds late (days_late>0), RTS, and open-past-due shipments; cancelled and non-USD rows excluded.\"\n    )\n    result['assumptions'].append(\n        f\"Last ship date used for days_past_due threshold: {last_ship_date}\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Carrier\",\n        \"metric_column\": \"Delivered At\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"on_time_delivery\",\n        \"results\": [{\"name\": \"error\", \"value\": -1.0}]\n    })\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 185.0379, \"std\": 134.1782, \"min\": 5.64, \"max\": 1069.81, \"median\": 147.615, \"count\": 2840}",
+       "row_count": 2840,
+       "confidence": "high",
+       "confidence_reason": "2840 rows",
+       "assumptions": []
+      },
+      {
+       "id": "eda:Fuel Surcharge",
+       "kind": "eda",
+       "claim": "Fuel Surcharge: median 32.98, mean 41.72, range 1.30 to 258.09",
+       "code": "try:\n    sale_mask = (df['row_kind'] == 'sale') & (df['Currency'] == 'USD')\n    dfs = df[sale_mask].copy()\n\n    last_ship_date = dfs['Ship Date'].max()\n\n    def is_otd_numerator(row):\n        return (\n            row['days_before_promise'] >= 0 and\n            row['transit_days'] >= 0\n        )\n\n    def is_otd_denominator(row):\n        if row['transit_days'] < 0:\n            return False\n        if row['days_before_promise'] >= 0:\n            return True\n        if row['days_late'] > 0:\n            return True\n        status_rts = str(row['Status']).strip().lower() in [\n            'returned to sender', 'return to sender', 'rts', 'returned', 'refused'\n        ]\n        if row['Promised Date'] is not None and status_rts:\n            return True\n        open_statuses = {\n            'in transit', 'out for delivery', 'picked up', 'exception',\n            'delivery exception', 'delayed', 'tendered', 'booked', 'dispatched',\n            'pending', 'shipped', 'partially shipped', 'backordered',\n            'short shipped', 'open', 'allocated', 'released', 'picked', 'packed'\n        }\n        if (str(row['Status']).strip().lower() in open_statuses and\n                row['days_past_due'] > 0):\n            return True\n        return False\n\n    dfs['_otd_num'] = dfs.apply(is_otd_numerator, axis=1).astype(int)\n    dfs['_otd_den'] = dfs.apply(is_otd_denominator, axis=1).astype(int)\n\n    carriers = dfs.groupby('Carrier')\n    carrier_results = []\n    for carrier_name, grp in carriers:\n        num = grp['_otd_num'].sum()\n        den = grp['_otd_den'].sum()\n        rate = float(num) / float(den) if den > 0 else float('nan')\n        carrier_results.append({\"name\": str(carrier_name), \"value\": round(rate, 6)})\n\n    carrier_results_sorted = sorted(\n        [r for r in carrier_results if r['value'] == r['value']],\n        key=lambda x: x['value'], reverse=True\n    )\n\n    total_num = dfs['_otd_num'].sum()\n    total_den = dfs['_otd_den'].sum()\n    overall_rate = float(total_num) / float(total_den) if total_den > 0 else float('nan')\n\n    result['segments'].append({\n        \"segment_column\": \"Carrier\",\n        \"metric_column\": \"Delivered At\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"on_time_delivery\",\n        \"results\": carrier_results_sorted\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Carrier\",\n        \"metric_column\": \"Delivered At\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"on_time_delivery_overall\",\n        \"results\": [{\"name\": \"Overall\", \"value\": round(overall_rate, 6)}]\n    })\n\n    result['assumptions'].append(\n        \"on_time_delivery: numerator = distinct shipments with days_before_promise>=0 and transit_days>=0; \"\n        \"denominator adds late (days_late>0), RTS, and open-past-due shipments; cancelled and non-USD rows excluded.\"\n    )\n    result['assumptions'].append(\n        f\"Last ship date used for days_past_due threshold: {last_ship_date}\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Carrier\",\n        \"metric_column\": \"Delivered At\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"on_time_delivery\",\n        \"results\": [{\"name\": \"error\", \"value\": -1.0}]\n    })\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 41.723, \"std\": 31.2014, \"min\": 1.3, \"max\": 258.09, \"median\": 32.98, \"count\": 2840}",
+       "row_count": 2840,
+       "confidence": "high",
+       "confidence_reason": "2840 rows",
+       "assumptions": []
+      },
+      {
+       "id": "eda:Accessorials",
+       "kind": "eda",
+       "claim": "Accessorials: median 0, mean 20.95, range 0 to 75.00",
+       "code": "try:\n    sale_mask = (df['row_kind'] == 'sale') & (df['Currency'] == 'USD')\n    dfs = df[sale_mask].copy()\n\n    last_ship_date = dfs['Ship Date'].max()\n\n    def is_otd_numerator(row):\n        return (\n            row['days_before_promise'] >= 0 and\n            row['transit_days'] >= 0\n        )\n\n    def is_otd_denominator(row):\n        if row['transit_days'] < 0:\n            return False\n        if row['days_before_promise'] >= 0:\n            return True\n        if row['days_late'] > 0:\n            return True\n        status_rts = str(row['Status']).strip().lower() in [\n            'returned to sender', 'return to sender', 'rts', 'returned', 'refused'\n        ]\n        if row['Promised Date'] is not None and status_rts:\n            return True\n        open_statuses = {\n            'in transit', 'out for delivery', 'picked up', 'exception',\n            'delivery exception', 'delayed', 'tendered', 'booked', 'dispatched',\n            'pending', 'shipped', 'partially shipped', 'backordered',\n            'short shipped', 'open', 'allocated', 'released', 'picked', 'packed'\n        }\n        if (str(row['Status']).strip().lower() in open_statuses and\n                row['days_past_due'] > 0):\n            return True\n        return False\n\n    dfs['_otd_num'] = dfs.apply(is_otd_numerator, axis=1).astype(int)\n    dfs['_otd_den'] = dfs.apply(is_otd_denominator, axis=1).astype(int)\n\n    carriers = dfs.groupby('Carrier')\n    carrier_results = []\n    for carrier_name, grp in carriers:\n        num = grp['_otd_num'].sum()\n        den = grp['_otd_den'].sum()\n        rate = float(num) / float(den) if den > 0 else float('nan')\n        carrier_results.append({\"name\": str(carrier_name), \"value\": round(rate, 6)})\n\n    carrier_results_sorted = sorted(\n        [r for r in carrier_results if r['value'] == r['value']],\n        key=lambda x: x['value'], reverse=True\n    )\n\n    total_num = dfs['_otd_num'].sum()\n    total_den = dfs['_otd_den'].sum()\n    overall_rate = float(total_num) / float(total_den) if total_den > 0 else float('nan')\n\n    result['segments'].append({\n        \"segment_column\": \"Carrier\",\n        \"metric_column\": \"Delivered At\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"on_time_delivery\",\n        \"results\": carrier_results_sorted\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Carrier\",\n        \"metric_column\": \"Delivered At\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"on_time_delivery_overall\",\n        \"results\": [{\"name\": \"Overall\", \"value\": round(overall_rate, 6)}]\n    })\n\n    result['assumptions'].append(\n        \"on_time_delivery: numerator = distinct shipments with days_before_promise>=0 and transit_days>=0; \"\n        \"denominator adds late (days_late>0), RTS, and open-past-due shipments; cancelled and non-USD rows excluded.\"\n    )\n    result['assumptions'].append(\n        f\"Last ship date used for days_past_due threshold: {last_ship_date}\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Carrier\",\n        \"metric_column\": \"Delivered At\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"on_time_delivery\",\n        \"results\": [{\"name\": \"error\", \"value\": -1.0}]\n    })\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 20.9542, \"std\": 29.4296, \"min\": 0.0, \"max\": 75.0, \"median\": 0.0, \"count\": 2840}",
+       "row_count": 2840,
+       "confidence": "high",
+       "confidence_reason": "2840 rows",
+       "assumptions": []
+      },
+      {
+       "id": "eda:Total Charge",
+       "kind": "eda",
+       "claim": "Total Charge: median 205.70, mean 247.72, range 6.94 to 1,338.03",
+       "code": "try:\n    sale_mask = (df['row_kind'] == 'sale') & (df['Currency'] == 'USD')\n    dfs = df[sale_mask].copy()\n\n    last_ship_date = dfs['Ship Date'].max()\n\n    def is_otd_numerator(row):\n        return (\n            row['days_before_promise'] >= 0 and\n            row['transit_days'] >= 0\n        )\n\n    def is_otd_denominator(row):\n        if row['transit_days'] < 0:\n            return False\n        if row['days_before_promise'] >= 0:\n            return True\n        if row['days_late'] > 0:\n            return True\n        status_rts = str(row['Status']).strip().lower() in [\n            'returned to sender', 'return to sender', 'rts', 'returned', 'refused'\n        ]\n        if row['Promised Date'] is not None and status_rts:\n            return True\n        open_statuses = {\n            'in transit', 'out for delivery', 'picked up', 'exception',\n            'delivery exception', 'delayed', 'tendered', 'booked', 'dispatched',\n            'pending', 'shipped', 'partially shipped', 'backordered',\n            'short shipped', 'open', 'allocated', 'released', 'picked', 'packed'\n        }\n        if (str(row['Status']).strip().lower() in open_statuses and\n                row['days_past_due'] > 0):\n            return True\n        return False\n\n    dfs['_otd_num'] = dfs.apply(is_otd_numerator, axis=1).astype(int)\n    dfs['_otd_den'] = dfs.apply(is_otd_denominator, axis=1).astype(int)\n\n    carriers = dfs.groupby('Carrier')\n    carrier_results = []\n    for carrier_name, grp in carriers:\n        num = grp['_otd_num'].sum()\n        den = grp['_otd_den'].sum()\n        rate = float(num) / float(den) if den > 0 else float('nan')\n        carrier_results.append({\"name\": str(carrier_name), \"value\": round(rate, 6)})\n\n    carrier_results_sorted = sorted(\n        [r for r in carrier_results if r['value'] == r['value']],\n        key=lambda x: x['value'], reverse=True\n    )\n\n    total_num = dfs['_otd_num'].sum()\n    total_den = dfs['_otd_den'].sum()\n    overall_rate = float(total_num) / float(total_den) if total_den > 0 else float('nan')\n\n    result['segments'].append({\n        \"segment_column\": \"Carrier\",\n        \"metric_column\": \"Delivered At\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"on_time_delivery\",\n        \"results\": carrier_results_sorted\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Carrier\",\n        \"metric_column\": \"Delivered At\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"on_time_delivery_overall\",\n        \"results\": [{\"name\": \"Overall\", \"value\": round(overall_rate, 6)}]\n    })\n\n    result['assumptions'].append(\n        \"on_time_delivery: numerator = distinct shipments with days_before_promise>=0 and transit_days>=0; \"\n        \"denominator adds late (days_late>0), RTS, and open-past-due shipments; cancelled and non-USD rows excluded.\"\n    )\n    result['assumptions'].append(\n        f\"Last ship date used for days_past_due threshold: {last_ship_date}\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Carrier\",\n        \"metric_column\": \"Delivered At\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"on_time_delivery\",\n        \"results\": [{\"name\": \"error\", \"value\": -1.0}]\n    })\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")",
+       "result_excerpt": "{\"mean\": 247.7152, \"std\": 167.4151, \"min\": 6.94, \"max\": 1338.03, \"median\": 205.7, \"count\": 2840}",
+       "row_count": 2840,
+       "confidence": "high",
+       "confidence_reason": "2840 rows",
+       "assumptions": []
+      }
+     ]
+    },
+    "domain": "logistics",
+    "latency_s": 45.27,
+    "cost_usd": 0.02959,
+    "llm_calls": 1,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "```python\ntry:\n    sale_mask = (df['row_kind'] == 'sale') & (df['Currency'] == 'USD')\n    dfs = df[sale_mask].copy()\n\n    last_ship_date = dfs['Ship Date'].max()\n\n    def is_otd_numerator(row):\n        return (\n            row['days_before_promise'] >= 0 and\n            row['transit_days'] >= 0\n        )\n\n    def is_otd_denominator(row):\n        if row['transit_days'] < 0:\n            return False\n        if row['days_before_promise'] >= 0:\n            return True\n        if row['days_late'] > 0:\n            return True\n        status_rts = str(row['Status']).strip().lower() in [\n            'returned to sender', 'return to sender', 'rts', 'returned', 'refused'\n        ]\n        if row['Promised Date'] is not None and status_rts:\n            return True\n        open_statuses = {\n            'in transit', 'out for delivery', 'picked up', 'exception',\n            'delivery exception', 'delayed', 'tendered', 'booked', 'dispatched',\n            'pending', 'shipped', 'partially shipped', 'backordered',\n            'short shipped', 'open', 'allocated', 'released', 'picked', 'packed'\n        }\n        if (str(row['Status']).strip().lower() in open_statuses and\n                row['days_past_due'] > 0):\n            return True\n        return False\n\n    dfs['_otd_num'] = dfs.apply(is_otd_numerator, axis=1).astype(int)\n    dfs['_otd_den'] = dfs.apply(is_otd_denominator, axis=1).astype(int)\n\n    carriers = dfs.groupby('Carrier')\n    carrier_results = []\n    for carrier_name, grp in carriers:\n        num = grp['_otd_num'].sum()\n        den = grp['_otd_den'].sum()\n        rate = float(num) / float(den) if den > 0 else float('nan')\n        carrier_results.append({\"name\": str(carrier_name), \"value\": round(rate, 6)})\n\n    carrier_results_sorted = sorted(\n        [r for r in carrier_results if r['value'] == r['value']],\n        key=lambda x: x['value'], reverse=True\n    )\n\n    total_num = dfs['_otd_num'].sum()\n    total_den = dfs['_otd_den'].sum()\n    overall_rate = float(total_num) / float(total_den) if total_den > 0 else float('nan')\n\n    result['segments'].append({\n        \"segment_column\": \"Carrier\",\n        \"metric_column\": \"Delivered At\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"on_time_delivery\",\n        \"results\": carrier_results_sorted\n    })\n\n    result['segments'].append({\n        \"segment_column\": \"Carrier\",\n        \"metric_column\": \"Delivered At\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"on_time_delivery_overall\",\n        \"results\": [{\"name\": \"Overall\", \"value\": round(overall_rate, 6)}]\n    })\n\n    result['assumptions'].append(\n        \"on_time_delivery: numerator = distinct shipments with days_before_promise>=0 and transit_days>=0; \"\n        \"denominator adds late (days_late>0), RTS, and open-past-due shipments; cancelled and non-USD rows excluded.\"\n    )\n    result['assumptions'].append(\n        f\"Last ship date used for days_past_due threshold: {last_ship_date}\"\n    )\n\nexcept Exception as e:\n    result['segments'].append({\n        \"segment_column\": \"Carrier\",\n        \"metric_column\": \"Delivered At\",\n        \"aggregation\": \"ratio\",\n        \"label\": \"on_time_delivery\",\n        \"results\": [{\"name\": \"error\", \"value\": -1.0}]\n    })\n    result['assumptions'].append(f\"Segmentation error: {str(e)}\")\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": false
+   }
+  ]
+ }
+}
