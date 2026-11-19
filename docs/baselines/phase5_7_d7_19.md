@@ -1,8 +1,9 @@
 # Phase 5.7 follow-up — the D7-19 PR: one row rule for counts and rates by group (2026-11-19)
 
-Wall clock: 4.0 h (first commit 2026-11-19 10:47 → merge 2026-11-19 TBD)
+Wall clock: 5.1 h (first commit 2026-11-19 10:47 → merge 2026-11-19 15:50)
 Plan mode before it: ~0.8 h. Budget 6 h; the breaker never fired (3.0 h was reached inside the paid
-step, the projection stayed under 6 h).
+step, the projection stayed under 6 h). Time sinks: `evals.snapshot text` ran over an hour twice
+(PR24-02, fixed); CI 15 min; the paid re-measure's two fix rounds.
 
 Plan: `~/.claude/plans/pasted-content-id-2e32-start-the-buzzing-rabin.md`. It checks off every
 plan-mode step of the ROADMAP 5.7 contract by name:
@@ -24,7 +25,7 @@ plan-mode step of the ROADMAP 5.7 contract by name:
   script; the guard needs the rule in each builder's own source; the Status exception must keep
   currency out; rows ≠ records), all folded into the plan.
 - **grilling:** G1–G5 answered as a senior engineer; the user's calls Q1–Q3 (below).
-- **sizing:** 6.3 h / ≤ $1.45 projected; actual 4.0 h / $1.99 (the paid re-measure found two bugs).
+- **sizing:** 6.3 h / ≤ $1.45 projected; actual 5.1 h / $1.99 (the paid re-measure found two bugs).
 - **stop rule:** properties, `scripts/mutation.py --check` and `tests/test_retro_ledger.py`
   green before the PR (the audit procedure's rule, not "an auditor found nothing").
 
@@ -119,3 +120,10 @@ UNENFORCED 77 (≤ 77).
 - Counts across currencies (Q1's end state): the banking follow-up, one change in `count_rows`
   and `measure`'s currency line.
 - The profile histogram of a measure still reads every row (5.8, `PROFILE` OPEN note).
+
+## Post-merge quick audit (2026-11-19)
+
+Report: UNENFORCED 77 (≤ 77); 27 rows with ≥ 2 recurrences (27 at step 0); recurrences raised by
+this PR: D3-10 (5 → 6, a $0 harness off the production path). New rows: PR24-01 (C6, closed),
+PR24-02 (G, closed), PR24-03 (C1, Open, pinned xfail-strict). Main CI after the merge: green.
+Correction: D7-19's finding text no longer starts "Open:" (its fix closed it in this PR).
