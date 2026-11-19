@@ -386,7 +386,51 @@ def standard_stats(raw: dict, df: pd.DataFrame, contract: DataContract, task: An
                                         "results": [{"name": f"{a}|{b}", "value": round(float(means[(a, b)]), 4)}
                                                     for a, b in top]})
                 raw["builtin"].append(f"seg:{joint}/{c}")
+    product_breakdowns(raw, df, contract)
     _drop_protected_cells(raw, df, contract)
+
+
+def product_breakdowns(raw: dict, df: pd.DataFrame, contract: DataContract) -> None:
+    """The model's breakdowns the product computes itself (D7-19; e2e-89, logi-4, logi-7): one
+    labelled with a pack KPI takes the KPI per group (domain_pack.measure by=, as tiles and answers
+    do); a plain every-row count takes the counted records (rows_for count=True). The model's
+    groups are kept; one the product hides or can't compute is dropped, and each change is said
+    in an assumption. Matched by the label, never by the values (C4)."""
+    from domain_pack import MeasuredBy, defaults_pack, measure, named_kpis, rows_for, unavailable_words
+    pack = defaults_pack(contract)
+    if pack is None:
+        return
+    roles = {r: c for r, c in contract.roles.items() if c in df.columns}
+    notes = raw.setdefault("assumptions", [])
+    for s in list(raw.get("segments") or []):
+        col = s.get("segment_column") if isinstance(s, dict) else None
+        got = [r for r in (s.get("results") or []) if isinstance(r, dict)] if col else []
+        if col not in df.columns or not got:   # a joint 'a|b' breakdown stays the model's
+            continue
+        names = [str(r.get("name")) for r in got]
+        label = str(s.get("label") or "").strip()
+        kpi = (label if pack.kpi(label) else next(iter(named_kpis(pack, contract, label.replace("_", " "))),
+                                                  None)) if label else None
+        if kpi:
+            v = measure(df, roles, pack, kpi, by=col)
+            vals = {str(k): float(x) for k, x in v.values.items()} if isinstance(v, MeasuredBy) else {}
+            s["results"] = [{"name": n, "value": round(vals[n], 6)} for n in names if n in vals]
+            why = "" if vals else f" ({unavailable_words(v, pack, pack.kpi(kpi))})"
+            notes.append(f"{label} by {col}: the product's own {pack.kpi(kpi).label} per {col}, the rows "
+                         f"and definition its tiles use{why}.")
+        elif str(s.get("aggregation") or "").lower() == "count" and s.get("metric_column") in df.columns:
+            metric = s["metric_column"]
+            every = {str(k): float(n) for k, n in df.groupby(col)[metric].count().items()}
+            if not all(abs(float(r.get("value") or 0) - every.get(n, -1)) < 0.5 for n, r in zip(names, got)):
+                continue   # the model's own filter (cancelled orders by machine): its question
+            rows, how = rows_for(df, contract, col, count=True)
+            if not how:
+                continue
+            counts = {str(k): float(n) for k, n in rows.groupby(col)[metric].count().items()}
+            s["results"] = [{"name": n, "value": counts[n]} for n in names if counts.get(n)]
+            notes.append(f"{metric} count by {col}: {how}")
+        if not s["results"]:
+            raw["segments"].remove(s)
 
 
 def _drop_protected_cells(raw: dict, df: pd.DataFrame, contract: DataContract) -> None:

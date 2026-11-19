@@ -729,4 +729,13 @@ def kpi_roles(pack: Pack, name: str) -> set[str]:
 def counted(pack: Pack, role: str) -> bool:
     """An additive amount or count (net sales, units): its totals use the KPI rows (sale and
     return rows, the main currency), so a trend and its tile are one number."""
-    return pack.roles[role].kind in ("money", "count") and pack.roles[role].additive
+    return pack.roles[role].additive and (pack.roles[role].kind in ("money", "count") or (
+        pack.roles[role].kind == "number" and role in _summed(pack)))
+
+
+def _summed(pack: Pack) -> set[str]:
+    """The roles a KPI sums (a weight in cost per lb): a total of one reads the KPI's rows
+    (D7-19: 'sum of Weight by Mode' kept cancelled shipments, a weight at $0)."""
+    return {r for k in pack.kpis for alt in [*k.num, *(k.den or [])] for t in alt
+            for e in [t.sum if t.sum is not None else t.sum_abs] if e is not None
+            for r in (e if isinstance(e, list) else [e])}

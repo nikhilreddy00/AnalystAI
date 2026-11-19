@@ -1,0 +1,96 @@
+"""D7-19: a count or a sum by group reads the rows the tiles count (domain_pack.rows_for), from
+the model's code and the generic charts alike. GLOSSARY: Counted record, Kind-deciding column."""
+import json
+from pathlib import Path
+
+import pytest
+
+from tests.test_oracle import _built
+
+REPORTS = Path(__file__).parents[1] / "evals" / "reports"
+from tests.test_dashboard_filters import PACK_DATASETS  # noqa: E402
+
+# the generic count charts: (category key in a data row, its count key)
+COUNT_CHARTS = {"composition_donut": ("name", "value"), "composition_horizontal_bar": (None, "count"),
+                "value_counts": (None, "count")}
+
+
+@pytest.mark.parametrize("name", PACK_DATASETS)
+def test_every_generic_count_chart_counts_the_records_the_tiles_count(name):
+    """D7-19, truth-free over every pack: a generic breakdown chart's bars are the counted records
+    per value (rows_for count=True), never every row. Fails for any builder that counts the
+    frame it was handed."""
+    from domain_pack import rows_for
+    from tests.test_dashboard_filters import _dashboard
+    clean, contract, charts, *_ = _dashboard(name)
+    for c in (c for c in charts if c.source_finding in COUNT_CHARTS and c.rationale):
+        col = c.rationale.x
+        key, val = COUNT_CHARTS[c.source_finding]
+        want = rows_for(clean, contract, col, count=True)[0][col].dropna().astype(str).value_counts()
+        got = {str(r[key or col]): r[val] for r in c.data}
+        assert got == {k: int(want[k]) for k in got}, (name, c.title)
+
+
+def _stats(raw: dict, name: str, segments: list[str], query: str = "overview") -> dict:
+    from agents.analysis_agent import standard_stats
+    from orchestrator.state import AnalysisTask
+    _, df, contract, _ = _built(name)
+    standard_stats(raw, df, contract, AnalysisTask(raw_query=query, target_metrics=[], segments=segments,
+                                                   analysis_types=["eda"]))
+    return raw
+
+
+def test_a_models_kpi_by_group_is_the_products():
+    """logi-7 gate (analysis-20261118T161409Z, $0): the model's cost per lb by mode kept
+    cancelled shipments (Parcel 1.4027). A segment labelled with a pack KPI takes the product's
+    per-group value (domain_pack.measure by=), as tiles and answers do. No 'segmentation' asked:
+    an overview's labelled segment is replaced too."""
+    run = json.loads((REPORTS / "analysis-20261118T161409Z.json").read_text())["runs"]["logi-7"][0]
+    seg = next(s for s in run["output"]["segments"] if s.get("label") == "cost_per_lb")
+    raw = _stats({"segments": [seg]}, "tms_shipments", ["Mode"])
+    got = {r["name"]: r["value"] for r in raw["segments"][0]["results"]}
+    assert got == pytest.approx(_built("tms_shipments")[3]["cost_per_lb_by_mode"], abs=0.0005)
+    assert any("cost_per_lb" in a or "Cost per lb" in a for a in raw["assumptions"])
+
+
+def test_a_count_the_model_filtered_on_purpose_is_left_as_written():
+    """Only a plain every-row count is the bug: 'cancelled work orders by machine' is the model's
+    own filter and answers its question."""
+    _, df, _, _ = _built("work_orders")
+    own = df[df["STATUS"].str.upper().isin(["CAN", "CANCELLED"])].groupby("ASSETNUM")["WONUM"].count()
+    assert own.sum() > 0
+    results = [{"name": k, "value": float(v)} for k, v in own.items()]
+    raw = _stats({"segments": [{"segment_column": "ASSETNUM", "metric_column": "WONUM", "aggregation": "count",
+                                "results": [dict(r) for r in results]}]}, "work_orders", ["ASSETNUM"])
+    assert raw["segments"][0]["results"] == results
+
+
+def test_a_count_by_group_reads_the_counted_records():
+    """The generic Carrier donut counted 3,000 rows beside the 2,840-shipment tile: cancelled
+    and other-currency rows are no shipments."""
+    from domain_pack import rows_for
+    _, df, contract, truth = _built("tms_shipments")
+    rows, how = rows_for(df, contract, "Carrier", count=True)
+    live = df[(df["Status"].str.lower() != "cancelled") & (df["Currency"] == "USD")]
+    assert rows.groupby("Carrier").size().to_dict() == live.groupby("Carrier").size().to_dict()
+    assert len(rows) == truth["shipments"] and "cancelled" in how
+
+
+def test_a_count_by_the_column_that_decides_a_kind_keeps_that_kind():
+    """The ruled-out one-filter fix: a Status breakdown exists to show the cancelled rows. Put
+    back only the kind Status decides; other currencies stay out (as the tiles): 62 cancelled,
+    4 of them in another currency."""
+    from domain_pack import rows_for
+    _, df, contract, truth = _built("tms_shipments")
+    rows, _ = rows_for(df, contract, "Status", count=True)
+    assert (rows["Status"].str.lower() == "cancelled").sum() == truth["cancelled"] - 4 == 58
+    assert (rows["Currency"] == "USD").all()
+
+
+def test_a_sum_of_a_measure_a_kpi_sums_reads_the_kpis_rows():
+    """D8 audit pass 1: 'sum of Weight by Mode' read cancelled rows (a weight at $0); cost per lb
+    sums Weight over counted rows, so every total of Weight does."""
+    from domain_pack import rows_for
+    _, df, contract, truth = _built("tms_shipments")
+    rows, how = rows_for(df, contract, "Weight")
+    assert len(rows) == truth["shipments"] and how

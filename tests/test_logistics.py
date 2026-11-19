@@ -389,12 +389,10 @@ def test_a_kind_of_row_the_export_may_omit_is_still_unknown():
     assert dp.compute_kpi(df, SHIP, LOGI, "open_shipments") is None
 
 
-@pytest.mark.xfail(strict=True, reason="D7-19 (Open; U3): the model's own on-time-by-carrier code "
-                   "is delivered-only (UPS 96.2%, truth 93.7%); standard_stats never replaces a "
-                   "ratio by group with the pack KPI's. logi-4 0/3 at the final re-measure")
 def test_logi_4s_on_time_by_carrier_is_the_products():
-    """logi-4's stored run (analysis-20261118T175343Z, $0): its Carrier segment through
-    standard_stats must come out as the truth's on-time by carrier."""
+    """logi-4's stored run (analysis-20261118T175343Z, $0): its Carrier segment (delivered-only,
+    UPS 96.2%, truth 93.7%) through standard_stats comes out as the truth's on-time by carrier
+    (D7-19: a KPI-labelled segment takes domain_pack.measure by=)."""
     import json
     from pathlib import Path
 

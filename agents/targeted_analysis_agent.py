@@ -432,7 +432,9 @@ def handle_distribution(df: pd.DataFrame, params: TargetedParams, contract: Data
             _suggest_metric_questions(contract) or ["Specify a column to plot"],
         )
 
-    series = rows_for(df, contract, col)[0][col].dropna()   # the rows its tiles count (class 1)
+    # the rows its tiles count (class 1); a category's value counts: the counted records (D7-19)
+    rows, left = rows_for(df, contract, col, count=not pd.api.types.is_numeric_dtype(df[col]))
+    series = rows[col].dropna()
     if series.empty:
         return _unanswerable(
             QuestionIntent.DISTRIBUTION,
@@ -468,7 +470,7 @@ def handle_distribution(df: pd.DataFrame, params: TargetedParams, contract: Data
              len(series), code=f"df[{col!r}].value_counts().head(20)")
         answer = (
             f"{col}: {series.nunique()} unique values; top = '{vc.index[0]}' "
-            f"({int(vc.iloc[0])} rows, {vc.iloc[0] / len(series) * 100:.1f}%)."
+            f"({int(vc.iloc[0])} rows, {vc.iloc[0] / len(series) * 100:.1f}%)." + (f" {left}" if left else "")
         )
 
     pack = defaults_pack(contract)

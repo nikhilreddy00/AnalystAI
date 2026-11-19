@@ -268,7 +268,8 @@ def _chart_data(df_parquet: bytes | None, chart_type: str, x: str, y: str,
     if df.empty:
         return []
     if x == y or not pd.api.types.is_numeric_dtype(df[y]):
-        grouped = df.groupby(x).size()       # non-numeric y: count rows per x
+        # non-numeric y: count rows per x, the counted records (D7-19)
+        grouped = rows_for(df, contract, x, count=True)[0].groupby(x).size()
     else:
         grouped = aggregate(df, [x], y, "mean", contract)   # a level: latest per entity
     if chart_type == ChartType.LINE.value:

@@ -153,8 +153,9 @@ _ROW_RULES = ("rows_for(", "entity_rows(", "compute_kpi(", "handle_kpi(", "pack_
 PROFILE = {"classify_columns", "_build_color_map", "_pick_primary_metric", "_pick_top_category",
            "_rank_continuous_by_target_assoc", "_ranked_categoricals_by_target_separation",
            "_highest_cv_kpi", "_comparison_kpi_chi2", "_best_correlated_pair",
-           "_build_correlation_heatmap", "_build_value_counts", "_build_donut",
-           "_build_horizontal_bar_top_n", "_build_stacked_bar_normalized", "_build_target_rate_by_cat",
+           "_build_correlation_heatmap",
+           # D7-19: the count builders (value counts, donut, top-N bar, stacked, target rate)
+           # left this list: they count rows_for(count=True), never every row
            "_build_continuous_split_by_target", "_build_time_series", "compute_briefing_extras",
            "generate_dashboard_charts", "build_single_chart", "handle_ab_significance",
            # OPEN (2026-11-03): the profile histogram of a measure still reads every row; moving

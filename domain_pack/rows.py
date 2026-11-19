@@ -92,14 +92,17 @@ def with_spell_events(df: pd.DataFrame, pack: Pack, roles: dict[str, str]) -> pd
 
 
 def rows_for(df: pd.DataFrame, contract, column: str,
-             full: pd.DataFrame | None = None) -> tuple[pd.DataFrame, str]:
+             full: pd.DataFrame | None = None, *, count: bool = False) -> tuple[pd.DataFrame, str]:
     """(rows, how): THE rows every answer, chart and drill-down of `column` reads (plan v2 R1:
     one entry point; tests/test_one_definition.py guards it). On a strong-matched pack's additive
-    money or count column: sale and return rows in the main currency, as its tiles count them;
-    a level (a balance) keeps every row with its value blanked where the row is left out, so
-    `utils.aggregate` / `latest_rows` judge each entity's latest row first. Anything else: every
-    row, no note."""
+    money or count column (or a number a KPI sums: weight): sale and return rows in the main
+    currency, as its tiles count them; a level (a balance) keeps every row with its value blanked
+    where the row is left out, so `utils.aggregate` / `latest_rows` judge each entity's latest row
+    first. `count`: rows counted BY `column` (a count by group), the counted records (D7-19).
+    Anything else: every row, no note."""
     pack = defaults_pack(contract)
+    if count:
+        return _counted_records(df, contract, column, full, pack)
     role = next((r for r, c in contract.roles.items() if c == column), None) if pack else None
     if role and pack.roles[role].over_time == "last" and (gone := ended_records(df, contract)).any():
         # a spell's snapshot row past its end (its exit record) holds no one: its level is
@@ -125,6 +128,30 @@ def rows_for(df: pd.DataFrame, contract, column: str,
         else df[kept]
     return out, pack.say("money_rows_note", currency=f" in {currency}" if currency else "",
                               n=f"{int((~kept).sum()):,}")
+
+
+def _counted_records(df, contract, by: str, full, pack) -> tuple[pd.DataFrame, str]:
+    """The rows a count by `by` reads: the rows a count tile reads (`KPI.rows` default, sale, in
+    the main currency), except the kinds `by` itself decides: a Status breakdown keeps its
+    cancelled rows, a Currency breakdown every currency (GLOSSARY Kind-deciding column). The
+    kinds are judged as if `by` were not there; on the whole data when `df` is a part of it."""
+    if pack is None:
+        return df, ""
+    roles = {r: c for r, c in contract.roles.items() if c in df.columns}
+    own = next((r for r, c in roles.items() if c == by), None)
+    keep, _, _ = main_currency(df, roles)
+    if own == "currency":
+        keep = pd.Series(True, index=df.index)
+    judged = {r: c for r, c in roles.items() if r != own}
+    whole = full if full is not None and df.index.isin(full.index).all() else df
+    kinds = row_kinds(whole, judged, pack).reindex(df.index)
+    kept = keep & kinds.eq("sale")
+    if kept.all():
+        return df, ""
+    left = kinds.where(keep, "other_currency")[~kept].value_counts()
+    words = [f"{n:,} {pack.row_labels.get(k) or pack.code(k).replace('_', ' ')}" if k != "other_currency"
+             else f"{n:,} rows in other currencies" for k, n in left.items()]
+    return df[kept], f"Left out, as the tiles count: {', '.join(words)}."
 
 
 def ended_records(df: pd.DataFrame, contract) -> pd.Series:
