@@ -34,7 +34,7 @@ evals/tests, and evidence-backed justification; then an open-source v0.1 release
 | 5 | The contract on every agent | ✅ 2026-10-30 — `docs/baselines/phase5_*.md` |
 | 5.6 | Durable runs (a) + workspace (b) | ✅ 2026-10-31 — `docs/baselines/phase5_6a.md`, `phase5_6b.md` |
 | 5.5 | Domain coverage (8 domains, PHI) | ✅ 2026-11-01 — `docs/baselines/phase5_5.md` |
-| 5.7 | Domain depth, one domain per session | domains 1–8 ✅ (8 logistics 2026-11-18), D7-19 PR ✅ 2026-11-19 (`phase5_7_d7_19.md`; e2e-97 open, its own PR), 5.7b ✅ 2026-11-16; all eight done |
+| 5.7 | Domain depth, one domain per session | domains 1–8 ✅, D7-19 PR ✅ 2026-11-19, 5.7b ✅ 2026-11-16 |
 | 5.8 | Data sources (MySQL, public Sheets, DuckDB, SQL Server, dlt) | pending |
 | 6 | E2E hardening + open-source v0.1 release | pending |
 
