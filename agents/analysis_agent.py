@@ -226,6 +226,16 @@ def model_frame(df: pd.DataFrame, contract: DataContract) -> tuple[pd.DataFrame,
     return framed, [*([col] if col else []), *added, *events]
 
 
+def analysis_frames(df: pd.DataFrame, contract: DataContract) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """(the data's own columns, the model's frame built from them): THE frames the steps after the
+    sandbox read, whichever frame their caller passed (a run passes the model's frame, the golden
+    and the eval harness the plain one: CODING_STANDARDS rule 1, D3-10). The product's rules
+    (measure, rows) read the first; the model's column names (a derived span, a spell event) are
+    found in the second. tests/test_production_path.py holds them to one answer."""
+    own = df[[c.name for c in contract.columns if c.name in df.columns]]
+    return own, (model_frame(own, contract)[0] if contract.domain else own)
+
+
 def kind_column(contract: DataContract) -> str:
     """The row-kind column's name in the frame analysis gets (domain_pack.with_row_kind's rule)."""
     names = {c.name for c in contract.columns}
@@ -242,6 +252,7 @@ def standard_stats(raw: dict, df: pd.DataFrame, contract: DataContract, task: An
     from agents.utils import (LevelUnavailable, aggregate, cut_partial, effective_agg, latest_rows, pct_change, ranked,
                               time_axis, weekly_cadence)
     from domain_pack import count_rows, entity_rows, rows_for
+    df, framed = analysis_frames(df, contract)   # one answer, whichever frame the caller passed
     types = {t.value if hasattr(t, "value") else t for t in task.analysis_types}
     names = set(df.columns)
     targets = [c for c in task.target_metrics if c in contract.metric_columns and c in names]
@@ -396,25 +407,24 @@ def standard_stats(raw: dict, df: pd.DataFrame, contract: DataContract, task: An
                                         "results": [{"name": f"{a}|{b}", "value": round(float(means[(a, b)]), 4)}
                                                     for a, b in top]})
                 raw["builtin"].append(f"seg:{joint}/{c}")
-    product_breakdowns(raw, df, contract)
-    _drop_protected_cells(raw, df, contract)
+    product_breakdowns(raw, df, framed, contract)
+    _drop_protected_cells(raw, framed, contract)
 
 
-def product_breakdowns(raw: dict, df: pd.DataFrame, contract: DataContract) -> None:
+def product_breakdowns(raw: dict, own: pd.DataFrame, df: pd.DataFrame, contract: DataContract) -> None:
     """The model's breakdowns the product computes itself (D7-19; e2e-89, logi-4, logi-7): one
     labelled with a pack KPI takes the KPI per group (domain_pack.measure by=, as tiles and answers
     do); a plain every-row count takes the counted records (domain_pack.count_rows). The model's
     groups are kept; one the product hides or can't compute is dropped, and each change is said
-    in an assumption. Matched by the label, never by the values (C4)."""
+    in an assumption. Matched by the label, never by the values (C4). `own`, `df`: the data's own
+    columns and the model's frame (analysis_frames)."""
     from domain_pack import MeasuredBy, count_rows, defaults_pack, kind_labels, measure, unavailable_words
     pack = defaults_pack(contract)
     if pack is None:
         return
-    roles = {r: c for r, c in contract.roles.items() if c in df.columns}
+    roles = {r: c for r, c in contract.roles.items() if c in own.columns}
     labels = {roles[r] for r in kind_labels(pack) - {"currency"} if r in roles}   # a Status breakdown
     dates = {*contract.date_columns, *(c for c in df.columns if pd.api.types.is_datetime64_any_dtype(df[c]))}
-    own = [c.name for c in contract.columns if c.name in df.columns]   # never the model frame's
-    # added columns (row kind, spell events, derived spans): measure() derives its own
     notes = raw.setdefault("assumptions", [])
     for s in list(raw.get("segments") or []):
         col = s.get("segment_column") if isinstance(s, dict) else None
@@ -427,10 +437,10 @@ def product_breakdowns(raw: dict, df: pd.DataFrame, contract: DataContract) -> N
         # 'billings_by_month', 'growth_52w') is the model's own question ($0 replay: the glossary
         # match gave 16 stored runs the all-time KPI); never by a date (a trend, not a group)
         label = str(s.get("label") or "").strip()
-        kpi = label if pack.kpi(label) and col in own and col not in labels and col not in dates else None
-        if kpi:   # on the data's own columns (logi-4 paid re-measure: on the model's frame,
-            # measure() found no derived roles, the segment was emptied and the run failed)
-            v = measure(df[own], roles, pack, kpi, by=col)
+        kpi = label if pack.kpi(label) and col in own.columns and col not in labels and col not in dates \
+            else None   # by a column the model's frame added (a spell event): the model's own
+        if kpi:   # on the data's own columns: measure() derives its own spans (logi-4 paid re-measure)
+            v = measure(own, roles, pack, kpi, by=col)
             vals = {str(k): float(x) for k, x in v.values.items()} if isinstance(v, MeasuredBy) else {}
             s["results"] = [{"name": n, "value": round(vals[n], 6)} for n in names if n in vals]
             gone = [n for n in names if n not in vals]   # hidden (a small cell) or no base
@@ -908,7 +918,10 @@ async def run_analysis_agent(session: AnalysisSession, llm: LLMClient) -> Analys
             framed.to_parquet(buf, index=False)
             return buf.getvalue(), extra
         new_bytes, extra = await asyncio.to_thread(framed_bytes)
-        if extra:
+        if extra:   # from here on df_parquet is the MODEL's frame (row kind, derived spans, spell
+            # events): the upload, standard_stats and repair_breakdowns read it; standard_stats
+            # takes its two frames from it (analysis_frames, rule 1); repair_breakdowns reads
+            # only the data's roles, so either frame gives one answer (tests/test_production_path.py)
             df_parquet, known = new_bytes, known + extra
     df: pd.DataFrame | None = None   # loaded only if the model calls a tool
     upload: bytes | None = None      # what E2B receives: personal values pseudonymised

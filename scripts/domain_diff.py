@@ -159,4 +159,10 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    if sys.argv[1:2] == ["_dump"]:   # inside a tree: the parent run keeps the output and time
+        main()
+    else:
+        sys.path.insert(0, str(ROOT))
+        from scripts.live import live
+        with live("domain_diff", minutes=30):
+            main()

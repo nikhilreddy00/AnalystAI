@@ -208,6 +208,60 @@ async def test_stored_replies_reproduce_their_stored_output(suite, report, cid, 
     assert _same(again["output"], run["output"]), f"{report} {cid}: a post-model step changed"
 
 
+# Suites that store replies but replay elsewhere or not at all, and why (D1-15 said "every suite
+# stores replies; test_replay replays them" while two were replayed: the claim is this list now).
+NOT_REPLAYED = {
+    "e2e": "a whole run (database, every agent); its analysis and insight steps replay here",
+    "quality": "the prose judge is a model call by design (evals.run --replay keeps it live)",
+}
+
+
+def test_every_suite_that_stores_replies_replays_or_says_why():
+    suites = {p.name.split("-")[0] for p in REPORTS.glob("*.json")
+              if any(r.get("replies") for rs in json.loads(p.read_text()).get("runs", {}).values() for r in rs)}
+    assert suites - {*REPLAYABLE, "analysis", *NOT_REPLAYED} == set()
+
+
+def _analysis_runs():
+    """Every analysis case, once: its first stored run in the newest report that has it (the whole
+    suite, as the retired scripts/replay_breakdowns.py covered; the three newest reports held one
+    domain, and every run of every case took 4 min a push)."""
+    latest: dict[str, tuple[str, dict]] = {}
+    for path in sorted(REPORTS.glob("analysis-2*Z.json")):   # names sort by time: later wins
+        for cid, runs in json.loads(path.read_text()).get("runs", {}).items():
+            if run := next((r for r in runs if r.get("replies") and r.get("checks")), None):
+                latest[cid] = (path.name, run)
+    return [(report, cid, run) for cid, (report, run) in sorted(latest.items())]
+
+
+# A run that loses a check it passed: a later change moved it on purpose, or its code fails only
+# under this machine's pandas, never E2B's (health-6's second run: KeyError 'Claim ID' here):
+# (report, case) → why. A listed run that loses nothing fails (the list never rots).
+CHANGED_ANALYSIS: dict[tuple[str, str], str] = {}
+
+
+@pytest.mark.parametrize("report, cid, run", _analysis_runs())
+async def test_a_stored_analysis_run_keeps_every_check_it_passed(report, cid, run, monkeypatch):
+    """D1-15 / D3-10 (PR24: two paid fix rounds a free replay would have caught): the analysis
+    agent's stored replies through the real run_analysis_agent, its model code run by a local
+    stand-in for E2B (evals.run.local_sandbox) on the upload a run sends. The sandbox's pandas is
+    not this one, so outputs differ in dtypes; the verdicts may not: every check that passed
+    still passes."""
+    from agents import analysis_agent
+    monkeypatch.setitem(harness._budget, "max", 1.0)
+    monkeypatch.setattr(analysis_agent, "run_code", harness.local_sandbox)
+    case = next(c for c in harness.load_cases("analysis", None) if c["id"] == cid)
+    again = await _replay("analysis", case, run["replies"])
+    from collections import Counter
+    passed = lambda checks: Counter(c["kind"] for c in checks if c["ok"])  # noqa: E731  by kind, any order
+    lost = passed(run["checks"]) - passed(again["checks"])
+    lost_run = run["passed"] and not again["passed"]
+    if (report, cid) in CHANGED_ANALYSIS:
+        assert lost or lost_run, f"{report} {cid}: listed in CHANGED_ANALYSIS but loses nothing: drop it"
+        return
+    assert not lost and not lost_run, f"{report} {cid}: lost {dict(lost)}: {again['checks']}"
+
+
 async def test_replay_mode_replays_the_models_and_calls_only_the_judge():
     """evals.run --replay (5.7b-3): a stored run's model replies come back in order, its stored
     judge replies are dropped, and only the prose judge reaches the live client."""

@@ -114,7 +114,7 @@ def test_every_count_a_user_reads_says_what_it_left_out():
 
 
 def test_a_label_with_its_own_window_or_qualifier_stays_the_models():
-    """$0 replay (scripts/replay_breakdowns.py): a glossary match turned 'on-time for LTL' and
+    """$0 replay (now tests/test_replay.py's analysis replay): a glossary match turned 'on-time for LTL' and
     'spend_2026_08' into the all-time KPI, 16 stored runs flipped to fail. Only the KPI's exact
     name is replaced; never a breakdown by a date (a trend)."""
     truth = _built("tms_shipments")[3]

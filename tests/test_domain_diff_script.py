@@ -4,6 +4,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -26,6 +28,13 @@ def test_snapshot_text_reads_a_list_item_by_item():
     assert [line.split(" |")[0] for _, line in text_changes(a, b, "d")] == ["d[400]/value"]
 
 
+def _in_linked_worktree() -> bool:
+    from scripts.suite import linked_worktree
+    return linked_worktree(ROOT)
+
+
+@pytest.mark.skipif(_in_linked_worktree(), reason="suite.py refuses a linked worktree by design "
+                    "(tests/test_suite_script.py); inside suite.py's own worktree it can't nest")
 def test_the_suite_runs_on_head_in_a_worktree_never_the_edited_tree():
     """Retro 5.7b-2b: a pack edited mid-run failed 330 tests. scripts/suite.py runs pytest in a
     worktree of HEAD, so the tests it runs are the committed ones; the pytest args pass through."""

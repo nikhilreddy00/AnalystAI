@@ -590,4 +590,8 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.path.insert(0, str(ROOT))
+    from scripts.live import live
+    with live("mutation", minutes=120):   # survivors kept in .live/ (a cut output cost a rerun)
+        code = main()
+    sys.exit(code)

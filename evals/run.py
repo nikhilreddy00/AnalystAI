@@ -932,6 +932,32 @@ class ReplayClient:
         return _check(_restore_result(LLMResult(text=q.pop(0)), mapping), kw["agent"])
 
 
+async def local_sandbox(code: str, df_parquet: bytes | None = None):
+    """E2B's stand-in for the $0 replay (tests/test_replay.py): the same code, run in a
+    subprocess on the upload written as CSV (what the sandbox reads at /data/df.csv), 60 s, the
+    last stdout line as the JSON result. Never the product's path: only a replay swaps it in."""
+    import sys
+    import tempfile
+
+    from sandbox.executor import ExecutionResult, _parquet_to_csv_bytes
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "df.csv"
+        if df_parquet:
+            path.write_bytes(_parquet_to_csv_bytes(df_parquet))
+        script = Path(tmp) / "code.py"
+        script.write_text(code.replace("/data/df.csv", str(path)))
+        try:
+            p = await asyncio.to_thread(subprocess.run, [sys.executable, "-I", str(script)], cwd=tmp,
+                                        capture_output=True, text=True, timeout=60)
+        except subprocess.TimeoutExpired:
+            return ExecutionResult(stdout="", stderr="", error="timeout", error_name="SandboxTimeout")
+    last = p.stdout.strip().split("\n")[-1] if p.stdout.strip() else ""
+    error = p.stderr.strip().splitlines()[-1] if p.returncode and p.stderr.strip() else None
+    return ExecutionResult(stdout=p.stdout, stderr=p.stderr, error=error,
+                           output_json=last if last.startswith(("{", "[")) else None,
+                           error_name=error.split(":", 1)[0] if error else None)
+
+
 def record_e2b_uploads() -> None:
     """Evals only: keep each frame the analysis agent uploads to E2B (per case, via E2B_UPLOADS),
     so the exit scan can prove no planted PII left for the sandbox."""
