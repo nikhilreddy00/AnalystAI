@@ -70,9 +70,11 @@ _SQL_DENY_FUNCS = {"nextval", "setval", "set_config", "query_to_xml", "query_to_
 _SQL_DENY_SCHEMAS = {"mysql": {"mysql", "performance_schema", "sys"}}
 # /*! … */ and /*M! … */ are MySQL / MariaDB executable comments and /*+ … */ optimizer hints
 # (MAX_EXECUTION_TIME overrides the session timeout): the server runs what sqlglot reads as a
-# comment. Refused in the raw text, outside quoted literals, on every dialect.
+# comment. Refused anywhere in the raw text, on every dialect, quotes included: any scanner of
+# ours that skips quoted text can disagree with the server's about where a quote or comment
+# starts (security review: `/* ' */ /*!SLEEP(5)*/ /* ' */`). Cost: a literal holding these
+# three characters is refused too.
 _EXECUTABLE_COMMENT = re.compile(r"/\*(!|M!|\+)")
-_QUOTED = re.compile(r"'(?:[^'\\]|\\.|'')*'|\"(?:[^\"\\]|\\.|\"\")*\"|`(?:[^`]|``)*`")
 _SQL_DENY_PREFIXES = ("lo_", "dblink", "pg_read", "pg_ls_", "pg_stat_file", "pg_sleep",
                       "pg_advisory", "pg_terminate", "pg_cancel", "pg_reload", "pg_rotate",
                       "pg_file", "pg_logical", "pg_replication", "pg_create", "pg_drop",
@@ -85,7 +87,7 @@ def check_sql_readonly(sql: str, dialect: str | None = None) -> str | None:
     `SELECT ... INTO new_table`, `FOR UPDATE` locks and side-effect functions (`nextval`,
     `pg_read_file`, `dblink`...). Defense in depth: the executor also runs a READ ONLY
     transaction (connectors/sql_connector.py)."""
-    if _EXECUTABLE_COMMENT.search(_QUOTED.sub("''", sql)):
+    if _EXECUTABLE_COMMENT.search(sql):
         return "executable comments and optimizer hints (/*! */, /*+ */) are not allowed"
     try:
         statements = [s for s in sqlglot.parse(sql, read=dialect) if s is not None]

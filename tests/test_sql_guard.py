@@ -86,6 +86,9 @@ MYSQL_ATTACKS = [
     "SELECT * FROM performance_schema.threads", "SELECT * FROM sys.session",
     "SELECT * FROM t FOR UPDATE", "SELECT * FROM t LOCK IN SHARE MODE",
     "SELECT 1; DROP TABLE orders", "SELECT 1 # comment\n; DROP TABLE orders",
+    # a quote inside plain comments must not hide the executable one between them (security review)
+    "SELECT 1 /* ' */ /*!50000 , SLEEP(5) */ /* ' */",
+    "SELECT 1 -- '\n/*! , SLEEP(5) */ -- '",
 ]
 
 
@@ -100,7 +103,7 @@ def test_the_mysql_attack_corpus_is_rejected_by_the_parse_guard_alone(sql):
     "SELECT IFNULL(region, 'unknown'), GROUP_CONCAT(DISTINCT sku) FROM t GROUP BY 1",
     "SELECT a, RANK() OVER (ORDER BY b DESC) FROM t",
     "WITH x AS (SELECT 1 AS a) SELECT a FROM x",
-    "SELECT * FROM t WHERE note = '/*! not a comment */'",
+    "SELECT a /* a plain comment */ FROM t",
 ])
 def test_ordinary_mysql_analytics_is_not_over_blocked(sql):
     assert g.check_sql_readonly(sql, dialect="mysql") is None
