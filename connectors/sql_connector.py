@@ -38,6 +38,7 @@ MAX_ROWS = 10_000
 LOAD_MAX_ROWS = 50_000   # a named table is loaded whole up to this; past it, the load says so
 TIMEOUT_S = 15
 CONNECT_TIMEOUT_S = 10
+_SCHEMA_CHARS = 12_000   # table descriptions in the SQL agent's prompt; past it, names only
 _TYPE_CODE, _INTERNAL_SIZE, _MYSQL_TINY = 1, 3, 1   # cursor.description fields; FIELD_TYPE.TINY
 _MYSQL_DATES = frozenset({7, 10, 12, 14})   # FIELD_TYPE TIMESTAMP, DATE, DATETIME, NEWDATE
 # MySQL's zero date, as PyMySQL returns what it can't convert: DATE, DATETIME, DATETIME(fsp)
@@ -317,16 +318,22 @@ class SQLConnector(DataConnector):
         return await asyncio.to_thread(self._engine)
 
     def schema_context(self, engine) -> str:
-        """Introspected tables and columns, for when no semantic layer is configured."""
+        """Introspected tables and columns, for when no semantic layer is configured. Every table
+        is named: with columns up to a size budget, past it by name only, and the prompt says so
+        (audit pass 2: a 20-table cap hid a 40-table database's 30th table without a word)."""
         inspector = inspect(engine)
-        default, parts, per_schema = inspector.default_schema_name, [], {}
+        default, parts, names_only, size = inspector.default_schema_name, [], [], 0
         for schema, table in dict.fromkeys((s or default, t) for s, t in _tables(engine).values()):
-            if per_schema.setdefault(schema, 0) >= 20:   # cap prompt size
+            if size >= _SCHEMA_CHARS:
+                names_only.append(f"`{schema}.{table}`")
                 continue
-            per_schema[schema] += 1
             cols = inspector.get_columns(table, schema=schema)
             col_desc = ", ".join(f"{c['name']} ({c['type']})" for c in cols)
             parts.append(f"Table `{schema}.{table}`: {col_desc}")
+            size += len(parts[-1])
+        if names_only:
+            parts.append(f"{len(names_only)} more tables (columns not shown; run_sql can look one "
+                         f"up): {', '.join(names_only)}")
         return "\n".join(parts)
 
     async def query(self, sql: str, max_rows: int = MAX_ROWS) -> QueryResult:

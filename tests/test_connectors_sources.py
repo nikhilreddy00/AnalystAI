@@ -846,6 +846,22 @@ def test_the_app_store_is_not_published_on_the_network():
     assert all(str(p).startswith("127.0.0.1:") for p in ports), ports
 
 
+async def test_every_table_reaches_the_model_by_name(tmp_path):
+    """Audit pass 2's paid run (e2e-99): a database of 40 tables showed the model 20, silently;
+    the one the question needed was the 30th, and the model said no table held the data. Every
+    table is named; past a size budget, by name only, and the prompt says so."""
+    from sqlalchemy import text
+    url = f"sqlite:///{tmp_path / 'many.sqlite'}"
+    with create_engine(url).begin() as c:
+        for i in range(60):
+            cols = ", ".join(f"c{j} INTEGER" for j in range(40))
+            c.execute(text(f"CREATE TABLE t{i:02d} ({cols})"))
+    conn = _sql(url, None)
+    context = conn.schema_context(await conn.engine())
+    assert all(f"t{i:02d}" in context for i in range(60))
+    assert "columns not shown" in context and len(context) < 20_000
+
+
 def test_a_safety_test_names_the_reason_it_expects():
     """Audit pass 2 (B3, B10): expecting any Exception, or swallowing one, let a safety test
     pass on any error. The source and guard tests name the error they expect."""
