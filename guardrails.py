@@ -106,6 +106,7 @@ def check_sql_readonly(sql: str, dialect: str | None) -> str | None:
         return f"only read queries are allowed, got {stmt.key.upper()}"
     writes = (exp.Insert, exp.Update, exp.Delete, exp.Drop, exp.Create, exp.Alter, exp.Merge,
               exp.Command)
+    system = _system_schemas(dialect)
     for node in stmt.walk():
         if isinstance(node, writes):
             return f"write/DDL inside query: {node.key.upper()}"
@@ -117,7 +118,7 @@ def check_sql_readonly(sql: str, dialect: str | None) -> str | None:
             name = node.name.lower()
             if name in _SQL_DENY_FUNCS or name.startswith(_SQL_DENY_PREFIXES):
                 return f"function not allowed: {name}"
-        if isinstance(node, exp.Table) and node.db.lower() in _system_schemas(dialect):
+        if isinstance(node, exp.Table) and node.db.lower() in system:
             return f"the database's own tables are not readable: {node.db}"
     return None
 

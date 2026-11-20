@@ -22,19 +22,28 @@ actually read-only (`run_readonly` set nothing for any other engine) and any SQL
   `local_infile`, `client_flag`, `unix_socket`, `read_default_*`, file-path TLS keys and Postgres
   `host`/`passfile`/`service` are refused); timeouts, `local_infile=False` and TLS are set from code.
   In production the host is never this server (loopback), a link-local / cloud metadata address or
-  the app's own store's host, and the driver connects to the address that was checked (DNS
+  the app's own store's address, and the driver connects to the address that was checked (DNS
   rebinding). A LAN address is allowed: a self-hosted company's database sits on its own network
-  (the plan said "public only"; that would refuse the main self-hosted case). No message the user
-  reads holds the password (`without_secrets`, applied where a connection test answers).
+  (the plan said "public only"; that would refuse the main self-hosted case). The check knows the
+  store's address, not every route to it: the deployment must not publish the store's port
+  (`docker-compose.yml` binds it to loopback, a test keeps it so). A MySQL string must name its
+  database. No message the user reads holds the password (`without_secrets`, applied where a
+  connection test answers).
+- **What may be read is the connection's table list** (`_tables`: the default schema's and other user
+  schemas' tables; MySQL, the URL's own database only). A named-table load and a question are both held
+  to it (audit pass 2: the parse guard's system-schema list caught `pg_catalog.pg_shadow` but not
+  `pg_shadow`, and a MySQL question could read another database on the server).
 - **Read-only is four layers** — the parse guard, a read-only transaction, a statement timeout with a row
   cap, and the user's read-only database role (the only real boundary; the rest is defence in depth).
   The parse guard refuses MySQL executable comments and optimizer hints (`/*!`, `/*M!`, `/*+`) in the raw
-  text, because sqlglot reads them as comments while MySQL runs them.
+  text, because sqlglot reads them as comments while MySQL runs them; the MySQL session clears
+  `ANSI_QUOTES` and `NO_BACKSLASH_ESCAPES` so the server reads quotes as the guard does.
 - **Live vs import** (user, 2026-11-19): databases are queried live (a question → read-only SQL; a named
   table → a snapshot load, capped and disclosed). SaaS sources (5.8c) are imported by dlt into a local
   DuckDB copy refreshed on demand: no API rate limits per question, and the same numbers every run.
 - **Values are normalised once**, where a database result becomes a frame (`QueryResult.frame`): Decimal →
-  float, `TINYINT(1)` → bool, zero dates → missing. No per-source frame code anywhere else.
+  float, `TINYINT(1)` → bool, a date column's zero dates → missing (by the cursor's type, not the
+  value). Columns by position (a join returns two `id` columns). No per-source frame code anywhere else.
 - **Source invariance has one owner**: the oracle in `tests/test_oracle.py` loads every finished domain's
   datasets from every source and requires the same contract, cleaned frame, tiles and built-in answers.
   A new source joins that test; it never gets its own copy.

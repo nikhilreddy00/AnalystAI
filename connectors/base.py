@@ -135,9 +135,10 @@ def resolved(host: str) -> list:
     out = []
     for info in infos:
         try:
-            out.append(ipaddress.ip_address(info[4][0]))
+            ip = ipaddress.ip_address(info[4][0])
         except ValueError:
             continue
+        out.append(getattr(ip, "ipv4_mapped", None) or ip)   # ::ffff:127.0.0.1 is 127.0.0.1
     return out
 
 
@@ -158,16 +159,19 @@ def normalize_frame(df: pd.DataFrame) -> pd.DataFrame:
     """The one load rule after any source's read (ADR-0010), so a table reads the same from each:
     '' is a blank; a text column whose values are all dates becomes datetimes (5.8a: dates read
     from SQL and the API stayed text), at one resolution (us); -0.0 is 0.0. The file reader, the
-    databases, the Sheet and the API all end here."""
-    for col in df.columns:
-        if not pd.api.types.is_numeric_dtype(df[col]) and (blank := df[col].eq("")).any():
-            df[col] = df[col].mask(blank)   # '' is a blank, as a CSV reads it (MySQL, JSON keep it)
-        if (parsed := parse_text_dates(df[col])) is not None:
-            df[col] = parsed
-        if pd.api.types.is_datetime64_any_dtype(df[col]):
-            df[col] = df[col].dt.as_unit("us")   # one resolution: a DATE column read as [s]
-        elif pd.api.types.is_float_dtype(df[col]):
-            df[col] = df[col] + 0.0   # -0.0 → 0.0: a CSV keeps "-0.0", JSON and SQL don't ("-$0.00")
+    databases, the Sheet and the API all end here. Columns by position: names are made unique
+    later (ingestion), and a SQL join can return two `id` columns (audit pass 2)."""
+    for i in range(df.shape[1]):
+        s = df.iloc[:, i]
+        if not pd.api.types.is_numeric_dtype(s) and (blank := s.eq("")).any():
+            s = s.mask(blank)   # '' is a blank, as a CSV reads it (MySQL, JSON keep it)
+        if (parsed := parse_text_dates(s)) is not None:
+            s = parsed
+        if pd.api.types.is_datetime64_any_dtype(s):
+            s = s.dt.as_unit("us")   # one resolution: a DATE column read as [s]
+        elif pd.api.types.is_float_dtype(s):
+            s = s + 0.0   # -0.0 → 0.0: a CSV keeps "-0.0", JSON and SQL don't ("-$0.00")
+        df.isetitem(i, s)
     return df
 
 

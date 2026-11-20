@@ -275,10 +275,12 @@ def _review(sql: str, metrics_used: list[str], layer, dialect: str) -> tuple[str
     return None
 
 
-def _evidence(sql: str, metrics: list[str], res: QueryResult, layer) -> Evidence:
+def _evidence(sql: str, metrics: list[str], res: QueryResult, layer,
+              skipped: str | None = None) -> Evidence:
     defs = [layer.metric(n) for n in metrics] if layer else []
     if layer is None:
-        confidence, why = "medium", "no semantic layer: metric meaning was inferred from names"
+        confidence, why = "medium", (skipped or "no semantic layer") + \
+            ": metric meaning was inferred from names"
     elif res.truncated:
         confidence, why = "medium", f"result capped at {MAX_ROWS:,} rows"
     else:
@@ -303,7 +305,10 @@ async def run_sql_agent(question: str, connector: SQLConnector, layer, llm: LLMC
     (agents.utils.conversation_context) lets a follow-up refer to earlier turns."""
     engine = await connector.engine()
     dialect = sql_dialect(engine)   # refuses an engine without a dialect row
+    skipped = None
     if layer and layer.dialect != dialect:   # written for another engine: its SQL would be wrong
+        skipped = f"semantic layer skipped: written for {layer.dialect}, this database is {dialect}"
+        trace_verdict("sql", PROMPT_VERSION, "layer_dialect")
         layer = None
     introspected = "" if layer else await asyncio.to_thread(connector.schema_context, engine)
     messages: list[dict] = [{"role": "user", "content": build_context(
@@ -356,7 +361,7 @@ async def run_sql_agent(question: str, connector: SQLConnector, layer, llm: LLMC
             except Exception as exc:
                 problem = ("db_error", f"the database rejected the query: {_db_error(exc)}")
             else:
-                return SQLAnswer(sql, metrics, res, _evidence(sql, metrics, res, layer),
+                return SQLAnswer(sql, metrics, res, _evidence(sql, metrics, res, layer, skipped),
                                  used_tools)
         rule, reason = problem
         trace_verdict("sql", PROMPT_VERSION, rule)

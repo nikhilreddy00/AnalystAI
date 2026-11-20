@@ -304,7 +304,7 @@ def test_a_question_result_takes_the_same_load_rule_as_a_table_load():
     from connectors.sql_connector import QueryResult
     df = QueryResult(["day", "note", "flag", "level"],
                      [("2026-01-05", "", 1, 2), ("2026-02-01", "x", 0, 0)], False,
-                     frozenset({"flag", "level"})).frame()
+                     frozenset({2, 3})).frame()
     assert str(df["day"].dtype).startswith("datetime64") and df["note"].isna().tolist() == [True, False]
     assert df["flag"].tolist() == [True, False] and df["level"].tolist() == [2, 0]
 
@@ -677,7 +677,7 @@ def test_any_result_shape_becomes_a_frame_without_losing_a_column(names, data):
     from connectors.sql_connector import QueryResult
     rows = [tuple(data.draw(_FRAME_CELLS) for _ in names)
             for _ in range(data.draw(st.integers(0, 3)))]
-    df = QueryResult(list(names), rows, False, frozenset(names[:1])).frame()
+    df = QueryResult(list(names), rows, False, frozenset({0}), frozenset({len(names) - 1})).frame()
     assert list(df.columns) == names and len(df) == len(rows)
     assert list(normalize_frame(df).columns) == names
 
@@ -731,7 +731,9 @@ async def test_a_question_reads_only_the_tables_the_connection_lists(tmp_path, n
     conn = _connector_with_mine(tmp_path, name)
     with pytest.raises(GuardrailViolation) as err:
         await conn.query(sql)
-    assert "only the connected database's tables can be read" in err.value.user_message
+    said = err.value.user_message   # the parse guard refuses a qualified system table first
+    assert "only the connected database's tables can be read" in said or \
+        "the database's own tables are not readable" in said
 
 
 @pytest.mark.parametrize("name", DIALECT_NAMES)

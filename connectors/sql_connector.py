@@ -3,7 +3,8 @@ SQL connector — PostgreSQL, MySQL and SQLite (development only) via SQLAlchemy
 Questions are turned into SQL by agents/sql_agent.py; this module only loads and executes.
 
 Every model-written query passes four layers, each tested on its own:
-1. check_sql_readonly (parsed: one read statement, no INTO / locks / side-effect functions);
+1. check_sql_readonly (parsed: one read statement, no INTO / locks / side-effect functions), then
+   the connection's own rule: it reads only tables `_tables` lists (the load's rule too);
 2. a READ ONLY transaction that is always rolled back;
 3. a statement timeout and a row cap (fetchmany; a named table's load also asks for at most it);
 4. the database role — operators should connect with a read-only user (docs/baselines/phase4.md).
@@ -13,24 +14,33 @@ An engine without a row in DIALECTS gets none of this, so it is refused (fail cl
 from __future__ import annotations
 
 import asyncio
+import logging
+import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
 import pandas as pd
+import sqlglot
+from sqlglot import exp
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.engine import URL, make_url
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.pool import NullPool
 
-from agents.errors import GuardrailViolation, IngestionError
+from agents.errors import AgentError, GuardrailViolation, IngestionError
 from connectors.base import DataConnector, normalize_frame, resolved, truncation_note
 from guardrails import check_sql_readonly
+
+logger = logging.getLogger(__name__)
 
 MAX_ROWS = 10_000
 LOAD_MAX_ROWS = 50_000   # a named table is loaded whole up to this; past it, the load says so
 TIMEOUT_S = 15
 CONNECT_TIMEOUT_S = 10
 _TYPE_CODE, _INTERNAL_SIZE, _MYSQL_TINY = 1, 3, 1   # cursor.description fields; FIELD_TYPE.TINY
+_MYSQL_DATES = frozenset({7, 10, 12, 14})   # FIELD_TYPE TIMESTAMP, DATE, DATETIME, NEWDATE
+# MySQL's zero date, as PyMySQL returns what it can't convert: DATE, DATETIME, DATETIME(fsp)
+_ZERO_DATE = re.compile(r"0000-00-00( 00:00:00(\.0+)?)?")
 
 
 @dataclass(frozen=True)
@@ -47,6 +57,7 @@ class Dialect:
     connect_args: dict = field(default_factory=dict)
     one_database: bool = False       # a "schema" is a database: list only the URL's own
     yes_no: Callable[[tuple], bool] | None = None   # a cursor column the engine types as a yes/no
+    dates: Callable[[tuple], bool] | None = None    # one it types as a date (may hold zero dates)
     # production: the URL connecting to the checked address (the name stays for TLS where the
     # driver can keep both; ponytail: MySQL has no TLS option yet, so its host becomes the IP)
     pin: Callable[[URL, str], URL] = lambda url, ip: url.set(host=ip)
@@ -70,12 +81,17 @@ DIALECTS: dict[str, Dialect] = {
         begin=("SET SESSION TRANSACTION READ ONLY", "SET SESSION max_execution_time = {ms}",
                "START TRANSACTION READ ONLY"),
         system_schemas=frozenset({"information_schema", "mysql", "sys", "performance_schema"}),
+        # UTC; and the parse guard reads strings and quotes as MySQL's default mode does, so a
+        # server's ANSI_QUOTES / NO_BACKSLASH_ESCAPES can't make the two read a query differently
         connect_args={"connect_timeout": CONNECT_TIMEOUT_S, "read_timeout": TIMEOUT_S + 15,
-                      "local_infile": False, "init_command": "SET time_zone = '+00:00'"},
+                      "local_infile": False, "init_command":
+                      "SET time_zone = '+00:00', sql_mode = REPLACE(REPLACE(@@sql_mode, "
+                      "'NO_BACKSLASH_ESCAPES', ''), 'ANSI_QUOTES', '')"},
         one_database=True,
         # a DB-API description is (name, type_code, display_size, internal_size, …): PyMySQL's
         # TINY type (1) of width 1 is BOOL / TINYINT(1)
-        yes_no=lambda col: col[_TYPE_CODE] == _MYSQL_TINY and col[_INTERNAL_SIZE] == 1),
+        yes_no=lambda col: col[_TYPE_CODE] == _MYSQL_TINY and col[_INTERNAL_SIZE] == 1,
+        dates=lambda col: col[_TYPE_CODE] in _MYSQL_DATES),
     "sqlite": Dialect(   # development only (refused in production): no statement timeout
         sqlglot="sqlite", driver="", drivers=frozenset({""}), query_keys=frozenset(),
         begin=("PRAGMA query_only = ON",), end=("PRAGMA query_only = OFF",)),
@@ -116,6 +132,9 @@ def safe_url(conn_str: str) -> tuple[URL, Dialect]:
     if extra := sorted(set(url.query) - d.query_keys):
         raise IngestionError("connection string options", "These connection string options aren't "
                       f"allowed: {', '.join(extra)}. Allowed: {', '.join(sorted(d.query_keys)) or 'none'}.")
+    if d.one_database and not url.database:   # else every database on the server is listed
+        raise IngestionError("no database", "The connection string must name the database: "
+                             f"{engine}://user:password@host:port/<database>.")
     from api.config import settings
     url = url.set(drivername=f"{engine}+{d.driver}" if d.driver else engine)
     if settings.app_env == "production":
@@ -126,21 +145,17 @@ def safe_url(conn_str: str) -> tuple[URL, Dialect]:
     return url, d
 
 
-def _plain(ip):
-    """An IPv4-mapped IPv6 address (::ffff:127.0.0.1) as the IPv4 address it is."""
-    return getattr(ip, "ipv4_mapped", None) or ip
-
-
 def _checked_address(url: URL) -> str:
     """Production: the address the database is reached at, checked. Never the app's own
-    machine (loopback), a link-local or cloud metadata address, or the app's own store's host
-    (any port). A LAN address is allowed (self-hosted). The caller connects to this address,
-    not the name again (DNS rebinding)."""
+    machine (loopback), a link-local or cloud metadata address, or the app's own store's
+    address (any port). A LAN address is allowed (self-hosted). The caller connects to this
+    address, not the name again (DNS rebinding). The store's other routes (the host's LAN address
+    of a published port) are the deployment's: compose binds its port to loopback."""
     from api.config import settings
     if not url.host:
         raise IngestionError("no host", "The connection string has no host.")
     try:
-        ips = [_plain(ip) for ip in resolved(url.host)]
+        ips = resolved(url.host)
     except ValueError:
         ips = []
     if not ips:
@@ -149,7 +164,7 @@ def _checked_address(url: URL) -> str:
     # fail closed: without the app store's addresses the check can't tell the user's host from it
     # (the message says it's this server's problem, not the user's host)
     try:
-        own_ips = {_plain(ip) for ip in resolved(own.host)} if own.host else set()
+        own_ips = set(resolved(own.host)) if own.host else set()
     except ValueError:
         raise IngestionError("own store unresolved", "This server can't check database hosts "
                              "right now (its own database address didn't resolve). Try again "
@@ -196,46 +211,78 @@ def _assert_single_select(sql: str, dialect: str) -> str:
     return sql
 
 
+def _unlisted_tables(sql: str, d: Dialect, listed) -> list[str]:
+    """The tables `sql` reads that the connection doesn't list (`_tables`: what may be read, one
+    rule for a load and a question). A CTE's name and a set-returning function aren't tables."""
+    tree = sqlglot.parse_one(sql, read=d.sqlglot)
+    ctes = {c.alias_or_name.lower() for c in tree.find_all(exp.CTE)}
+    known = {name.lower() for name in listed}
+    out = []
+    for t in tree.find_all(exp.Table):
+        if not isinstance(t.this, exp.Identifier):   # generate_series(1, 3), unnest(...)
+            continue
+        name = ".".join(p for p in (t.catalog, t.db, t.name) if p)
+        if name.lower() not in known and not (name == t.name and t.name.lower() in ctes):
+            out.append(name)
+    return out
+
+
 @dataclass
 class QueryResult:
     columns: list[str]
     rows: list[tuple]
     truncated: bool          # more than max_rows existed; only the first max_rows are here
-    yes_no: frozenset[str] = frozenset()   # columns the database types as a yes/no (TINYINT(1))
+    yes_no: frozenset[int] = frozenset()   # positions the database types as a yes/no (TINYINT(1))
+    dates: frozenset[int] = frozenset()    # positions it types as a date
 
     def frame(self) -> pd.DataFrame:
         """The one place a database result becomes a frame (ADR-0010), a table load and a
         question's result alike: what a CSV of the same table gives. NUMERIC/DECIMAL → float
         (coerce_float), a yes/no type holding only 0/1 → True/False (a TINYINT(1) may hold 2: then
-        it stays a number), a zero date ('0000-00-00', legacy MySQL) → blank; then the load rule
-        every source ends in (normalize_frame: DATE objects become datetimes there)."""
+        it stays a number), a date column's zero date (legacy MySQL, any precision) → blank; then
+        the load rule every source ends in (normalize_frame: DATE objects become datetimes
+        there). Columns by position: a join can return two `id` columns."""
         df = pd.DataFrame.from_records(self.rows, columns=self.columns, coerce_float=True)
-        for col in df.columns:
-            if col in self.yes_no and df[col].dropna().isin((0, 1)).all():
-                df[col] = df[col].map({1: True, 0: False})
-            elif (zero := df[col].isin(_ZERO_DATES)).any():
-                df[col] = df[col].mask(zero)
+        for i in range(df.shape[1]):
+            s = df.iloc[:, i]
+            if i in self.yes_no and s.dropna().isin((0, 1)).all():
+                df.isetitem(i, s.map({1: True, 0: False}))
+            elif i in self.dates:
+                df.isetitem(i, s.mask(s.map(lambda v: isinstance(v, str)
+                                            and _ZERO_DATE.fullmatch(v) is not None)))
         return normalize_frame(df)
-
-
-_ZERO_DATES = ("0000-00-00", "0000-00-00 00:00:00")
 
 
 def run_readonly(engine, sql: str, max_rows: int = MAX_ROWS,
                  timeout_s: int = TIMEOUT_S) -> QueryResult:
     """Execute one query in a read-only transaction that is always rolled back, with the
     dialect's statement timeout. Sync: call it through asyncio.to_thread. Does not run the parse
-    guard — callers do (layer 1). An engine without a dialect row is refused."""
+    guard — callers do (layer 1). An engine without a dialect row is refused; a session that
+    can't be opened read-only and timed (no connection, a statement the server lacks) is an
+    IngestionError, never the query's fault."""
     d = dialect_of(engine)
-    with engine.connect() as conn:
+    conn = None
+    try:
+        conn = engine.connect()
         for statement in d.begin:
             conn.exec_driver_sql(statement.format(ms=int(timeout_s * 1000)))
+    except SQLAlchemyError as exc:
+        if conn is not None:
+            conn.close()
+        said = str(getattr(exc, "orig", None) or exc).strip().splitlines()[0][:300]
+        if engine.url.password:
+            said = said.replace(engine.url.password, "***")
+        raise IngestionError("session setup", "Couldn't open a read-only session on the "
+                             f"database: {said}") from exc
+    with conn:
         try:
             result = conn.execute(text(sql))
-            yes_no = frozenset(c[0] for c in result.cursor.description or ()
-                               if d.yes_no and d.yes_no(c))
+            described = list(enumerate(result.cursor.description or ()))
+            yes_no = frozenset(i for i, c in described if d.yes_no and d.yes_no(c))
+            dates = frozenset(i for i, c in described if d.dates and d.dates(c))
             rows = [tuple(r) for r in result.fetchmany(max_rows + 1)]
-            return QueryResult(list(result.keys()), rows[:max_rows], len(rows) > max_rows, yes_no)
+            return QueryResult(list(result.keys()), rows[:max_rows], len(rows) > max_rows,
+                               yes_no, dates)
         finally:
             conn.rollback()
             for statement in d.end:
@@ -271,9 +318,14 @@ class SQLConnector(DataConnector):
         return "\n".join(parts)
 
     async def query(self, sql: str, max_rows: int = MAX_ROWS) -> QueryResult:
-        """Guard then execute read-only. Raises GuardrailViolation for anything but one read."""
+        """Guard then execute read-only. Raises GuardrailViolation for anything but one read of
+        the tables this connection lists."""
         engine = await self.engine()
-        sql = _assert_single_select(sql, sql_dialect(engine))
+        d = dialect_of(engine)
+        sql = _assert_single_select(sql, d.sqlglot)
+        if unlisted := _unlisted_tables(sql, d, await asyncio.to_thread(_tables, engine)):
+            reason = f"only the connected database's tables can be read: {', '.join(unlisted)}"
+            raise GuardrailViolation("sql", reason, f"Blocked unsafe SQL: {reason}.")
         return await asyncio.to_thread(run_readonly, engine, sql, max_rows)
 
     async def _read(self) -> pd.DataFrame:
@@ -292,12 +344,18 @@ class SQLConnector(DataConnector):
         schema, name = valid_tables[table]
         quote = engine.dialect.identifier_preparer.quote_identifier
         qualified = f"{quote(schema)}.{quote(name)}" if schema else quote(name)
+        # Past the cap, the first rows by key: the same rows each run (a resumed run re-reads).
+        # ponytail: a table without a key reads the database's order; ordering by every column
+        # can pass the timeout on a big table
+        key = (await asyncio.to_thread(inspect(engine).get_pk_constraint, name, schema))
+        order = (" ORDER BY " + ", ".join(map(quote, key["constrained_columns"]))
+                 if key.get("constrained_columns") else "")
         # The same read-only, timed path as a question (the name was checked just above).
         # LIMIT: a driver buffers the whole result before fetchmany (ponytail: LIMIT syntax;
         # SQL Server's TOP comes with its dialect row in 5.8b)
         res = await asyncio.to_thread(run_readonly, engine,
                                       # noqa below: `qualified` is a listed table, quoted
-                                      f"SELECT * FROM {qualified} LIMIT {LOAD_MAX_ROWS + 1}",  # noqa: S608
+                                      f"SELECT * FROM {qualified}{order} LIMIT {LOAD_MAX_ROWS + 1}",  # noqa: S608
                                       LOAD_MAX_ROWS)
         if res.truncated:
             try:
@@ -327,5 +385,8 @@ class SQLConnector(DataConnector):
                 return True, ("Connection successful, but the semantic layer does not match this "
                               "database: " + "; ".join(stale[:5]))
             return True, "Connection successful"
-        except Exception as e:   # the route says it, through without_secrets (one owner)
+        except (AgentError, SQLAlchemyError, ValueError) as e:   # the route scrubs (one owner)
             return False, getattr(e, "user_message", str(e))
+        except Exception:   # a bug here, not the user's connection: logged, said as ours
+            logger.exception("connection test failed unexpectedly")
+            return False, "The connection test hit an unexpected error on this server (logged)."
