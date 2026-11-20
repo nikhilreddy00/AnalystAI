@@ -110,6 +110,16 @@ def test_ordinary_mysql_analytics_is_not_over_blocked(sql):
     assert g.check_sql_readonly(sql, dialect="mysql") is None
 
 
+@pytest.mark.parametrize("dialect", ["postgres", "mysql", "sqlite"])
+def test_every_denied_function_is_refused_in_every_dialect(dialect):
+    """The deny check reads Anonymous nodes only: this proves every denied name (and a sample of
+    each denied prefix) still parses as one, so a sqlglot upgrade that types one fails here, not
+    in production (security review, 5.8a)."""
+    names = sorted(g._SQL_DENY_FUNCS) + [p + "x" for p in g._SQL_DENY_PREFIXES]
+    let_through = [n for n in names if g.check_sql_readonly(f"SELECT {n}(1)", dialect) is None]
+    assert let_through == []
+
+
 def test_the_catalog_rules_follow_the_dialect_rows():
     assert g.check_sql_readonly("SELECT * FROM pg_catalog.pg_authid", "postgres") == \
         "the database's own tables are not readable: pg_catalog"
