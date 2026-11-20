@@ -53,8 +53,9 @@ async def _link(client, url: str, **extra):
 @pytest.mark.parametrize(("shared", "direct"), [
     ("https://docs.google.com/spreadsheets/d/1AbC_d-9/edit#gid=123",
      "https://docs.google.com/spreadsheets/d/1AbC_d-9/export?format=csv&gid=123"),
+    # no tab named: the first tab, whatever its gid (live check: gid=0 was a 400 there)
     ("https://docs.google.com/spreadsheets/d/1AbC/edit?usp=sharing",
-     "https://docs.google.com/spreadsheets/d/1AbC/export?format=csv&gid=0"),
+     "https://docs.google.com/spreadsheets/d/1AbC/export?format=csv"),
     ("https://docs.google.com/spreadsheets/d/1AbC/edit?gid=7#gid=7",
      "https://docs.google.com/spreadsheets/d/1AbC/export?format=csv&gid=7"),
     ("https://drive.google.com/file/d/1XyZ/view?usp=sharing",
@@ -78,7 +79,7 @@ def test_a_share_link_is_rewritten_to_its_file(shared, direct):
 async def test_a_public_sheet_link_becomes_a_dataset_as_its_upload_would(client, monkeypatch):
     """Google's export answers 307 to googleusercontent.com, then the CSV (research §6)."""
     wire = serve(monkeypatch, _chain(
-        ("https://docs.google.com/spreadsheets/d/1AbC/export?format=csv&gid=0",
+        ("https://docs.google.com/spreadsheets/d/1AbC/export?format=csv",
          httpx.Response(307, headers={"location": "https://doc-0s-sheets.googleusercontent.com/export/x"})),
         ("https://doc-0s-sheets.googleusercontent.com/export/x",
          httpx.Response(200, content=CSV, headers={

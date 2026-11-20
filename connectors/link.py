@@ -39,9 +39,11 @@ def direct_url(link: str) -> str:
     url = urlparse(link)
     host = (url.hostname or "").lower()
     if host == "docs.google.com" and (m := _SHEET.match(url.path)):
+        # the tab the link names; none named: the first tab (live check 5.8b: a sheet made from
+        # an uploaded file has a random first gid, and gid=0 answered 400)
         gid = (re.search(r"gid=(\d+)", url.fragment) or re.search(r"gid=(\d+)", url.query))
         return (f"https://docs.google.com/spreadsheets/d/{m.group(1)}/export?format=csv"
-                f"&gid={gid.group(1) if gid else 0}")
+                + (f"&gid={gid.group(1)}" if gid else ""))
     if host == "drive.google.com":
         query = dict(parse_qsl(url.query))
         file_id = (m.group(1) if (m := _DRIVE_FILE.match(url.path)) else query.get("id"))
