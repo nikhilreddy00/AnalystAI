@@ -274,6 +274,15 @@ def source_config(case: dict, df: pd.DataFrame, csv: str) -> ConnectorConfig:
             return ConnectorConfig(type=ConnectorType.SQL, connection_string=url)
         return ConnectorConfig(type=ConnectorType.SQL, connection_string=url,
                                table_name=f"{schema}.{table}" if schema else table)
+    if source == "link":   # a real public share link of this dataset (TEST_LINK_URL, never committed)
+        from concurrent.futures import ThreadPoolExecutor
+
+        from connectors.link import download
+        with ThreadPoolExecutor(1) as one:   # its own loop: a case runs inside one
+            content, suffix, _ = one.submit(asyncio.run, download(os.environ["TEST_LINK_URL"])).result()
+        path = UPLOADS / f"{stem}-link{suffix}"
+        path.write_bytes(content)   # as the link route keeps it: an upload of the same bytes
+        return ConnectorConfig(type=ConnectorType.CSV, file_path=str(path))
     path = UPLOADS / f"{stem}.{source}"
     if source == "csv":
         if not path.exists() or path.read_text() != csv:
