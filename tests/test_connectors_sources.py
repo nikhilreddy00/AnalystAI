@@ -746,9 +746,12 @@ async def test_a_question_reads_only_the_tables_the_connection_lists(tmp_path, n
 
 @pytest.mark.parametrize("name", DIALECT_NAMES)
 async def test_a_question_reads_its_own_tables_by_any_spelling(tmp_path, name):
+    from sqlalchemy import inspect
     conn = _connector_with_mine(tmp_path, name)
-    quote = (await conn.engine()).dialect.identifier_preparer.quote_identifier
-    for sql in ["SELECT a FROM mine", f"SELECT a FROM {quote('mine')}",
+    engine = await conn.engine()
+    quote = engine.dialect.identifier_preparer.quote_identifier
+    schema = inspect(engine).default_schema_name
+    for sql in ["SELECT a FROM mine", f"SELECT a FROM {quote('mine')}", f"SELECT a FROM {schema}.mine",
                 "WITH x AS (SELECT a FROM mine) SELECT a FROM x",
                 "SELECT m.a FROM mine AS m WHERE m.a IN (SELECT a FROM mine)",
                 "SELECT COUNT(*) FROM (SELECT a FROM mine) AS sub",
@@ -761,9 +764,9 @@ async def test_a_function_read_as_a_table_is_named_in_the_refusal(tmp_path):
     from agents.errors import GuardrailViolation
     conn = _connector_with_mine(tmp_path, "postgresql")
     with pytest.raises(GuardrailViolation) as err:
-        await conn.query("SELECT * FROM some_srf(1) AS s")   # any function read as a table
+        await conn.query("SELECT * FROM some_srf(1) AS s, other_srf(2) AS o")   # read as tables
     assert err.value.user_message == ("Blocked unsafe SQL: only the connected database's tables "
-                                      "can be read: SOME_SRF().")
+                                      "can be read: SOME_SRF(), OTHER_SRF().")
 
 
 async def test_a_postgres_set_returning_function_is_not_a_table(tmp_path):

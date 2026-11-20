@@ -349,6 +349,12 @@
     "new": "f\"SELECT COUNT(*) FROM {qualified}\", 2)  # noqa: S608",
     "old": "f\"SELECT COUNT(*) FROM {qualified}\", 1)  # noqa: S608",
     "reason": "the row cap of a COUNT(*): it returns exactly one row, so a cap of 1, 2 or the default reads the same row"
+   },
+   {
+    "n": 1,
+    "new": "order = (\" order by \" + \", \".join(map(quote, key[\"constrained_columns\"]))",
+    "old": "order = (\" ORDER BY \" + \", \".join(map(quote, key[\"constrained_columns\"]))",
+    "reason": "SQL keywords are case-insensitive in every dialect"
    }
   ]
  },
@@ -387,7 +393,14 @@
   "hash": "95c0422dc73d9ae1"
  },
  "connectors/sql_connector.py::_unlisted_tables": {
-  "equivalents": []
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "out.append(f\"{t.this.sql(None).split('(')[0]}()\")",
+    "old": "out.append(f\"{t.this.sql(d.sqlglot).split('(')[0]}()\")",
+    "reason": "only the refusal's wording: a function's name is printed the same (upper case) in every dialect"
+   }
+  ]
  },
  "connectors/sql_connector.py::dialect_of": {
   "equivalents": [],
@@ -658,14 +671,28 @@
   "hash": "157a12e6f433673e"
  },
  "guardrails.py::_is_sql_text": {
-  "equivalents": []
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "first = next((t for t in sqlglot.tokenize(text, read=None)",
+    "old": "first = next((t for t in sqlglot.tokenize(text, read=dialect)",
+    "reason": "the keyword check is the fast path: whatever the default tokenizer misses, parse_one(text, read=dialect) on the next line reads as a query in the connection's dialect"
+   },
+   {
+    "n": 1,
+    "new": "first = next((t for t in sqlglot.tokenize(text, )",
+    "old": "first = next((t for t in sqlglot.tokenize(text, read=dialect)",
+    "reason": "the keyword check is the fast path: whatever the default tokenizer misses, parse_one(text, read=dialect) on the next line reads as a query in the connection's dialect"
+   }
+  ]
  },
  "guardrails.py::_system_schemas": {
   "equivalents": [],
   "hash": "b23596f7da759259"
  },
  "guardrails.py::check_sql_readonly": {
-  "equivalents": []
+  "equivalents": [],
+  "hash": "10765bbff88ac960"
  },
  "guardrails.py::is_pii_column": {
   "equivalents": [],
