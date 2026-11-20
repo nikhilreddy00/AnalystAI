@@ -1218,6 +1218,28 @@ def test_the_sql_server_admin_login_is_refused(tmp_path):
         run_readonly(_engine_for(url), "SELECT 1")
 
 
+def test_postgres_reads_backslashes_in_strings_as_the_guard_does(tmp_path):
+    """P58-16 on Postgres (5.8b security review): a database with standard_conforming_strings
+    off reads 'x\\' as an unterminated string, so text sqlglot reads as a string ran as SQL."""
+    from sqlalchemy import text
+    from sqlalchemy.engine import make_url
+
+    from connectors.sql_connector import run_readonly
+    url = _each_dialect(tmp_path, "postgresql")
+    name = make_url(url).database
+    with _admin(tmp_path, "postgresql").connect().execution_options(
+            isolation_level="AUTOCOMMIT") as c:
+        c.execute(text(f'ALTER DATABASE "{name}" SET standard_conforming_strings = off'))
+    try:
+        rows = run_readonly(_engine_for(url), "SELECT 'a\\' AS s, current_setting("
+                            "'standard_conforming_strings') AS scs").rows
+        assert rows == [("a\\", "on")]
+    finally:
+        with _admin(tmp_path, "postgresql").connect().execution_options(
+                isolation_level="AUTOCOMMIT") as c:
+            c.execute(text(f'ALTER DATABASE "{name}" RESET standard_conforming_strings'))
+
+
 def test_sql_server_reads_double_quotes_as_names_as_the_guard_does(tmp_path):
     """P58-16 on SQL Server: QUOTED_IDENTIFIER is pinned on, so "a" is a column as sqlglot's
     T-SQL reads it, never the string 'a'."""

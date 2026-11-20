@@ -168,7 +168,10 @@ DIALECTS: dict[str, Dialect] = {
         sqlglot="postgres", driver="psycopg", drivers=frozenset({"", "psycopg", "asyncpg"}),
         query_keys=frozenset({"sslmode", "channel_binding", "connect_timeout", "application_name",
                               "target_session_attrs"}),
-        begin=("SET TRANSACTION READ ONLY", "SET LOCAL statement_timeout = {ms}"),
+        # the server reads quotes as the parse guard does: with standard_conforming_strings off a
+        # backslash escapes a quote, and a string sqlglot ends reads on (5.8b security review)
+        begin=("SET TRANSACTION READ ONLY", "SET LOCAL statement_timeout = {ms}",
+               "SET LOCAL standard_conforming_strings = on"),
         system_schemas=frozenset({"information_schema", "pg_catalog", "pg_toast"}),
         connect_args={"connect_timeout": CONNECT_TIMEOUT_S},
         # libpq connects to hostaddr and verifies TLS against host
