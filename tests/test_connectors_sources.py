@@ -757,6 +757,15 @@ async def test_a_question_reads_its_own_tables_by_any_spelling(tmp_path, name):
         assert (await conn.query(sql)).rows == [(1,)], sql
 
 
+async def test_a_function_read_as_a_table_is_named_in_the_refusal(tmp_path):
+    from agents.errors import GuardrailViolation
+    conn = _connector_with_mine(tmp_path, "postgresql")
+    with pytest.raises(GuardrailViolation) as err:
+        await conn.query("SELECT * FROM some_srf(1) AS s")   # any function read as a table
+    assert err.value.user_message == ("Blocked unsafe SQL: only the connected database's tables "
+                                      "can be read: SOME_SRF().")
+
+
 async def test_a_postgres_set_returning_function_is_not_a_table(tmp_path):
     conn = _connector_with_mine(tmp_path, "postgresql")
     assert len((await conn.query("SELECT * FROM generate_series(1, 3) AS g")).rows) == 3

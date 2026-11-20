@@ -306,7 +306,8 @@
     "old": "if not pd.api.types.is_numeric_dtype(s) and (blank := s.eq(\"\")).any():",
     "reason": "the numeric test only skips work: a numeric column never equals '', so its blank mask is all False and nothing is masked either way"
    }
-  ]
+  ],
+  "hash": "457cb9c5401fbfb6"
  },
  "connectors/base.py::resolved": {
   "equivalents": [],
@@ -336,7 +337,20 @@
   "hash": "3b6ede79ba2d9575"
  },
  "connectors/sql_connector.py::SQLConnector._read": {
-  "equivalents": []
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "f\"SELECT COUNT(*) FROM {qualified}\", )  # noqa: S608",
+    "old": "f\"SELECT COUNT(*) FROM {qualified}\", 1)  # noqa: S608",
+    "reason": "the row cap of a COUNT(*): it returns exactly one row, so a cap of 1, 2 or the default reads the same row"
+   },
+   {
+    "n": 1,
+    "new": "f\"SELECT COUNT(*) FROM {qualified}\", 2)  # noqa: S608",
+    "old": "f\"SELECT COUNT(*) FROM {qualified}\", 1)  # noqa: S608",
+    "reason": "the row cap of a COUNT(*): it returns exactly one row, so a cap of 1, 2 or the default reads the same row"
+   }
+  ]
  },
  "connectors/sql_connector.py::SQLConnector.engine": {
   "equivalents": [],
@@ -346,10 +360,12 @@
   "equivalents": []
  },
  "connectors/sql_connector.py::SQLConnector.schema_context": {
-  "equivalents": []
+  "equivalents": [],
+  "hash": "555e358a61d46829"
  },
  "connectors/sql_connector.py::SQLConnector.test_connection": {
-  "equivalents": []
+  "equivalents": [],
+  "hash": "8ff8877fd9241813"
  },
  "connectors/sql_connector.py::_assert_single_select": {
   "equivalents": [],
@@ -385,10 +401,12 @@
     "old": "conn.exec_driver_sql(statement.format(ms=int(timeout_s * 1000)))",
     "reason": "15,015 ms against 15,000: a statement timeout 15 ms longer, which no test can tell from the real one (the slow-query test allows seconds)"
    }
-  ]
+  ],
+  "hash": "386be338eed64b2a"
  },
  "connectors/sql_connector.py::safe_url": {
-  "equivalents": []
+  "equivalents": [],
+  "hash": "c5c991b122699bea"
  },
  "connectors/sql_connector.py::sql_dialect": {
   "equivalents": [],
@@ -638,6 +656,9 @@
  "evals/scoring.py::score_quality": {
   "equivalents": [],
   "hash": "157a12e6f433673e"
+ },
+ "guardrails.py::_is_sql_text": {
+  "equivalents": []
  },
  "guardrails.py::_system_schemas": {
   "equivalents": [],

@@ -219,11 +219,9 @@ def _unlisted_tables(sql: str, d: Dialect, listed) -> list[str]:
     (`WITH pg_shadow AS (SELECT * FROM pg_shadow)` reads the real one inside); the only function
     read as a table is generate_series (pg_stat_get_activity(...) reads the server's sessions)."""
     tree = sqlglot.parse_one(sql, read=d.sqlglot)
-    try:
-        real = {id(s) for scope in traverse_scope(tree) for s in scope.sources.values()
-                if isinstance(s, exp.Table)}
-    except sqlglot.errors.SqlglotError:   # fail closed: tables we can't resolve aren't read
-        return ["(a query whose tables couldn't be resolved)"]
+    # a query sqlglot can't resolve raises here and is never run (fail closed)
+    real = {id(s) for scope in traverse_scope(tree) for s in scope.sources.values()
+            if isinstance(s, exp.Table)}
     ctes = {c.alias_or_name.lower() for c in tree.find_all(exp.CTE)}
     known = {name.lower() for name in listed}
     out = []

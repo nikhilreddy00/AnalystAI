@@ -158,6 +158,14 @@ def test_the_sql_text_check_is_linear_on_hostile_text():
 
 def test_a_function_given_ordinary_text_is_allowed():
     assert g.check_sql_readonly("SELECT initcap('selection'), to_char(now(), 'YYYY')", "postgres") is None
+    # unknown functions given text that isn't a query: a word, nothing, a bracket, a lone quote
+    for text_ in ["selection", "", "(", "it''s"]:
+        assert g.check_sql_readonly(f"SELECT my_fn('{text_}')", "postgres") is None, text_
+
+
+def test_sql_as_text_is_read_in_the_connections_dialect():
+    """MySQL's `#` starts a comment: the query after it is found only when read as MySQL."""
+    assert g.check_sql_readonly("SELECT my_fn('# c\nSELECT 1')", "mysql") is not None
 
 
 def test_the_catalog_rules_follow_the_dialect_rows():
