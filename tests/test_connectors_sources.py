@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import re
+import ssl
 
 import httpx
 import pandas as pd
@@ -892,18 +893,25 @@ def test_a_database_that_cant_be_reached_is_a_session_error_not_a_crash(tmp_path
 @pytest.mark.parametrize("name", DIALECT_NAMES)
 async def test_a_capped_table_load_reads_the_first_rows_by_key(tmp_path, name, monkeypatch):
     """B8: LIMIT without ORDER BY read an arbitrary subset past the cap (two runs, two datasets;
-    a resumed run: 'the data changed'). A keyed table loads in key order (SQL Server: TOP)."""
-    from sqlalchemy import text
+    a resumed run: 'the data changed'). A keyed table loads in key order (SQL Server: TOP), and
+    the note says how many rows the table has, counted in the engine's own SQL (a name that
+    needs quoting: a generic count would quote it as MySQL reads a string)."""
+    from sqlalchemy import Column, Integer, MetaData, Table, update
 
     import connectors.sql_connector as sc
     url = _each_dialect(tmp_path, name)
-    with _admin(tmp_path, name).begin() as c:
-        c.execute(text("DROP TABLE IF EXISTS keyed"))
-        c.execute(text("CREATE TABLE keyed (k INTEGER PRIMARY KEY, v INTEGER)"))
-        c.execute(text("INSERT INTO keyed VALUES (5, 50), (3, 30), (9, 90), (1, 10)"))
-        c.execute(text("UPDATE keyed SET v = v + 1 WHERE k = 1"))   # PG: k=1 moves to the end
+    keyed = Table("Keyed Rows", MetaData(), Column("k", Integer, primary_key=True,
+                                                   autoincrement=False), Column("v", Integer))
+    admin = _admin(tmp_path, name)
+    keyed.drop(admin, checkfirst=True)
+    keyed.create(admin)
+    with admin.begin() as c:
+        c.execute(keyed.insert(), [{"k": k, "v": 10 * k} for k in (5, 3, 9, 1)])
+        c.execute(update(keyed).where(keyed.c.k == 1).values(v=11))   # PG: k=1 moves to the end
     monkeypatch.setattr(sc, "LOAD_MAX_ROWS", 2)
-    assert list((await _sql(url, "keyed").load())["k"]) == [1, 3]
+    conn = _sql(url, "Keyed Rows")
+    assert list((await conn.load())["k"]) == [1, 3]
+    assert any("2 of 4 rows" in n for n in conn.read_info["notes"])
 
 
 async def test_a_capped_load_outside_the_default_schema_reads_its_own_key(tmp_path, monkeypatch):
@@ -1091,8 +1099,30 @@ def test_ssl_mode_verify_identity_refuses_a_certificate_no_known_ca_signed(tmp_p
 def test_an_ssl_mode_that_doesnt_encrypt_is_refused(mode):
     with pytest.raises(IngestionError) as err:
         _sql(f"mysql://u:p@h/db?ssl_mode={mode}")._engine()
-    assert err.value.user_message == ("ssl_mode must be REQUIRED, VERIFY_CA or VERIFY_IDENTITY "
-                                      "(leave it out for no TLS).")
+    assert (str(err.value), err.value.user_message) == (
+        "ingestion: ssl_mode",
+        "ssl_mode must be REQUIRED, VERIFY_CA or VERIFY_IDENTITY (leave it out for no TLS).")
+
+
+@pytest.mark.parametrize(("mode", "verify", "name"), [
+    ("REQUIRED", ssl.CERT_NONE, False), ("verify_ca", ssl.CERT_REQUIRED, False),
+    ("Verify_Identity", ssl.CERT_REQUIRED, True)])
+def test_each_ssl_mode_checks_what_its_name_says(monkeypatch, mode, verify, name):
+    """REQUIRED encrypts; VERIFY_CA checks the chain; VERIFY_IDENTITY the name too. Against
+    certifi's CAs plus the operator's bundle (the Docker image's is AWS RDS's)."""
+    import certifi
+
+    from api.config import settings
+    from connectors.sql_connector import _tls
+    ctx = _tls(mode)
+    assert (ctx.verify_mode, ctx.check_hostname) == (verify, name)
+    certifi_cas = ssl.create_default_context(cafile=certifi.where()).cert_store_stats()["x509_ca"]
+    assert ctx.cert_store_stats()["x509_ca"] == certifi_cas
+    monkeypatch.setattr(settings, "extra_ca_bundle", certifi.where())   # the operator's is read
+    assert _tls(mode).cert_store_stats()["x509_ca"] == certifi_cas
+    monkeypatch.setattr(settings, "extra_ca_bundle", "/nonexistent/bundle.pem")
+    with pytest.raises(FileNotFoundError):
+        _tls(mode)
 
 
 def test_in_production_a_tls_session_goes_to_the_checked_address_and_verifies_the_name(
@@ -1110,13 +1140,31 @@ def test_in_production_a_tls_session_goes_to_the_checked_address_and_verifies_th
     monkeypatch.setattr(sc, "_checked_address", lambda url: "127.0.0.1")
     dialed = []
     real = socket.create_connection
-    monkeypatch.setattr(socket, "create_connection", lambda addr, *a, **k: dialed.append(addr) or
-                        real(addr, *a, **k))
+    monkeypatch.setattr(socket, "create_connection", lambda addr, *a, **k: dialed.append(
+        (addr, k.get("timeout"))) or real(addr, *a, **k))
     url = u.set(host="localhost").render_as_string(hide_password=False) + "?ssl_mode=REQUIRED"
     engine = _engine_for(url)
     with engine.connect() as c:
         assert c.connection.dbapi_connection.host == "localhost"   # the name TLS is given
-    assert dialed == [("127.0.0.1", u.port)]
+    assert dialed == [(("127.0.0.1", u.port), sc.CONNECT_TIMEOUT_S)]
+
+
+def test_in_production_a_pinned_mysql_without_a_port_dials_3306(monkeypatch):
+    import socket
+
+    import connectors.sql_connector as sc
+    from api.config import settings
+    monkeypatch.setattr(settings, "app_env", "production")
+    monkeypatch.setattr(sc, "_checked_address", lambda url: "10.0.0.5")
+    dialed = []
+
+    def dial(addr, *a, **k):
+        dialed.append(addr)
+        raise OSError("no route")
+    monkeypatch.setattr(socket, "create_connection", dial)
+    with pytest.raises(OSError, match="no route"), _engine_for("mysql://u:p@db.example/x").connect():
+        pass
+    assert dialed == [("10.0.0.5", 3306)]
 
 
 def test_sql_server_reads_double_quotes_as_names_as_the_guard_does(tmp_path):
