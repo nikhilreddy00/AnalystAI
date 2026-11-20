@@ -74,17 +74,18 @@ _SQL_DENY_FUNCS = {"nextval", "setval", "set_config", "query_to_xml", "query_to_
 # starts (security review: `/* ' */ /*!SLEEP(5)*/ /* ' */`). Cost: a literal holding these
 # three characters is refused too.
 _EXECUTABLE_COMMENT = re.compile(r"/\*(!|M!|\+)")
-# a query as text: past leading blanks, brackets and comments, a statement keyword
-_SQL_TEXT = re.compile(r"(\s|\(|/\*.*?\*/|--[^\n]*(\n|$))*(select|with|table|values)\b",
-                       re.IGNORECASE | re.DOTALL)
+_SQL_TEXT_STARTS = {"SELECT", "WITH", "TABLE", "VALUES"}
 
 
 def _is_sql_text(text: str, dialect: str | None) -> bool:
-    """A string literal that is a query (a function given it runs it). The keyword check, or
-    whatever sqlglot itself reads as a query."""
-    if _SQL_TEXT.match(text):
-        return True
+    """A string literal that is a query (a function given it runs it): its first token past
+    comments and brackets is a statement keyword (sqlglot's tokenizer: linear, no regex to
+    backtrack), or sqlglot reads it as a query."""
     try:
+        first = next((t for t in sqlglot.tokenize(text, read=dialect)
+                      if t.token_type != sqlglot.TokenType.L_PAREN), None)
+        if first is not None and first.text.upper() in _SQL_TEXT_STARTS:
+            return True
         return isinstance(sqlglot.parse_one(text, read=dialect), exp.Query)
     except sqlglot.errors.SqlglotError:
         return False

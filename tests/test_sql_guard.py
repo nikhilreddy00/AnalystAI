@@ -137,6 +137,14 @@ def test_a_function_given_sql_as_text_is_refused(sql):
     assert g.check_sql_readonly(sql, "postgres") is not None
 
 
+def test_the_sql_text_check_is_linear_on_hostile_text():
+    """Security review: the first version's comment regex backtracked on '/*/*/*…'."""
+    import time
+    start = time.monotonic()
+    g.check_sql_readonly("SELECT f('" + "/*" * 20_000 + "')", "postgres")
+    assert time.monotonic() - start < 2
+
+
 def test_a_function_given_ordinary_text_is_allowed():
     assert g.check_sql_readonly("SELECT initcap('selection'), to_char(now(), 'YYYY')", "postgres") is None
 
