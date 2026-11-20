@@ -662,7 +662,7 @@ export default function ChatInterface() {
               <div>
                 <h2 className="text-lg font-semibold text-foreground">Connect your data</h2>
                 <p className="text-sm text-muted-foreground">
-                  CSV, Excel, Parquet, a SQL database, Google Sheets or a REST API.
+                  CSV, Excel, Parquet, a PostgreSQL or MySQL database, Google Sheets or a REST API.
                 </p>
               </div>
               <div className="rounded-lg border border-border bg-card p-4">
