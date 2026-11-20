@@ -4,9 +4,12 @@ public, and connects to the address it checked, on every hop. Offline: the netwo
 under the production client (tests/fake_network.py)."""
 from __future__ import annotations
 
+import socket
+import ssl
 import subprocess
 from pathlib import Path
 
+import certifi
 import httpcore
 import httpx
 import pytest
@@ -41,6 +44,57 @@ def test_the_guarded_pool_is_still_where_httpx_keeps_it():
     network = client._transport._pool._network_backend  # noqa: SLF001
     assert isinstance(network, base._CheckedNetwork)
     assert isinstance(network._inner, httpcore.AnyIOBackend)   # the real sockets, under the check
+
+
+def test_the_guarded_client_settings():
+    """The contract: one timeout, redirects returned not followed, environment ignored,
+    uncompressed bodies, and TLS verified against certifi's roots (not the OS store)."""
+    client = base.public_client(timeout=7)
+    assert client.timeout == httpx.Timeout(7) and base.public_client().timeout == httpx.Timeout(30)
+    assert client.follow_redirects is False and client.trust_env is False
+    assert client.headers["accept-encoding"] == "identity"
+    pool = client._transport._pool  # noqa: SLF001
+    ctx = pool._ssl_context  # noqa: SLF001
+    assert ctx.verify_mode == ssl.CERT_REQUIRED and ctx.check_hostname
+    assert ctx.get_ca_certs() == ssl.create_default_context(cafile=certifi.where()).get_ca_certs()
+
+
+async def test_a_redirect_is_returned_not_followed(monkeypatch):
+    wire = serve(monkeypatch, lambda r: httpx.Response(302, headers={"Location": "https://b.example/"}))
+    async with base.public_client() as client:
+        r = await client.get("https://files.example/a")
+    assert r.status_code == 302 and [q.url.host for q in wire.requests] == ["files.example"]
+
+
+@pytest.mark.parametrize(("dns", "message"), [
+    ({}, "The host 'files.example' wasn't found."),
+    ({"files.example": ["10.0.0.5"]}, "The host 'files.example' isn't on the public internet, "
+                                      "so it can't be fetched from this server."),
+])
+def test_a_refused_host_says_why_in_the_users_words(monkeypatch, dns, message):
+    def getaddrinfo(host, *a, **k):
+        if host not in dns:
+            raise socket.gaierror("nope")
+        return [(0, 0, 0, "", (ip, 0)) for ip in dns[host]]
+    monkeypatch.setattr(socket, "getaddrinfo", getaddrinfo)
+    with pytest.raises(base.RefusedHost) as refused:
+        base.public_addresses("files.example")
+    assert str(refused.value) == message
+
+
+async def test_each_address_gets_the_callers_arguments_and_the_last_error_is_raised(monkeypatch):
+    serve(monkeypatch, _json([]), {"files.example": ["2606:4700::1111", PUBLIC]})
+    calls = []
+
+    class Inner:
+        async def connect_tcp(self, *args):
+            calls.append(args)
+            raise (httpcore.ConnectError if len(calls) == 1 else httpcore.ConnectTimeout)(args[0])
+    monkeypatch.setattr(base, "_NETWORK", Inner)
+    args = ("files.example", 8443, 4.5, "0.0.0.0", [(1, 2, 3)])   # noqa: S104
+    with pytest.raises(httpcore.ConnectTimeout, match=PUBLIC):
+        await base._CheckedNetwork().connect_tcp(*args)
+    assert calls == [(ip, *args[1:]) for ip in ("2606:4700::1111", PUBLIC)]
 
 
 @pytest.mark.parametrize("address", ["127.0.0.1", "10.0.0.5", "192.168.1.2", "169.254.169.254",

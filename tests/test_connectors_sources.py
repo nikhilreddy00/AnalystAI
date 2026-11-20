@@ -991,7 +991,8 @@ def test_a_mapped_ipv6_address_resolves_as_its_ipv4_address(monkeypatch):
     ("2001:0:4136:e378:8000:63bf:80ff:fffe", ["65.54.227.120", "127.0.0.1"]),   # Teredo, both ends
     ("64:ff9b:1::a9fe:a9fe", ["0.0.0.0"]),   # local-use NAT64: embedding unknown → refused everywhere
     ("2606:4700::1111", ["2606:4700::1111"]),                # a plain public IPv6 stays itself
-    ("::1", ["::1"]), ("::", ["::"]),
+    ("::1", ["::1"]), ("::", ["::"]),   # loopback and unspecified stay themselves
+    ("::2", ["0.0.0.2"]),                # the first IPv4-compatible address unwraps
 ])
 def test_resolved_unwraps_every_ipv4_embedding(monkeypatch, record, inside):
     """5.8b (recurrence of P58-07: the 5.8a fix unwrapped only IPv4-mapped addresses): a DNS

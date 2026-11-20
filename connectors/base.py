@@ -211,14 +211,14 @@ class _CheckedNetwork(httpcore.AsyncNetworkBackend):
     async def connect_tcp(self, host, port, timeout=None, local_address=None,
                           socket_options=None):
         ips = await anyio.to_thread.run_sync(public_addresses, host)
-        failed: Exception | None = None
+        failed: Exception   # set by each failed try: ips is never empty here
         for ip in ips:   # every address, in order: no happy-eyeballs in httpcore
             try:
                 return await self._inner.connect_tcp(str(ip), port, timeout, local_address,
                                                      socket_options)
             except (httpcore.ConnectError, httpcore.ConnectTimeout) as exc:
                 failed = exc
-        raise failed   # type: ignore[misc] - ips is never empty here
+        raise failed
     # no unix sockets (the base class refuses them) and no sleep: the client never retries
 
 
@@ -227,7 +227,7 @@ def public_client(timeout: float = 30) -> httpx.AsyncClient:
     not followed (a caller that follows them gets each hop checked at its connection anyway),
     proxies from the environment are ignored (they would carry the request past the check), and
     responses come uncompressed (a gzip body can expand far past any byte cap)."""
-    transport = httpx.AsyncHTTPTransport(retries=0)
+    transport = httpx.AsyncHTTPTransport()   # its pool (and retries: 0, the default) is replaced
     # httpx 0.28 has no network_backend option: its pool is replaced by one on the checked
     # network (tests/test_public_http.py pins that this still holds)
     transport._pool = httpcore.AsyncConnectionPool(  # noqa: SLF001
@@ -325,7 +325,7 @@ def sources_table() -> str:
                          "development only; refused when `APP_ENV=production`"))
             continue
         rows += [(f"{d.title}, ask questions", f"`{key}://user:password@host:port/database`"
-                  f"{needs.get(key, '')}, no table name: the SQL agent writes one read-only query "
+                  f"{needs[key]}, no table name: the SQL agent writes one read-only query "
                   "per question and aggregates in the database",
                   f"{sql.MAX_ROWS:,} result rows, {sql.TIMEOUT_S} s per query"),
                  (f"{d.title}, one table", "the same + a table name",
