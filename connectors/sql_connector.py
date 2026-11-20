@@ -137,7 +137,7 @@ class SQLConnector(DataConnector):
         sql = _assert_single_select(sql, sql_dialect(engine))
         return await asyncio.to_thread(run_readonly, engine, sql, max_rows)
 
-    async def load(self) -> pd.DataFrame:
+    async def _read(self) -> pd.DataFrame:
         engine = self._engine()
         table = self.config.table_name
 

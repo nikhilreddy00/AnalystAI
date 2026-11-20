@@ -120,15 +120,31 @@ def truncation_note(kept: int, total: int | None, limit: str) -> str:
     return f"{TRUNCATED}{kept:,}{of} rows were loaded ({limit}{more})."
 
 
+def normalize_frame(df: pd.DataFrame) -> pd.DataFrame:
+    """The one load rule after any source's read (ADR-0010): a text column whose values are all
+    dates becomes datetimes. The file reader, the databases, the Sheet and the API end here, so a
+    table reads the same from each (5.8a: dates read from SQL and the API stayed text)."""
+    for col in df.columns:
+        if (parsed := parse_text_dates(df[col])) is not None:
+            df[col] = parsed
+        elif pd.api.types.is_float_dtype(df[col]):
+            df[col] = df[col] + 0.0   # -0.0 → 0.0: a CSV keeps "-0.0", JSON and SQL don't ("-$0.00")
+    return df
+
+
 class DataConnector(ABC):
     read_info: dict = {}   # how the last load read the source (file connector); see source evidence
 
     def __init__(self, config: ConnectorConfig) -> None:
         self.config = config
 
-    @abstractmethod
     async def load(self) -> pd.DataFrame:
-        """Load data from the source and return a clean DataFrame."""
+        """The source's table, read and then normalised by the one load rule."""
+        return normalize_frame(await self._read())
+
+    @abstractmethod
+    async def _read(self) -> pd.DataFrame:
+        """Read the table from the source as it stores it."""
 
     @abstractmethod
     async def test_connection(self) -> tuple[bool, str]:

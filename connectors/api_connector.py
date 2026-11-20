@@ -94,7 +94,7 @@ class APIConnector(DataConnector):
 
         return headers
 
-    async def load(self) -> pd.DataFrame:
+    async def _read(self) -> pd.DataFrame:
         url = self.config.url
         if not url:
             raise ValueError("url is required for API connector")

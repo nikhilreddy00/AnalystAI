@@ -19,7 +19,7 @@ import chardet
 import pandas as pd
 
 from agents.errors import IngestionError
-from connectors.base import DataConnector, parse_text_dates
+from connectors.base import DataConnector, normalize_frame
 
 # Path traversal guard: only files inside <repo>/uploads/ may be loaded.
 # Resolved once at import time so symlink games can't bypass the check at request time.
@@ -227,10 +227,11 @@ def _read_bytes(content: bytes, suffix: str) -> tuple[pd.DataFrame, dict]:
     elif suffix in (".json", ".jsonl"):
         try:
             # dtype=False: values keep the type they were written with ("02134" stays text).
-            df = pd.read_json(io.BytesIO(content), dtype=False)
+            # precise_float: the fast parser reads 2.76 as 2.7600000000000002 (5.8a source oracle)
+            df = pd.read_json(io.BytesIO(content), dtype=False, precise_float=True)
         except ValueError:
             try:
-                df = pd.read_json(io.BytesIO(content), lines=True, dtype=False)
+                df = pd.read_json(io.BytesIO(content), lines=True, dtype=False, precise_float=True)
             except ValueError as exc:
                 raise IngestionError("json", "The JSON isn't a list of records (one object per "
                                      "row, or one per line).") from exc
@@ -250,15 +251,11 @@ def _read_bytes(content: bytes, suffix: str) -> tuple[pd.DataFrame, dict]:
                              "delimiter and upload it again.")
     if df.empty:
         raise IngestionError("no rows", "The file has column headers but no data rows.")
-    for col in df.columns:
-        parsed = parse_text_dates(df[col])
-        if parsed is not None:
-            df[col] = parsed
-    return df, info
+    return normalize_frame(df), info
 
 
 class CSVConnector(DataConnector):
-    async def load(self) -> pd.DataFrame:
+    async def _read(self) -> pd.DataFrame:
         raw_path = self.config.file_path
         if not raw_path:
             raise ValueError("file_path is required for CSV connector")
