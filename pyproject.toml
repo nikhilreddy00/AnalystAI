@@ -41,6 +41,8 @@ dependencies = [
     "langgraph-checkpoint-postgres>=3.2.0",
     "greenlet>=3.5.0",
     "pymysql>=1.1.1",
+    "pyodbc>=5.2",   # SQL Server (5.8b): needs Microsoft's ODBC Driver 18 on the host
+    "certifi>=2024.2",   # MySQL/MariaDB TLS: the CA store, never a user's file path
 ]
 
 [project.optional-dependencies]

@@ -11,35 +11,30 @@ from urllib.parse import urlparse
 import httpx
 import pandas as pd
 
-from connectors.base import DataConnector, resolved, truncation_note
+from connectors.base import DataConnector, public_client, truncation_note
 
 MAX_PAGES = 20          # safety cap to prevent infinite pagination loops
 PAGE_SIZE = 1000
 MAX_RECORDS = 100_000   # hard ceiling across all pages to prevent OOM
 
 
-def _assert_public_url(url: str) -> None:
-    """Block SSRF: reject URLs whose host resolves to a private/loopback/link-local
-    address. Also rejects non-http(s) schemes and unresolved hostnames."""
+def _http_url(url: str) -> None:
+    """An http(s) URL with a host; which hosts may be fetched is the guarded client's rule
+    (`public_client`, checked at each connection: 5.8b moved it there, the check here was
+    followed by a second lookup)."""
     parsed = urlparse(url)
     if parsed.scheme not in ("http", "https"):
         raise ValueError(f"Only http(s) URLs are allowed (got scheme '{parsed.scheme}').")
-    host = parsed.hostname
-    if not host:
+    if not parsed.hostname:
         raise ValueError("URL is missing a hostname.")
-    for ip in resolved(host):
-        addr = str(ip)
-        if (
-            ip.is_private
-            or ip.is_loopback
-            or ip.is_link_local
-            or ip.is_multicast
-            or ip.is_reserved
-            or ip.is_unspecified
-        ):
-            raise ValueError(
-                f"Refusing to fetch URL: '{host}' resolves to non-public address {addr}."
-            )
+
+
+def _status(response: httpx.Response) -> None:
+    """An error status as a message without the URL (httpx's own quotes it, and a URL can carry
+    a key)."""
+    if response.status_code >= 400:
+        raise ValueError(f"The API answered HTTP {response.status_code} "
+                         f"({response.reason_phrase}).")
 
 
 _RECORD_KEYS = ("data", "results", "items", "records")
@@ -88,22 +83,21 @@ class APIConnector(DataConnector):
         url = self.config.url
         if not url:
             raise ValueError("url is required for API connector")
-        _assert_public_url(url)
+        _http_url(url)
 
         headers = self._build_headers()
         records: list[dict[str, Any]] = []
 
-        # follow_redirects=False — redirects could point at internal IPs and
-        # bypass the SSRF check we just performed.
-        async with httpx.AsyncClient(timeout=30, follow_redirects=False) as client:
+        # Redirects aren't followed; a next-page URL from the body is a new connection, checked
+        # by the client like the first
+        async with public_client(timeout=30) as client:
             page = 1
             next_url: str | None = url
 
             while next_url and page <= MAX_PAGES and len(records) < MAX_RECORDS:
-                # Re-validate every URL we touch (including next-page URLs from the response body)
-                _assert_public_url(next_url)
+                _http_url(next_url)
                 response = await client.get(next_url, headers=headers)
-                response.raise_for_status()
+                _status(response)
                 data = response.json()
 
                 records.extend(_records(data) or [])
@@ -139,10 +133,12 @@ class APIConnector(DataConnector):
         if not url:
             return False, "url not provided"
         try:
-            _assert_public_url(url)
-            async with httpx.AsyncClient(timeout=10, follow_redirects=False) as client:
+            _http_url(url)
+            async with public_client(timeout=10) as client:
                 response = await client.get(url, headers=self._build_headers())
-                response.raise_for_status()
+                _status(response)
             return True, f"API reachable (HTTP {response.status_code})"
-        except Exception as e:
+        except ValueError as e:   # ours: the URL, the host refused, an error status
             return False, str(e)
+        except httpx.HTTPError as e:   # the network's: its class names it, never the URL
+            return False, f"The API couldn't be reached ({type(e).__name__})."

@@ -55,9 +55,30 @@ jobs:
         options: >-
           --health-cmd "mysql -h127.0.0.1 -uroot -pmysql -e 'SELECT 1'"
           --health-interval 5s --health-timeout 5s --health-retries 30
+      mariadb:    # Phase 5.8b (the same pins as scripts/test_dbs.sh)
+        image: mariadb:11.4
+        env:
+          MARIADB_ROOT_PASSWORD: mariadb
+        ports: ["3307:3306"]
+        options: >-
+          --health-cmd "mariadb -h127.0.0.1 -uroot -pmariadb -e 'SELECT 1'"
+          --health-interval 5s --health-timeout 5s --health-retries 30
+      mssql:      # Phase 5.8b; tests/conftest.py creates the database and the reader/writer logins
+        image: mcr.microsoft.com/mssql/server:2022-CU28-ubuntu-22.04
+        env:
+          ACCEPT_EULA: "Y"
+          MSSQL_SA_PASSWORD: AaiTest2026sql
+        ports: ["1433:1433"]
+        options: >-
+          --health-cmd "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P AaiTest2026sql -Q 'SELECT 1'"
+          --health-interval 5s --health-timeout 5s --health-retries 40
     env:
       TEST_PG_URL: postgresql+psycopg://postgres:postgres@localhost:5432/analystai_eval
       TEST_MYSQL_URL: mysql+pymysql://root:mysql@127.0.0.1:3306/analystai_eval
+      TEST_MARIADB_URL: mariadb+pymysql://root:mariadb@127.0.0.1:3307/analystai_eval
+      TEST_MSSQL_URL: mssql+pyodbc://sa:AaiTest2026sql@127.0.0.1:1433/analystai_eval?driver=ODBC+Driver+18+for+SQL+Server&TrustServerCertificate=yes
+      TEST_MSSQL_READER_URL: mssql://aai_reader:AaiTest2026sql@127.0.0.1:1433/analystai_eval?TrustServerCertificate=yes
+      TEST_MSSQL_WRITER_URL: mssql://aai_writer:AaiTest2026sql@127.0.0.1:1433/analystai_eval?TrustServerCertificate=yes
       CI_SHARD: ${{ matrix.shard }}/4
       TEST_ORDER_SEED: ${{ github.event_name == 'schedule' && github.run_id || '' }}
       # nightly: the property tests' 500-example profile (tests/conftest.py); else 25, derandomized
@@ -69,6 +90,8 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with:
           python-version: "3.11"
+      # SQL Server's driver (pyodbc needs Microsoft's ODBC Driver 18; the runner image may carry it)
+      - run: odbcinst -q -d | grep -q "ODBC Driver 18" || (curl -sSL https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/packages-microsoft-prod.deb -o /tmp/ms.deb && sudo dpkg -i /tmp/ms.deb && sudo apt-get update -q && sudo ACCEPT_EULA=Y apt-get install -yq msodbcsql18 unixodbc)
       - run: uv sync --frozen --extra dev
       - run: uv run ruff check .
       - run: uv run lint-imports   # domain_pack layers; the reference oracle never reads the product

@@ -452,21 +452,16 @@ def _mocked_source(source: str, df: pd.DataFrame, csv: str, monkeypatch):
     records; every cell a formatted string), through the production connector's load()."""
     import csv as csvmod
     import io
-    import socket
 
     import httpx
 
-    import connectors.api_connector as ac
     from connectors.base import get_connector
+    from tests.fake_network import serve
     from connectors.sheets_connector import SheetsConnector
     from orchestrator.state import ConnectorConfig, ConnectorType
     if source == "api":
         body = json.loads(df.to_json(orient="records", date_format="iso"))
-        monkeypatch.setattr(socket, "getaddrinfo",
-                            lambda host, *a, **k: [(0, 0, 0, "", ("93.184.216.34", 0))])
-        real = httpx.AsyncClient
-        monkeypatch.setattr(ac.httpx, "AsyncClient", lambda **kw: real(
-            transport=httpx.MockTransport(lambda r: httpx.Response(200, json=body)), **kw))
+        serve(monkeypatch, lambda r: httpx.Response(200, json=body))
         return get_connector(ConnectorConfig(type=ConnectorType.API, url="https://api.example.com/x"))
     cells = list(csvmod.reader(io.StringIO(csv)))
 

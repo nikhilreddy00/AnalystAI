@@ -5,12 +5,33 @@ import pytest
 from llm.client import RecordedClient, set_client
 
 
+_MSSQL_ROLES = {"TEST_MSSQL_READER_URL": "db_datareader", "TEST_MSSQL_WRITER_URL": "db_datawriter"}
+
+
+def _mssql_logins(c, text, name: str) -> None:
+    """SQL Server (5.8b): the admin URL writes the fixtures; the connector reads with a login that
+    can't write (the can-write check refuses any other), and the refusal test needs one that can.
+    Both logins are created here from their URLs, so CI and scripts/test_dbs.sh only set URLs."""
+    from sqlalchemy.engine import make_url
+    for var, role in _MSSQL_ROLES.items():
+        if not (url := os.environ.get(var)):
+            continue
+        login = make_url(url)
+        user, pw = login.username, (login.password or "").replace("'", "''")
+        c.execute(text(f"IF SUSER_ID('{user}') IS NULL CREATE LOGIN [{user}] WITH PASSWORD = "
+                       f"'{pw}', CHECK_POLICY = OFF"))
+        c.execute(text(f"USE [{name}]; IF USER_ID('{user}') IS NULL CREATE USER [{user}] FOR LOGIN "
+                       f"[{user}]; ALTER ROLE db_datareader ADD MEMBER [{user}]; "
+                       f"ALTER ROLE {role} ADD MEMBER [{user}]; USE master"))
+        os.environ[var] = login.set(database=name).render_as_string(hide_password=False)
+
+
 def _worker_database(var: str) -> None:
     """Each pytest-xdist worker gets its own scratch database (<db>_gw0, <db>_gw1 …), created on
     first use, so the database tests run in parallel without sharing schemas (CI ran the whole
     suite serially because of them: 22 min). Set before any test module reads the URL.
-    MySQL's is created utf8mb4_bin, so text compares as pandas does (a default `_ci` collation
-    would read 'Acme' and 'ACME' as one value)."""
+    MySQL's and MariaDB's are created utf8mb4_bin and SQL Server's Latin1_General_100_BIN2_UTF8, so
+    text compares as pandas does (a default `_ci` collation would read 'Acme' and 'ACME' as one)."""
     url, worker = os.environ.get(var), os.environ.get("PYTEST_XDIST_WORKER")
     if not url:
         return
@@ -18,11 +39,18 @@ def _worker_database(var: str) -> None:
     from sqlalchemy.engine import make_url
     base = make_url(url)
     name = f"{base.database}_{worker}" if worker else base.database
-    if base.get_backend_name() == "mysql":
-        admin = create_engine(base.set(database=None), isolation_level="AUTOCOMMIT")
+    if base.get_backend_name() in ("mysql", "mariadb"):
+        # URL.set(database=None) keeps the database: connect to the server's own one instead
+        admin = create_engine(base.set(database="mysql"), isolation_level="AUTOCOMMIT")
         with admin.connect() as c:
             c.execute(text(f"CREATE DATABASE IF NOT EXISTS `{name}` "
                            "CHARACTER SET utf8mb4 COLLATE utf8mb4_bin"))
+    elif base.get_backend_name() == "mssql":
+        admin = create_engine(base.set(database="master"), isolation_level="AUTOCOMMIT")
+        with admin.connect() as c:
+            c.execute(text(f"IF DB_ID('{name}') IS NULL CREATE DATABASE [{name}] "
+                           "COLLATE Latin1_General_100_BIN2_UTF8"))
+            _mssql_logins(c, text, name)
     elif worker:
         admin = create_engine(base.set(drivername="postgresql+psycopg", database="postgres"),
                               isolation_level="AUTOCOMMIT")
@@ -37,10 +65,14 @@ def _worker_database(var: str) -> None:
 
 _worker_database("TEST_PG_URL")
 _worker_database("TEST_MYSQL_URL")
-# CI's backend job (it sets CI_SHARD) has both databases: a test needing one skips locally without
+_worker_database("TEST_MARIADB_URL")
+_worker_database("TEST_MSSQL_URL")   # also points the reader and writer URLs at its database
+# CI's backend job (it sets CI_SHARD) has every database: a test needing one skips locally without
 # it, never in CI (audit pass 2: ~42 MySQL tests would have skipped unseen had the URL been lost).
+CI_DATABASE_URLS = ("TEST_PG_URL", "TEST_MYSQL_URL", "TEST_MARIADB_URL", "TEST_MSSQL_URL",
+                    *_MSSQL_ROLES)
 if os.environ.get("CI") and "CI_SHARD" in os.environ:
-    if missing := [v for v in ("TEST_PG_URL", "TEST_MYSQL_URL") if not os.environ.get(v)]:
+    if missing := [v for v in CI_DATABASE_URLS if not os.environ.get(v)]:
         raise RuntimeError(f"CI's backend job must set {', '.join(missing)}")
 
 

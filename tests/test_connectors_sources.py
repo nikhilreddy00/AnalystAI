@@ -373,21 +373,16 @@ async def test_sheets_load_converts_numbers_without_crashing(monkeypatch):
 
 @pytest.fixture
 def api(monkeypatch):
-    """Serve `pages` (url → JSON) through httpx.MockTransport; the SSRF guard still runs and sees
-    a public address for every host."""
-    import socket
-
-    import connectors.api_connector as ac
+    """Serve `pages` (url → JSON) under the production guarded client (tests/fake_network.py):
+    every host resolves to one public address."""
+    from tests.fake_network import serve
     pages: dict[str, object] = {}
     headers: list[dict] = []
-    monkeypatch.setattr(socket, "getaddrinfo", lambda host, *a, **k: [(0, 0, 0, "", ("93.184.216.34", 0))])
 
     def handler(request: httpx.Request) -> httpx.Response:
         headers.append(dict(request.headers))
         return httpx.Response(200, json=pages[str(request.url)])
-    real = httpx.AsyncClient
-    monkeypatch.setattr(ac.httpx, "AsyncClient",
-                        lambda **kw: real(transport=httpx.MockTransport(handler), **kw))
+    serve(monkeypatch, handler)
     return pages, headers
 
 
@@ -903,6 +898,30 @@ def test_a_mapped_ipv6_address_resolves_as_its_ipv4_address(monkeypatch):
     monkeypatch.setattr(socket, "getaddrinfo",
                         lambda *a, **k: [(0, 0, 0, "", ("::ffff:127.0.0.1", 0, 0, 0))])
     assert resolved("x") == [ipaddress.ip_address("127.0.0.1")]
+
+
+@pytest.mark.parametrize(("record", "inside"), [
+    ("::ffff:127.0.0.1", ["127.0.0.1"]),                     # IPv4-mapped
+    ("::ffff:0:7f00:1", ["127.0.0.1"]),                      # IPv4-translated (SIIT)
+    ("::127.0.0.1", ["127.0.0.1"]),                          # IPv4-compatible (deprecated)
+    ("64:ff9b::a9fe:a9fe", ["169.254.169.254"]),             # NAT64 well-known prefix
+    ("2002:7f00:1::", ["127.0.0.1"]),                        # 6to4
+    ("2001:0:4136:e378:8000:63bf:80ff:fffe", ["65.54.227.120", "127.0.0.1"]),   # Teredo, both ends
+    ("64:ff9b:1::a9fe:a9fe", ["0.0.0.0"]),   # local-use NAT64: embedding unknown → refused everywhere
+    ("2606:4700::1111", ["2606:4700::1111"]),                # a plain public IPv6 stays itself
+    ("::1", ["::1"]), ("::", ["::"]),
+])
+def test_resolved_unwraps_every_ipv4_embedding(monkeypatch, record, inside):
+    """5.8b (recurrence of P58-07: the 5.8a fix unwrapped only IPv4-mapped addresses): a DNS
+    record holding an IPv4 address inside an IPv6 one (NAT64 to the cloud metadata address reads
+    `is_global` on Python 3.11) is checked as the IPv4 address it reaches. One lookup behind every
+    host check: the database's, the API's and the share-link download's."""
+    import ipaddress
+    import socket
+
+    from connectors.base import resolved
+    monkeypatch.setattr(socket, "getaddrinfo", lambda *a, **k: [(0, 0, 0, "", (record, 0, 0, 0))])
+    assert resolved("x") == [ipaddress.ip_address(a) for a in inside]
 
 
 def test_the_app_store_is_not_published_on_the_network():

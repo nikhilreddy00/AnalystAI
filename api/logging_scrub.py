@@ -47,8 +47,12 @@ class ScrubFilter(logging.Filter):
 
 def install() -> None:
     """Attach the filter to every handler that can write a record (idempotent). Warnings go
-    through logging too (a warning can quote an exception's text)."""
+    through logging too (a warning can quote an exception's text). The HTTP client's request
+    lines stay out: they hold the URL, and a user's URL can hold a key or a share link's token
+    (5.8b, P58-06)."""
     logging.captureWarnings(True)
+    for name in ("httpx", "httpcore"):
+        logging.getLogger(name).setLevel(logging.WARNING)
     loggers = [logging.getLogger(), *(logging.getLogger(n) for n in
                                       ("uvicorn", "uvicorn.error", "uvicorn.access"))]
     for handler in (h for lg in loggers for h in lg.handlers):

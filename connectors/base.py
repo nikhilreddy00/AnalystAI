@@ -10,8 +10,13 @@ import datetime
 import ipaddress
 import re
 import socket
+import ssl
 from abc import ABC, abstractmethod
 
+import anyio.to_thread
+import certifi
+import httpcore
+import httpx
 import pandas as pd
 
 from orchestrator.state import ConnectorConfig, ConnectorType, DataContract
@@ -125,9 +130,40 @@ def without_secrets(message: str, config: ConnectorConfig) -> str:
     return message
 
 
+_NAT64 = ipaddress.ip_network("64:ff9b::/96")
+_NAT64_LOCAL = ipaddress.ip_network("64:ff9b:1::/48")
+_TRANSLATED = ipaddress.ip_network("::ffff:0:0:0/96")
+_COMPATIBLE = ipaddress.ip_network("::/96")
+_UNREADABLE = ipaddress.ip_address("0.0.0.0")   # noqa: S104 - a refused address, never bound
+
+
+def _inside(ip) -> list:
+    """The address(es) a connection to `ip` reaches: an IPv6 address carrying an IPv4 one (mapped,
+    translated, compatible, NAT64, 6to4, both ends of Teredo) is the IPv4 address (5.8b: NAT64 to
+    the cloud metadata address read `is_global`). A local-use NAT64 prefix embeds it at a
+    length we can't know: 0.0.0.0, which every check refuses."""
+    if ip.version == 4:
+        return [ip]
+    low = ipaddress.IPv4Address(int(ip) & 0xFFFFFFFF)
+    if ip.ipv4_mapped:
+        return [ip.ipv4_mapped]
+    if ip.teredo:
+        return list(ip.teredo)
+    if ip.sixtofour:
+        return [ip.sixtofour]
+    if ip in _NAT64 or ip in _TRANSLATED or (ip in _COMPATIBLE and int(ip) > 1):
+        return [low]
+    if ip in _NAT64_LOCAL:
+        return [_UNREADABLE]
+    return [ip]
+
+
 def resolved(host: str) -> list:
-    """The addresses `host` resolves to (ipaddress objects); ValueError if it doesn't resolve.
-    The one lookup behind every host check (the API's SSRF guard, a database's host)."""
+    """The addresses `host` resolves to (ipaddress objects), each as the address it reaches
+    (`_inside`); ValueError if it doesn't resolve. The one lookup behind every host check (a
+    database's host, the API's and a share link's downloads); callers connect to these, never
+    to the name again (DNS rebinding). ponytail: on a NAT64-only network an embedded IPv4 address
+    is reached through the gateway; connecting to it directly there fails (keep both forms then)."""
     try:
         infos = socket.getaddrinfo(host, None)
     except socket.gaierror as exc:
@@ -138,8 +174,73 @@ def resolved(host: str) -> list:
             ip = ipaddress.ip_address(info[4][0])
         except ValueError:
             continue
-        out.append(getattr(ip, "ipv4_mapped", None) or ip)   # ::ffff:127.0.0.1 is 127.0.0.1
+        out += [a for a in _inside(ip) if a not in out]
     return out
+
+
+class RefusedHost(ValueError):
+    """A fetch to a host that isn't on the public internet. The message names the host only."""
+
+
+def public_addresses(host: str) -> list:
+    """`host`'s addresses if every one is a public internet address (`is_global` after
+    unwrapping: no loopback, private/LAN, link-local or metadata, CGNAT, unique-local or
+    reserved), else RefusedHost. Unlike a database's host (a company's own LAN is allowed), a
+    URL the server fetches for a user is never inside any network the server sits in."""
+    try:
+        ips = resolved(host)
+    except ValueError:
+        raise RefusedHost(f"The host '{host}' wasn't found.") from None
+    if not ips or not all(ip.is_global for ip in ips):
+        raise RefusedHost(f"The host '{host}' isn't on the public internet, so it can't be "
+                          "fetched from this server.")
+    return ips
+
+
+def _network() -> httpcore.AsyncNetworkBackend:
+    return httpcore.AnyIOBackend()
+
+
+class _CheckedNetwork(httpcore.AsyncNetworkBackend):
+    """Where every connection the guarded client makes starts (a retry and each redirect hop
+    too): the URL's host is looked up once, checked, and the socket goes to a checked address;
+    TLS still verifies the certificate against the host name (httpcore's server_hostname)."""
+
+    def __init__(self) -> None:
+        self._inner = _network()
+
+    async def connect_tcp(self, host, port, timeout=None, local_address=None,
+                          socket_options=None):
+        ips = await anyio.to_thread.run_sync(public_addresses, host)
+        failed: Exception | None = None
+        for ip in ips:   # every address, in order: no happy-eyeballs in httpcore
+            try:
+                return await self._inner.connect_tcp(str(ip), port, timeout, local_address,
+                                                     socket_options)
+            except (httpcore.ConnectError, httpcore.ConnectTimeout) as exc:
+                failed = exc
+        raise failed   # type: ignore[misc] - ips is never empty here
+
+    async def connect_unix_socket(self, path, timeout=None, socket_options=None):
+        raise httpcore.ConnectError("unix sockets are never fetched")
+
+    async def sleep(self, seconds: float) -> None:
+        await self._inner.sleep(seconds)
+
+
+def public_client(timeout: float = 30) -> httpx.AsyncClient:
+    """THE client for any URL a user gives (the REST API source, a share link). Redirects are
+    not followed (a caller that follows them gets each hop checked at its connection anyway),
+    proxies from the environment are ignored (they would carry the request past the check), and
+    responses come uncompressed (a gzip body can expand far past any byte cap)."""
+    transport = httpx.AsyncHTTPTransport(retries=0)
+    # httpx 0.28 has no network_backend option: its pool is replaced by one on the checked
+    # network (tests/test_public_http.py pins that this still holds)
+    transport._pool = httpcore.AsyncConnectionPool(  # noqa: SLF001
+        ssl_context=ssl.create_default_context(cafile=certifi.where()),
+        network_backend=_CheckedNetwork())
+    return httpx.AsyncClient(transport=transport, timeout=timeout, follow_redirects=False,
+                             trust_env=False, headers={"Accept-Encoding": "identity"})
 
 
 # A capped load names its cap: the source evidence carries this note and the report's alerts find
