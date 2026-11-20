@@ -40,6 +40,7 @@ dependencies = [
     "psycopg[binary]>=3.2",
     "langgraph-checkpoint-postgres>=3.2.0",
     "greenlet>=3.5.0",
+    "pymysql>=1.1.1",
 ]
 
 [project.optional-dependencies]

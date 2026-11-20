@@ -45,8 +45,19 @@ jobs:
         ports: ["5432:5432"]
         options: >-
           --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+      mysql:      # Phase 5.8a: the MySQL source (oracle, read-only and guard tests)
+        image: mysql:8.4   # pinned: mysql:latest is 26.x (Metabase's CI broke on it)
+        env:
+          MYSQL_ROOT_PASSWORD: mysql
+          MYSQL_DATABASE: analystai_eval
+        ports: ["3306:3306"]
+        # a real query over TCP: `mysqladmin ping` answers the image's init server before it's ready
+        options: >-
+          --health-cmd "mysql -h127.0.0.1 -uroot -pmysql -e 'SELECT 1'"
+          --health-interval 5s --health-timeout 5s --health-retries 30
     env:
       TEST_PG_URL: postgresql+psycopg://postgres:postgres@localhost:5432/analystai_eval
+      TEST_MYSQL_URL: mysql+pymysql://root:mysql@127.0.0.1:3306/analystai_eval
       CI_SHARD: ${{ matrix.shard }}/4
       TEST_ORDER_SEED: ${{ github.event_name == 'schedule' && github.run_id || '' }}
       # nightly: the property tests' 500-example profile (tests/conftest.py); else 25, derandomized
