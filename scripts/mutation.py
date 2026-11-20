@@ -66,7 +66,9 @@ GATED = ("domain_pack/spell.py", "domain_pack/ledger.py", "domain_pack/columns.p
          # epoch rules, the PII check, the targeted answers), so "checks green" never read them
          "connectors/base.py", "guardrails.py", "agents/targeted_analysis_agent.py",
          # 5.8a: the dialect table, the connection-string guard, the result-to-frame rule
-         "connectors/sql_connector.py")
+         "connectors/sql_connector.py",
+         # 5.8b: the share-link download (its hops, cap and refusals)
+         "connectors/link.py")
 GATE = "docs/mutation/gate.json"
 
 
