@@ -39,17 +39,24 @@ def _built(name: str, seed: int = 1, transform: str = ""):
 
 @cache
 def _built_once(name: str, seed: int = 1, transform: str = ""):
-    from agents.cleaning_agent import run_cleaning_agent
-    from agents.ingestion_agent import prepare_frame
     from connectors.csv_connector import CSVConnector, _read_bytes
-    from orchestrator.state import AnalysisSession, AnalysisTask, ConnectorConfig, ConnectorType
+    from orchestrator.state import ConnectorConfig, ConnectorType
     raw, truth = datagen.make(name, seed)
     raw = TRANSFORMS[transform](raw) if transform else raw
     df = _read_bytes(raw.to_csv(index=False).encode(), ".csv")[0]
     contract = CSVConnector(ConnectorConfig(type=ConnectorType.CSV)).build_data_contract(df)
+    return _prepared(df, contract, ConnectorType.CSV, truth)
+
+
+def _prepared(df: pd.DataFrame, contract, source_type, truth):
+    """A loaded frame and its contract on to what the agents read, as ingestion and cleaning
+    hand them on: every source takes this one path after its load (the source oracle below)."""
+    from agents.cleaning_agent import run_cleaning_agent
+    from agents.ingestion_agent import prepare_frame
+    from orchestrator.state import AnalysisSession, AnalysisTask
     # patient data: the PHI-protected copy, as production builds it (smoke run: pooling a
     # float code column broke parquet; this adapter skipped the step)
-    df, contract = prepare_frame(df, contract, ConnectorType.CSV, scope="oracle")
+    df, contract = prepare_frame(df, contract, source_type, scope="oracle")
     s = AnalysisSession(session_id="oracle", data_contract=contract, task_plan=AnalysisTask(
         raw_query="o", analysis_types=["eda"], target_metrics=[]))
     s.__dict__["_df_parquet"] = _parquet(df)
@@ -473,37 +480,81 @@ def _mocked_source(source: str, df: pd.DataFrame, csv: str, monkeypatch):
     return conn
 
 
-@pytest.mark.parametrize("name", ["inpatient", "health_claims", "loan_tape", "retail_lines",
-                                  "policies", "loss_run", "hr_roster", "hr_snapshots",
-                                  "saas_subscriptions", "saas_mrr_snapshots", "saas_invoices",
-                                  "shift_production", "work_orders", "machine_readings",
-                                  "tms_shipments", "order_lines", "dock_appointments"])
-@pytest.mark.parametrize("source",["xlsx", "json", "parquet", "sqlite", "postgres", "api", "sheets"])
+# Each pack's datasets (the pack each one reads as is checked in test_dashboard_filters'
+# test_every_domain_dataset_is_in_the_every_filter_check); the property hook reads it too.
+DATASETS_BY_PACK = {
+    "retail": ["retail_lines", "store_weeks", "b2b_invoices"],
+    "banking": ["loan_tape", "loan_tape_messy", "card_ledger", "bank_balances", "bank_statement",
+                "ledger_drcr", "deposits_daily"],
+    "healthcare": ["inpatient", "encounters", "health_claims"],
+    "insurance": ["policies", "loss_run", "claims"],
+    "hr": ["hr_roster", "hr_roster_onerow", "hr_snapshots", "employees"],
+    "saas": ["saas_subscriptions", "saas_mrr_snapshots", "saas_invoices", "subscriptions",
+             "saas_accounts"],
+    "iot": ["shift_production", "work_orders", "machine_readings", "sensor_readings"],
+    "logistics": ["tms_shipments", "order_lines", "dock_appointments", "shipments"],
+}
+PACK_DATASETS = [n for names in DATASETS_BY_PACK.values() for n in names]
+ONE_PER_PACK = {names[0] for names in DATASETS_BY_PACK.values()}
+SOURCES = ["xlsx", "json", "parquet", "sqlite", "postgres", "mysql", "api", "sheets"]
+_DB_URL = {"postgres": "TEST_PG_URL", "mysql": "TEST_MYSQL_URL"}   # skipped locally without one
+# The contract fields that name where the table came from: every other field is the source's
+_SOURCE_FIELDS = {"source_type", "source_query", "source_evidence"}
+# What a format can't carry, named with why (never a silent skip): the rest is still compared
+_FORMAT_LIMITS = {"xlsx": "Excel stores every number as a double: a whole 30.0 reads back as an int"}
+
+
+def _answers(clean: pd.DataFrame, contract) -> str:
+    """What a user reads off one frame with no model call: the whole dashboard (tiles and chart
+    rows, through filtered_dashboard as the API serves it) and the built-in answers."""
+    from agents.analysis_agent import builtin_result
+    from agents.visualization_agent import filtered_dashboard
+    from orchestrator.state import AnalysisTask
+    from tests.test_dashboard_filters import _charts
+    charts = _charts(clean, contract)
+    task = AnalysisTask(raw_query="overview", analysis_types=["eda", "trend", "segmentation"],
+                        target_metrics=contract.metric_columns[:3])
+    order = {c.id: f"chart {i}" for i, c in enumerate(charts)}   # an id is a fresh uuid each build
+
+    def named(v):
+        if isinstance(v, dict):
+            return {order.get(k, k): named(x) for k, x in v.items()}
+        return [named(x) for x in v] if isinstance(v, list) else order.get(v, v) if isinstance(v, str) else v
+    board = named(filtered_dashboard(clean, contract, charts, {}))
+    return json.dumps([board, builtin_result(clean, contract, task, None)], sort_keys=True,
+                      default=str)
+
+
+@pytest.mark.parametrize("name", PACK_DATASETS)
+@pytest.mark.parametrize("source", SOURCES)
 async def test_every_source_reads_the_same_as_the_csv(name, source, tmp_path, monkeypatch):
+    """The class owner for source invariance (ADR-0010): a domain's table loaded from any source
+    and taken on through production's path gives the CSV's contract (but for the fields naming
+    the source) and the CSV's cleaned frame, dtypes included; one dataset per pack also gives
+    byte-identical tiles, chart rows and built-in answers (functions of frame and contract, so
+    the frame check carries the other datasets). A new source joins SOURCES, never a copy."""
     import connectors.csv_connector as csvc
-    import domain_pack
     from connectors.base import get_connector
     from evals import run
-    if source == "postgres" and not os.environ.get("TEST_PG_URL"):
-        pytest.skip("TEST_PG_URL not set")
+    if (env := _DB_URL.get(source)) and not os.environ.get(env):
+        pytest.skip(f"{env} not set")
     monkeypatch.setattr(run, "UPLOADS", tmp_path)
     monkeypatch.setattr(csvc, "_UPLOADS_DIR", tmp_path.resolve())
     case = {"dataset": {"name": name, "seed": 1}}
     df, _, csv = run.dataset(case)
-
-    async def read(src):
-        conn = (_mocked_source(src, df, csv, monkeypatch) if src in ("api", "sheets") else
-                get_connector(run.source_config({**case, "source": src}, df, csv)))
-        frame = await conn.load()
-        return frame, conn.build_data_contract(frame)
-    (want, wc), (got, gc) = await read("csv"), await read(source)
-    assert (gc.domain, gc.domain_confidence, gc.phi) == (wc.domain, wc.domain_confidence, wc.phi)
-    assert gc.roles == wc.roles and len(got) == len(want)
-    pack = domain_pack.pack_for(wc.domain)
-    for k in (k for k in pack.kpis if domain_pack.computable(pack, k.name, wc.roles)):
-        a = domain_pack.compute_kpi(want, wc.roles, pack, k.name)
-        b = domain_pack.compute_kpi(got, gc.roles, pack, k.name)
-        assert (a is None and b is None) or b == pytest.approx(a, rel=1e-9), (source, k.name, a, b)
+    conn = (_mocked_source(source, df, csv, monkeypatch) if source in ("api", "sheets") else
+            get_connector(run.source_config({**case, "source": source}, df, csv)))
+    frame = await conn.load()
+    _, got, gc, _ = _prepared(frame, conn.build_data_contract(frame), conn.config.type, None)
+    _, want, wc, _ = _built(name)
+    lossy = source in _FORMAT_LIMITS   # then only the int/float type, and the hash over it, may differ
+    skip = {**dict.fromkeys(_SOURCE_FIELDS, True),
+            **({"fingerprint": True, "columns": {"__all__": {"dtype"}}} if lossy else {})}
+    assert gc.model_dump(exclude=skip) == wc.model_dump(exclude=skip), source
+    pd.testing.assert_frame_equal(got.reset_index(drop=True), want.reset_index(drop=True),
+                                  check_dtype=not lossy, check_exact=True)
+    if name in ONE_PER_PACK:
+        assert _answers(got, gc) == _answers(want, wc), source
 
 
 # ── Truth: healthcare (Domain 3) ──────────────────────────────────────────────────────────────

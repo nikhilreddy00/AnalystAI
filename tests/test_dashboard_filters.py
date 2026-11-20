@@ -20,11 +20,17 @@ from tests.test_oracle import _built
 CARDIO = {"Department": {"kind": "equality", "value": "Cardiology"}}
 
 
+def _charts(clean: pd.DataFrame, contract) -> list:
+    """The overview's charts as a run builds them."""
+    ctx = build_context(clean, contract=contract)
+    return pack_overview_charts(clean, ctx) + generate_dashboard_charts(clean, ctx.roles, ctx=ctx)
+
+
 def _dashboard(name: str):
     s, clean, contract, truth = _built(name)
-    ctx = build_context(clean, contract=contract)
-    charts = pack_overview_charts(clean, ctx) + generate_dashboard_charts(clean, ctx.roles, ctx=ctx)
-    kpis = generate_smart_kpis(clean, ctx.roles, "overview", contract=contract)
+    charts = _charts(clean, contract)
+    kpis = generate_smart_kpis(clean, build_context(clean, contract=contract).roles, "overview",
+                               contract=contract)
     return clean, contract, charts, kpis, truth
 
 
@@ -259,21 +265,9 @@ def _filter_columns(clean, contract, k: int = 8) -> list[tuple[str, list[str]]]:
     return [(c, v) for c, v in out if as_text(shown[c]).isin(v).all()][:k]
 
 
-# Each pack's datasets (the pack each one reads as is checked in
-# test_every_domain_dataset_is_in_the_every_filter_check); the property hook reads it too.
-DATASETS_BY_PACK = {
-    "retail": ["retail_lines", "store_weeks", "b2b_invoices"],
-    "banking": ["loan_tape", "loan_tape_messy", "card_ledger", "bank_balances", "bank_statement",
-                "ledger_drcr", "deposits_daily"],
-    "healthcare": ["inpatient", "encounters", "health_claims"],
-    "insurance": ["policies", "loss_run", "claims"],
-    "hr": ["hr_roster", "hr_roster_onerow", "hr_snapshots", "employees"],
-    "saas": ["saas_subscriptions", "saas_mrr_snapshots", "saas_invoices", "subscriptions",
-             "saas_accounts"],
-    "iot": ["shift_production", "work_orders", "machine_readings", "sensor_readings"],
-    "logistics": ["tms_shipments", "order_lines", "dock_appointments", "shipments"],
-}
-PACK_DATASETS = [n for names in DATASETS_BY_PACK.values() for n in names]
+# Each pack's datasets: defined in test_oracle (its source oracle reads them too, and this file
+# imports test_oracle), kept importable from here for every other reader.
+from tests.test_oracle import DATASETS_BY_PACK, PACK_DATASETS  # noqa: E402, F401
 
 
 @pytest.mark.parametrize("name", PACK_DATASETS)
