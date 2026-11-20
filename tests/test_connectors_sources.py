@@ -72,7 +72,7 @@ async def test_the_table_load_runs_through_run_readonly(tmp_path, monkeypatch):
         e, sql, *a, **k))
     conn = _sql(_sqlite(tmp_path, pd.DataFrame({"a": [1]})))
     await conn.load()
-    assert seen and seen[0].startswith('SELECT * FROM "t"')
+    assert seen and seen[0] == 'SELECT * FROM "t" LIMIT 50001'   # no key: no ORDER BY
 
 
 # ── 3. SQLite is a development database ────────────────────────────────────────────────────
@@ -720,7 +720,8 @@ _NOT_LISTED = {
                    "WITH pg_shadow AS (SELECT * FROM pg_shadow) SELECT * FROM pg_shadow",
                    "SELECT * FROM pg_stat_get_activity(NULL) AS s",
                    "SELECT table_to_xml('pg_authid', true, false, '')",
-                   "SELECT * FROM mine m, LATERAL (SELECT * FROM pg_authid) z"],
+                   "SELECT * FROM mine m, LATERAL (SELECT * FROM pg_authid) z",
+                   "SELECT * FROM generate_series(1, 3) AS g, pg_shadow"],
     "mysql": ["SELECT * FROM mysql.user", "SELECT * FROM other_5_8a.theirs",
               "SELECT * FROM information_schema.processlist",
               "SELECT * FROM `other_5_8a`.`theirs`",
@@ -738,6 +739,7 @@ async def test_a_question_reads_only_the_tables_the_connection_lists(tmp_path, n
     with pytest.raises(GuardrailViolation) as err:
         await conn.query(sql)
     said = err.value.user_message   # the parse guard refuses a qualified system table first
+    assert err.value.agent == "sql" and said.startswith("Blocked unsafe SQL: ")
     assert "only the connected database's tables can be read" in said or \
         "the database's own tables are not readable" in said or "function not allowed" in said
 
@@ -764,7 +766,20 @@ def test_a_mysql_string_must_name_its_database():
     """B7: without one, every database on the server was listed to the model."""
     with pytest.raises(IngestionError) as err:
         _sql("mysql+pymysql://u:p@h:3306/")._engine()
-    assert "name the database" in err.value.user_message
+    assert str(err.value) == "ingestion: no database"
+    assert err.value.user_message == ("The connection string must name the database: "
+                                      "mysql://user:password@host:port/<database>.")
+
+
+def test_a_database_that_cant_be_reached_is_a_session_error_not_a_crash(tmp_path):
+    """B5: run_readonly's setup failure is an IngestionError naming the session (no connection
+    here: nothing to close)."""
+    from connectors.sql_connector import run_readonly
+    engine = _engine_for(f"sqlite:///{tmp_path / 'no_dir' / 'x.sqlite'}")
+    with pytest.raises(IngestionError) as err:
+        run_readonly(engine, "SELECT 1")
+    assert str(err.value) == "ingestion: session setup"
+    assert err.value.user_message.startswith("Couldn't open a read-only session on the database: ")
 
 
 @pytest.mark.parametrize("name", ["postgresql", "mysql"])
@@ -782,6 +797,20 @@ async def test_a_capped_table_load_reads_the_first_rows_by_key(tmp_path, name, m
         c.execute(text("UPDATE keyed SET v = v + 1 WHERE k = 1"))   # PG: k=1 moves to the end
     monkeypatch.setattr(sc, "LOAD_MAX_ROWS", 2)
     assert list((await _sql(url, "keyed").load())["k"]) == [1, 3]
+
+
+async def test_a_capped_load_outside_the_default_schema_reads_its_own_key(tmp_path, monkeypatch):
+    import connectors.sql_connector as sc
+    from sqlalchemy import text
+    url = _each_dialect(tmp_path, "postgresql")
+    with _engine_for(url).begin() as c:
+        c.execute(text("CREATE SCHEMA IF NOT EXISTS s58"))
+        c.execute(text("DROP TABLE IF EXISTS s58.keyed2"))
+        c.execute(text("CREATE TABLE s58.keyed2 (k INTEGER PRIMARY KEY, v INTEGER)"))
+        c.execute(text("INSERT INTO s58.keyed2 VALUES (5, 50), (3, 30), (1, 10)"))
+        c.execute(text("UPDATE s58.keyed2 SET v = v + 1 WHERE k = 1"))
+    monkeypatch.setattr(sc, "LOAD_MAX_ROWS", 2)
+    assert list((await _sql(url, "s58.keyed2").load())["k"]) == [1, 3]
 
 
 async def test_zero_dates_are_blanked_only_where_the_database_types_a_date(tmp_path):
@@ -819,8 +848,10 @@ async def test_a_connection_test_bug_is_logged_not_shown_as_a_connection_problem
     import semantic_layer
     monkeypatch.setattr(semantic_layer, "configured_layer", lambda: {}["missing"])
     ok, message = await _sql(_sqlite(tmp_path, pd.DataFrame({"a": [1]})), None).test_connection()
-    assert not ok and "missing" not in message and "unexpected error" in message
-    assert any(r.exc_info for r in caplog.records)
+    assert (ok, message) == (False, "The connection test hit an unexpected error on this server "
+                                    "(logged).")
+    assert [r.getMessage() for r in caplog.records if r.exc_info] == \
+        ["connection test failed unexpectedly"]
 
 
 def test_a_mapped_ipv6_address_resolves_as_its_ipv4_address(monkeypatch):
@@ -860,6 +891,20 @@ async def test_every_table_reaches_the_model_by_name(tmp_path):
     context = conn.schema_context(await conn.engine())
     assert all(f"t{i:02d}" in context for i in range(60))
     assert "columns not shown" in context and len(context) < 20_000
+    assert "`main.t58`, `main.t59`" in context
+
+
+@pytest.mark.parametrize("extra,second_described", [(0, False), (1, True)])
+async def test_the_schema_budget_is_exact(tmp_path, monkeypatch, extra, second_described):
+    """A table is described while the descriptions so far are under the budget."""
+    import connectors.sql_connector as sc
+    url = _sqlite(tmp_path, pd.DataFrame({"a": [1]}), "t1")
+    pd.DataFrame({"b": [1]}).to_sql("t2", create_engine(url), index=False)
+    conn = _sql(url, None)
+    engine = await conn.engine()
+    first = conn.schema_context(engine).splitlines()[0]
+    monkeypatch.setattr(sc, "_SCHEMA_CHARS", len(first) + extra)
+    assert ("Table `main.t2`" in conn.schema_context(engine)) is second_described
 
 
 def test_a_safety_test_names_the_reason_it_expects():

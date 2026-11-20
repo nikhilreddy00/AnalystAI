@@ -137,6 +137,17 @@ def test_a_function_given_sql_as_text_is_refused(sql):
     assert g.check_sql_readonly(sql, "postgres") is not None
 
 
+def test_sql_that_doesnt_parse_says_the_parsers_first_line():
+    import sqlglot
+    sql = "SELECT FROM WHERE ("
+    try:
+        sqlglot.parse(sql, read="postgres")
+        first = None
+    except sqlglot.errors.ParseError as exc:
+        first = str(exc).splitlines()[0]
+    assert first and g.check_sql_readonly(sql, "postgres") == f"SQL does not parse: {first}"
+
+
 def test_the_sql_text_check_is_linear_on_hostile_text():
     """Security review: the first version's comment regex backtracked on '/*/*/*…'."""
     import time

@@ -302,16 +302,15 @@
   "equivalents": [
    {
     "n": 1,
-    "new": "if not pd.api.types.is_numeric_dtype(None) and (blank := df[col].eq(\"\")).any():",
-    "old": "if not pd.api.types.is_numeric_dtype(df[col]) and (blank := df[col].eq(\"\")).any():",
+    "new": "if not pd.api.types.is_numeric_dtype(None) and (blank := s.eq(\"\")).any():",
+    "old": "if not pd.api.types.is_numeric_dtype(s) and (blank := s.eq(\"\")).any():",
     "reason": "the numeric test only skips work: a numeric column never equals '', so its blank mask is all False and nothing is masked either way"
    }
-  ],
-  "hash": "57712ab7b45dfd85"
+  ]
  },
  "connectors/base.py::resolved": {
   "equivalents": [],
-  "hash": "d10af35f9014305e"
+  "hash": "87ffbda1cc1e8277"
  },
  "connectors/base.py::sources_table": {
   "equivalents": [
@@ -330,27 +329,27 @@
  },
  "connectors/sql_connector.py::QueryResult.frame": {
   "equivalents": [],
-  "hash": "bacea9eba303100e"
+  "hash": "07aa78d7d410dd98"
  },
  "connectors/sql_connector.py::SQLConnector._engine": {
   "equivalents": [],
   "hash": "3b6ede79ba2d9575"
  },
  "connectors/sql_connector.py::SQLConnector._read": {
-  "equivalents": [],
-  "hash": "9db8c0b882c93fbe"
+  "equivalents": []
  },
  "connectors/sql_connector.py::SQLConnector.engine": {
   "equivalents": [],
   "hash": "269bfd3d28e5870d"
  },
  "connectors/sql_connector.py::SQLConnector.query": {
-  "equivalents": [],
-  "hash": "0a23a9a3bfbf06bf"
+  "equivalents": []
+ },
+ "connectors/sql_connector.py::SQLConnector.schema_context": {
+  "equivalents": []
  },
  "connectors/sql_connector.py::SQLConnector.test_connection": {
-  "equivalents": [],
-  "hash": "91502610be3f4dee"
+  "equivalents": []
  },
  "connectors/sql_connector.py::_assert_single_select": {
   "equivalents": [],
@@ -365,11 +364,14 @@
     "reason": "ips is read next only by `if not ips`, which refuses on None and [] alike"
    }
   ],
-  "hash": "7f7baff1f582e9b8"
+  "hash": "9c4b934289052559"
  },
  "connectors/sql_connector.py::_tables": {
   "equivalents": [],
   "hash": "95c0422dc73d9ae1"
+ },
+ "connectors/sql_connector.py::_unlisted_tables": {
+  "equivalents": []
  },
  "connectors/sql_connector.py::dialect_of": {
   "equivalents": [],
@@ -383,12 +385,10 @@
     "old": "conn.exec_driver_sql(statement.format(ms=int(timeout_s * 1000)))",
     "reason": "15,015 ms against 15,000: a statement timeout 15 ms longer, which no test can tell from the real one (the slow-query test allows seconds)"
    }
-  ],
-  "hash": "655ada96cc927010"
+  ]
  },
  "connectors/sql_connector.py::safe_url": {
-  "equivalents": [],
-  "hash": "e2eb10c06e1c54fd"
+  "equivalents": []
  },
  "connectors/sql_connector.py::sql_dialect": {
   "equivalents": [],
@@ -644,8 +644,7 @@
   "hash": "b23596f7da759259"
  },
  "guardrails.py::check_sql_readonly": {
-  "equivalents": [],
-  "hash": "0bf6fbc2fbd88a0b"
+  "equivalents": []
  },
  "guardrails.py::is_pii_column": {
   "equivalents": [],
