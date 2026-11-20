@@ -17,9 +17,7 @@ from evals.snapshot import GOLDEN, snapshot
 # The domain being built: {suite: {case or dataset: why}}. Empty right after a pin.
 # Re-pinned at the D7-19 PR's end (2026-11-19); its diff (43 datasets, each with its truth) is
 # named in docs/baselines/phase5_7_d7_19.md.
-CHANGES: dict[str, dict[str, str]] = {"deterministic": {
-    "health_claims-1": "5.8a normalize_frame: a -0.0 paid/allowed amount reads 0.0 from every source "
-                       "(truth: 0.0; the CSV kept -0.0, JSON and SQL didn't); the hashes over it move"}}
+CHANGES: dict[str, dict[str, str]] = {}
 
 
 GOLDEN_NOW = json.loads(GOLDEN.read_text())

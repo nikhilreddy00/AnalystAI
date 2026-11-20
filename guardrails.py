@@ -79,7 +79,7 @@ _SQL_DENY_PREFIXES = ("lo_", "dblink", "pg_read", "pg_ls_", "pg_stat_file", "pg_
                       "pg_promote", "pg_switch", "pg_backup", "pg_import")
 
 
-def _system_schemas(dialect: str) -> frozenset[str]:
+def _system_schemas(dialect: str | None) -> frozenset[str]:
     """The engine's own catalogs a model query may not read (users and password hashes, other
     sessions' queries): its dialect row's system schemas, metadata (information_schema) aside."""
     from connectors.sql_connector import DIALECTS
@@ -113,11 +113,11 @@ def check_sql_readonly(sql: str, dialect: str | None) -> str | None:
             return "SELECT ... INTO creates a table"
         if isinstance(node, exp.Select) and node.args.get("locks"):
             return "row locks (FOR UPDATE/SHARE) are not allowed"
-        if isinstance(node, exp.Func):
-            name = (node.name if isinstance(node, exp.Anonymous) else node.sql_name()).lower()
+        if isinstance(node, exp.Anonymous):   # every denied name parses as one (the corpora)
+            name = node.name.lower()
             if name in _SQL_DENY_FUNCS or name.startswith(_SQL_DENY_PREFIXES):
                 return f"function not allowed: {name}"
-        if isinstance(node, exp.Table) and node.db.lower() in _system_schemas(dialect or ""):
+        if isinstance(node, exp.Table) and node.db.lower() in _system_schemas(dialect):
             return f"the database's own tables are not readable: {node.db}"
     return None
 

@@ -551,10 +551,25 @@ async def test_every_source_reads_the_same_as_the_csv(name, source, tmp_path, mo
     skip = {**dict.fromkeys(_SOURCE_FIELDS, True),
             **({"fingerprint": True, "columns": {"__all__": {"dtype"}}} if lossy else {})}
     assert gc.model_dump(exclude=skip) == wc.model_dump(exclude=skip), source
-    pd.testing.assert_frame_equal(got.reset_index(drop=True), want.reset_index(drop=True),
-                                  check_dtype=not lossy, check_exact=True)
+    # the same rows, exactly, in any order: a SQL table has no row order (Postgres returned one
+    # in another); whether an answer depends on order is the row-order invariance's to say
+    if lossy:
+        got = got.astype({c: want[c].dtype for c in got.columns if got[c].dtype != want[c].dtype})
+    assert (list(got.columns), list(got.dtypes.astype(str))) == \
+        (list(want.columns), list(want.dtypes.astype(str))), source
+    assert sorted(pd.util.hash_pandas_object(got, index=False)) == \
+        sorted(pd.util.hash_pandas_object(want, index=False)), source
     if name in ONE_PER_PACK:
         assert _answers(got, gc) == _answers(want, wc), source
+
+
+def test_a_tables_fingerprint_does_not_depend_on_its_row_order():
+    """A SQL table has no row order; a resumed run re-reads its source and compares the
+    fingerprint (orchestrator/runner.py), so a reordered read is not "the data changed"."""
+    from agents.ingestion_agent import fingerprint
+    _, clean, _, _ = _built("retail_lines")
+    assert fingerprint(clean) == fingerprint(clean.sample(frac=1, random_state=7))
+    assert fingerprint(clean) != fingerprint(clean.iloc[1:])
 
 
 # The domain datasets reach a database as text and float64 (source_config writes the CSV-read

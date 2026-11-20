@@ -13,7 +13,6 @@ An engine without a row in DIALECTS gets none of this, so it is refused (fail cl
 from __future__ import annotations
 
 import asyncio
-import datetime
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
@@ -208,19 +207,14 @@ class QueryResult:
         """The one place a database result becomes a frame (ADR-0010), a table load and a
         question's result alike: what a CSV of the same table gives. NUMERIC/DECIMAL → float
         (coerce_float), a yes/no type holding only 0/1 → True/False (a TINYINT(1) may hold 2: then
-        it stays a number), a zero date ('0000-00-00', legacy MySQL) → blank, DATE objects →
-        datetimes; then the load rule every source ends in (normalize_frame)."""
+        it stays a number), a zero date ('0000-00-00', legacy MySQL) → blank; then the load rule
+        every source ends in (normalize_frame: DATE objects become datetimes there)."""
         df = pd.DataFrame.from_records(self.rows, columns=self.columns, coerce_float=True)
         for col in df.columns:
             if col in self.yes_no and df[col].dropna().isin((0, 1)).all():
                 df[col] = df[col].map({1: True, 0: False})
-                continue
-            if df[col].dtype != object:
-                continue
-            values = df[col].dropna()
-            values = values[~values.isin(_ZERO_DATES)]
-            if len(values) and values.map(lambda v: isinstance(v, datetime.date)).all():
-                df[col] = pd.to_datetime(df[col].where(~df[col].isin(_ZERO_DATES)))
+            elif (zero := df[col].isin(_ZERO_DATES)).any():
+                df[col] = df[col].mask(zero)
         return normalize_frame(df)
 
 

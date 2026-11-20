@@ -104,9 +104,18 @@ def test_the_mysql_attack_corpus_is_rejected_by_the_parse_guard_alone(sql):
     "SELECT a, RANK() OVER (ORDER BY b DESC) FROM t",
     "WITH x AS (SELECT 1 AS a) SELECT a FROM x",
     "SELECT a /* a plain comment */ FROM t",
+    "SELECT table_name FROM information_schema.tables",   # metadata is no catalog secret
 ])
 def test_ordinary_mysql_analytics_is_not_over_blocked(sql):
     assert g.check_sql_readonly(sql, dialect="mysql") is None
+
+
+def test_the_catalog_rules_follow_the_dialect_rows():
+    assert g.check_sql_readonly("SELECT * FROM pg_catalog.pg_authid", "postgres") == \
+        "the database's own tables are not readable: pg_catalog"
+    assert g.check_sql_readonly("SELECT table_name FROM information_schema.tables", "postgres") is None
+    assert g.check_sql_readonly("SELECT 1 /*!50000 , 2 */", "mysql") == \
+        "executable comments and optimizer hints (/*! */, /*+ */) are not allowed"
 
 
 def test_any_read_carrying_an_executable_comment_or_hint_is_refused():

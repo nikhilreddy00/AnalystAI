@@ -481,3 +481,149 @@ async def test_a_table_in_another_schema_loads_by_its_qualified_name():
         with eng.begin() as c:
             c.execute(text('DROP SCHEMA "s4 live" CASCADE'))
             c.execute(text("DROP TABLE public.mrr"))
+
+
+# ── 3c. what each refusal says, exactly (the mutation gate: a refusal's words are the product) ──
+
+_DEV, _PROD = "development", "production"
+_ALLOWED_HINT = ("The connection string couldn't be read. Use the form "
+                 "dialect://user:password@host:port/database (a password with @ or : must be "
+                 "URL-encoded, e.g. %40 for @).")
+
+
+@pytest.mark.parametrize("url,env,reason,message", [
+    ("not a url", _DEV, "unreadable connection string", _ALLOWED_HINT),
+    ("mssql+pymssql://u:p@h/db", _DEV, "no dialect mssql+pymssql",
+     "'mssql+pymssql' isn't a supported database. Use postgresql:// or mysql:// (SQLite for "
+     "local development)."),
+    ("mysql://u:p@h/db?init_command=x", _DEV, "connection string options",
+     "These connection string options aren't allowed: init_command. Allowed: charset."),
+    ("sqlite:///x.db?mode=ro", _DEV, "connection string options",
+     "These connection string options aren't allowed: mode. Allowed: none."),
+    ("sqlite:///x.db", _PROD, "sqlite in production",
+     "SQLite is for development only. Connect a PostgreSQL or MySQL database instead."),
+    ("postgresql://u:p@/db", _PROD, "no host", "The connection string has no host."),
+    ("postgresql://u:p@nowhere.invalid/db", _PROD, "host not found",
+     "The database host 'nowhere.invalid' wasn't found."),
+    ("postgresql://u:p@0.0.0.0/db", _PROD, "host refused",
+     "The database host '0.0.0.0' isn't allowed (it is this server itself, or a reserved address)."),
+    ("postgresql://u:p@224.0.0.1/db", _PROD, "host refused",
+     "The database host '224.0.0.1' isn't allowed (it is this server itself, or a reserved address)."),
+    ("postgresql://u:p@mapped-own.example/db", _PROD, "host refused",   # ::ffff: of the app store
+     "The database host 'mapped-own.example' isn't allowed (it is this server itself, or a "
+     "reserved address)."),
+    ("postgresql://u:p@db.lan/db", "production-own-down", "own store unresolved",
+     "This server can't check database hosts right now (its own database address didn't "
+     "resolve). Try again shortly, or ask the administrator."),
+])
+def test_every_connection_refusal_says_exactly_why(monkeypatch, url, env, reason, message):
+    import socket
+
+    from api.config import settings
+    ips = {"appdb.internal": "10.1.2.3", "mapped-own.example": "::ffff:10.1.2.3", "db.lan": "10.0.0.5"}
+
+    def lookup(host, *a, **k):
+        if host == "nowhere.invalid" or (env == "production-own-down" and host == "appdb.internal"):
+            raise socket.gaierror("not found")
+        return [(0, 0, 0, "", (ips.get(host, host), 0))]
+    monkeypatch.setattr(socket, "getaddrinfo", lookup)
+    monkeypatch.setattr(settings, "app_env", "development" if env == _DEV else "production")
+    monkeypatch.setattr(settings, "database_url", "postgresql+asyncpg://a:b@appdb.internal:5432/x")
+    with pytest.raises(IngestionError) as err:
+        _sql(url)._engine()
+    assert (str(err.value), err.value.user_message) == (f"ingestion: {reason}", message)
+
+
+def test_in_production_an_app_store_without_a_host_checks_only_the_users():
+    """A store named by a path (no host) has no address to compare: the user's LAN host passes."""
+    import socket
+
+    from api.config import settings
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(socket, "getaddrinfo", lambda h, *a, **k: [(0, 0, 0, "", ("10.0.0.5", 0))])
+        mp.setattr(settings, "app_env", "production")
+        mp.setattr(settings, "database_url", "sqlite:///store.db")
+        assert _sql("postgresql://u:p@db.lan/db")._engine() is not None
+
+
+def test_an_engine_without_a_row_is_refused_in_so_many_words():
+    from connectors.sql_connector import dialect_of
+    engine = type("Engine", (), {"dialect": type("D", (), {"name": "mssql"})()})()
+    with pytest.raises(IngestionError) as err:
+        dialect_of(engine)
+    assert (str(err.value), err.value.user_message) == (
+        "ingestion: no dialect mssql", "mssql databases aren't supported (PostgreSQL and MySQL are).")
+
+
+@pytest.mark.parametrize("conn,auth,sa,message,want", [
+    # the whole string, then its user-info, then the password (split at the first ':' only)
+    ("mysql://reader:p:a:ss@h/db", None, None, "bad mysql://reader:p:a:ss@h/db p:a:ss reader:p:a:ss",
+     "bad *** *** ***"),
+    ("postgresql://reader:s3cr%40t@h/db", None, None, "pw s3cr@t and s3cr%40t", "pw *** and ***"),
+    ("postgresql://onlyuser@h/db", None, None, "user onlyuser", "user ***"),
+    ("postgresql://a:zzz@h/db", None, None, "a:zzz", "***"),     # longest first, not abc order
+    ("postgresql://u:abc@h/db", None, None, "abc", "***"),       # three characters: a secret
+    ("postgresql://u:ab@h/db", None, None, "ab cab", "ab cab"),  # two: too short to cut safely
+    (None, "tok-123", None, "key tok-123", "key ***"),
+    (None, None, '{"k": 1}', 'sa {"k": 1}', "sa ***"),
+    (None, None, None, "XXXX nothing to hide", "XXXX nothing to hide"),
+])
+def test_without_secrets_cuts_every_credential_and_nothing_else(conn, auth, sa, message, want):
+    from connectors.base import without_secrets
+    config = ConnectorConfig(type=ConnectorType.SQL, connection_string=conn, auth_value=auth,
+                             service_account_json=sa)
+    assert without_secrets(message, config) == want
+
+
+def test_resolved_skips_what_isnt_an_address_and_names_a_host_it_cant_find(monkeypatch):
+    import socket
+
+    from connectors.base import resolved
+    assert {str(ip) for ip in resolved("127.0.0.1")} == {"127.0.0.1"}   # the real lookup (one per socket type)
+    monkeypatch.setattr(socket, "getaddrinfo", lambda h, *a, **k: (_ for _ in ()).throw(
+        socket.gaierror("nope")) if h == "gone.invalid" else
+        [(0, 0, 0, "", ("not-an-address", 0)), (0, 0, 0, "", ("1.2.3.4", 0))])
+    assert [str(ip) for ip in resolved("x.example")] == ["1.2.3.4"]
+    with pytest.raises(ValueError, match="gone.invalid"):
+        resolved("gone.invalid")
+
+
+@pytest.mark.parametrize("name", ["sqlite", "postgresql", "mysql"])
+def test_a_connection_lists_only_its_users_tables(tmp_path, name):
+    """No catalog table (information_schema, pg_catalog, mysql.*) and, on MySQL, no other
+    database the account can see: a schema there is a database."""
+    from sqlalchemy import text
+
+    from connectors.sql_connector import SQLConnector, _tables
+    url = _each_dialect(tmp_path, name)
+    engine = SQLConnector(ConnectorConfig(type=ConnectorType.SQL, connection_string=url))._engine()
+    with engine.begin() as c:
+        c.execute(text("DROP TABLE IF EXISTS mine"))
+        c.execute(text("CREATE TABLE mine (a INTEGER)"))
+        if name == "mysql":
+            c.execute(text("CREATE DATABASE IF NOT EXISTS other_5_8a"))
+            c.execute(text("CREATE TABLE IF NOT EXISTS other_5_8a.theirs (a INTEGER)"))
+    listed = _tables(engine)
+    assert "mine" in listed
+    assert not [t for t in listed if t.split(".")[0] in {"information_schema", "pg_catalog",
+                                                         "pg_toast", "mysql", "sys",
+                                                         "performance_schema", "other_5_8a"}]
+
+
+def test_a_result_of_exactly_the_cap_is_not_truncated(tmp_path):
+    from connectors.sql_connector import SQLConnector, run_readonly
+    url = _sqlite(tmp_path, pd.DataFrame({"a": [1, 2]}))
+    engine = SQLConnector(ConnectorConfig(type=ConnectorType.SQL, connection_string=url))._engine()
+    assert not run_readonly(engine, "SELECT a FROM t", max_rows=2).truncated
+    assert run_readonly(engine, "SELECT a FROM t", max_rows=1).truncated
+
+
+def test_the_engine_keeps_no_idle_connections_on_the_users_database():
+    from sqlalchemy.pool import NullPool
+    assert isinstance(_sql("postgresql://u:p@h/db")._engine().pool, NullPool)
+
+
+def test_a_blank_text_column_from_a_database_stays_text():
+    from connectors.sql_connector import QueryResult
+    df = QueryResult(["note"], [(None,), (None,)], False).frame()
+    assert not str(df["note"].dtype).startswith("datetime64")
