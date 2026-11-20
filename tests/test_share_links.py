@@ -249,3 +249,170 @@ async def test_a_link_token_is_never_in_a_message_or_a_log(client, monkeypatch, 
                             "?sig=SIGSECRET&token=TOKSECRET&rlkey=RLKEYSECRET&e=EKEYSECRET")
     said = r.text + "\n".join(rec.getMessage() for rec in caplog.records)
     assert not [s for s in SECRETS if s in said], said
+
+
+# The refusals in the product's own words (each names the host, never the link) and the edges
+# of what is fetched: the cap, the hop count, the sniff, the name.
+
+def _ok(content=CSV, **headers):
+    return httpx.Response(200, content=content, headers=headers)
+
+
+async def _refused(monkeypatch, handler, link="https://files.example/q.csv?sig=SIGSECRET",
+                   dns=None):
+    from connectors.link import download
+    serve(monkeypatch, handler, dns=dns)
+    with pytest.raises(IngestionError) as err:
+        await download(link)
+    return err.value
+
+
+NOT_PUBLIC = ("The link to files.example didn't give a file ({}): it may not be public. Share it "
+              "as 'Anyone with the link', and link to a CSV or Excel file.")
+
+
+@pytest.mark.parametrize(("answer", "why"), [
+    (httpx.Response(403), "it answered HTTP 403"),
+    # the type says a page, the body is CSV-shaped: still a page
+    (_ok(CSV, **{"content-type": "text/html; charset=utf-8"}), "a web page came back, not a file"),
+    # the body says a page whatever the type: after leading whitespace, in any case
+    (_ok(b" \r\n\t<!DOCTYPE HTML>\n<body>x</body>", **{"content-type": "application/octet-stream"}),
+     "a web page came back, not a file"),
+    (_ok(b"\n<HTML><body>x</body></HTML>"), "a web page came back, not a file"),
+], ids=["status", "html-type", "doctype", "html-tag"])
+async def test_a_link_that_gives_no_file_is_refused_in_these_words(monkeypatch, answer, why):
+    err = await _refused(monkeypatch, lambda r: answer)
+    assert str(err) == "ingestion: link not public"
+    assert err.user_message == NOT_PUBLIC.format(why)
+
+
+async def test_a_redirect_off_https_is_refused_in_these_words(monkeypatch):
+    err = await _refused(monkeypatch, _chain(("https://files.example/", httpx.Response(
+        302, headers={"location": "http://files.example/q.csv?sig=SIGSECRET"}))))
+    assert str(err) == "ingestion: link not https"
+    assert err.user_message == ("The link to files.example has to be an https link "
+                                "(every redirect too).")
+
+
+async def test_a_link_with_no_host_is_called_the_link(monkeypatch):
+    err = await _refused(monkeypatch, lambda r: _ok(), link="http:///q.csv?sig=SIGSECRET")
+    assert err.user_message == "The link to the link has to be an https link (every redirect too)."
+
+
+async def test_a_host_off_the_public_internet_is_refused_in_these_words(monkeypatch):
+    err = await _refused(monkeypatch, lambda r: _ok(), dns={"files.example": ["10.0.0.7"]})
+    assert str(err) == "ingestion: link host refused"
+    assert err.user_message == ("The link to files.example leads to an address this server "
+                                "doesn't fetch from (only the public internet).")
+
+
+async def test_an_unreachable_host_is_refused_in_these_words(monkeypatch):
+    def handler(request):
+        raise httpx.ConnectError("refused https://files.example/q.csv?sig=SIGSECRET")
+    err = await _refused(monkeypatch, handler)
+    assert str(err) == "ingestion: link unreachable"
+    assert err.user_message == "files.example couldn't be reached (ConnectError)."
+    assert err.__cause__ is None and err.__suppress_context__   # the class, never its text
+
+
+def _hops(n: int):
+    """n redirects (/0 → /1 → … → /n), then the CSV."""
+    def handler(request):
+        i = int(request.url.path.strip("/"))
+        return (httpx.Response(302, headers={"location": f"https://files.example/{i + 1}"})
+                if i < n else _ok())
+    return handler
+
+
+async def test_max_hops_redirects_are_followed_and_one_more_is_refused(monkeypatch):
+    from connectors.link import MAX_HOPS, download
+    serve(monkeypatch, _hops(MAX_HOPS))
+    assert (await download("https://files.example/0"))[0] == CSV
+    err = await _refused(monkeypatch, _hops(MAX_HOPS + 1), link="https://files.example/0")
+    assert str(err) == "ingestion: link redirects"
+    assert err.user_message == "The link to files.example redirected more than 5 times."
+
+
+async def test_a_relative_redirect_is_followed_from_where_it_was_said(monkeypatch):
+    from connectors.link import download
+    wire = serve(monkeypatch, _chain(
+        ("https://files.example/a/start", httpx.Response(302, headers={"location": "../b/q.csv"})),
+        ("https://files.example/b/q.csv", _ok())))
+    assert await download("https://files.example/a/start") == (CSV, ".csv", "files.example.link")
+    assert [(r.method, str(r.url)) for r in wire.requests] == [
+        ("GET", "https://files.example/a/start"), ("GET", "https://files.example/b/q.csv")]
+
+
+async def test_a_redirect_without_a_location_goes_nowhere_new(monkeypatch):
+    """No Location: the same URL again (never a guessed one), until the hop limit."""
+    err = await _refused(monkeypatch, _chain(
+        ("https://files.example/q.csv", httpx.Response(302)), ("https://", _ok())))
+    assert str(err) == "ingestion: link redirects"
+
+
+async def test_the_cap_is_exactly_max_bytes_counted_across_chunks(monkeypatch):
+    """A body larger than one read: the count is the whole body's, and MAX_BYTES itself passes."""
+    import connectors.link as link
+    body = b"n\n" + b"1\n" * 60_000          # 120 KB: several 64 KB reads
+    serve(monkeypatch, lambda r: _ok(body))
+    monkeypatch.setattr(link, "MAX_BYTES", len(body))
+    assert (await link.download("https://files.example/q.csv"))[0] == body
+    monkeypatch.setattr(link, "MAX_BYTES", len(body) - 1)
+    with pytest.raises(link.TooLarge) as err:
+        await link.download("https://files.example/q.csv?sig=SIGSECRET")
+    assert str(err.value) == "ingestion: link too large"
+    assert err.value.user_message == ("The file at files.example is larger than 50 MB, "
+                                      "the upload limit.")
+
+
+async def test_the_fetch_has_a_60_second_timeout(monkeypatch):
+    import connectors.link as link
+    seen = []
+    real = link.public_client
+    monkeypatch.setattr(link, "public_client", lambda **k: seen.append(k) or real(**k))
+    serve(monkeypatch, lambda r: _ok())
+    await link.download("https://files.example/q.csv")
+    assert seen == [{"timeout": 60}]
+
+
+@pytest.mark.parametrize(("link", "headers", "name"), [
+    ("https://files.example/a/b/q3%20orders.csv", {}, "q3 orders.csv"),
+    ("https://files.example/a/q3.csv/", {}, "q3.csv"),             # a trailing slash
+    ("https://files.example/exports/q3.XLSX", {}, "q3.XLSX"),
+    ("https://files.example", {}, "files.example.link"),             # no path: the host
+    ("https://files.example/", {}, "files.example.link"),
+    ("https://files.example/a/export", {}, "files.example.link"),    # no dot: the host
+    ("https://files.example/x",
+     {"content-disposition": "attachment; filename*=UTF-8''Q3%20%C3%A9.csv"}, "Q3 é.csv"),
+    ("https://files.example/x", {"content-disposition": "attachment; filename=orders.csv"},
+     "orders.csv"),
+    ("https://files.example/a/q.csv", {"content-disposition": "attachment; filename=unspecified"},
+     "q.csv"),
+    ("https://files.example/a/q.csv", {"content-disposition": "inline"}, "q.csv"),
+])
+async def test_the_file_is_named_by_the_server_else_the_path_else_the_host(monkeypatch, link,
+                                                                           headers, name):
+    from connectors.link import download
+    serve(monkeypatch, lambda r: _ok(CSV, **headers))
+    assert await download(link) == (CSV, ".csv", name)
+
+
+async def test_only_the_first_512_bytes_are_sniffed_for_a_page(monkeypatch):
+    """The sniff reads a bounded head: a page tag past it is the reader's to refuse."""
+    from connectors.link import download
+    serve(monkeypatch, lambda r: _ok(b" " * 508 + b"<html>"))
+    assert (await download("https://files.example/q.csv"))[1] == ".csv"
+
+
+@pytest.mark.parametrize(("shared", "direct"), [
+    ("https://docs.google.com/spreadsheets/d/1AbC/edit?gid=7",
+     "https://docs.google.com/spreadsheets/d/1AbC/export?format=csv&gid=7"),
+    ("https://onedrive.live.com/view.aspx?resid=AB!123",
+     "https://onedrive.live.com/view.aspx?resid=AB!123&download=1"),
+    # a blank parameter is kept, the fragment dropped
+    ("https://www.dropbox.com/scl/fi/abc/q.csv?rlkey=r1&st=&dl=0#top",
+     "https://www.dropbox.com/scl/fi/abc/q.csv?rlkey=r1&st=&dl=1"),
+])
+def test_more_share_links_are_rewritten_to_their_file(shared, direct):
+    from connectors.link import direct_url
+    assert direct_url(shared) == direct

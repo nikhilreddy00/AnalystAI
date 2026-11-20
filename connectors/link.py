@@ -66,8 +66,9 @@ def _name(response: httpx.Response, link: str) -> str:
         if name and name.lower() != "unspecified":
             return name
     last = urlparse(link).path.rstrip("/").rsplit("/", 1)[-1]
-    # the dataset is named by the stem: a host keeps its dots behind a suffix of its own
-    return unquote(last) if "." in last else f"{urlparse(link).hostname or 'linked data'}.link"
+    # the dataset is named by the stem: a host keeps its dots behind a suffix of its own (a link
+    # with no host never gets here: its fetch fails first)
+    return unquote(last) if "." in last else f"{urlparse(link).hostname}.link"
 
 
 async def download(link: str) -> tuple[bytes, str, str]:
