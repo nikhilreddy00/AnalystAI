@@ -270,6 +270,16 @@
   "equivalents": [],
   "hash": "03ad5a55975922f5"
  },
+ "connectors/base.py::_CheckedNetwork.__init__": {
+  "equivalents": [],
+  "hash": "812d812fd8a8495e"
+ },
+ "connectors/base.py::_CheckedNetwork.connect_tcp": {
+  "equivalents": []
+ },
+ "connectors/base.py::_inside": {
+  "equivalents": []
+ },
  "connectors/base.py::as_times": {
   "equivalents": [
    {
@@ -309,9 +319,15 @@
   ],
   "hash": "457cb9c5401fbfb6"
  },
+ "connectors/base.py::public_addresses": {
+  "equivalents": []
+ },
+ "connectors/base.py::public_client": {
+  "equivalents": []
+ },
  "connectors/base.py::resolved": {
   "equivalents": [],
-  "hash": "87ffbda1cc1e8277"
+  "hash": "8875898e7eabba9b"
  },
  "connectors/base.py::sources_table": {
   "equivalents": [
@@ -321,12 +337,32 @@
     "old": "continue",
     "reason": "sqlite is DIALECTS' last row, so leaving the loop after its row is the same as continuing; a row added after it goes through the README test"
    }
-  ],
-  "hash": "a8fd23d5257fbc61"
+  ]
  },
  "connectors/base.py::without_secrets": {
   "equivalents": [],
   "hash": "7aca801387338cc3"
+ },
+ "connectors/link.py::_capped": {
+  "equivalents": []
+ },
+ "connectors/link.py::_name": {
+  "equivalents": []
+ },
+ "connectors/link.py::_not_public": {
+  "equivalents": []
+ },
+ "connectors/link.py::_suffix": {
+  "equivalents": []
+ },
+ "connectors/link.py::_with_query": {
+  "equivalents": []
+ },
+ "connectors/link.py::direct_url": {
+  "equivalents": []
+ },
+ "connectors/link.py::download": {
+  "equivalents": []
  },
  "connectors/sql_connector.py::QueryResult.frame": {
   "equivalents": [],
@@ -334,7 +370,7 @@
  },
  "connectors/sql_connector.py::SQLConnector._engine": {
   "equivalents": [],
-  "hash": "3b6ede79ba2d9575"
+  "hash": "68c392d4f4b5b149"
  },
  "connectors/sql_connector.py::SQLConnector._read": {
   "equivalents": [
@@ -356,8 +392,7 @@
     "old": "order = (\" ORDER BY \" + \", \".join(map(quote, key[\"constrained_columns\"]))",
     "reason": "SQL keywords are case-insensitive in every dialect"
    }
-  ],
-  "hash": "4ec2dba4cba3167c"
+  ]
  },
  "connectors/sql_connector.py::SQLConnector.engine": {
   "equivalents": [],
@@ -372,8 +407,7 @@
   "hash": "555e358a61d46829"
  },
  "connectors/sql_connector.py::SQLConnector.test_connection": {
-  "equivalents": [],
-  "hash": "8ff8877fd9241813"
+  "equivalents": []
  },
  "connectors/sql_connector.py::_assert_single_select": {
   "equivalents": [],
@@ -390,9 +424,23 @@
   ],
   "hash": "9c4b934289052559"
  },
+ "connectors/sql_connector.py::_connect_pinned": {
+  "equivalents": []
+ },
+ "connectors/sql_connector.py::_query_timeout": {
+  "equivalents": [],
+  "hash": "f114ffccfc4578dc"
+ },
+ "connectors/sql_connector.py::_sql_of": {
+  "equivalents": [],
+  "hash": "6dfa7df41436afec"
+ },
  "connectors/sql_connector.py::_tables": {
   "equivalents": [],
-  "hash": "95c0422dc73d9ae1"
+  "hash": "97d8c2ff818a2f0c"
+ },
+ "connectors/sql_connector.py::_tls": {
+  "equivalents": []
  },
  "connectors/sql_connector.py::_unlisted_tables": {
   "equivalents": [
@@ -403,11 +451,11 @@
     "reason": "only the refusal's wording: a function's name is printed the same (upper case) in every dialect"
    }
   ],
-  "hash": "a17a8344a7f011d5"
+  "hash": "35b13dae2ab24baf"
  },
  "connectors/sql_connector.py::dialect_of": {
   "equivalents": [],
-  "hash": "494d35c0c15d41b4"
+  "hash": "ba73423685489512"
  },
  "connectors/sql_connector.py::run_readonly": {
   "equivalents": [
@@ -418,11 +466,11 @@
     "reason": "15,015 ms against 15,000: a statement timeout 15 ms longer, which no test can tell from the real one (the slow-query test allows seconds)"
    }
   ],
-  "hash": "386be338eed64b2a"
+  "hash": "c361c0a2c6906ecd"
  },
  "connectors/sql_connector.py::safe_url": {
   "equivalents": [],
-  "hash": "c5c991b122699bea"
+  "hash": "261e681bddd501e6"
  },
  "connectors/sql_connector.py::sql_dialect": {
   "equivalents": [],
@@ -673,6 +721,9 @@
   "equivalents": [],
   "hash": "157a12e6f433673e"
  },
+ "guardrails.py::_function_refused": {
+  "equivalents": []
+ },
  "guardrails.py::_is_sql_text": {
   "equivalents": [
    {
@@ -695,8 +746,7 @@
   "hash": "b23596f7da759259"
  },
  "guardrails.py::check_sql_readonly": {
-  "equivalents": [],
-  "hash": "10765bbff88ac960"
+  "equivalents": []
  },
  "guardrails.py::is_pii_column": {
   "equivalents": [],
