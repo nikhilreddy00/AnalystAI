@@ -451,8 +451,12 @@ class SQLConnector(DataConnector):
         # The same read-only, timed path as a question (the name was checked just above), written
         # by the engine's own compiler: LIMIT, or SQL Server's TOP (a driver buffers the whole
         # result before fetchmany, so the database is asked for at most the cap)
+        # a keyless table has no row order, but the contract's samples (and a statement's
+        # same-day balances) read it: SQL Server's parallel scan returned a different order under
+        # load (5.8b, recurrence of P58-03), so its scan stays serial, the stored order as on the
+        # other engines. ponytail: stable in practice, not guaranteed (no key, no order)
         load = select(literal_column("*")).select_from(listed).order_by(*listed.c) \
-            .limit(LOAD_MAX_ROWS + 1)
+            .limit(LOAD_MAX_ROWS + 1).suffix_with("OPTION (MAXDOP 1)", dialect="mssql")
         res = await asyncio.to_thread(run_readonly, engine, _sql_of(load, engine), LOAD_MAX_ROWS)
         if res.truncated:
             try:

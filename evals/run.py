@@ -224,11 +224,31 @@ def score_analysis(case: dict, findings, error: str | None, baseline: bool = Tru
             **({"builtin_only": builtin_only(case)} if baseline and "domain" in case else {})}
 
 
+# A database source: the scratch database's URL that writes the table, and the one the connector
+# reads with when they differ (SQL Server's reader: the can-write check refuses the admin).
+DB_SOURCES = {"postgres": ("TEST_PG_URL", None), "mysql": ("TEST_MYSQL_URL", None),
+              "mariadb": ("TEST_MARIADB_URL", None),
+              "mssql": ("TEST_MSSQL_URL", "TEST_MSSQL_READER_URL")}
+
+
+def _sql_types(df: pd.DataFrame, source: str) -> dict | None:
+    """SQL Server's column types for a frame: to_sql's defaults are TEXT (can't be grouped or
+    compared, not Unicode) and DATETIME (rounds to 3 ms); NVARCHAR and DATETIME2 hold a CSV's
+    values as written."""
+    if source != "mssql":
+        return None
+    from sqlalchemy.dialects.mssql import DATETIME2, NVARCHAR
+    return {c: NVARCHAR() if df[c].dtype == object or pd.api.types.is_string_dtype(df[c])
+            else DATETIME2() for c in df.columns
+            if df[c].dtype == object or pd.api.types.is_string_dtype(df[c])
+            or pd.api.types.is_datetime64_any_dtype(df[c])}
+
+
 def source_config(case: dict, df: pd.DataFrame, csv: str) -> ConnectorConfig:
     """Write the case's table as its `source` (csv by default | xlsx | json | parquet | sqlite |
-    postgres | mysql) and name it as POST /chat would: an upload, or a database with a table.
-    Sync, so cases running together never interleave a write. Postgres / MySQL: a table in the
-    scratch database TEST_PG_URL / TEST_MYSQL_URL names (never a real one: the table is replaced)."""
+    postgres | mysql | mariadb | mssql) and name it as POST /chat would: an upload, or a database
+    with a table. Sync, so cases running together never interleave a write. A database: a table
+    in the scratch database its TEST_*_URL names (never a real one: the table is replaced)."""
     source = case.get("source", "csv")
     UPLOADS.mkdir(parents=True, exist_ok=True)
     stem = f"{case['dataset']['name']}-{case['dataset']['seed']}"
@@ -238,15 +258,17 @@ def source_config(case: dict, df: pd.DataFrame, csv: str) -> ConnectorConfig:
         df.to_sql("data", create_engine(f"sqlite:///{path}"), index=False)
         return ConnectorConfig(type=ConnectorType.SQL, connection_string=f"sqlite:///{path}",
                                table_name="data")
-    if source in ("postgres", "mysql"):
-        url = os.environ["TEST_PG_URL" if source == "postgres" else "TEST_MYSQL_URL"]
+    if source in DB_SOURCES:
+        writer, reader = DB_SOURCES[source]
+        url = os.environ[reader or writer]
         table = "e2e_" + re.sub(r"\W", "_", stem)
         schema = case.get("pg_schema")   # a table outside the default schema, named schema.table
-        engine = create_engine(url)
+        engine = create_engine(os.environ[writer])
         with engine.begin() as conn:
             if schema:
                 conn.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{schema}"'))
-            df.to_sql(table, conn, index=False, if_exists="replace", schema=schema)
+            df.to_sql(table, conn, index=False, if_exists="replace", schema=schema,
+                      dtype=_sql_types(df, source))
         engine.dispose()
         if case.get("sql_question"):   # no table named: the question is answered in the database
             return ConnectorConfig(type=ConnectorType.SQL, connection_string=url)

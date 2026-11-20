@@ -388,6 +388,8 @@ async def test_a_named_table_load_asks_the_database_for_at_most_the_cap(tmp_path
     df = await _sql(url, "capped").load()
     cap = f"TOP {sc.LOAD_MAX_ROWS + 1}" if name == "mssql" else f"LIMIT {sc.LOAD_MAX_ROWS + 1}"
     assert df["a"].tolist() == [1] and cap in seen[0] and "ORDER BY" not in seen[0]   # no key
+    # SQL Server: a serial scan, so a keyless table reads in its stored order under load too
+    assert ("MAXDOP 1" in seen[0]) == (name == "mssql")
 
 
 # ── 4. Sheets on pandas 3 ──────────────────────────────────────────────────────────────────

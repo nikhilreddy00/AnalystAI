@@ -20,6 +20,7 @@ import pytest
 
 import domain_pack
 from evals import datagen
+from evals.run import DB_SOURCES
 
 LIVE = {"strict": True}
 
@@ -491,8 +492,9 @@ DATASETS_BY_PACK = {
 }
 PACK_DATASETS = [n for names in DATASETS_BY_PACK.values() for n in names]
 ONE_PER_PACK = {names[0] for names in DATASETS_BY_PACK.values()}
-SOURCES = ["xlsx", "json", "parquet", "sqlite", "postgres", "mysql", "api", "sheets"]
-_DB_URL = {"postgres": "TEST_PG_URL", "mysql": "TEST_MYSQL_URL"}   # skipped locally without one
+SOURCES = ["xlsx", "json", "parquet", "sqlite", "postgres", "mysql", "mariadb", "mssql", "api",
+           "sheets"]
+_DB_URL = {s: env for s, (env, _) in DB_SOURCES.items()}   # skipped locally without one
 # The contract fields that name where the table came from: every other field is the source's
 _SOURCE_FIELDS = {"source_type", "source_query", "source_evidence"}
 # What a format can't carry, named with why (never a silent skip): the rest is still compared
@@ -520,6 +522,26 @@ def _answers(clean: pd.DataFrame, contract) -> str:
                       default=str)
 
 
+def _in_the_order_of(frame: pd.DataFrame, reference: pd.DataFrame) -> pd.DataFrame | None:
+    """`reference`'s rows in the order `frame` holds the same rows, or None when the order is
+    already the same or the rows differ (then the value checks below say how). A database
+    table has no row order: SQL Server returned a keyless table in another order under load
+    (5.8b; its heap reuses freed pages), while the contract's samples read the order."""
+    from collections import deque
+    got = pd.util.hash_pandas_object(frame, index=False).tolist()
+    ref = pd.util.hash_pandas_object(reference, index=False).tolist()
+    if got == ref:
+        return None
+    at: dict[int, deque] = {}
+    for i, h in enumerate(ref):
+        at.setdefault(h, deque()).append(i)
+    try:
+        order = [at[h].popleft() for h in got]
+    except (KeyError, IndexError):
+        return None
+    return reference.iloc[order].reset_index(drop=True)
+
+
 @pytest.mark.parametrize("name", PACK_DATASETS)
 @pytest.mark.parametrize("source", SOURCES)
 async def test_every_source_reads_the_same_as_the_csv(name, source, tmp_path, monkeypatch):
@@ -541,7 +563,16 @@ async def test_every_source_reads_the_same_as_the_csv(name, source, tmp_path, mo
             get_connector(run.source_config({**case, "source": source}, df, csv)))
     frame = await conn.load()
     _, got, gc, _ = _prepared(frame, conn.build_data_contract(frame), conn.config.type, None)
-    _, want, wc, _ = _built(name)
+    # the reference: the CSV's rows, in the order the source returned them (values and types
+    # are this test's; whether an answer depends on order is the row-order invariance's)
+    from connectors.csv_connector import CSVConnector, _read_bytes
+    from orchestrator.state import ConnectorConfig, ConnectorType
+    if (reordered := _in_the_order_of(frame, _read_bytes(csv.encode(), ".csv")[0])) is not None:
+        csv_conn = CSVConnector(ConnectorConfig(type=ConnectorType.CSV))
+        _, want, wc, _ = _prepared(reordered, csv_conn.build_data_contract(reordered),
+                                   ConnectorType.CSV, None)
+    else:
+        _, want, wc, _ = _built(name)
     lossy = source in _FORMAT_LIMITS   # then only the int/float type, and the hash over it, may differ
     skip = {**dict.fromkeys(_SOURCE_FIELDS, True),
             **({"fingerprint": True, "columns": {"__all__": {"dtype"}}} if lossy else {})}
@@ -584,25 +615,55 @@ _TYPED_CSV = """id,active,amount,day,stamp,ts,note,score
 """
 
 
-async def test_a_databases_own_types_read_as_the_csv_of_the_same_table():
-    """TINYINT(1) is a yes/no, DECIMAL a number, a zero date and '' are blanks, a TIMESTAMP its
-    UTC wall time, -0.0 is 0.0, case is kept ('Acme' ≠ 'ACME'): the frame a CSV of the same
-    table gives, dtypes included."""
+# SQL Server's own types (5.8b): BIT, MONEY and DECIMAL, DATETIME2, DATETIMEOFFSET (an instant
+# with its offset), UNIQUEIDENTIFIER, NVARCHAR holding Unicode; '' and -0.0 as above
+_MSSQL_TYPED_DDL = """CREATE TABLE typed (id INT, active BIT, amount MONEY, price DECIMAL(12,2),
+    day DATE, stamp DATETIME2(6), ts DATETIMEOFFSET(0), uid UNIQUEIDENTIFIER, note NVARCHAR(40),
+    score FLOAT)"""
+_MSSQL_TYPED_ROWS = [
+    "(1, 1, 10.50, 3.10, '2026-01-05', '2026-01-05 10:00:00.123456', '2026-01-05 10:00:00 +00:00', "
+    "'6F9619FF-8B86-D011-B42D-00C04FC964FF', N'Acme', 1.5)",
+    "(2, 0, 3.25, NULL, NULL, '2026-02-01 00:00:00', '2026-02-01 00:00:00 +00:00', NULL, N'', -0.0)",
+    "(3, 1, NULL, 0.00, '2026-03-07', NULL, NULL, '0E984725-C51C-4BF4-9960-E1C80E27ABA0', N'ACME', NULL)",
+    "(4, 0, 0.10, 12.00, '2026-03-08', '2026-03-08 09:30:00', NULL, NULL, N'Café £5 – Zürich', 2.25)"]
+_MSSQL_TYPED_CSV = """id,active,amount,price,day,stamp,ts,uid,note,score
+1,True,10.5,3.1,2026-01-05,2026-01-05 10:00:00.123456,2026-01-05 10:00:00+00:00,6F9619FF-8B86-D011-B42D-00C04FC964FF,Acme,1.5
+2,False,3.25,,,2026-02-01 00:00:00,2026-02-01 00:00:00+00:00,,,0.0
+3,True,,0.0,2026-03-07,,,0E984725-C51C-4BF4-9960-E1C80E27ABA0,ACME,
+4,False,0.1,12.0,2026-03-08,2026-03-08 09:30:00,,,Café £5 – Zürich,2.25
+"""
+_TYPED = {   # engine: (the admin URL that writes, session setup, DDL, rows, the CSV it reads as)
+    "mysql": ("TEST_MYSQL_URL", ["SET SESSION sql_mode = ''", "SET SESSION time_zone = '+00:00'"],
+              _TYPED_DDL, _TYPED_ROWS, _TYPED_CSV),
+    "mariadb": ("TEST_MARIADB_URL", ["SET SESSION sql_mode = ''", "SET SESSION time_zone = '+00:00'"],
+                _TYPED_DDL, _TYPED_ROWS, _TYPED_CSV),
+    "mssql": ("TEST_MSSQL_URL", [], _MSSQL_TYPED_DDL, _MSSQL_TYPED_ROWS, _MSSQL_TYPED_CSV),
+}
+
+
+@pytest.mark.parametrize("engine", list(_TYPED))
+async def test_a_databases_own_types_read_as_the_csv_of_the_same_table(engine):
+    """MySQL/MariaDB: TINYINT(1) is a yes/no, DECIMAL a number, a zero date and '' are blanks
+    (legacy dumps hold zero dates), a TIMESTAMP its UTC wall time; SQL Server: BIT a yes/no,
+    MONEY/DECIMAL numbers, DATETIMEOFFSET an instant, a GUID its text; everywhere -0.0 is 0.0
+    and case is kept ('Acme' ≠ 'ACME'): the frame a CSV of the same table gives, dtypes
+    included (P58-08, P58-15, by the cursor's types)."""
     from sqlalchemy import create_engine as ce
     from sqlalchemy import text
 
     from connectors.csv_connector import _read_bytes
-    url = os.environ.get("TEST_MYSQL_URL")
-    if not url:
-        pytest.skip("TEST_MYSQL_URL not set")   # never in CI (tests/conftest.py)
+    env, setup, ddl, rows, csv = _TYPED[engine]
+    if not (url := os.environ.get(env)):
+        pytest.skip(f"{env} not set")   # never in CI (tests/conftest.py)
     with ce(url).begin() as c:
-        c.execute(text("SET SESSION sql_mode = ''"))   # legacy dumps hold zero dates
-        c.execute(text("SET SESSION time_zone = '+00:00'"))
+        for statement in setup:
+            c.execute(text(statement))
         c.execute(text("DROP TABLE IF EXISTS typed"))
-        c.execute(text(_TYPED_DDL))
-        c.execute(text("INSERT INTO typed VALUES " + ", ".join(_TYPED_ROWS)))
-    got = await _sql_connector(url, "typed").load()
-    want = _read_bytes(_TYPED_CSV.encode(), ".csv")[0]
+        c.execute(text(ddl))
+        c.execute(text("INSERT INTO typed VALUES " + ", ".join(rows)))
+    read_url = os.environ["TEST_MSSQL_READER_URL"] if engine == "mssql" else url
+    got = await _sql_connector(read_url, "typed").load()
+    want = _read_bytes(csv.encode(), ".csv")[0]
     pd.testing.assert_frame_equal(got, want, check_exact=True)
 
 
