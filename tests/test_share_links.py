@@ -412,7 +412,117 @@ async def test_only_the_first_512_bytes_are_sniffed_for_a_page(monkeypatch):
     # a blank parameter is kept, the fragment dropped
     ("https://www.dropbox.com/scl/fi/abc/q.csv?rlkey=r1&st=&dl=0#top",
      "https://www.dropbox.com/scl/fi/abc/q.csv?rlkey=r1&st=&dl=1"),
+    # 5.8b audit (code review): "Publish to web" links name a published id, not a sheet's
+    ("https://docs.google.com/spreadsheets/d/e/2PACX-1vQabc/pubhtml",
+     "https://docs.google.com/spreadsheets/d/e/2PACX-1vQabc/pub?output=csv"),
+    ("https://docs.google.com/spreadsheets/d/e/2PACX-1vQabc/pubhtml?gid=5&single=true",
+     "https://docs.google.com/spreadsheets/d/e/2PACX-1vQabc/pub?output=csv&gid=5"),
 ])
 def test_more_share_links_are_rewritten_to_their_file(shared, direct):
     from connectors.link import direct_url
     assert direct_url(shared) == direct
+
+
+# ── 5.8b audit pass 1 (silent-failure hunter, code review, test analyst) ────────────────────
+
+@pytest.mark.parametrize("encoding", ["gzip", "zstd", "br", "deflate"])
+async def test_a_compressed_answer_is_refused_not_unpacked(client, monkeypatch, encoding):
+    """Asked for identity, a server may still compress; httpx would unpack a chunk to any size
+    before the cap counted it (a zstd bomb). Refused, counted raw."""
+    import gzip
+    import zlib
+
+    import zstandard
+    packed = {"gzip": gzip.compress, "deflate": zlib.compress, "br": lambda b: b,
+              "zstd": zstandard.ZstdCompressor().compress}[encoding](CSV)
+    serve(monkeypatch, lambda r: httpx.Response(200, content=packed, headers={
+        "content-type": "text/csv", "content-encoding": encoding}))
+    r = await _link(client, "https://files.example/q.csv")
+    assert r.status_code == 400
+    assert r.json()["detail"] == ("The file at files.example couldn't be read: it compressed its "
+                                  f"answer ({encoding}) though asked not to.")
+
+
+def _parquet() -> bytes:
+    buf = io.BytesIO()
+    pd.read_csv(io.BytesIO(CSV)).to_parquet(buf, index=False)
+    return buf.getvalue()
+
+
+@pytest.mark.parametrize(("body", "ctype"), [
+    (b'[{"order_id": 1, "region": "North", "amount": 10.5}, {"order_id": 2, "region": "South",'
+     b' "amount": 3.25}, {"order_id": 3, "region": "North", "amount": 7.0}]', "application/json"),
+    (b'\xef\xbb\xbf{"order_id": 1, "region": "North", "amount": 10.5}\n{"order_id": 2, "region":'
+     b' "South", "amount": 3.25}\n{"order_id": 3, "region": "North", "amount": 7.0}\n',
+     "application/octet-stream"),
+    ("parquet", "application/octet-stream"),
+])
+async def test_a_json_or_parquet_link_reads_as_its_own_kind(client, monkeypatch, body, ctype):
+    """A JSON link was read as a CSV (its first record the header) and Parquet as 'not a
+    table': each file goes to its own reader, as an upload of it would."""
+    from connectors.link import download
+    content = _parquet() if body == "parquet" else body
+    serve(monkeypatch, lambda r: httpx.Response(200, content=content, headers={"content-type": ctype}))
+    got, suffix, _ = await download("https://files.example/data")
+    from connectors.csv_connector import _read_bytes
+    df = _read_bytes(got, suffix)[0]
+    assert list(df.columns) == ["order_id", "region", "amount"] and len(df) == 3
+
+
+async def test_an_old_xls_link_is_refused_as_its_upload_is(client, monkeypatch):
+    from connectors.csv_connector import XLS_REFUSAL
+    serve(monkeypatch, lambda r: httpx.Response(200, content=b"\xd0\xcf\x11\xe0" + b"\0" * 600))
+    r = await _link(client, "https://files.example/old.xls")
+    assert (r.status_code, r.json()["detail"]) == (400, XLS_REFUSAL)
+
+
+@pytest.mark.parametrize("status", [429, 500, 502, 503])
+async def test_a_busy_or_broken_host_is_not_called_a_sharing_problem(client, monkeypatch, status):
+    serve(monkeypatch, lambda r: httpx.Response(status))
+    r = await _link(client, "https://files.example/q.csv")
+    assert r.json()["detail"] == (f"files.example is having trouble (HTTP {status}). Try again "
+                                  "in a few minutes.")
+
+
+async def test_a_host_that_doesnt_exist_is_said_so(client, monkeypatch):
+    import socket
+
+    def missing(host, *a, **k):
+        raise socket.gaierror("nodename nor servname provided")
+    serve(monkeypatch, lambda r: _ok(CSV))
+    monkeypatch.setattr(socket, "getaddrinfo", missing)
+    r = await _link(client, "https://flies.example/q.csv")
+    assert r.json()["detail"] == "The link's host 'flies.example' wasn't found. Check the link."
+
+
+@pytest.mark.parametrize("link", ["https://[::1/x.csv", "https://files.example/\x00.csv",
+                                  "not a link at all"])
+async def test_a_malformed_link_is_a_400_not_a_server_error(client, monkeypatch, link):
+    serve(monkeypatch, lambda r: _ok(CSV))
+    r = await _link(client, link)
+    assert r.status_code == 400 and "\x00" not in r.text
+
+
+async def test_a_redirect_to_a_malformed_location_is_a_400(client, monkeypatch):
+    serve(monkeypatch, lambda r: httpx.Response(302, headers={"location": "https://[bad/x"}))
+    r = await _link(client, "https://files.example/q.csv")
+    assert r.status_code == 400
+
+
+async def test_a_download_that_trickles_stops_at_the_deadline(client, monkeypatch):
+    """httpx's timeout is per read: a byte every 59 s held a worker for days. The whole download
+    has one deadline."""
+    import asyncio
+
+    import connectors.link as link
+    import tests.fake_network as fake
+    monkeypatch.setattr(link, "DEADLINE_S", 0.3)
+    serve(monkeypatch, lambda r: _ok(CSV))
+    real = fake._Stream.read
+
+    async def trickle(self, max_bytes, timeout=None):
+        await asyncio.sleep(0.2)
+        return await real(self, 1, timeout)
+    monkeypatch.setattr(fake._Stream, "read", trickle)
+    r = await _link(client, "https://files.example/q.csv")
+    assert r.json()["detail"] == "files.example took longer than 0.3 s to send the file."

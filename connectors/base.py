@@ -7,6 +7,7 @@ Adding a new source (Notion, Airtable, etc.) = add one subclass, zero agent chan
 from __future__ import annotations
 
 import datetime
+import functools
 import ipaddress
 import re
 import socket
@@ -182,6 +183,30 @@ class RefusedHost(ValueError):
     """A fetch to a host that isn't on the public internet. The message names the host only."""
 
 
+class HostNotFound(RefusedHost):
+    """A host name that doesn't resolve: a typo, not a private address (5.8b audit)."""
+
+
+class BodyTooLarge(ValueError):
+    """A response past the reader's byte cap."""
+
+
+async def capped_body(response: httpx.Response, cap: int) -> bytes:
+    """A response's body as sent, at most `cap` bytes, counted as it arrives (a size the server
+    states can't be trusted). Asked for identity, a server may still compress, and a compressed
+    chunk expands past any cap in one decode (5.8b audit: zstd), so a Content-Encoding other than
+    identity is refused (ValueError) and the raw bytes are counted."""
+    encoding = response.headers.get("content-encoding", "identity").strip().lower()
+    if encoding not in ("", "identity"):
+        raise ValueError(f"it compressed its answer ({encoding}) though asked not to")
+    body = bytearray()
+    async for chunk in response.aiter_raw():
+        body += chunk
+        if len(body) > cap:
+            raise BodyTooLarge(f"the answer is larger than {cap:,} bytes")
+    return bytes(body)
+
+
 def public_addresses(host: str) -> list:
     """`host`'s addresses if every one is a public internet address (`is_global` after
     unwrapping: no loopback, private/LAN, link-local or metadata, CGNAT, unique-local or
@@ -190,7 +215,7 @@ def public_addresses(host: str) -> list:
     try:
         ips = resolved(host)
     except ValueError:
-        raise RefusedHost(f"The host '{host}' wasn't found.") from None
+        raise HostNotFound(f"The host '{host}' wasn't found.") from None
     if not ips or not all(ip.is_global for ip in ips):
         raise RefusedHost(f"The host '{host}' isn't on the public internet, so it can't be "
                           "fetched from this server.")
@@ -222,6 +247,13 @@ class _CheckedNetwork(httpcore.AsyncNetworkBackend):
     # no unix sockets (the base class refuses them) and no sleep: the client never retries
 
 
+@functools.cache
+def _tls_context() -> ssl.SSLContext:
+    """certifi's CAs, loaded once (a context is read-only once built; 5.8b review: every fetch
+    loaded the bundle twice)."""
+    return ssl.create_default_context(cafile=certifi.where())
+
+
 def public_client(timeout: float = 30) -> httpx.AsyncClient:
     """THE client for any URL a user gives (the REST API source, a share link). Redirects are
     not followed (a caller that follows them gets each hop checked at its connection anyway),
@@ -231,8 +263,7 @@ def public_client(timeout: float = 30) -> httpx.AsyncClient:
     # httpx 0.28 has no network_backend option: its pool is replaced by one on the checked
     # network (tests/test_public_http.py pins that this still holds)
     transport._pool = httpcore.AsyncConnectionPool(  # noqa: SLF001
-        ssl_context=ssl.create_default_context(cafile=certifi.where()),
-        network_backend=_CheckedNetwork())
+        ssl_context=_tls_context(), network_backend=_CheckedNetwork())
     return httpx.AsyncClient(transport=transport, timeout=timeout, follow_redirects=False,
                              trust_env=False, headers={"Accept-Encoding": "identity"})
 

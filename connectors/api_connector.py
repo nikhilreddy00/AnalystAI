@@ -5,17 +5,19 @@ Handles paginated responses automatically using a configurable pagination key.
 
 from __future__ import annotations
 
+import json
 from typing import Any
 from urllib.parse import urlparse
 
 import httpx
 import pandas as pd
 
-from connectors.base import DataConnector, public_client, truncation_note
+from connectors.base import BodyTooLarge, DataConnector, capped_body, public_client, truncation_note
 
 MAX_PAGES = 20          # safety cap to prevent infinite pagination loops
 PAGE_SIZE = 1000
 MAX_RECORDS = 100_000   # hard ceiling across all pages to prevent OOM
+MAX_PAGE_BYTES = 50 * 2**20   # one page's body, as the upload cap
 
 
 def _http_url(url: str) -> None:
@@ -30,11 +32,27 @@ def _http_url(url: str) -> None:
 
 
 def _status(response: httpx.Response) -> None:
-    """An error status as a message without the URL (httpx's own quotes it, and a URL can carry
-    a key)."""
-    if response.status_code >= 400:
+    """Any answer but a success as a message without the URL (httpx's own quotes it, and a URL
+    can carry a key). A redirect isn't followed (5.8b audit: it read as 'reachable', then its
+    empty body as JSON)."""
+    if response.is_redirect:
+        raise ValueError(f"The API redirected (HTTP {response.status_code}): use the URL it "
+                         "redirects to.")
+    if not response.is_success:
         raise ValueError(f"The API answered HTTP {response.status_code} "
                          f"({response.reason_phrase}).")
+
+
+async def _page(client: httpx.AsyncClient, url: str, headers: dict) -> Any:
+    """One page's JSON, its body read up to MAX_PAGE_BYTES as it arrives (5.8b audit: the whole
+    answer was read before any cap, compressed or not)."""
+    async with client.stream("GET", url, headers=headers) as response:
+        _status(response)
+        try:
+            body = await capped_body(response, MAX_PAGE_BYTES)
+        except BodyTooLarge:
+            raise ValueError(f"An API page is larger than {MAX_PAGE_BYTES // 2**20} MB.") from None
+    return json.loads(body)
 
 
 _RECORD_KEYS = ("data", "results", "items", "records")
@@ -96,9 +114,7 @@ class APIConnector(DataConnector):
 
             while next_url and page <= MAX_PAGES and len(records) < MAX_RECORDS:
                 _http_url(next_url)
-                response = await client.get(next_url, headers=headers)
-                _status(response)
-                data = response.json()
+                data = await _page(client, next_url, headers)
 
                 records.extend(_records(data) or [])
                 if not isinstance(data, dict):   # a bare list (or a scalar) has no next page
@@ -134,11 +150,11 @@ class APIConnector(DataConnector):
             return False, "url not provided"
         try:
             _http_url(url)
-            async with public_client(timeout=10) as client:
-                response = await client.get(url, headers=self._build_headers())
-                _status(response)
+            async with public_client(timeout=10) as client, \
+                    client.stream("GET", url, headers=self._build_headers()) as response:
+                _status(response)   # the status is the answer: no body is read
             return True, f"API reachable (HTTP {response.status_code})"
         except ValueError as e:   # ours: the URL, the host refused, an error status
             return False, str(e)
-        except httpx.HTTPError as e:   # the network's: its class names it, never the URL
+        except (httpx.HTTPError, httpx.InvalidURL) as e:   # its class names it, never the URL
             return False, f"The API couldn't be reached ({type(e).__name__})."

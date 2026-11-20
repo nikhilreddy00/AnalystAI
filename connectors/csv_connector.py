@@ -270,6 +270,7 @@ def _read_bytes(content: bytes, suffix: str) -> tuple[pd.DataFrame, dict]:
             raise IngestionError(f"parquet: {type(exc).__name__}", _NOT_A_TABLE) from exc
         info = {"format": "parquet", "notes": []}
     elif suffix in (".json", ".jsonl"):
+        content = content.removeprefix(b"\xef\xbb\xbf")   # a byte-order mark (Windows tools write one)
         try:
             # dtype=False: values keep the type they were written with ("02134" stays text).
             # precise_float: the fast parser reads 2.76 as 2.7600000000000002 (5.8a source oracle)

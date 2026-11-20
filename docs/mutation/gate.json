@@ -396,7 +396,8 @@
     "old": "order = (\" ORDER BY \" + \", \".join(map(quote, key[\"constrained_columns\"]))",
     "reason": "SQL keywords are case-insensitive in every dialect"
    }
-  ]
+  ],
+  "hash": "06c64d073a941de5"
  },
  "connectors/sql_connector.py::SQLConnector.engine": {
   "equivalents": [],
@@ -430,7 +431,8 @@
     "old": "await asyncio.to_thread(run_readonly, engine, \"SELECT 1\", 1)",
     "reason": "SELECT 1 returns one row: a cap of 1, 2 or the default never truncates it, and the probe reads no row"
    }
-  ]
+  ],
+  "hash": "3d386f639f338bc2"
  },
  "connectors/sql_connector.py::_assert_single_select": {
   "equivalents": [],
@@ -455,7 +457,8 @@
     "old": "conn = dialect.loaded_dbapi.connect(*cargs, **cparams, defer_connect=True)",
     "reason": "SQLAlchemy's MySQL/MariaDB PyMySQL dialect passes every connect argument by keyword (create_connect_args returns an empty list), so cargs is always empty"
    }
-  ]
+  ],
+  "hash": "a6dd2e0ea481d1a6"
  },
  "connectors/sql_connector.py::_query_timeout": {
   "equivalents": [],
@@ -470,7 +473,8 @@
   "hash": "97d8c2ff818a2f0c"
  },
  "connectors/sql_connector.py::_tls": {
-  "equivalents": []
+  "equivalents": [],
+  "hash": "5787eb39227e1625"
  },
  "connectors/sql_connector.py::_unlisted_tables": {
   "equivalents": [

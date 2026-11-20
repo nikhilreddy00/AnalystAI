@@ -40,7 +40,7 @@ class _Stream(httpcore.AsyncNetworkStream):
         request = httpx.Request(method, f"https://{headers['Host']}{target}", headers=headers)
         self.wire.requests.append(request)
         r = self.wire.handler(request)
-        body = r.content
+        body = b"".join(r.stream)   # the bytes as given: a Content-Encoding is the client's to read
         hdrs = {k: v for k, v in r.headers.items() if k.lower() != "content-length"}
         hdrs["Content-Length"] = str(len(body))
         self.out += (f"HTTP/1.1 {r.status_code} {r.reason_phrase}\r\n"

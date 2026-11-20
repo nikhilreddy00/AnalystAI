@@ -182,6 +182,47 @@ async def test_an_api_error_never_quotes_the_url(monkeypatch):
     assert not ok and "403" in message and "SECRET123" not in message
 
 
+@pytest.mark.parametrize("status", [301, 302, 307, 308])
+async def test_an_api_that_redirects_is_said_so_never_reachable(monkeypatch, status):
+    """5.8b audit (silent-failure hunter, code review): only >= 400 was an error, so a redirect
+    tested 'API reachable' and then its empty body failed as JSON."""
+    serve(monkeypatch, lambda r: httpx.Response(status, headers={"location": "https://api.example/v2"}))
+    conn = get_connector(ConnectorConfig(type=ConnectorType.API, url="https://api.example/v1"))
+    said = f"The API redirected (HTTP {status}): use the URL it redirects to."
+    assert await conn.test_connection() == (False, said)
+    with pytest.raises(ValueError, match="redirected"):
+        await conn.load()
+
+
+async def test_a_next_page_inside_the_network_is_never_fetched(monkeypatch):
+    """The next-page URL comes from the response body: its host is checked where it connects."""
+    wire = serve(monkeypatch, lambda r: httpx.Response(200, json={
+        "data": [{"a": 1}], "next": "https://internal.example/2"}),
+        {"api.example": [PUBLIC], "internal.example": ["10.0.0.5"]})
+    conn = get_connector(ConnectorConfig(type=ConnectorType.API, url="https://api.example/1"))
+    with pytest.raises(base.RefusedHost):
+        await conn.load()
+    assert wire.connected == [PUBLIC]
+    serve(monkeypatch, lambda r: httpx.Response(200, json=[]), {"api.example": ["10.0.0.5"]})
+    ok, message = await conn.test_connection()
+    assert not ok and "public internet" in message
+
+
+async def test_an_api_page_past_the_cap_or_compressed_is_refused(monkeypatch):
+    import gzip
+
+    import connectors.api_connector as ac
+    monkeypatch.setattr(ac, "MAX_PAGE_BYTES", 40)
+    serve(monkeypatch, lambda r: httpx.Response(200, json=[{"a": "x" * 100}]))
+    conn = get_connector(ConnectorConfig(type=ConnectorType.API, url="https://api.example/1"))
+    with pytest.raises(ValueError, match="larger than"):
+        await conn.load()
+    serve(monkeypatch, lambda r: httpx.Response(200, content=gzip.compress(b"[]"), headers={
+        "content-encoding": "gzip"}))
+    with pytest.raises(ValueError, match="compressed its answer"):
+        await conn.load()
+
+
 def test_no_request_url_reaches_the_server_log(monkeypatch):
     """P58-06 (5.8b recurrence): httpx logs `HTTP Request: GET <url>` at INFO and the app's root
     logger is at INFO, so every share link's token and API key in a query would be written. The
