@@ -125,6 +125,10 @@ def test_every_denied_function_is_refused_in_every_dialect(dialect):
     "SELECT ts_rewrite('a'::tsquery, 'SELECT t, s FROM aliases')",
     "SELECT some_future_fn('  with x as (select 1) select * from x')",
     "SELECT f(1, 'TABLE pg_authid')",
+    # security review of that fix: a leading comment, a line comment, dollar quoting
+    "SELECT f('/* x */ SELECT rolpassword FROM pg_authid')",
+    "SELECT f('-- x\nSELECT 1')",
+    "SELECT f($q$ /**/ (select 1) $q$)",
     "SELECT table_to_xmlschema('pg_authid', true, false, '')"])
 def test_a_function_given_sql_as_text_is_refused(sql):
     """Security review (5.8a audit 2): a function that runs a query passed as text (ts_stat,

@@ -35,7 +35,9 @@ plan-mode step by name:
 - **MySQL connects read-only.** A `DIALECTS` row (PyMySQL ≥ 1.1.1, `charset` the only URL key,
   `SET SESSION TRANSACTION READ ONLY` + `max_execution_time` + `START TRANSACTION READ ONLY`,
   `local_infile` off, UTC, connect/read timeouts). On the real database INSERT, UPDATE, DELETE, DROP,
-  TRUNCATE and CREATE fail through `run_readonly` alone, and `SLEEP(20)` stops at the timeout. An engine
+  TRUNCATE and CREATE fail through `run_readonly` alone **for the read-only reason** (audit pass 2:
+  the first version of this test accepted any error and passed 5 of 6 writes with read-only off;
+  now plant-proven: read-only statements removed → 17/17 red), and `SLEEP(20)` stops at the timeout. An engine
   or driver without a row is refused by every reader (`safe_url`, `run_readonly`, `sql_dialect`, the SQL
   agent, the semantic layer's check). Supabase and Neon strings are accepted as Postgres.
 - **The source oracle owns source invariance**: all 33 domain datasets × xlsx, json, parquet, sqlite,
@@ -52,8 +54,9 @@ plan-mode step by name:
   side-effect functions and system databases (an attack corpus from PayloadsAllTheThings shapes, a
   Hypothesis property, sqlglot's must-allow reads).
 - **No password in a message** (`without_secrets`, a fixed message for an unreadable string). In
-  production a host is never loopback, link-local or the app's own store, and the driver connects to
-  the checked address; a LAN host is allowed (self-hosted).
+  production a host is never loopback, link-local or the app's own store's address, and the driver
+  connects to the checked address; a LAN host is allowed (self-hosted). The store's other routes are
+  the deployment's: compose binds its port to loopback (audit pass 2, B4).
 - **README's source list is generated** from the connectors (`sources_table`, a test keeps them equal).
 - **E2E**: e2e-98 (e2e-64's incurred-total trap from a MySQL table) passes at k=1, $0.0263.
 - **Live browser (1440 px, production mode, asyncpg, real worker)**: the connect form took
@@ -89,8 +92,40 @@ E2E e2e-98 $0.0263; live stack $0.149 (one overview). Estimate was ≤ $0.60.
 | — | security-guidance reviews on each commit | 4 (IPv4-mapped bypass, DNS rebinding, a quote hiding an executable comment, an unresolvable store failing open) | 1 (the Anonymous-only deny check, covered by a test) |
 | — | mutation gate | ~185 survivors → refusals' words pinned, dead branches deleted, true equivalents recorded | — |
 
-**Pass count: 1** review pass with fixes; the stop rule's second pass is the mutation gate and CI on the
-fixed code. Ledger: P58-01..08 (C0), UNENFORCED 77 (≤ 77).
+| 2 | user-asked senior audit (2026-11-20): `code-review` (high), `pr-review-toolkit:silent-failure-hunter`, `pr-review-toolkit:pr-test-analyzer`, `security-review` (fresh subagents, parallel) | 7 | 4 |
+| — | security-guidance on each audit-2 commit | 3 (a CTE shadowing a table, a function read as a table, a function given SQL as text) | — |
+| — | the paid run on the question path (e2e-99) | 1 (a silent 20-table schema cap) | — |
+
+**Pass count: 2** (the stop rule's last). Pass 1's fixes held; pass 2 found what pass 1's reviewers
+never looked at: the question path's shapes and scope, and tests that could not fail.
+
+### Audit pass 2 (2026-11-20): what was found, why it was missed, what fixed the class
+Every finding below was reproduced, then a red test committed (25abf3b), then fixed at its cause.
+| # | bug | root cause | fix |
+|---|---|---|---|
+| B1 | a join's two `id` columns crashed every dialect's question path (regression) | 5.8a's column steps ran by name before ingestion makes names unique | columns by position; a Hypothesis property over result shapes |
+| B2 | a question read `pg_shadow`, MySQL's processlist, another database on the server | two copies of "what may be read" (the load's table list, the guard's qualified-schema list) | one rule: a question reads only `_tables`; CTEs by sqlglot scope; table functions and text-SQL functions refused |
+| B3 | write tests passed with read-only off | any error counted; mutmut doesn't mutate data rows | the read-only reason required; hand plant 17/17 red; a test bans `raises(Exception)` there |
+| B4 | the store reachable via the host's LAN address (compose published 5432, default credentials) | the IP check can't know every route; the deployment file was outside the threat model | compose binds loopback; a test |
+| B5/B6 | a session failure blamed on the query (a paid retry); a skipped layer silent | new failure points not traced through callers' `except` | IngestionError for session setup; a traced, stated skip |
+| B7 | a MySQL string without a database listed every database | the empty edge untested | refused |
+| B8/B9 | a capped load read arbitrary rows; zero dates by value in any column, missed with a fraction | symptom fixed (order-free fingerprint), not cause; the docs' example, not the driver's output | key order; date columns by cursor type, any precision |
+| B10 | MySQL tests could skip unseen in CI; the timeout test swallowed errors | env-gated tests without a CI rule | the backend job refuses to start without both URLs |
+| B11 | sql_mode unpinned; two address normalisations; a test bug read as a connection problem | — | session clears ANSI_QUOTES / NO_BACKSLASH_ESCAPES; `resolved()` normalises; logged |
+| B12 | (paid run) the SQL agent saw 20 tables per schema, silently | a Phase 4 cap; no question-path run on a many-table database | every table named, columns up to a budget |
+
+Not fixed, with reasons: `normalize_frame` runs twice on CSV/SQL loads (idempotent; `_read_bytes` has
+other callers); no password scrub on the run path (no driver message carries it; the route scrubs).
+Known ceiling: the parse guard is a deny list (a SQL text built by concatenation isn't seen); the
+database role is the boundary (ADR-0010 layer 4). Follow-up for 5.8b: an allow list of functions.
+
+Workflow changes (ledger P58-09..17): list the invariants established after a boundary before adding
+code at it; one rule by meaning (where else is this decided?); hand plants for safety data rows; a
+refusal test names its reason; env-gated tests required in CI; trace callers' `except` for every new
+failure point; the threat model reads the deployment files; test the driver's real output; a paid
+run per path a change touches (the table path's E2E never saw the question path).
+
+Ledger: P58-01..17, UNENFORCED 77 (≤ 77).
 
 Golden re-pinned (`evals.snapshot pin`, CHANGES emptied). Its diff: every contract's fingerprint and its
 16-character evidence excerpt (order-free fingerprint), and health_claims-1's -0.0 amount reading 0.0;

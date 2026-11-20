@@ -74,7 +74,20 @@ _SQL_DENY_FUNCS = {"nextval", "setval", "set_config", "query_to_xml", "query_to_
 # starts (security review: `/* ' */ /*!SLEEP(5)*/ /* ' */`). Cost: a literal holding these
 # three characters is refused too.
 _EXECUTABLE_COMMENT = re.compile(r"/\*(!|M!|\+)")
-_SQL_TEXT = re.compile(r"\s*\(?\s*(select|with|table|values)\b", re.IGNORECASE)   # a query as text
+# a query as text: past leading blanks, brackets and comments, a statement keyword
+_SQL_TEXT = re.compile(r"(\s|\(|/\*.*?\*/|--[^\n]*(\n|$))*(select|with|table|values)\b",
+                       re.IGNORECASE | re.DOTALL)
+
+
+def _is_sql_text(text: str, dialect: str | None) -> bool:
+    """A string literal that is a query (a function given it runs it). The keyword check, or
+    whatever sqlglot itself reads as a query."""
+    if _SQL_TEXT.match(text):
+        return True
+    try:
+        return isinstance(sqlglot.parse_one(text, read=dialect), exp.Query)
+    except sqlglot.errors.SqlglotError:
+        return False
 _SQL_DENY_PREFIXES = ("lo_", "dblink", "pg_read", "pg_ls_", "pg_stat_file", "pg_sleep",
                       "pg_advisory", "pg_terminate", "pg_cancel", "pg_reload", "pg_rotate",
                       "pg_file", "pg_logical", "pg_replication", "pg_create", "pg_drop",
@@ -126,7 +139,8 @@ def check_sql_readonly(sql: str, dialect: str | None) -> str | None:
             # the class (security review, audit 2): a function given a query as text runs it
             # past every table rule (ts_stat, ts_rewrite, the next one); ponytail: a text built
             # by concatenation isn't seen, the database role is the boundary (ADR-0010 layer 4)
-            if any(_SQL_TEXT.match(s.name) for s in node.find_all(exp.Literal) if s.is_string):
+            if any(_is_sql_text(s.name, dialect) for s in node.find_all(exp.Literal, exp.RawString)
+                   if isinstance(s, exp.RawString) or s.is_string):   # RawString: $q$ … $q$
                 return f"function given a SQL statement as text: {name}"
         if isinstance(node, exp.Table) and node.db.lower() in system:
             return f"the database's own tables are not readable: {node.db}"
