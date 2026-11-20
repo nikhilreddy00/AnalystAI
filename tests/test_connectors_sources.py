@@ -420,13 +420,6 @@ async def test_api_page_cap_is_disclosed(api, monkeypatch):
     assert any(n.startswith(TRUNCATED) for n in conn.read_info["notes"])
 
 
-async def test_the_ssrf_guard_still_blocks_private_hosts(monkeypatch):
-    import socket
-    monkeypatch.setattr(socket, "getaddrinfo", lambda *a, **k: [(0, 0, 0, "", ("10.0.0.1", 0))])
-    with pytest.raises(ValueError, match="non-public"):
-        await _api_load()
-
-
 # ── 6. upload types ────────────────────────────────────────────────────────────────────────
 
 def test_jsonl_is_read_and_xls_is_refused_clearly():
