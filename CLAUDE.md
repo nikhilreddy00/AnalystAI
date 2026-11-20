@@ -35,7 +35,7 @@ evals/tests, and evidence-backed justification; then an open-source v0.1 release
 | 5.6 | Durable runs (a) + workspace (b) | ✅ 2026-10-31 — `docs/baselines/phase5_6a.md`, `phase5_6b.md` |
 | 5.5 | Domain coverage (8 domains, PHI) | ✅ 2026-11-01 — `docs/baselines/phase5_5.md` |
 | 5.7 | Domain depth, one domain per session | domains 1–8 ✅, D7-19 PR ✅ 2026-11-19, 5.7b ✅ 2026-11-16 |
-| 5.8 | Data sources (MySQL, public Sheets, DuckDB, SQL Server, dlt) | pending |
+| 5.8 | Data sources, split a/b/c/d | 5.8a ✅ 2026-11-19 (contract + MySQL) — `docs/baselines/phase5_8a.md`; b/c/d pending |
 | 6 | E2E hardening + open-source v0.1 release | pending |
 
 Full per-phase metrics, costs and history: `docs/ROADMAP.md` → "Status log".

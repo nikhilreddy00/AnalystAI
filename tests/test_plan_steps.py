@@ -22,7 +22,7 @@ def missing_steps(text: str) -> list[str]:
 
 
 def test_every_session_note_names_its_plan_steps_and_the_stop_rule():
-    notes = {p.name: p.read_text() for p in sorted(BASELINES.glob("phase5_7*.md"))}
+    notes = {p.name: p.read_text() for p in sorted(BASELINES.glob("phase5_[78]*.md"))}
     due = {n: t for n, t in notes.items() if (_dated(t) or "") >= SINCE}
     assert "phase5_7b_3.md" in due   # no vacuous pass: the first note it binds
     assert {n: m for n, t in due.items() if (m := missing_steps(t))} == {}
@@ -37,7 +37,7 @@ def test_every_session_note_says_its_wall_clock():
     """Retro Domain 7 (D1-59): spend was tracked per session, time was not, so "are we slower?"
     took a dig through git (Domain 6 ~7.5 h, Domain 7 ~20.5 h). From Domain 7 on, each note says
     its hours, first commit to merge."""
-    notes = {p.name: p.read_text() for p in sorted(BASELINES.glob("phase5_7*.md"))}
+    notes = {p.name: p.read_text() for p in sorted(BASELINES.glob("phase5_[78]*.md"))}
     due = {n for n, t in notes.items() if (_dated(t) or "") >= "2026-11-16"}
     assert "phase5_7_iot.md" in due
     assert sorted(n for n in due if not WALL.search(notes[n])) == []
@@ -60,9 +60,9 @@ def test_every_session_note_states_each_regression_gate():
     """Retro Domain 8: three contract gates were trimmed (the live 1440 px check on three
     sources, the finished domains' filter reads, the all-domain probe) and only a post-merge
     review found it. From Domain 8 on, the note says each gate: done, or not done and why."""
-    notes = {p.name: p.read_text() for p in sorted(BASELINES.glob("phase5_7*.md"))}
+    notes = {p.name: p.read_text() for p in sorted(BASELINES.glob("phase5_[78]*.md"))}
     due = {n: t for n, t in notes.items() if (_dated(t) or "") >= "2026-11-18"}
-    assert "phase5_7_logistics.md" in due
+    assert {"phase5_7_logistics.md", "phase5_8a.md"} <= set(due)   # 5.8 notes are bound too
     assert {n: sorted(set(GATES) - set(gate_status(t))) for n, t in due.items()
             if set(gate_status(t)) != set(GATES)} == {}
     assert gate_status("# Note\n\n## Gates\n- playwright specs: done\n- live browser at 1440 px: skipped\n") == {
