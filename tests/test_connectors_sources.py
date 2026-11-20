@@ -338,7 +338,7 @@ def test_in_production_an_unresolvable_app_store_refuses_rather_than_skips_the_c
     assert "db.lan" not in err.value.user_message and "server" in err.value.user_message
 
 
-@pytest.mark.parametrize("scheme", ["postgresql", "mysql+pymysql"])
+@pytest.mark.parametrize("scheme", ["postgresql", "mysql+pymysql", "mariadb", "mssql"])
 def test_in_production_the_connection_goes_to_the_address_that_was_checked(monkeypatch, scheme):
     """DNS rebinding: a name that resolves to a public address when checked and to loopback
     when the driver resolves it again. The driver is handed the checked address."""
@@ -351,8 +351,8 @@ def test_in_production_the_connection_goes_to_the_address_that_was_checked(monke
                                                            else "10.9.9.9", 0))])
     monkeypatch.setattr(settings, "app_env", "production")
     engine = _sql(f"{scheme}://u:p@rebind.example:5432/db")._engine()
-    pinned = {**engine.url.query, "host": engine.url.host}
-    assert "93.184.216.34" in (pinned.get("hostaddr"), pinned["host"])
+    # libpq's hostaddr, MySQL's do_connect address (the name kept for TLS), SQL Server's host
+    assert "93.184.216.34" in (*engine.url.query.values(), engine.url.host)
 
 
 def test_a_question_result_takes_the_same_load_rule_as_a_table_load():
@@ -578,9 +578,10 @@ _ALLOWED_HINT = ("The connection string couldn't be read. Use the form "
      "connection string options", "These connection string options aren't allowed: Driver, "
      "odbc_connect. Allowed: encrypt, trustservercertificate."),
     ("mysql://u:p@h/db?init_command=x", _DEV, "connection string options",
-     "These connection string options aren't allowed: init_command. Allowed: charset."),
+     "These connection string options aren't allowed: init_command. Allowed: charset, ssl_mode."),
     ("mysql://u:p@h/db?local_infile=1&init_command=x", _DEV, "connection string options",
-     "These connection string options aren't allowed: init_command, local_infile. Allowed: charset."),
+     "These connection string options aren't allowed: init_command, local_infile. Allowed: "
+     "charset, ssl_mode."),
     ("postgresql://u:p@h/db?passfile=/x", _DEV, "connection string options",
      "These connection string options aren't allowed: passfile. Allowed: application_name, "
      "channel_binding, connect_timeout, sslmode, target_session_attrs."),
@@ -1063,6 +1064,59 @@ async def test_a_sql_server_login_that_can_write_is_refused_before_any_query(tmp
     assert "connect with a read-only login" in err.value.user_message
     ok, message = await conn.test_connection()
     assert not ok and "read-only login" in message
+
+
+@pytest.mark.parametrize("name", ["mysql", "mariadb"])
+def test_ssl_mode_required_encrypts_the_session(tmp_path, name):
+    """Hosted MySQL (PlanetScale, RDS) takes TLS: `ssl_mode`, in the MySQL client's own words.
+    REQUIRED encrypts (the CI servers' certificates are self-signed)."""
+    from connectors.sql_connector import run_readonly
+    url = _each_dialect(tmp_path, name) + "?ssl_mode=REQUIRED"
+    rows = run_readonly(_engine_for(url), "SHOW SESSION STATUS LIKE 'Ssl_cipher'").rows
+    assert rows[0][1].startswith("TLS")
+
+
+@pytest.mark.parametrize("name", ["mysql", "mariadb"])
+def test_ssl_mode_verify_identity_refuses_a_certificate_no_known_ca_signed(tmp_path, name):
+    """VERIFY_IDENTITY checks the chain (certifi + AWS RDS's CAs, never a file a user names)
+    and the name: a self-signed server is refused, as a session the app couldn't open."""
+    from connectors.sql_connector import run_readonly
+    url = _each_dialect(tmp_path, name) + "?ssl_mode=verify_identity"
+    with pytest.raises(IngestionError) as err:
+        run_readonly(_engine_for(url), "SELECT 1")
+    assert "CERTIFICATE_VERIFY_FAILED" in err.value.user_message
+
+
+@pytest.mark.parametrize("mode", ["DISABLED", "PREFERRED", "x", "required%20"])
+def test_an_ssl_mode_that_doesnt_encrypt_is_refused(mode):
+    with pytest.raises(IngestionError) as err:
+        _sql(f"mysql://u:p@h/db?ssl_mode={mode}")._engine()
+    assert err.value.user_message == ("ssl_mode must be REQUIRED, VERIFY_CA or VERIFY_IDENTITY "
+                                      "(leave it out for no TLS).")
+
+
+def test_in_production_a_tls_session_goes_to_the_checked_address_and_verifies_the_name(
+        tmp_path, monkeypatch):
+    """5.8a's ponytail ("MySQL has no TLS option yet, so its host becomes the IP") is gone: the
+    socket goes to the checked address and TLS still names the host (VERIFY_IDENTITY would
+    check the certificate against it)."""
+    import socket
+
+    import connectors.sql_connector as sc
+    from api.config import settings
+    from sqlalchemy.engine import make_url
+    u = make_url(_each_dialect(tmp_path, "mysql"))
+    monkeypatch.setattr(settings, "app_env", "production")
+    monkeypatch.setattr(sc, "_checked_address", lambda url: "127.0.0.1")
+    dialed = []
+    real = socket.create_connection
+    monkeypatch.setattr(socket, "create_connection", lambda addr, *a, **k: dialed.append(addr) or
+                        real(addr, *a, **k))
+    url = u.set(host="localhost").render_as_string(hide_password=False) + "?ssl_mode=REQUIRED"
+    engine = _engine_for(url)
+    with engine.connect() as c:
+        assert c.connection.dbapi_connection.host == "localhost"   # the name TLS is given
+    assert dialed == [("127.0.0.1", u.port)]
 
 
 def test_sql_server_reads_double_quotes_as_names_as_the_guard_does(tmp_path):

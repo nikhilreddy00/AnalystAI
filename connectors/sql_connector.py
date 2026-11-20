@@ -16,12 +16,15 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
+import socket
+import ssl
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
+import certifi
 import pandas as pd
 import sqlglot
-from sqlalchemy import column, create_engine, func, inspect, literal_column, select, text
+from sqlalchemy import column, create_engine, event, func, inspect, literal_column, select, text
 from sqlalchemy import table as sql_table
 from sqlalchemy.engine import URL, make_url
 from sqlalchemy.exc import SQLAlchemyError
@@ -69,8 +72,7 @@ class Dialect:
     dates: Callable[[tuple], bool] | None = None    # one it types as a date (may hold zero dates)
     # the statement timeout where the engine has no statement for it: (DB-API connection, s)
     driver_timeout: Callable[[object, int], None] | None = None
-    # production: the URL connecting to the checked address (the name stays for TLS where the
-    # driver can keep both; ponytail: MySQL has no TLS option yet, so its host becomes the IP)
+    # production: the URL connecting to the checked address, the name kept for TLS
     pin: Callable[[URL, str], URL] = lambda url, ip: url.set(host=ip)
 
 
@@ -94,9 +96,42 @@ _MSSQL_CANT_WRITE = (
     "OR IS_MEMBER(USER_NAME(p.grantee_principal_id)) = 1)) "
     "THROW 50001, 'CAN_WRITE: this login can change data. SQL Server has no read-only "
     "session, so connect with a read-only login (a user in db_datareader only).', 1;")
+_SSL_MODES = ("REQUIRED", "VERIFY_CA", "VERIFY_IDENTITY")   # the MySQL client's words for TLS
+_PINNED = "_analystai_checked_address"   # production: the address the socket goes to (do_connect)
+
+
+def _tls(mode: str) -> ssl.SSLContext:
+    """MySQL/MariaDB TLS: REQUIRED encrypts, VERIFY_CA also checks the certificate's chain,
+    VERIFY_IDENTITY its name too. The CAs: certifi's and the operator's EXTRA_CA_BUNDLE (the
+    image ships AWS RDS's), never a file a user's string names (ADR-0010)."""
+    from api.config import settings
+    if mode.upper() not in _SSL_MODES:
+        raise IngestionError("ssl_mode", "ssl_mode must be REQUIRED, VERIFY_CA or VERIFY_IDENTITY "
+                             "(leave it out for no TLS).")
+    ctx = ssl.create_default_context(cafile=certifi.where())
+    if settings.extra_ca_bundle:
+        ctx.load_verify_locations(settings.extra_ca_bundle)
+    ctx.check_hostname = mode.upper() == "VERIFY_IDENTITY"
+    if mode.upper() == "REQUIRED":
+        ctx.verify_mode = ssl.CERT_NONE
+    return ctx
+
+
+def _connect_pinned(dialect, conn_rec, cargs, cparams):
+    """PyMySQL to the checked address with the host's name kept for TLS (server_hostname): the
+    socket is opened here, the handshake by the driver (5.8a's pin replaced the name by the IP,
+    so a verified TLS name couldn't match)."""
+    address = cparams.pop(_PINNED)
+    conn = dialect.loaded_dbapi.connect(*cargs, **cparams, defer_connect=True)
+    conn.connect(sock=socket.create_connection((address, cparams.get("port", 3306)),
+                                               timeout=CONNECT_TIMEOUT_S))
+    return conn
+
+
 _MYSQL = dict(
     sqlglot="mysql", driver="pymysql", drivers=frozenset({"", "pymysql"}),
-    query_keys=frozenset({"charset"}),
+    query_keys=frozenset({"charset", "ssl_mode"}),
+    pin=lambda url, ip: url.update_query_dict({_PINNED: ip}),
     system_schemas=frozenset({"information_schema", "mysql", "sys", "performance_schema"}),
     # UTC; and the parse guard reads strings and quotes as MySQL's default mode does, so a
     # server's ANSI_QUOTES / NO_BACKSLASH_ESCAPES can't make the two read a query differently
@@ -391,9 +426,16 @@ class SQLConnector(DataConnector):
         if not conn_str:
             raise ValueError("connection_string is required for SQL connector")
         url, d = safe_url(conn_str)
+        args = dict(d.connect_args)
+        if (mode := url.query.get("ssl_mode")) is not None:   # MySQL's word; PyMySQL takes a context
+            args["ssl"] = _tls(mode)
+            url = url.difference_update_query(["ssl_mode"])
         # NullPool: a connector lives for one request and builds an engine per call, so a pool
         # would leave idle connections open on the user's database (measured: 4 after 5 queries).
-        return create_engine(url, poolclass=NullPool, connect_args=d.connect_args)
+        engine = create_engine(url, poolclass=NullPool, connect_args=args)
+        if _PINNED in url.query:
+            event.listen(engine, "do_connect", _connect_pinned)
+        return engine
 
     async def engine(self):
         """The engine, built off the event loop (the production host check is a DNS lookup)."""
