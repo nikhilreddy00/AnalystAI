@@ -134,6 +134,17 @@ Domain words (ALOS, readmission, NPL …) live in `domain_packs/<domain>.yaml`, 
   time, never across them.
 - **Invalid reading** — a measured value its own quality flag marks as not a measurement (a
   historian's Bad): blanked like a sentinel, the row kept and counted in the log; never averaged.
+- **Source** — where a table comes from: a file, a database, a Google Sheet, an API (later a share link
+  or a SaaS import). A database engine is a **dialect** of the one SQL source, never a source of its own
+  (ADR-0010).
+- **Dialect** — a database engine the SQL source speaks (postgres, mysql; sqlite in development). Its
+  row in `DIALECTS` names its drivers, URL keys, read-only and timeout statements; an engine without a
+  row is refused.
+- **Live query / snapshot load / import** — a question answered by read-only SQL in the user's database;
+  a named table loaded whole into the pipeline (capped, the cap disclosed); a SaaS copy kept in local
+  DuckDB and refreshed on demand (5.8c).
+- **Source invariance** — the same table from every source gives the same contract, cleaned frame,
+  tiles and built-in answers; one oracle test owns it.
 - **Zero-event group** — a group whose ratio has a denominator of 0 (a machine with run time and
   no failures): its numerator is said ("no failure in 1,240 h"), never a 0, an infinity, a rank or
   a silently missing bar.

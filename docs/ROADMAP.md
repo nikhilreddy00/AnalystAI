@@ -630,7 +630,7 @@ dataset should land in a workspace users can come back to. Expected size: 2 sess
   (`docs/baselines/phase5_7_d7_19.md`: `count_rows`, the model's KPI and count breakdowns by the
   product; e2e-89, logi-4, logi-7 3/3 at k=3; $1.99, 5.1 h). Open: e2e-97 (D1-16, its own PR),
   PR24-03 (a count by record key), counts across currencies (the banking follow-up).
-  Next: 5.8 (needs sign-off).
+  Next: 5.8a (signed off 2026-11-19).
 - **SaaS follow-ups (Domain 6, 2026-11-06):** a billing parameter (interval_count) charted as a
   measure (a role-kind change, its own re-measure); the column path's count of a level on a list is
   subscriptions, not customers (the KPI path is right); an add-on listed as a plan; the older
@@ -784,18 +784,28 @@ dataset should land in a workspace users can come back to. Expected size: 2 sess
   fix opened a small-cell gap, caught by the security review and closed).
 
 ### Phase 5.8: Data sources (added 2026-11-03 at the user's request)
-- **Why:** every domain was proven on CSV uploads only, while small companies keep data in
-  spreadsheets, SaaS exports, Postgres (56% of developers), MySQL (41%) and SQL Server (30%)
-  (Stack Overflow 2025; `docs/research/2026-11-03-healthcare.md` is the domain file, the source
-  survey is in the Domain 3 review note). Every peer (Metabase, Superset, Vanna, WrenAI) ships
-  PG + MySQL + SQL Server + Snowflake + BigQuery. Domain 3 fixes the existing connectors (silent
-  truncation, SQLite path, Sheets crash, API shapes) and adds a source-invariance oracle.
-- **Work (in order, one session, plan mode, ~$1 paid):** MySQL/MariaDB (`pymysql`); public-link
-  Google Sheets via the CSV export URL (no service account); DuckDB as the file engine (large
-  CSV/Parquet/Excel out of core, S3/GCS; lifts the 50 MB cap); SQL Server (`pymssql`);
-  Shopify/Stripe via `dlt` into DuckDB. Later: Snowflake, BigQuery, Redshift, Databricks.
-- **Done when:** each new source passes the source-invariance oracle for every finished domain,
-  one E2E case per source at k=1, and the browser check connects each one.
+- **Why:** every domain was proven on file uploads, while small companies keep data in
+  spreadsheets, SaaS tools, Postgres (58% of developers), MySQL (35%) and SQL Server (27%)
+  (Stack Overflow 2026; 2025 was 56/41/30). Every peer ships PG + MySQL + SQL Server + Snowflake +
+  BigQuery; no open-source peer ships OneDrive/Drive spreadsheets or Stripe/Shopify/HubSpot/GA4/
+  QuickBooks built in. Research, peer table and tiered list: `docs/research/2026-11-19-data-sources.md`;
+  decisions: ADR-0010.
+- **Split (user, 2026-11-19; one session, one PR, one sign-off each, like 5.7b):**
+  - **5.8a:** the source contract (fail-closed dialect table, connection-string allowlist, MySQL
+    comment/hint refusal, no password in messages, one value normalisation, the oracle extended to
+    every dataset and source, a generated README source list) + MySQL (+ Supabase/Neon as named
+    Postgres options).
+  - **5.8b:** MariaDB + SQL Server (CI-only databases, rows of the same table) + share-link files
+    (public Google Sheet, OneDrive/SharePoint/Drive links, https CSV/xlsx; a per-hop SSRF guard).
+  - **5.8c:** DuckDB file reader (cap ~250 MB, a clear message past it; analysis stays pandas) +
+    Stripe/HubSpot/Shopify/GA4 imported by `dlt` into DuckDB with a Refresh button.
+  - **5.8d:** Snowflake + BigQuery. After v0.1: QuickBooks/Xero (registered OAuth app), private
+    Drive/OneDrive via OAuth.
+- **Decisions:** databases are queried live (questions → read-only SQL, a named table → a capped
+  snapshot); SaaS is imported (DuckDB copy, refreshed on demand); Airbyte is never a dependency (ELv2).
+- **Done when (each sub-phase):** each new source passes the source-invariance oracle for every
+  finished domain (contracts, cleaned frames, tiles, built-in answers), plant-proven; one E2E case
+  per source at k=1; the browser check connects each one; the README source list is generated.
 
 ### Phase 6: End-to-end hardening and open-source release (v0.1)
 Order of the remaining work (2026-11-03): Phase 5.7 (domain depth, one domain per session) →
