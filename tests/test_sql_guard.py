@@ -226,10 +226,14 @@ def test_every_analyst_function_family_passes_the_allow_list(dialect):
 
 
 def _stored_sql() -> list[str]:
-    """Every query the model wrote in a stored eval report (the SQL eval and E2E runs), every SQL
-    eval case's golden/trap/previous query and every layer's verified query."""
+    """Every Postgres query the model wrote in a stored eval report (the SQL eval and E2E runs;
+    an E2E case on another engine wrote its own dialect: those are read below in theirs), every
+    SQL eval case's golden/trap/previous query and every layer's verified query."""
     import json
     out: set[str] = set()
+    other = {c["id"] for c in (yaml.safe_load(p.read_text())
+                               for p in (ROOT / "evals/cases/e2e").glob("*.yaml"))
+             if c.get("source") in ("mysql", "mariadb", "mssql")}
 
     def walk(o):
         if isinstance(o, dict):
@@ -241,7 +245,8 @@ def _stored_sql() -> list[str]:
             for v in o:
                 walk(v)
     for p in [*(ROOT / "evals/reports").glob("sql-*.json"), *(ROOT / "evals/reports").glob("e2e-*.json")]:
-        walk(json.loads(p.read_text()))
+        report = json.loads(p.read_text())
+        walk({k: v for k, v in report.get("runs", {}).items() if k not in other})
     for c in CASES:
         out |= {c[k] for k in ("golden_sql", "trap_sql", "previous_sql") if isinstance(c.get(k), str)}
     for layer in LAYERS.values():
@@ -264,6 +269,33 @@ def test_every_stored_query_passes_the_allow_list_in_every_dialect(dialect):
     assert refused == {}
 
 
+def test_every_stored_query_on_another_engine_passes_in_its_own_dialect():
+    """The MySQL, MariaDB and SQL Server E2E cases' model SQL (backticks, TOP) in theirs."""
+    import json
+    dialect = {"mysql": "mysql", "mariadb": "mysql", "mssql": "tsql"}
+    cases = {c["id"]: dialect[c["source"]] for c in (yaml.safe_load(p.read_text())
+             for p in (ROOT / "evals/cases/e2e").glob("*.yaml")) if c.get("source") in dialect}
+    seen, refused = 0, {}
+
+    def walk(o, d):
+        nonlocal seen
+        if isinstance(o, dict):
+            for k, v in o.items():
+                if k == "sql" and isinstance(v, str):
+                    seen += 1
+                    if reason := g.check_sql_readonly(v, d):
+                        refused[v] = reason
+                walk(v, d)
+        elif isinstance(o, list):
+            for v in o:
+                walk(v, d)
+    for p in (ROOT / "evals/reports").glob("e2e-*.json"):
+        for case, runs in json.loads(p.read_text()).get("runs", {}).items():
+            if case in cases:
+                walk(runs, cases[case])
+    assert seen >= 2 and refused == {}
+
+
 @pytest.mark.parametrize(("sql", "dialect"), [
     ("SELECT read_csv('/etc/passwd')", "postgres"), ("SELECT uuid()", "mysql"),
     ("SELECT rand()", "mysql"), ("SELECT random()", "postgres"), ("SELECT current_user", "postgres"),
@@ -281,6 +313,24 @@ def test_a_function_not_on_the_allow_list_is_refused(sql, dialect):
     name missing. Now anything off the list is refused, named."""
     reason = g.check_sql_readonly(sql, dialect)
     assert reason and "not allowed" in reason, (sql, reason)
+
+
+@pytest.mark.parametrize(("sql", "dialect", "reason"), [
+    ("SELECT my_fn(1)", "postgres", "function not allowed: my_fn"),        # unknown, as written
+    ("SELECT My_Fn(1)", "postgres", "function not allowed: my_fn"),
+    ("SELECT NEXT VALUE FOR dbo.seq", "tsql", "function not allowed: next_value_for"),
+    ("SELECT my_fn(1)", None, "function not allowed: my_fn"),             # no dialect: no names
+    ("SELECT my_fn(1)", "duckdb", "function not allowed: my_fn"),         # a dialect without names
+    ("SELECT dbo.round(x) FROM t", "tsql", "a schema-qualified function is not allowed: round"),
+    ("SELECT public.lower(s) FROM t", "postgres", "a schema-qualified function is not allowed: lower"),
+    ("SELECT * FROM t WITH (XLOCK, ROWLOCK)", "tsql",
+     "table hints that take locks are not allowed: XLOCK, ROWLOCK"),
+    ("SELECT pg_typeof($q$ /**/ (select 1) $q$)", "postgres",             # an allowed name given SQL
+     "function given a SQL statement as text: pg_typeof"),
+])
+def test_each_refusal_names_what_it_refused(sql, dialect, reason):
+    """The refusal is the SQL agent's retry prompt and the user's message: its exact words."""
+    assert g.check_sql_readonly(sql, dialect) == reason
 
 
 def test_nothing_that_reads_waits_locks_or_says_who_is_on_the_allow_list():

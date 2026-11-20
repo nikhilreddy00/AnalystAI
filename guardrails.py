@@ -123,7 +123,7 @@ def _function_refused(node: exp.Func, dialect: str | None) -> str | None:
     name = node.name.lower() if anonymous else node.sql_name().lower()
     if isinstance(node.parent, (exp.Dot, exp.ScopeResolution)) and node is node.parent.expression:
         return f"a schema-qualified function is not allowed: {name}"
-    if not (node.name.lower() in _SQL_NAMES.get(dialect or "", ()) if anonymous
+    if not (node.name.lower() in _SQL_NAMES.get(dialect, ()) if anonymous
             else type(node) in _SQL_FUNCS):
         return f"{FUNCTION_REFUSED}{name}"
     # the class (security review, audit 2): a function given a query as text runs it past every
@@ -173,8 +173,7 @@ def check_sql_readonly(sql: str, dialect: str | None) -> str | None:
         if isinstance(node, exp.Func) and (reason := _function_refused(node, dialect)):
             return reason
         if isinstance(node, exp.WithTableHint) and (
-                held := [h.sql(dialect) for h in node.expressions
-                         if h.sql(dialect).upper() not in _ALLOWED_HINTS]):
+                held := [h.sql() for h in node.expressions if h.sql().upper() not in _ALLOWED_HINTS]):
             return f"table hints that take locks are not allowed: {', '.join(held)}"
         if isinstance(node, exp.Table) and node.db.lower() in system:
             return f"the database's own tables are not readable: {node.db}"
