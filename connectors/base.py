@@ -7,7 +7,9 @@ Adding a new source (Notion, Airtable, etc.) = add one subclass, zero agent chan
 from __future__ import annotations
 
 import datetime
+import ipaddress
 import re
+import socket
 from abc import ABC, abstractmethod
 
 import pandas as pd
@@ -107,6 +109,38 @@ def as_times(s: pd.Series) -> pd.Series:
     return parsed.where(dated | text.str.contains(HAS_YEAR_RE, regex=True).fillna(False))
 
 
+def without_secrets(message: str, config: ConnectorConfig) -> str:
+    """`message` with the config's credentials cut out: a driver's error can quote its URL. The
+    connection string whole, its user-info part (everything between :// and the last @ before
+    the path, so a malformed string is covered too) and its decoded password, and the API key."""
+    from urllib.parse import unquote
+    conn = config.connection_string or ""
+    secrets = {conn, config.auth_value or "", config.service_account_json or ""}
+    if (m := re.match(r"^[^:/]+://(.*)@[^@/]*(/|$)", conn)) is not None:
+        userinfo = m.group(1)
+        password = userinfo.split(":", 1)[1] if ":" in userinfo else ""
+        secrets |= {userinfo, password, unquote(password)}
+    for s in sorted((s for s in secrets if len(s) >= 3), key=len, reverse=True):
+        message = message.replace(s, "***")
+    return message
+
+
+def resolved(host: str) -> list:
+    """The addresses `host` resolves to (ipaddress objects); ValueError if it doesn't resolve.
+    The one lookup behind every host check (the API's SSRF guard, a database's host)."""
+    try:
+        infos = socket.getaddrinfo(host, None)
+    except socket.gaierror as exc:
+        raise ValueError(f"Could not resolve hostname '{host}': {exc}") from exc
+    out = []
+    for info in infos:
+        try:
+            out.append(ipaddress.ip_address(info[4][0]))
+        except ValueError:
+            continue
+    return out
+
+
 # A capped load names its cap: the source evidence carries this note and the report's alerts find
 # it by this start (agents/insight_agent._alerts). One wording for every connector.
 TRUNCATED = "Only the first "
@@ -121,12 +155,17 @@ def truncation_note(kept: int, total: int | None, limit: str) -> str:
 
 
 def normalize_frame(df: pd.DataFrame) -> pd.DataFrame:
-    """The one load rule after any source's read (ADR-0010): a text column whose values are all
-    dates becomes datetimes. The file reader, the databases, the Sheet and the API end here, so a
-    table reads the same from each (5.8a: dates read from SQL and the API stayed text)."""
+    """The one load rule after any source's read (ADR-0010), so a table reads the same from each:
+    '' is a blank; a text column whose values are all dates becomes datetimes (5.8a: dates read
+    from SQL and the API stayed text), at one resolution (us); -0.0 is 0.0. The file reader, the
+    databases, the Sheet and the API all end here."""
     for col in df.columns:
+        if not pd.api.types.is_numeric_dtype(df[col]) and (blank := df[col].eq("")).any():
+            df[col] = df[col].mask(blank)   # '' is a blank, as a CSV reads it (MySQL, JSON keep it)
         if (parsed := parse_text_dates(df[col])) is not None:
             df[col] = parsed
+        if pd.api.types.is_datetime64_any_dtype(df[col]):
+            df[col] = df[col].dt.as_unit("us")   # one resolution: a DATE column read as [s]
         elif pd.api.types.is_float_dtype(df[col]):
             df[col] = df[col] + 0.0   # -0.0 → 0.0: a CSV keeps "-0.0", JSON and SQL don't ("-$0.00")
     return df

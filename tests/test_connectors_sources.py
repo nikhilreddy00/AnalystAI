@@ -171,11 +171,12 @@ def test_an_engine_or_driver_without_a_dialect_row_is_refused(url):
 
 
 def test_run_readonly_refuses_an_engine_it_has_no_row_for():
-    from sqlalchemy import create_engine as ce
-
+    """Before any connection: an engine of a kind without a row (its driver need not exist)."""
     from connectors.sql_connector import run_readonly
+    engine = type("Engine", (), {"dialect": type("D", (), {"name": "mssql"})(),
+                                 "connect": lambda self: pytest.fail("connected")})()
     with pytest.raises(IngestionError):
-        run_readonly(ce("mssql+pymssql://u:p@h/db"), "SELECT 1")
+        run_readonly(engine, "SELECT 1")
 
 
 @pytest.mark.parametrize("url", [
@@ -214,6 +215,30 @@ async def test_a_password_is_never_in_a_message(url):
     route = await test_connection(config, None)
     for text in (message, route.message):
         assert not ok and "w0rd" not in text and "s3cr" not in text and "ss:w0rd" not in text
+
+
+@pytest.mark.parametrize("host,refused", [("127.0.0.1", True), ("169.254.169.254", True),
+                                          ("appdb.internal", True), ("10.0.0.5", False),
+                                          ("93.184.216.34", False)])
+def test_in_production_a_database_host_is_never_the_app_itself_or_the_cloud_metadata(
+        monkeypatch, host, refused):
+    """A user's database may sit on the company's LAN (self-hosted: 10.x is the usual case), but
+    never on the app's own machine, the cloud metadata address, or the app's own store (Superset
+    CVE-2023-39265 read its own metadata database). Development and CI use localhost."""
+    import socket
+
+    from api.config import settings
+    ips = {"appdb.internal": "10.1.2.3"}
+    monkeypatch.setattr(socket, "getaddrinfo",
+                        lambda h, *a, **k: [(0, 0, 0, "", (ips.get(h, h), 0))])
+    monkeypatch.setattr(settings, "app_env", "production")
+    monkeypatch.setattr(settings, "database_url", "postgresql+asyncpg://a:b@appdb.internal:5432/x")
+    url = f"postgresql://u:p@{host}:5432/db"
+    if refused:
+        with pytest.raises(IngestionError):
+            _sql(url)._engine()
+    else:
+        assert _sql(url)._engine() is not None
 
 
 async def test_a_named_table_load_asks_the_database_for_at_most_the_cap(tmp_path, monkeypatch):

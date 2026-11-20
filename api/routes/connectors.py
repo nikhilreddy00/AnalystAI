@@ -15,7 +15,7 @@ from connectors.csv_connector import XLS_REFUSAL, _read_bytes, check_upload_owne
 from api.auth import get_current_user, UserProfile
 from pydantic import BaseModel
 
-from connectors.base import get_connector
+from connectors.base import get_connector, without_secrets
 from guardrails import mask_pii
 from orchestrator.state import ConnectorConfig, ConnectorType
 
@@ -40,11 +40,13 @@ async def test_connection(
     try:
         connector = get_connector(config)
         success, message = await connector.test_connection()
-        return TestConnectionResponse(success=success, message=mask_pii(message))
-    except AgentError as e:   # a refusal written for the user (SQLite in production, MySQL)
-        return TestConnectionResponse(success=False, message=e.user_message)
+        return TestConnectionResponse(success=success,
+                                      message=mask_pii(without_secrets(message, config)))
+    except AgentError as e:   # a refusal written for the user (SQLite in production, a key)
+        return TestConnectionResponse(success=False, message=without_secrets(e.user_message, config))
     except Exception as e:
-        return TestConnectionResponse(success=False, message=mask_pii(str(e)))
+        return TestConnectionResponse(success=False,
+                                      message=mask_pii(without_secrets(str(e), config)))
 
 
 @router.post("/upload")
