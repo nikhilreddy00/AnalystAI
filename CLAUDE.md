@@ -35,7 +35,7 @@ evals/tests, and evidence-backed justification; then an open-source v0.1 release
 | 5.6 | Durable runs (a) + workspace (b) | ✅ 2026-10-31 — `docs/baselines/phase5_6a.md`, `phase5_6b.md` |
 | 5.5 | Domain coverage (8 domains, PHI) | ✅ 2026-11-01 — `docs/baselines/phase5_5.md` |
 | 5.7 | Domain depth, one domain per session | domains 1–8 ✅, D7-19 PR ✅ 2026-11-19, 5.7b ✅ 2026-11-16 |
-| 5.8 | Data sources, split a/b/c/d | 5.8a ✅ 2026-11-19 (contract + MySQL) — `docs/baselines/phase5_8a.md`; b/c/d pending |
+| 5.8 | Data sources, split a/b/c/d | 5.8a ✅ 2026-11-20 (contract + MySQL, PR #27) — `docs/baselines/phase5_8a.md`; b/c/d pending |
 | 6 | E2E hardening + open-source v0.1 release | pending |
 
 Full per-phase metrics, costs and history: `docs/ROADMAP.md` → "Status log".
@@ -133,7 +133,7 @@ connector or UI component lives, and update it in the commit that adds or moves 
 - **Agent contract**: new/refactored agents follow `docs/agent-contract.md` (card, prompt file, context builder, tools, evidence, guardrails)
 - **Review**: reviewers apply `CODING_STANDARDS.md` (judgement calls; mechanical rules are tests/linters)
 - **Before pushing**: `.githooks/pre-push` runs ruff, the branch's touched tests + the contract gates, the $0 suites and the frontend checks, ~2-3 min (turn on once: `git config core.hooksPath .githooks`; `PREPUSH_FULL=1` runs the whole suite, `PREPUSH_E2E=1` adds the Playwright e2e). CI (4 shards, ~8 min) is the merge gate
-- **Tests, fast**: while iterating run only the touched test files; the golden per dataset (`pytest tests/test_suite_inputs_unchanged.py -k <dataset>`, ~3 s); the full suite once per batch, in the background on HEAD in a worktree, so edits can't race it (`uv run python scripts/suite.py`, ~12 min). **Is a golden or domain_diff change only the text you meant?** `python -m evals.snapshot text <ref>` and `scripts/domain_diff.py main --show` print each change once
+- **Tests, fast**: while iterating run only the touched test files; the golden per dataset (`pytest tests/test_suite_inputs_unchanged.py -k <dataset>`, ~3 s); the full suite once per batch, in the background on HEAD in a worktree, so edits can't race it (`uv run python scripts/suite.py`, ~12 min). Database tests locally: `eval "$(scripts/test_dbs.sh up)"` (Postgres + MySQL; `down` stops them). **Is a golden or domain_diff change only the text you meant?** `python -m evals.snapshot text <ref>` and `scripts/domain_diff.py main --show` print each change once
 - **Tests**: `uv run pytest` — offline, no keys (an autouse `RecordedClient` makes real model calls impossible). Append to the `recorded_llm` fixture's `responses` to fake LLM output
 - **Evals (real money, the user's prepaid credits)**: before any paid run read `docs/agent-contract.md` →
   "Running evals" (budget rules, `--max-usd`, k choices, SQL eval scratch DB, rescoring) and the

@@ -134,7 +134,7 @@ def test_the_judge_replay_fails_loudly_never_passes_unjudged(tmp_path, monkeypat
         "q-02-segment-b-month": [{"replies": []}]}}))
     monkeypatch.setattr(run, "EVALS_DIR", tmp_path)
     monkeypatch.setattr(run, "QUALITY_JUDGE_REPORT", "q.json")
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="the paid run stored no replies"):
         run.judge_replay(BY_ID["q-02-segment-b-month"])
     with pytest.raises(KeyError):
         run.judge_replay(BY_ID["q-03-top-segment"])

@@ -160,6 +160,32 @@ def test_a_write_through_run_readonly_fails_on_every_dialect(tmp_path, name, wri
     assert "ro_new" not in inspect(engine).get_table_names()
 
 
+@pytest.mark.parametrize("name", DIALECT_NAMES)
+def test_without_its_read_only_statements_no_write_is_refused_as_read_only(tmp_path, name,
+                                                                          monkeypatch):
+    """The plant, kept (retro 5.8a): mutation testing can't mutate a data row, so the write test
+    above was never shown to depend on `begin`. Each dialect row's read-only statements removed,
+    the database no longer refuses the write as read-only."""
+    import dataclasses
+
+    from sqlalchemy import text
+    from sqlalchemy.exc import SQLAlchemyError
+
+    import connectors.sql_connector as sc
+    engine = _engine_for(_each_dialect(tmp_path, name))
+    with engine.begin() as c:
+        c.execute(text("DROP TABLE IF EXISTS ro_t"))
+        c.execute(text("CREATE TABLE ro_t (a INTEGER)"))
+    row = sc.DIALECTS[name]
+    kept = tuple(s for s in row.begin if "READ ONLY" not in s.upper() and "query_only" not in s)
+    assert kept != row.begin   # the row has read-only statements to remove
+    monkeypatch.setitem(sc.DIALECTS, name, dataclasses.replace(row, begin=kept, end=()))
+    # the DROP runs; reading its (absent) rows then fails: anything but the read-only refusal
+    with pytest.raises((SQLAlchemyError, AttributeError)) as err:
+        sc.run_readonly(engine, "DROP TABLE ro_t")
+    assert _READ_ONLY_ERROR[name] not in str(err.value)
+
+
 @pytest.mark.parametrize("name,slow", [("postgresql", "SELECT pg_sleep(20)"),
                                        ("mysql", "SELECT SLEEP(20)")])
 def test_a_slow_query_stops_at_the_timeout(tmp_path, name, slow):
@@ -922,11 +948,12 @@ async def test_the_schema_budget_is_exact(tmp_path, monkeypatch, extra, second_d
 
 
 def test_a_safety_test_names_the_reason_it_expects():
-    """Audit pass 2 (B3, B10): expecting any Exception, or swallowing one, let a safety test
-    pass on any error. The source and guard tests name the error they expect."""
+    """Audit pass 2 (B10): the timeout test swallowed any error and passed on a connection
+    failure. A safety test never swallows one (a broad `pytest.raises` is ruff PT011/B017's,
+    repo-wide; a swallowed error is legitimate in a test reading only a prompt, so not there)."""
     import re
     from pathlib import Path
     here = Path(__file__).parent
     for f in ("test_connectors_sources.py", "test_sql_guard.py"):
         source = (here / f).read_text()
-        assert not re.search(r"raises\(Exception\)|except Exception:\s*\n\s*pass", source), f
+        assert not re.search(r"except Exception:\s*\n\s*pass", source), f

@@ -45,6 +45,26 @@ in the same commit (`tests/test_answer_paths.py`, the golden, the oracle).
 changed an answer path or domain no test was reading (a partial quarter headlined, a small cell's
 count shown).
 
+## One question, one rule
+
+When two pieces of code answer the same question by different means (an allow list here, a deny
+list there; a check in the loader and another in the query path), one of them owns the answer and
+the other calls it or is deleted. The reviewer asks of every new check: "where else is this
+decided?"
+
+**Why:** in 5.8a a table load was held to the connection's table list while a question was held
+only to a list of system schemas, so a question could read `pg_shadow` and other databases on the
+server (P58-10). Each rule looked right alone; the gap was between them.
+
+## Code at a boundary names what the code after it relies on
+
+A step added where data crosses a boundary (a source's rows becoming a frame, a request becoming
+a run) states the invariants later code establishes (unique column names, dtypes, a parsed date)
+and is tested with the inputs those invariants exist for.
+
+**Why:** in 5.8a a per-column step went in before ingestion makes column names unique, so any
+join returning two `id` columns crashed every database's question path (P58-09).
+
 ## A parameter that changes a shared rule's answer is required
 
 A parameter that decides which answer a shared rule gives (the data's roles behind a tie-break, a

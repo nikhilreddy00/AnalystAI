@@ -1,6 +1,6 @@
 # Phase 5.8a — the source contract + MySQL (2026-11-19)
 
-Wall clock: 3.6 h (first commit 2026-11-19 19:22 → merge pending the user's approval, PR #27; 3.6 h to merge-ready)
+Wall clock: 19.1 h (first commit 2026-11-19 19:22 → merge 2026-11-20 14:25, PR #27 `dae68bf`; 3.6 h to the first merge-ready, then the night, then audit pass 2 ~4.5 h)
 Plan mode before it: ~1.5 h (four research agents, a red-team, the user's four decisions and a second
 pass on the execution workflow). Sized at 10.3 h; the breaker (4 h before the query-path step) never
 came near: that step was done at 0.8 h.
@@ -135,6 +135,20 @@ Ledger: P58-01..17, UNENFORCED 77 (≤ 77).
 Golden re-pinned (`evals.snapshot pin`, CHANGES emptied). Its diff: every contract's fingerprint and its
 16-character evidence excerpt (order-free fingerprint), and health_claims-1's -0.0 amount reading 0.0;
 no tile, chart or model input moved (`domain_diff.py main`: all identical).
+
+## Retro
+Each item, matched to the ledger (ROADMAP 5.8 "Lessons out"); the next 5.8 plan starts from these
+rows via `scripts/ledger.py --files` ("Lessons in").
+- The audit step named no reviewers; four fresh ones found 12 bugs after Standards + Spec passed → P58-19 (new)
+- No phase started from earlier phases' rows or matched its retro to them → P58-20 (new)
+- A test expecting any error passed on the wrong one (ruff PT011/B017 now, every test) → P58-11 (new)
+- Mutation testing can't mutate data rows: the read-only plant is a permanent test → P58-11 (new)
+- The nightly was red two nights unseen; the test databases' start commands were lost in a reset → P58-21 (new)
+- Two copies of "what may be read" (CODING_STANDARDS "One question, one rule") → P58-10 (new)
+- A step at a boundary relied on a later invariant (CODING_STANDARDS "Code at a boundary …") → P58-09 (new)
+- The guard's function deny list drew five security-review rounds: the allow list is 5.8b's scope → P58-10 (new)
+- Nightly: every line open past its request, none delivered, read as unknown OTIF → D1-40 (recurrence: the D8 fix covered "no line on time", not "no line delivered"; property D found it, nobody read the nightly)
+- Nightly: a one-day subscription then a return counts 3 churns and a reactivation, the reference 2 and none → P58-18 (new)
 
 ## Deviations
 - **MariaDB moved to 5.8b** (red-team: its timeout variable differs; CI-only like SQL Server).

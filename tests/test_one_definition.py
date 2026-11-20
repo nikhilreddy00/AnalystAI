@@ -539,7 +539,7 @@ def test_a_kpi_value_refuses_what_it_can_not_mean():
                 lambda: dp.MeasuredBy(pd.Series([1.0, float("nan")], index=["a", "b"])),
                 lambda: dp.MeasuredBy(pd.Series([1.0, 2.0], index=["a", "a"])),
                 lambda: dp.Unavailable("not_a_reason")):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="needs a finite number|needs unique groups|unknown reason"):
             bad()
     s = pd.Series([1.0], index=["a"])
     m = dp.MeasuredBy(s, ("b",))

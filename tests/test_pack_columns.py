@@ -73,7 +73,7 @@ def test_a_term_times_a_constant_is_a_run_rate_of_the_same_kind():
     assert compute_kpi(df, ROLES, p, "seats_x12") == 12 * compute_kpi(df, ROLES, p, "seats")
     assert p.kpi("seats_x12").state and window_words(p, df, ROLES, "seats_x12").startswith("as of")
     raw["kpis"][-1]["num"][0][0]["times"] = "1/12"
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=r"times\.float\n  Input should be a valid number"):
         Pack.model_validate(raw)
 
 

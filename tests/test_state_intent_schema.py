@@ -19,7 +19,7 @@ def test_new_intents_present_on_enum():
 
 def test_deep_dive_value_no_longer_in_enum():
     # The literal string should be gone — only the coercion path preserves backward compat.
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="'deep_dive' is not a valid QuestionIntent"):
         QuestionIntent("deep_dive")
 
 

@@ -802,6 +802,42 @@ def test_d_the_product_equals_the_reference(book, pack, roles, spec, data):
         assert got == pytest.approx({str(s): v for s, v in ref[f"{k}_by_segment"].items() if v}), k
 
 
+@pytest.mark.xfail(strict=True, reason="D1-40 (Open, nightly 2026-11-19/20): every line still open "
+                   "past its requested date and none delivered reads as unknown OTIF, the "
+                   "reference 0%: the 'open past its promise has failed' rule (U1) isn't reached "
+                   "when no line was delivered")
+def test_d_lines_all_open_past_their_request_are_0_otif_not_unknown():
+    """The nightly's falsifying example (CI run 44770917010, order_lines)."""
+    from evals.reference_kpis import reference
+    df = pd.DataFrame({"order_date": pd.to_datetime(["2026-03-03", "2026-03-01"]),
+                       "requested_date": pd.to_datetime(["2026-03-04", "2026-03-02"]),
+                       "delivered_date": pd.to_datetime([pd.NaT, pd.NaT]),
+                       "order_id": ["O0", "O1"], "order_line_id": ["O0-10", "O1-10"],
+                       "warehouse": ["Reno", "Reno"], "status": ["Open", "Backordered"],
+                       "qty_ordered": [1, 1], "qty_shipped": [0, 0]})
+    ref = reference("book_order_lines", df)
+    assert (ref["otif_order"], ref["otif_line"]) == (0.0, 0.0)
+    assert (dp.compute_kpi(df, LINE_ROLES, LOGI, "otif_order"),
+            dp.compute_kpi(df, LINE_ROLES, LOGI, "otif_line")) == (0.0, 0.0)
+
+
+@pytest.mark.xfail(strict=True, reason="P58-18 (Open, nightly 2026-11-20): a one-day subscription "
+                   "followed a month later by another for the same customer: the product counts 3 "
+                   "churns and a reactivation, the reference 2 and none; which is the truth is the "
+                   "fix PR's first question")
+def test_d_a_one_day_subscription_then_a_return_counts_as_the_reference_does():
+    """The nightly's falsifying example (CI run 44770917010, subscription_list)."""
+    from evals.reference_kpis import reference
+    df = pd.DataFrame({"customer_id": ["c0", "c0", "c1"],
+                       "created": pd.to_datetime(["2025-06-06", "2025-07-09", "2025-05-03"]),
+                       "ended_at": pd.to_datetime(["2025-06-07", "2025-10-31", "2026-06-06"]),
+                       "status": ["canceled"] * 3, "mrr": [50.0] * 3, "segment": ["SMB"] * 3})
+    ref = reference("book_subscription_list", df)
+    got = {k: dp.compute_kpi(df, LIST_ROLES, SAAS, k) for k in
+           ("churned_mrr", "reactivation_mrr", "churned_customers", "reactivated_customers")}
+    assert got == {k: pytest.approx(ref[k]) for k in got}
+
+
 def test_d_a_log_of_cancelled_orders_counts_no_assets():
     """Full suite (CI profile): a log whose only order is cancelled has no counted row, so its
     assets are unknown, never 0 (C5: 0 only where the kind exists); the reference said 0."""
