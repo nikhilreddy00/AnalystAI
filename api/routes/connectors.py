@@ -11,7 +11,8 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from agents.errors import AgentError, IngestionError
-from connectors.csv_connector import XLS_REFUSAL, _read_bytes, check_upload_owner, user_upload_dir
+from connectors.csv_connector import (MAX_UPLOAD_MB, UPLOAD_SUFFIXES, XLS_REFUSAL, _read_bytes,
+                                      check_upload_owner, user_upload_dir)
 from api.auth import get_current_user, UserProfile
 from pydantic import BaseModel
 
@@ -20,7 +21,6 @@ from guardrails import mask_pii
 from orchestrator.state import ConnectorConfig, ConnectorType
 
 router = APIRouter()
-UPLOAD_SUFFIXES = {".csv", ".xlsx", ".tsv", ".json", ".jsonl", ".parquet"}   # .xls: XLS_REFUSAL
 
 
 class TestConnectionResponse(BaseModel):
@@ -70,7 +70,7 @@ async def upload_csv(
 
     # Chunked reading with early exit to prevent OOM on large uploads.
     # UploadFile is not async-iterable; read in fixed-size chunks instead.
-    max_size = 50 * 1024 * 1024  # 50 MB
+    max_size = MAX_UPLOAD_MB * 1024 * 1024
     chunk_size = 1024 * 1024     # 1 MB per read
     chunks: list[bytes] = []
     total = 0
@@ -81,7 +81,7 @@ async def upload_csv(
             break
         total += len(chunk)
         if total > max_size:
-            raise HTTPException(status_code=413, detail="File too large (max 50 MB)")
+            raise HTTPException(status_code=413, detail=f"File too large (max {MAX_UPLOAD_MB} MB)")
         hasher.update(chunk)
         chunks.append(chunk)
     content = b"".join(chunks)

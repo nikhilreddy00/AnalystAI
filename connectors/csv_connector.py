@@ -92,6 +92,8 @@ def _decode(content: bytes) -> tuple[str, str]:
     raise IngestionError("undecodable", _NOT_A_TABLE)
 
 
+UPLOAD_SUFFIXES = {".csv", ".xlsx", ".tsv", ".json", ".jsonl", ".parquet"}   # .xls: XLS_REFUSAL
+MAX_UPLOAD_MB = 50
 XLS_REFUSAL = ("Old .xls workbooks aren't supported. Save the file as .xlsx (Excel → Save As) "
                "and upload it again.")
 _NOT_A_TABLE = ("This file can't be read as a table. Upload a CSV, TSV, Excel (.xlsx), JSON or "

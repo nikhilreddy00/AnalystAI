@@ -85,11 +85,17 @@ orchestrator/
 worker/__main__.py         — `python -m worker`: claims runs from the Postgres queue
 
 connectors/
-  base.py                  — DataConnector ABC + get_connector() factory
+  base.py                  — DataConnector ABC (load = normalize_frame(_read()), the one load rule
+                             every source ends in), get_connector() factory, without_secrets(),
+                             resolved() (the host lookup), sources_table() (README's source list)
   csv_connector.py         — one reader (_read_bytes): encoding, delimiter, title rows, decimal comma,
-                             TOTAL footer, largest Excel sheet; lossless (dates parsed only if all parse)
-  sql_connector.py         — SQLAlchemy (psycopg 3 for Postgres); query() = parse guard → READ ONLY
-                             txn (always rolled back) → statement timeout → 10k-row cap
+                             TOTAL footer, largest Excel sheet; lossless (dates parsed only if all parse);
+                             UPLOAD_SUFFIXES, MAX_UPLOAD_MB
+  sql_connector.py         — SQLAlchemy; DIALECTS (postgres/psycopg, mysql/pymysql, sqlite dev): an
+                             engine without a row is refused (ADR-0010); safe_url() = the connection
+                             string allowlist + production host check; query() = parse guard → READ
+                             ONLY txn (always rolled back) → statement timeout → 10k-row cap;
+                             QueryResult.frame() = the one result-to-frame rule
   sheets_connector.py      — gspread + OAuth2
   api_connector.py         — httpx + pagination + auth
 

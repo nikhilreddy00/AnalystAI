@@ -200,6 +200,35 @@ class DataConnector(ABC):
         return build_contract(df, self.config.type, self.read_info)
 
 
+def sources_table() -> str:
+    """README's "Data sources and limits" table, built from the connectors' own formats,
+    dialects and caps (tests/test_sources_readme.py keeps the README equal to it)."""
+    from connectors import api_connector as api
+    from connectors import sql_connector as sql
+    from connectors.csv_connector import MAX_UPLOAD_MB, UPLOAD_SUFFIXES
+    names = {"postgresql": "PostgreSQL", "mysql": "MySQL"}
+    rows = [("File upload", f"{', '.join(sorted(UPLOAD_SUFFIXES))} in the UI",
+             f"{MAX_UPLOAD_MB} MB per file; old .xls: save as .xlsx first")]
+    for key in sql.DIALECTS:
+        if key == "sqlite":
+            rows.append(("SQLite", "`sqlite:///path.db`",
+                         "development only; refused when `APP_ENV=production`"))
+            continue
+        name = names.get(key, key)
+        rows += [(f"{name}, ask questions", f"`{key}://user:password@host:port/database`, no table "
+                  "name: the SQL agent writes one read-only query per question and aggregates in "
+                  "the database", f"{sql.MAX_ROWS:,} result rows, {sql.TIMEOUT_S} s per query"),
+                 (f"{name}, one table", "the same + a table name",
+                  f"first {sql.LOAD_MAX_ROWS:,} rows, {sql.TIMEOUT_S} s, read-only")]
+    rows += [("Google Sheets", "Spreadsheet ID + sheet name + service-account JSON",
+              "read as the sheet's CSV export"),
+             ("REST API", "URL + auth (Bearer, API key with a configurable header, Basic) + "
+              "optional pagination key",
+              f"{api.MAX_PAGES} pages or {api.MAX_RECORDS:,} records; public hosts only")]
+    return ("| Source | How to connect | Limits |\n|--------|----------------|--------|\n"
+            + "\n".join(f"| **{a}** | {b} | {c} |" for a, b, c in rows))
+
+
 def get_connector(config: ConnectorConfig) -> DataConnector:
     """Factory function — returns the right connector for the given config type."""
     from connectors.csv_connector import CSVConnector

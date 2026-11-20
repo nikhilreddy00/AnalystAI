@@ -117,22 +117,39 @@ The API runs at `http://localhost:8000` — interactive docs at `http://localhos
 
 ## Data sources and limits
 
+<!-- sources:start -->
 | Source | How to connect | Limits |
 |--------|----------------|--------|
-| **File upload** | CSV, TSV, Excel (.xlsx), JSON, JSON Lines, Parquet in the UI | 50 MB per file; old .xls: save as .xlsx first |
-| **PostgreSQL, ask questions** | Connection string, no table name: the SQL agent writes one read-only query per question and aggregates in the database | 10,000 result rows, 15 s per query |
-| **PostgreSQL, one table** | Connection string + table name | first 50,000 rows, 15 s, read-only |
+| **File upload** | .csv, .json, .jsonl, .parquet, .tsv, .xlsx in the UI | 50 MB per file; old .xls: save as .xlsx first |
+| **PostgreSQL, ask questions** | `postgresql://user:password@host:port/database`, no table name: the SQL agent writes one read-only query per question and aggregates in the database | 10,000 result rows, 15 s per query |
+| **PostgreSQL, one table** | the same + a table name | first 50,000 rows, 15 s, read-only |
+| **MySQL, ask questions** | `mysql://user:password@host:port/database`, no table name: the SQL agent writes one read-only query per question and aggregates in the database | 10,000 result rows, 15 s per query |
+| **MySQL, one table** | the same + a table name | first 50,000 rows, 15 s, read-only |
 | **SQLite** | `sqlite:///path.db` | development only; refused when `APP_ENV=production` |
 | **Google Sheets** | Spreadsheet ID + sheet name + service-account JSON | read as the sheet's CSV export |
 | **REST API** | URL + auth (Bearer, API key with a configurable header, Basic) + optional pagination key | 20 pages or 100,000 records; public hosts only |
+<!-- sources:end -->
 
+(Generated from the connectors: `tests/test_sources_readme.py` fails when this table and the code differ.)
+
+- **Supabase and Neon** are PostgreSQL: paste the connection string from their dashboard
+  (`?sslmode=require` is kept). **Connect with a read-only database user**: the app also runs every
+  query read-only, timed and parsed, but the user's grants are the one boundary it can't bypass.
+- **The same table reads the same from every source**: every finished domain's datasets give the
+  same contract, cleaned rows, tiles and built-in answers from a file, PostgreSQL, MySQL, the API or
+  a Sheet (`tests/test_oracle.py`, ADR-0010).
+- **A connection string is checked, not trusted**: only the drivers and options listed in
+  `connectors/sql_connector.py` are accepted, a password never appears in a message, and in
+  production the host can't be this server or a cloud metadata address.
 - **Truncation is disclosed.** A load that stops at a cap says so in the source evidence and as
   a report alert ("Only the first 50,000 of 61,234 rows were loaded …").
 - The dashboard charts at most 25,000 rows. There is no streaming: every source is loaded whole
   (up to its cap) for each run.
 - **Large or live data:** connect the database without a table, so each question is aggregated
   in the database instead of loading rows.
-- **Planned (Phase 5.8):** MySQL, SQL Server, DuckDB, and public Google Sheets (no service account).
+- **Planned (Phase 5.8b–d):** MariaDB and SQL Server; share links (a public Google Sheet, OneDrive,
+  SharePoint and Google Drive files); files up to ~250 MB; Stripe, HubSpot, Shopify and GA4; Snowflake
+  and BigQuery (`docs/ROADMAP.md` Phase 5.8).
 
 ---
 
