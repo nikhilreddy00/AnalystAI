@@ -15,6 +15,7 @@ import httpx
 import pytest
 
 import connectors.base as base
+from agents.errors import IngestionError
 from connectors.base import get_connector
 from orchestrator.state import ConnectorConfig, ConnectorType
 from tests.fake_network import PUBLIC, serve
@@ -164,8 +165,9 @@ async def test_the_api_source_fetches_through_the_guarded_client(monkeypatch):
 async def test_the_api_source_refuses_a_private_host(monkeypatch):
     wire = serve(monkeypatch, _json([]), {"api.example": ["10.0.0.5"]})
     conn = get_connector(ConnectorConfig(type=ConnectorType.API, url="https://api.example/x"))
-    with pytest.raises(ValueError, match="public internet"):
+    with pytest.raises(IngestionError) as err:   # typed: the user reads it (audit pass 2)
         await conn.load()
+    assert "public internet" in err.value.user_message and not err.value.retryable
     assert wire.connected == []
 
 
@@ -175,9 +177,10 @@ async def test_an_api_error_never_quotes_the_url(monkeypatch):
     serve(monkeypatch, lambda r: httpx.Response(403))
     conn = get_connector(ConnectorConfig(type=ConnectorType.API,
                                          url="https://api.example/v1/rows?sig=SECRET123"))
-    with pytest.raises(ValueError, match="403") as err:
+    with pytest.raises(IngestionError) as err:
         await conn.load()
-    assert "SECRET123" not in str(err.value)
+    assert "403" in err.value.user_message
+    assert "SECRET123" not in str(err.value) + err.value.user_message
     ok, message = await conn.test_connection()
     assert not ok and "403" in message and "SECRET123" not in message
 
@@ -190,19 +193,21 @@ async def test_an_api_that_redirects_is_said_so_never_reachable(monkeypatch, sta
     conn = get_connector(ConnectorConfig(type=ConnectorType.API, url="https://api.example/v1"))
     said = f"The API redirected (HTTP {status}): use the URL it redirects to."
     assert await conn.test_connection() == (False, said)
-    with pytest.raises(ValueError, match="redirected"):
+    with pytest.raises(IngestionError) as err:
         await conn.load()
+    assert err.value.user_message == said
 
 
 async def test_a_next_page_inside_the_network_is_never_fetched(monkeypatch):
-    """The next-page URL comes from the response body: its host is checked where it connects."""
-    wire = serve(monkeypatch, lambda r: httpx.Response(200, json={
-        "data": [{"a": 1}], "next": "https://internal.example/2"}),
-        {"api.example": [PUBLIC], "internal.example": ["10.0.0.5"]})
+    """The next-page URL comes from the response body: its host is checked where it connects
+    (the same host resolving to a private address on the second page: rebinding)."""
+    answers = iter([[PUBLIC], ["10.0.0.5"]])
+    wire = serve(monkeypatch, lambda r: httpx.Response(200, headers={"connection": "close"}, json={
+        "data": [{"a": 1}], "next": "https://api.example/2"}), lambda host, n: next(answers))
     conn = get_connector(ConnectorConfig(type=ConnectorType.API, url="https://api.example/1"))
-    with pytest.raises(base.RefusedHost):
+    with pytest.raises(IngestionError) as err:
         await conn.load()
-    assert wire.connected == [PUBLIC]
+    assert "public internet" in err.value.user_message and wire.connected == [PUBLIC]
     serve(monkeypatch, lambda r: httpx.Response(200, json=[]), {"api.example": ["10.0.0.5"]})
     ok, message = await conn.test_connection()
     assert not ok and "public internet" in message
@@ -212,15 +217,90 @@ async def test_an_api_page_past_the_cap_or_compressed_is_refused(monkeypatch):
     import gzip
 
     import connectors.api_connector as ac
-    monkeypatch.setattr(ac, "MAX_PAGE_BYTES", 40)
+    monkeypatch.setattr(ac, "MAX_LOAD_BYTES", 40)
     serve(monkeypatch, lambda r: httpx.Response(200, json=[{"a": "x" * 100}]))
     conn = get_connector(ConnectorConfig(type=ConnectorType.API, url="https://api.example/1"))
-    with pytest.raises(ValueError, match="larger than"):
+    with pytest.raises(IngestionError, match="api") as err:
         await conn.load()
+    assert "larger than" in err.value.user_message
     serve(monkeypatch, lambda r: httpx.Response(200, content=gzip.compress(b"[]"), headers={
         "content-encoding": "gzip"}))
-    with pytest.raises(ValueError, match="compressed its answer"):
+    with pytest.raises(IngestionError) as err:
         await conn.load()
+    assert "compressed its answer" in err.value.user_message
+
+
+async def test_the_api_cap_is_for_every_page_together(monkeypatch):
+    """Audit pass 2: each page had its own 50 MB, so 20 pages read a gigabyte."""
+    import connectors.api_connector as ac
+    monkeypatch.setattr(ac, "MAX_LOAD_BYTES", 120)
+    pages = iter(range(1, 99))
+    serve(monkeypatch, lambda r: httpx.Response(200, json={   # ~50 bytes a page
+        "data": [{"a": 1}], "next": f"https://api.example/{next(pages)}"}))
+    conn = get_connector(ConnectorConfig(type=ConnectorType.API, url="https://api.example/0"))
+    with pytest.raises(IngestionError) as err:
+        await conn.load()
+    assert "in all" in err.value.user_message
+
+
+@pytest.mark.parametrize("next_url", ["https://elsewhere.example/2", "http://api.example/2"])
+async def test_the_api_key_is_never_sent_to_another_origin(monkeypatch, next_url):
+    """Audit pass 2 (security): a next page on another host, or plain http, was sent the key."""
+    seen = []
+
+    def answer(r):
+        seen.append((str(r.url), r.headers.get("authorization")))
+        return httpx.Response(200, json={"data": [{"a": 1}], "next": next_url})
+    serve(monkeypatch, answer)
+    conn = get_connector(ConnectorConfig(type=ConnectorType.API, url="https://api.example/1",
+                                         auth_type="bearer", auth_value="KEY"))
+    df = await conn.load()
+    assert len(df) == 1 and [u for u, _ in seen] == ["https://api.example/1"]
+    assert "wasn't followed" in conn.read_info["notes"][0]
+
+
+async def test_an_api_that_trickles_stops_at_the_deadline(monkeypatch):
+    """Audit pass 2 (test analyst): the whole-fetch deadline had no test."""
+    import asyncio
+
+    import connectors.api_connector as ac
+    import tests.fake_network as fake
+    monkeypatch.setattr(ac, "FETCH_DEADLINE_S", 0.3)
+    serve(monkeypatch, lambda r: httpx.Response(200, json=[{"a": 1}] * 50))
+    real = fake._Stream.read
+
+    async def trickle(self, n, timeout=None):
+        await asyncio.sleep(0.05)
+        return await real(self, 1, timeout)
+    monkeypatch.setattr(fake._Stream, "read", trickle)
+    conn = get_connector(ConnectorConfig(type=ConnectorType.API, url="https://api.example/1"))
+    with pytest.raises(IngestionError) as err:
+        await conn.load()
+    assert err.value.user_message == "The API didn't finish within 0.3 s."
+    assert await conn.test_connection() == (False, "The API didn't answer within 0.3 s.")
+
+
+async def test_an_api_test_that_cant_connect_names_the_class_never_the_url(monkeypatch):
+    def down(r):
+        raise httpx.ConnectError("to https://api.example/1?sig=SECRET")
+    serve(monkeypatch, down)
+    conn = get_connector(ConnectorConfig(type=ConnectorType.API, url="https://api.example/1?sig=SECRET"))
+    assert await conn.test_connection() == (False, "The API couldn't be reached (ConnectError).")
+
+
+async def test_an_api_answer_that_isnt_json_or_cant_connect_is_said(monkeypatch):
+    serve(monkeypatch, lambda r: httpx.Response(200, text="<html>"))
+    conn = get_connector(ConnectorConfig(type=ConnectorType.API, url="https://api.example/1"))
+    with pytest.raises(IngestionError) as err:
+        await conn.load()
+    assert err.value.user_message == "The API's answer isn't JSON."
+
+    def down(r):
+        raise httpx.ConnectError("refused")
+    serve(monkeypatch, down)
+    with pytest.raises(IngestionError) as err:
+        await conn.load()
+    assert "couldn't be reached (ConnectError)" in err.value.user_message
 
 
 def test_no_request_url_reaches_the_server_log(monkeypatch):

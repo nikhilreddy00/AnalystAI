@@ -13,13 +13,14 @@ from urllib.parse import urlparse
 import httpx
 import pandas as pd
 
+from agents.errors import IngestionError
 from connectors.base import (FETCH_DEADLINE_S, BodyTooLarge, DataConnector, capped_body,
                              public_client, truncation_note)
 
 MAX_PAGES = 20          # safety cap to prevent infinite pagination loops
 PAGE_SIZE = 1000
 MAX_RECORDS = 100_000   # hard ceiling across all pages to prevent OOM
-MAX_PAGE_BYTES = 50 * 2**20   # one page's body, as the upload cap
+MAX_LOAD_BYTES = 50 * 2**20   # every page's body together, as the upload cap
 
 
 def _http_url(url: str) -> None:
@@ -45,16 +46,18 @@ def _status(response: httpx.Response) -> None:
                          f"({response.reason_phrase}).")
 
 
-async def _page(client: httpx.AsyncClient, url: str, headers: dict) -> Any:
-    """One page's JSON, its body read up to MAX_PAGE_BYTES as it arrives (5.8b audit: the whole
-    answer was read before any cap, compressed or not)."""
+async def _page(client: httpx.AsyncClient, url: str, headers: dict, budget: int) -> tuple[Any, int]:
+    """One page's JSON and its size, the body read up to what the load has left of
+    MAX_LOAD_BYTES as it arrives (5.8b audit: the whole answer was read before any cap; then each
+    page had its own, 20 of them a gigabyte)."""
     async with client.stream("GET", url, headers=headers) as response:
         _status(response)
         try:
-            body = await capped_body(response, MAX_PAGE_BYTES)
+            body = await capped_body(response, budget)
         except BodyTooLarge:
-            raise ValueError(f"An API page is larger than {MAX_PAGE_BYTES // 2**20} MB.") from None
-    return json.loads(body)
+            raise ValueError("The API's answers are larger than "
+                             f"{MAX_LOAD_BYTES // 2**20} MB in all.") from None
+    return json.loads(body), len(body)
 
 
 _RECORD_KEYS = ("data", "results", "items", "records")
@@ -110,10 +113,20 @@ class APIConnector(DataConnector):
         # Redirects aren't followed; a next-page URL from the body is a new connection, checked
         # by the client like the first. One deadline for every page (5.8b review: the timeout is
         # per read, so a trickling server held a worker without end)
+        # the run's errors are typed here, at the source's one boundary, so the user reads them
+        # (5.8b audit pass 2: an untyped one became "the data-loading step stopped unexpectedly")
         try:
             records, next_url = await self._pages(url, headers)
         except TimeoutError:
-            raise ValueError(f"The API didn't finish within {FETCH_DEADLINE_S} s.") from None
+            raise IngestionError("api slow", f"The API didn't finish within {FETCH_DEADLINE_S} s."
+                                 ) from None
+        except ValueError as exc:   # ours (a status, a refused host, a cap) or a page not JSON
+            said = str(exc) if not isinstance(exc, json.JSONDecodeError) else \
+                "The API's answer isn't JSON."
+            raise IngestionError("api", said) from None
+        except (httpx.HTTPError, httpx.InvalidURL) as exc:   # the class, never the URL
+            raise IngestionError("api unreachable", "The API couldn't be reached "
+                                 f"({type(exc).__name__}).") from None
 
         if not records:
             return pd.DataFrame()
@@ -130,13 +143,23 @@ class APIConnector(DataConnector):
         """The records of every page up to the caps, and the next page's URL if a cap stopped
         it."""
         records: list[dict[str, Any]] = []
+        origin = urlparse(url)[:2]   # scheme and host: the credential goes nowhere else
+        budget = MAX_LOAD_BYTES
         async with asyncio.timeout(FETCH_DEADLINE_S), public_client(timeout=30) as client:
             page = 1
             next_url: str | None = url
 
             while next_url and page <= MAX_PAGES and len(records) < MAX_RECORDS:
                 _http_url(next_url)
-                data = await _page(client, next_url, headers)
+                if urlparse(next_url)[:2] != origin:
+                    # a next page elsewhere, or on plain http, would be sent the API's key (5.8b
+                    # audit pass 2): not followed, and said
+                    self.read_info = {"notes": [
+                        "A next page on another host (or not https) wasn't followed: the "
+                        "API's key is only sent to the address you gave."]}
+                    return records, None
+                data, used = await _page(client, next_url, headers, budget)
+                budget -= used
 
                 records.extend(_records(data) or [])
                 if not isinstance(data, dict):   # a bare list (or a scalar) has no next page

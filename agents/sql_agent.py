@@ -20,7 +20,7 @@ from agents.errors import AgentError, GuardrailViolation, IngestionError, LLMOut
 from agents.utils import strip_markdown_fences
 from connectors.sql_connector import MAX_ROWS, QueryResult, SQLConnector, sql_dialect
 from guardrails import (
-    FUNCTION_REFUSED,
+    SOFT_REFUSALS,
     UNTRUSTED_NOTE,
     check_sql_readonly,
     delimit_untrusted,
@@ -353,9 +353,9 @@ async def run_sql_agent(question: str, connector: SQLConnector, layer, llm: LLMC
         metrics = [str(m) for m in out.get("metrics_used") or []]
         problem = None
         if reason := check_sql_readonly(sql, dialect=dialect):
-            # a function the allow list lacks is a soft rule (5.8b): the model tries another; a
-            # write, a second statement, a catalog or a lock never gets a second try
-            if not reason.startswith(FUNCTION_REFUSED):
+            # guardrails decides which refusals are soft (an analyst function off the list, a
+            # keyword-named column): the model tries again; anything else never gets a second try
+            if not reason.startswith(SOFT_REFUSALS):
                 trace_verdict("sql", PROMPT_VERSION, "readonly")
                 raise GuardrailViolation("sql", reason, f"Blocked unsafe SQL: {reason}.")
             problem = ("function", reason)

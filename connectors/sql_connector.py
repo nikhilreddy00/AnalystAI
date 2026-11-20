@@ -121,7 +121,11 @@ def _tls(mode: str) -> ssl.SSLContext:
                              "(leave it out for no TLS).")
     ctx = ssl.create_default_context(cafile=certifi.where())
     if settings.extra_ca_bundle:
-        ctx.load_verify_locations(settings.extra_ca_bundle)
+        try:
+            ctx.load_verify_locations(settings.extra_ca_bundle)
+        except (OSError, ssl.SSLError) as exc:   # this server's setting, not the user's database
+            raise IngestionError("ca bundle", "This server's EXTRA_CA_BUNDLE can't be read "
+                                 f"({type(exc).__name__}); ask the administrator.") from exc
     ctx.check_hostname = mode.upper() == "VERIFY_IDENTITY"
     if mode.upper() == "REQUIRED":
         ctx.verify_mode = ssl.CERT_NONE
@@ -134,8 +138,16 @@ def _connect_pinned(dialect, conn_rec, cargs, cparams):
     so a verified TLS name couldn't match)."""
     address = cparams.pop(_PINNED)
     conn = dialect.loaded_dbapi.connect(*cargs, **cparams, defer_connect=True)
-    conn.connect(sock=socket.create_connection((address, cparams.get("port", 3306)),
-                                               timeout=CONNECT_TIMEOUT_S))
+    try:
+        sock = socket.create_connection((address, cparams.get("port", 3306)),
+                                        timeout=CONNECT_TIMEOUT_S)
+    except OSError as exc:   # the driver's own error, as PyMySQL raises it when it dials: SQLAlchemy
+        # wraps that, and the session is then said as the database's (5.8b audit: a raw OSError
+        # took the query's paid retry)
+        raise dialect.loaded_dbapi.OperationalError(
+            2003, f"Can't connect to the database server ({exc.strerror or type(exc).__name__})"
+        ) from exc
+    conn.connect(sock=sock)
     return conn
 
 

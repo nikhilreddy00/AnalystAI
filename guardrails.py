@@ -10,6 +10,7 @@ import datetime
 import math
 import numbers
 import re
+import unicodedata
 from typing import Any, Iterable
 
 import sqlglot
@@ -91,7 +92,21 @@ _SQL_NAMES = {   # per dialect: the analyst functions sqlglot reads as unknown n
     "sqlite": frozenset("""julianday datetime time printf total unixepoch strftime""".split()),
 }
 _ALLOWED_HINTS = frozenset({"NOLOCK", "READUNCOMMITTED"})   # T-SQL: the rest take or hold locks
-FUNCTION_REFUSED = "function not allowed: "   # the SQL agent gives the model one retry on it
+FUNCTION_REFUSED = "function not allowed: "
+RESERVED_NAME = "a T-SQL reserved word used as a name must be [bracketed]: "
+# The refusals the SQL agent gives the model one retry on: an analyst function off the list, a
+# column named like a keyword. Decided here, by meaning, never by the caller (5.8b audit pass 2:
+# moving to the allow list made lock and admin functions retryable).
+SOFT_REFUSALS = (FUNCTION_REFUSED, RESERVED_NAME)
+# Off the list AND never an analyst's: final, and traced as a read-only refusal. This only sorts
+# hard from soft; what may run is the allow list's alone.
+_HARD_FUNCS = frozenset(getattr(exp, name) for name in """NextValueFor Uuid Rand Randn ReadCSV
+    ReadParquet CurrentUser CurrentSchema CurrentDatabase SessionUser CurrentRole""".split())
+_HARD_NAMES = re.compile(r"(pg_|xp_|sp_|fn_|sys|dbms_|lo_|get_lock|release_lock|is_free_lock|"
+                         r"is_used_lock|sleep|benchmark|dblink|nextval|setval|currval|load_file|"
+                         r"connection_id|last_insert_id|found_rows|load_|read_|write_|"
+                         r"open(rowset|query|datasource|xml)|current_|session_|user$|version$|"
+                         r"database$|schema$|uuid|rand|newid)")
 # /*! … */ and /*M! … */ are MySQL / MariaDB executable comments and /*+ … */ optimizer hints
 # (MAX_EXECUTION_TIME overrides the session timeout): the server runs what sqlglot reads as a
 # comment. Refused anywhere in the raw text, on every dialect, quotes included: any scanner of
@@ -123,16 +138,17 @@ def _function_refused(node: exp.Func, dialect: str | None) -> str | None:
     name = node.name.lower() if anonymous else node.sql_name().lower()
     if isinstance(node.parent, (exp.Dot, exp.ScopeResolution)) and node is node.parent.expression:
         return f"a schema-qualified function is not allowed: {name}"
-    if not (node.name.lower() in _SQL_NAMES.get(dialect, ()) if anonymous
-            else type(node) in _SQL_FUNCS):
-        return f"{FUNCTION_REFUSED}{name}"
     # the class (security review, audit 2): a function given a query as text runs it past every
     # table rule (ts_stat, ts_rewrite); ponytail: a text built by concatenation isn't seen, the
-    # database role is the boundary (ADR-0010 layer 4)
+    # database role is the boundary (ADR-0010 layer 4). Before the list: it is a hard refusal
     if anonymous and any(_is_sql_text(s.name, dialect) for s in node.find_all(exp.Literal, exp.RawString)
                          if isinstance(s, exp.RawString) or s.is_string):   # RawString: $q$ … $q$
         return f"function given a SQL statement as text: {name}"
-    return None
+    if node.name.lower() in _SQL_NAMES.get(dialect, ()) if anonymous else type(node) in _SQL_FUNCS:
+        return None
+    if type(node) in _HARD_FUNCS or _HARD_NAMES.match(name):
+        return f"a lock, admin, session or random function is not allowed: {name}"
+    return f"{FUNCTION_REFUSED}{name}"
 
 
 # SQL Server runs a batch: a statement may follow another with no ';', and sqlglot reads
@@ -147,15 +163,42 @@ _QUOTED = frozenset({sqlglot.TokenType.STRING, sqlglot.TokenType.NATIONAL_STRING
                      sqlglot.TokenType.IDENTIFIER})
 
 
+def _unquoted(sql: str, dialect: str | None) -> list[str]:
+    """The text of every token outside a string or a quoted name ([] when the tokenizer can't
+    read it: that text is the parse's to refuse)."""
+    try:
+        return [t.text for t in sqlglot.tokenize(sql, read=dialect) if t.token_type not in _QUOTED]
+    except sqlglot.errors.SqlglotError:
+        return []
+
+
+def _invisible(text: str) -> bool:
+    """A format, separator or control character: sqlglot glues it into a name, a server may read
+    it as a space (5.8b audit pass 2: `x​EXEC(...)` was one alias to the guard, two
+    statements to SQL Server)."""
+    return any(unicodedata.category(c)[0] in "CZ" for c in text if not c.isascii())
+
+
+_TSQL_NAME_LIKE = frozenset("OPEN CLOSE PRINT SAVE RETURN BREAK CONTINUE".split())
+
+
 def _tsql_batch_word(sql: str) -> str | None:
-    """The first T-SQL statement keyword in the text outside a string or a quoted name, else
-    None (a text the tokenizer can't read is the parse's to refuse)."""
+    """Why a T-SQL statement keyword outside a string or a quoted name is refused, else None. A
+    word after `.` is a column (`p.close`), not a statement; a bare one that is a usual column
+    name (OPEN, CLOSE) gets a retry asking for [brackets] (5.8b audit pass 2: stock tables)."""
     try:
         tokens = sqlglot.tokenize(sql, read="tsql")
     except sqlglot.errors.SqlglotError:
         return None
-    return next((t.text.upper() for t in tokens
-                 if t.token_type not in _QUOTED and t.text.upper() in _TSQL_BATCH_WORDS), None)
+    for before, token in zip([None, *tokens], tokens):
+        word = token.text.upper()
+        if token.token_type in _QUOTED or word not in _TSQL_BATCH_WORDS or (
+                before is not None and before.token_type == sqlglot.TokenType.DOT):
+            continue
+        if word in _TSQL_NAME_LIKE:
+            return f"{RESERVED_NAME}{word}"
+        return f"a T-SQL statement keyword outside a string or [name] is not allowed: {word}"
+    return None
 
 
 def _system_schemas(dialect: str | None) -> frozenset[str]:
@@ -174,8 +217,10 @@ def check_sql_readonly(sql: str, dialect: str | None) -> str | None:
     transaction (connectors/sql_connector.py)."""
     if _EXECUTABLE_COMMENT.search(sql):
         return "executable comments and optimizer hints (/*! */, /*+ */) are not allowed"
-    if dialect == "tsql" and (word := _tsql_batch_word(sql)):
-        return f"a T-SQL statement keyword outside a string or [name] is not allowed: {word}"
+    if any(_invisible(w) for w in _unquoted(sql, dialect)):
+        return "an invisible or unusual space character outside a string or quoted name is not allowed"
+    if dialect == "tsql" and (why := _tsql_batch_word(sql)):
+        return why
     try:
         statements = [s for s in sqlglot.parse(sql, read=dialect) if s is not None]
     except sqlglot.errors.ParseError as exc:
@@ -190,7 +235,7 @@ def check_sql_readonly(sql: str, dialect: str | None) -> str | None:
     system = _system_schemas(dialect)
     # a function refusal is the one the SQL agent retries: it never hides a write, a catalog or a
     # lock anywhere in the query (5.8b audit), so it is said only when the walk finds nothing hard
-    soft = None
+    soft = hard_function = None
     for node in stmt.walk():
         if isinstance(node, writes):
             return f"write/DDL inside query: {node.key.upper()}"
@@ -198,14 +243,19 @@ def check_sql_readonly(sql: str, dialect: str | None) -> str | None:
             return "SELECT ... INTO creates a table"
         if isinstance(node, exp.Select) and node.args.get("locks"):
             return "row locks (FOR UPDATE/SHARE) are not allowed"
-        if isinstance(node, exp.Func) and not soft:
-            soft = _function_refused(node, dialect)
+        if isinstance(node, exp.Func) and (why := _function_refused(node, dialect)):
+            # any hard one wins over a soft one wherever it is (audit pass 2); a write, catalog
+            # or lock is said first
+            if why.startswith(SOFT_REFUSALS):
+                soft = soft or why
+            else:
+                hard_function = hard_function or why
         if isinstance(node, exp.WithTableHint) and (
                 held := [h.sql() for h in node.expressions if h.sql().upper() not in _ALLOWED_HINTS]):
             return f"table hints that take locks are not allowed: {', '.join(held)}"
         if isinstance(node, exp.Table) and node.db.lower() in system:
             return f"the database's own tables are not readable: {node.db}"
-    return soft
+    return hard_function or soft
 
 
 # Fan-out and metric checks read a semantic layer (semantic_layer.SemanticLayer); typed loosely to

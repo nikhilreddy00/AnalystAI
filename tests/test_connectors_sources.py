@@ -830,7 +830,8 @@ async def test_a_question_reads_only_the_tables_the_connection_lists(tmp_path, n
     said = err.value.user_message   # the parse guard refuses a qualified system table first
     assert err.value.agent == "sql" and said.startswith("Blocked unsafe SQL: ")
     assert "only the connected database's tables can be read" in said or \
-        "the database's own tables are not readable" in said or "function not allowed" in said
+        "the database's own tables are not readable" in said or "function not allowed" in said or \
+        "a lock, admin, session or random function is not allowed" in said
 
 
 @pytest.mark.parametrize("name", DIALECT_NAMES)
@@ -1172,8 +1173,22 @@ def test_each_ssl_mode_checks_what_its_name_says(monkeypatch, mode, verify, name
     monkeypatch.setattr(settings, "extra_ca_bundle", certifi.where())   # the operator's is read
     assert _tls(mode).cert_store_stats()["x509_ca"] == certifi_cas
     monkeypatch.setattr(settings, "extra_ca_bundle", "/nonexistent/bundle.pem")
-    with pytest.raises(FileNotFoundError):
+    with pytest.raises(IngestionError, match="ca bundle") as err:   # this server's, said as such
         _tls(mode)
+    assert "EXTRA_CA_BUNDLE" in err.value.user_message
+
+
+def test_in_production_a_mysql_server_that_doesnt_answer_is_a_session_error(monkeypatch):
+    """5.8b audit pass 2: the pinned socket's OSError wasn't the driver's error, so SQLAlchemy
+    passed it raw: the SQL agent took it for the query's fault and paid a retry."""
+    import connectors.sql_connector as sc
+    from api.config import settings
+    monkeypatch.setattr(settings, "app_env", "production")
+    monkeypatch.setattr(sc, "_checked_address", lambda url: "127.0.0.1")
+    engine = _engine_for("mysql://u:p@db.example:1/x")   # nothing listens on port 1
+    with pytest.raises(IngestionError, match="session setup") as err:
+        sc.run_readonly(engine, "SELECT 1")
+    assert "Can't connect to the database server" in err.value.user_message
 
 
 def test_in_production_a_tls_session_goes_to_the_checked_address_and_verifies_the_name(
@@ -1213,7 +1228,9 @@ def test_in_production_a_pinned_mysql_without_a_port_dials_3306(monkeypatch):
         dialed.append(addr)
         raise OSError("no route")
     monkeypatch.setattr(socket, "create_connection", dial)
-    with pytest.raises(OSError, match="no route"), _engine_for("mysql://u:p@db.example/x").connect():
+    from sqlalchemy.exc import OperationalError
+    with pytest.raises(OperationalError, match="Can't connect"), \
+            _engine_for("mysql://u:p@db.example/x").connect():
         pass
     assert dialed == [("10.0.0.5", 3306)]
 

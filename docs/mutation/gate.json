@@ -354,6 +354,10 @@
   "equivalents": []
  },
  "connectors/link.py::_not_public": {
+  "equivalents": [],
+  "hash": "e8c9b6c73cebaeb8"
+ },
+ "connectors/link.py::_ok": {
   "equivalents": []
  },
  "connectors/link.py::_suffix": {
@@ -780,9 +784,12 @@
   "equivalents": [],
   "hash": "b23596f7da759259"
  },
+ "guardrails.py::_tsql_batch_word": {
+  "equivalents": []
+ },
  "guardrails.py::check_sql_readonly": {
   "equivalents": [],
-  "hash": "9178d059ab8c1197"
+  "hash": "b1247a986b1c088e"
  },
  "guardrails.py::is_pii_column": {
   "equivalents": [],
