@@ -146,6 +146,17 @@ def _read_text_table(content: bytes, suffix: str) -> tuple[pd.DataFrame, dict]:
     sep, header, decimal = _layout(text)
     if suffix == ".tsv" and sep != "\t" and "\t" in text[:4096]:
         sep = "\t"
+    # the header the read below will take (its delimiter, past its preamble, quotes honoured),
+    # read alone first: millions of columns would exhaust memory in the full read (5.8b; a data
+    # row wider than the header is a ParserError there)
+    try:
+        width = pd.read_csv(io.StringIO(text), sep=sep, skiprows=header, nrows=0,
+                            index_col=False).shape[1]
+    except (pd.errors.ParserError, pd.errors.EmptyDataError):
+        width = 0   # the full read says what's wrong
+    if width >= _MAX_COLUMNS:
+        raise IngestionError("too many columns", f"The file has more than {_MAX_COLUMNS:,} "
+                             "columns, past what can be read.")
     try:
         # index_col=False: a trailing delimiter must not turn the first column into the index.
         df = pd.read_csv(io.StringIO(text), sep=sep, skiprows=header, decimal=decimal,
@@ -222,13 +233,6 @@ def _readable_size(content: bytes, suffix: str) -> None:
                                           for p in parts):
             raise IngestionError("workbook parts", "The workbook's parts aren't an Excel "
                                  "workbook's. Save it again from Excel and upload that.")
-    elif suffix in (".csv", ".tsv"):
-        # every line of the first MB, any line ending: the reader may take its header past a
-        # preamble (security review), and a '\r'-only file is one line to split(b"\n")
-        lines = content[:2**20].splitlines() or [b""]
-        if max(line.count(d) for line in lines for d in (b",", b";", b"\t", b"|")) >= _MAX_COLUMNS:
-            raise IngestionError("too many columns", f"The file has more than {_MAX_COLUMNS:,} "
-                                 "columns, past what can be read.")
 
 
 def _read_bytes(content: bytes, suffix: str) -> tuple[pd.DataFrame, dict]:
