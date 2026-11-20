@@ -67,3 +67,59 @@ def test_every_session_note_states_each_regression_gate():
             if set(gate_status(t)) != set(GATES)} == {}
     assert gate_status("# Note\n\n## Gates\n- playwright specs: done\n- live browser at 1440 px: skipped\n") == {
         "playwright specs": "done"}   # "skipped" says no reason: not a status
+
+
+# ROADMAP 5.8 "Lessons in" / "Lessons out" (retro 5.8a): a phase starts from the ledger rows it
+# could repeat and ends by matching each retro item to a row, new or a recurrence.
+RETRO_LINE = re.compile(r"^- .+ → ([A-Z0-9]+-\d+) \((new|recurrence: .+)\)$", re.M)
+RISK_LINE = re.compile(r"^- ([A-Z0-9]+-\d+): .+$", re.M)
+
+
+def _section(text: str, heading: str) -> str:
+    return text.split(f"\n## {heading}\n", 1)[1].split("\n## ", 1)[0] if f"\n## {heading}\n" in text else ""
+
+
+def _ledger_ids() -> set[str]:
+    from scripts import ledger
+    rows = ledger.tables((BASELINES.parent / "retro-ledger.md").read_text())
+    return {r[0] for t in rows for r in t[1:]}
+
+
+def retro_problems(text: str, ids: set[str]) -> list[str]:
+    """Each '## Retro' line names a ledger row that exists, and says new or what it recurs."""
+    section = _section(text, "Retro")
+    lines = [ln for ln in section.splitlines() if ln.startswith("- ")]
+    found = RETRO_LINE.findall(section)
+    return ([] if lines and len(found) == len(lines) else ["every line: '- item → ROW-ID (new|recurrence: why)'"]) + \
+        [f"no ledger row {r}" for r, _ in found if r not in ids]
+
+
+def test_every_58_note_matches_its_retro_to_the_ledger():
+    ids = _ledger_ids()
+    notes = {p.name: p.read_text() for p in sorted(BASELINES.glob("phase5_8*.md"))}
+    assert "phase5_8a.md" in notes   # no vacuous pass
+    assert {n: p for n, t in notes.items() if (p := retro_problems(t, ids))} == {}
+    assert retro_problems("\n## Retro\n- a thing → XX-1 (new)\n", ids) == ["no ledger row XX-1"]
+    assert retro_problems("\n## Retro\n- a thing, no row\n", ids) != []
+
+
+REVIEWERS = ("code-review", "silent-failure-hunter", "pr-test-analyzer", "security-review")
+
+
+def test_every_58_note_after_5_8a_names_the_four_reviewers():
+    """ROADMAP 5.8 "Audit": Standards + Spec alone passed 5.8a; these four then found 12 bugs."""
+    notes = {p.name: p.read_text() for p in sorted(BASELINES.glob("phase5_8*.md"))}
+    assert all(r in notes["phase5_8a.md"] for r in REVIEWERS)   # the pass that set the bar
+    assert {n: [r for r in REVIEWERS if r not in _section(t, "Audit")] for n, t in notes.items()
+            if n != "phase5_8a.md" and any(r not in _section(t, "Audit") for r in REVIEWERS)} == {}
+
+
+def test_every_58_note_after_5_8a_names_its_repeat_risks():
+    """The plan starts from `ledger.py --files <files it touches>`: the note keeps that list."""
+    ids = _ledger_ids()
+    notes = {p.name: p.read_text() for p in sorted(BASELINES.glob("phase5_8*.md"))
+             if p.name != "phase5_8a.md"}   # 5.8a wrote the rule
+    for name, text in notes.items():
+        risks = RISK_LINE.findall(_section(text, "Repeat risks"))
+        assert risks and set(risks) <= ids, name
+    assert RISK_LINE.findall("- P58-10: _unlisted_tables test") == ["P58-10"]

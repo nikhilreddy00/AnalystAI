@@ -522,7 +522,8 @@ dataset should land in a workspace users can come back to. Expected size: 2 sess
   4. Offline first: everything checkable at $0 is fixed before any paid run; every finished
      domain's $0 suites re-run on every commit (cross-domain regressions).
   5. Paid smoke run (~3 hard cases, k=1, ~$0.10) BEFORE the audit loop, then the domain gates.
-  6. Domain audit by fresh reviewers (the expert + the defect checklist), review note, sign-off.
+  6. Domain audit by fresh reviewers (the expert + the defect checklist, and the four of Phase
+     5.8's "Audit" line), review note, sign-off.
 - **Converging audits (the bug count must go down pass over pass, never up):**
   - fix the root cause in the shared function, never a symptom per caller;
   - a widened or narrowed rule ships with negative cases from every other domain;
@@ -796,16 +797,33 @@ dataset should land in a workspace users can come back to. Expected size: 2 sess
     every dataset and source, a generated README source list) + MySQL (+ Supabase/Neon as named
     Postgres options).
   - **5.8b:** MariaDB + SQL Server (CI-only databases, rows of the same table) + share-link files
-    (public Google Sheet, OneDrive/SharePoint/Drive links, https CSV/xlsx; a per-hop SSRF guard).
+    (public Google Sheet, OneDrive/SharePoint/Drive links, https CSV/xlsx; a per-hop SSRF guard) +
+    MySQL TLS + the parse guard's functions as an **allow list** (5.8a: five security-review rounds
+    each found one more denied name missing; a deny list never ends) + a password field in the form.
   - **5.8c:** DuckDB file reader (cap ~250 MB, a clear message past it; analysis stays pandas) +
     Stripe/HubSpot/Shopify/GA4 imported by `dlt` into DuckDB with a Refresh button.
   - **5.8d:** Snowflake + BigQuery. After v0.1: QuickBooks/Xero (registered OAuth app), private
     Drive/OneDrive via OAuth.
 - **Decisions:** databases are queried live (questions → read-only SQL, a named table → a capped
   snapshot); SaaS is imported (DuckDB copy, refreshed on demand); Airbyte is never a dependency (ELv2).
+- **Step 0 (each sub-phase, before the plan; retro 5.8a):**
+  1. **Lessons in:** `scripts/ledger.py --files <every file the plan will touch>` and
+     `--min-recurrences 2`. The plan's "Repeat risks" section names each row it could repeat and
+     the check that stops it (a row with no check gets one in this phase, before its code).
+  2. **Nightly:** `gh run list --branch main --event schedule --limit 3`. A red nightly is
+     reported before planning (5.8a: two red nights went unseen until after the merge).
 - **Done when (each sub-phase):** each new source passes the source-invariance oracle for every
   finished domain (contracts, cleaned frames, tiles, built-in answers), plant-proven; one E2E case
-  per source at k=1; the browser check connects each one; the README source list is generated.
+  per source at k=1 **and one per code path the change touches** (5.8a: the table path's E2E never
+  ran the question path, which hid a 20-table cap); the browser check connects each one; the README
+  source list is generated.
+- **Audit (each sub-phase, before "done"; retro 5.8a):** four fresh reviewers in parallel on the
+  branch diff: `code-review` (high), `pr-review-toolkit:silent-failure-hunter`,
+  `pr-review-toolkit:pr-test-analyzer`, `security-review`. In 5.8a, Standards + Spec alone passed and
+  these four then found 12 bugs. Every finding: a red test, then the fix at its cause, then a ledger row.
+- **Lessons out (the retro, each sub-phase):** the session note's `## Retro` section has one line per
+  retro item: its ledger row and `new` or `recurrence of <row>`. A recurrence names why the earlier
+  fix didn't hold and fixes the class (`tests/test_plan_steps.py` checks the section).
 - **Status:** 5.8a ✅ 2026-11-20, PR #27 (`docs/baselines/phase5_8a.md`): MySQL as a fail-closed dialect row,
   the oracle over 33 datasets × 8 sources (it found and fixed SQL/API text dates, JSON floats, -0.0
   and Postgres row order on the old sources), the guard against MySQL's executable comments, no

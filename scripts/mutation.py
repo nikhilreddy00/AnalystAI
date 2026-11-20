@@ -444,7 +444,8 @@ def record(changed: dict[str, set[int]], metas: list[dict], placed: dict, functi
     gate, unexplained = recorded(json.loads(path.read_text()) if path.is_file() else {}, hashes, left)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(gate, indent=1, sort_keys=True, ensure_ascii=False) + "\n")
-    print(f"recorded in {GATE}: {' '.join(k for k in hashes if k not in unexplained) or '(none)'}")
+    print(f"recorded in {GATE}: {' '.join(k for k in hashes if k not in unexplained) or '(none)'}"
+          f" (commit {GATE} before --check: it reads HEAD's)")
     for k, bad in unexplained.items():
         print(f"NOT recorded {k}: {len(bad)} left mutants are no named equivalent")
 

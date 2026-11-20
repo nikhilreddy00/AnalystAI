@@ -21,6 +21,13 @@ if [ -n "$missing" ]; then
   echo "pre-push: commit the reports a test names:"; echo "$missing"; exit 1
 fi
 
+# the nightly (deep properties) on main: a warning, never a block (retro 5.8a: two red nights went
+# unseen until after a merge); offline or without gh, nothing is said
+night=$(gh run list --branch main --event schedule --limit 1 --json conclusion,createdAt \
+  -q '.[0] | "\(.conclusion) \(.createdAt)"' 2>/dev/null || true)
+case "$night" in failure*) echo "pre-push: WARNING: the last nightly on main failed ($night):" \
+  "gh run list --branch main --event schedule" ;; esac
+
 uv run ruff check .
 uv run lint-imports   # the domain_pack layers + the reference oracle's independence (pyproject)
 # the mutation gate (ROADMAP 5.7b-2 step 9): a changed spell / ledger / pack-column / scorer

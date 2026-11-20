@@ -275,5 +275,6 @@ async def test_replay_mode_replays_the_models_and_calls_only_the_judge():
     assert (await client.complete(agent="prose_judge", **ask)).text == '{"0": "neither"}'
     assert (await client.complete(agent="quality", **ask)).text == '{"answer": 2}'
     assert [c["agent"] for c in live.calls] == ["prose_judge"]
-    with pytest.raises(Exception):
+    from agents.errors import LLMError
+    with pytest.raises(LLMError, match="no stored reply left"):
         await client.complete(agent="quality", **ask)
