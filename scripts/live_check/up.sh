@@ -16,9 +16,9 @@ for db in analystai_eval analystai_live; do
     | grep -q 1 || createdb -h localhost -p 54329 -U postgres "$db"
 done
 source scripts/live_check/env.sh
-nohup uv run python -m worker < /dev/null > .live/worker.log 2>&1 &
+nohup uv run --env-file .live/odbc.env python -m worker < /dev/null > .live/worker.log 2>&1 &
 echo $! > .live/pids
-nohup uv run uvicorn api.main:app --host 127.0.0.1 --port 8000 < /dev/null > .live/api.log 2>&1 &
+nohup uv run --env-file .live/odbc.env uvicorn api.main:app --host 127.0.0.1 --port 8000 < /dev/null > .live/api.log 2>&1 &
 echo $! >> .live/pids
 nohup uv run python scripts/ui_check/mock_api.py scripts/ui_check/fixtures 54321 < /dev/null > .live/auth.log 2>&1 &
 echo $! >> .live/pids
