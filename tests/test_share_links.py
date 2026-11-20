@@ -8,11 +8,13 @@ from __future__ import annotations
 
 import io
 import logging
+from functools import cache
 
 import httpx
 import pandas as pd
 import pytest
 
+from agents.errors import IngestionError
 from tests.fake_network import serve
 from tests.test_workspace_api import _client
 
@@ -20,6 +22,7 @@ CSV = b"order_id,region,amount\n1,North,10.5\n2,South,3.25\n3,North,7.0\n"
 SECRETS = ("SIGSECRET", "TOKSECRET", "RLKEYSECRET", "EKEYSECRET", "1AbCdEfGhIjKlMnOpQrStUvWxYz")
 
 
+@cache   # a workbook carries its creation time: one copy, so an upload and a link match
 def _xlsx() -> bytes:
     buf = io.BytesIO()
     pd.read_csv(io.BytesIO(CSV)).to_excel(buf, index=False)
@@ -186,12 +189,10 @@ def _zip(entries: dict[str, bytes]) -> bytes:
     (_zip({f"x{i}.xml": b"" for i in range(10_001)}), "parts"),
     (_zip({"../../etc/cron.d/x": b"a"}), "parts"),
     (b"a," * 10_001 + b"\n1\n", "columns"),
-    # the reader's own header: past a preamble, '\r' line endings, quoted
-    (b"Sales report\nGenerated 2026-11-20\n" + b"a," * 10_001 + b"\n" + b"1," * 10_001 + b"\n",
-     "column"),   # refused either way: here the layout reads one column
+    # the reader's own header: '\r' line endings, quoted names
     (b"a;" * 10_001 + b"\r" + b"1;" * 10_001 + b"\r", "columns"),
     (b'"a,b",' * 10_001 + b"\n" + b"1," * 10_001 + b"\n", "columns"),
-])
+], ids=["zip-bomb", "zip-parts", "zip-path", "csv-header", "csv-cr", "csv-quoted"])
 def test_a_file_that_would_blow_up_when_read_is_refused_before_it_is(content, why):
     """Uploads and links share the one reader: a workbook is a zip whose parts openpyxl unpacks
     whole (a 50 MB upload can declare gigabytes), and a CSV header can name millions of
@@ -202,6 +203,18 @@ def test_a_file_that_would_blow_up_when_read_is_refused_before_it_is(content, wh
     with pytest.raises(IngestionError) as err:
         _read_bytes(content, suffix)
     assert why in err.value.user_message
+
+
+def test_a_wide_table_behind_a_preamble_never_reads_wide():
+    """The layout may take a preamble's shape (here one column): what is read is never wider
+    than the header the reader chose."""
+    from connectors.csv_connector import _read_bytes
+    content = (b"Sales report\nGenerated 2026-11-20\n" + b"a," * 10_001 + b"\n"
+               + b"1," * 10_001 + b"\n")
+    try:
+        assert _read_bytes(content, ".csv")[0].shape[1] < 10_000
+    except IngestionError:
+        pass   # refused is fine too
 
 
 def test_an_ordinary_workbook_still_reads():

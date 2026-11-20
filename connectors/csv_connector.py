@@ -233,6 +233,14 @@ def _readable_size(content: bytes, suffix: str) -> None:
                                           for p in parts):
             raise IngestionError("workbook parts", "The workbook's parts aren't an Excel "
                                  "workbook's. Save it again from Excel and upload that.")
+    elif suffix in (".csv", ".tsv"):
+        # a cheap first gate before the layout's sniffing (security review): the lines it samples
+        # (any line ending), each under the cap per delimiter; the exact check is the header's
+        # width as the reader takes it (_read_text_table)
+        lines = content[:4 * 2**20].splitlines()[:_SAMPLE_LINES]
+        if any(line.count(d) >= _MAX_COLUMNS for line in lines for d in (b",", b";", b"\t", b"|")):
+            raise IngestionError("too many columns", f"The file has more than {_MAX_COLUMNS:,} "
+                                 "columns, past what can be read.")
 
 
 def _read_bytes(content: bytes, suffix: str) -> tuple[pd.DataFrame, dict]:
