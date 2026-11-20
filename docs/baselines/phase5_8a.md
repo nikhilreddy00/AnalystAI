@@ -1,6 +1,6 @@
 # Phase 5.8a — the source contract + MySQL (2026-11-19)
 
-Wall clock: 3.0 h (first commit 2026-11-19 19:22 → merge pending)
+Wall clock: 3.6 h to merge-ready (first commit 2026-11-19 19:22 → merge pending the user's approval, PR #27)
 Plan mode before it: ~1.5 h (four research agents, a red-team, the user's four decisions and a second
 pass on the execution workflow). Sized at 10.3 h; the breaker (4 h before the query-path step) never
 came near: that step was done at 0.8 h.
@@ -61,7 +61,17 @@ plan-mode step by name:
   table `order_lines`; the overview's five tiles equal the CSV path's exactly (Net sales $310,635.46,
   Orders 2,272, Avg order value $136.72, Units sold 6,548, Return rate 3.9%); the run `completed`; the
   password appears nowhere in the page text; $0.149. Screenshot `.live/phase5_8a_mysql_report.png`.
-- **Security in CI**: ruff `S` on the product, gitleaks, pip-audit (reporting).
+- **Security in CI**: ruff `S` on the product, gitleaks (blocking; its first run flagged the Playwright
+  spec's made-up password: one `.gitleaksignore` fingerprint), pip-audit (reporting); the security job
+  reads only and pins its third-party actions to commits.
+- **Full suite** on the final commit with Postgres and MySQL running locally: 4,052 passed, 2 skipped,
+  3 xfailed (`scripts/suite.py`, 14.8 min). CI: 4 backend shards (with the `mysql:8.4` service),
+  frontend, zero-suites (the mutation gate's `--check`) green.
+- **Mutation gate**: 20 changed functions in `connectors/base.py`, `connectors/sql_connector.py` and
+  `guardrails.py` (now GATED) recorded clean: the first run left ~185 survivors (unasserted refusal
+  words, untested branches, dead code); after tests, deletions and 4 named equivalents (a numeric column
+  never equals '', SQLite is the last dialect row, `None` vs `[]` read only by `if not`, a 15 ms longer
+  timeout), 0 survivors on changed lines.
 
 ## Gates
 - live browser at 1440 px: done (MySQL over the LAN address, production mode, the tiles read against the CSV path)
