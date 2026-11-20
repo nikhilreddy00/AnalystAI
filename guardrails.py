@@ -66,8 +66,6 @@ _SQL_DENY_FUNCS = {"nextval", "setval", "set_config", "query_to_xml", "query_to_
                    "sleep", "benchmark", "get_lock", "release_lock", "release_all_locks",
                    "is_free_lock", "is_used_lock", "load_file", "master_pos_wait",
                    "source_pos_wait", "wait_for_executed_gtid_set"}
-# MySQL's own databases: users and password hashes, live sessions (5.8a)
-_SQL_DENY_SCHEMAS = {"mysql": {"mysql", "performance_schema", "sys"}}
 # /*! … */ and /*M! … */ are MySQL / MariaDB executable comments and /*+ … */ optimizer hints
 # (MAX_EXECUTION_TIME overrides the session timeout): the server runs what sqlglot reads as a
 # comment. Refused anywhere in the raw text, on every dialect, quotes included: any scanner of
@@ -81,7 +79,15 @@ _SQL_DENY_PREFIXES = ("lo_", "dblink", "pg_read", "pg_ls_", "pg_stat_file", "pg_
                       "pg_promote", "pg_switch", "pg_backup", "pg_import")
 
 
-def check_sql_readonly(sql: str, dialect: str | None = None) -> str | None:
+def _system_schemas(dialect: str) -> frozenset[str]:
+    """The engine's own catalogs a model query may not read (users and password hashes, other
+    sessions' queries): its dialect row's system schemas, metadata (information_schema) aside."""
+    from connectors.sql_connector import DIALECTS
+    return frozenset().union(*(d.system_schemas for d in DIALECTS.values() if d.sqlglot == dialect)) \
+        - {"information_schema"}
+
+
+def check_sql_readonly(sql: str, dialect: str | None) -> str | None:
     """Exactly one statement, and it is a read (SELECT / UNION / CTE-select). Parsed, not
     prefix-matched, so `WITH x AS (DELETE ...)` and `SELECT 1; DROP ...` are both caught, as are
     `SELECT ... INTO new_table`, `FOR UPDATE` locks and side-effect functions (`nextval`,
@@ -111,7 +117,7 @@ def check_sql_readonly(sql: str, dialect: str | None = None) -> str | None:
             name = (node.name if isinstance(node, exp.Anonymous) else node.sql_name()).lower()
             if name in _SQL_DENY_FUNCS or name.startswith(_SQL_DENY_PREFIXES):
                 return f"function not allowed: {name}"
-        if isinstance(node, exp.Table) and node.db.lower() in _SQL_DENY_SCHEMAS.get(dialect or "", ()):
+        if isinstance(node, exp.Table) and node.db.lower() in _system_schemas(dialect or ""):
             return f"the database's own tables are not readable: {node.db}"
     return None
 

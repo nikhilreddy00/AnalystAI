@@ -563,11 +563,13 @@ _TYPED_DDL = """CREATE TABLE typed (id INT, active TINYINT(1), amount DECIMAL(12
     stamp DATETIME(6), ts TIMESTAMP NULL, note VARCHAR(40), score DOUBLE)"""
 _TYPED_ROWS = ["(1, 1, 10.50, '2026-01-05', '2026-01-05 10:00:00.123456', '2026-01-05 10:00:00', 'Acme', 1.5)",
                "(2, 0, 3.25, '0000-00-00', '2026-02-01 00:00:00', '2026-02-01 00:00:00', '', -0.0)",
-               "(3, 1, NULL, '2026-03-07', NULL, NULL, 'ACME', NULL)"]
+               "(3, 1, NULL, '2026-03-07', NULL, NULL, 'ACME', NULL)",
+               "(4, 0, 0.10, '2026-03-08', '2026-03-08 09:30:00', NULL, 'Café £5 – Zürich', 2.25)"]
 _TYPED_CSV = """id,active,amount,day,stamp,ts,note,score
 1,True,10.5,2026-01-05,2026-01-05 10:00:00.123456,2026-01-05 10:00:00,Acme,1.5
 2,False,3.25,,2026-02-01 00:00:00,2026-02-01 00:00:00,,0.0
 3,True,,2026-03-07,,,ACME,
+4,False,0.1,2026-03-08,2026-03-08 09:30:00,,Café £5 – Zürich,2.25
 """
 
 

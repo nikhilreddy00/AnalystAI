@@ -21,7 +21,11 @@ actually read-only (`run_readonly` set nothing for any other engine) and any SQL
   parsed with `make_url`; driver and query keys are allowlisted per dialect (`init_command`,
   `local_infile`, `client_flag`, `unix_socket`, `read_default_*`, file-path TLS keys and Postgres
   `host`/`passfile`/`service` are refused); timeouts, `local_infile=False` and TLS are set from code.
-  In production the host must resolve to a public address. No message ever holds the password.
+  In production the host is never this server (loopback), a link-local / cloud metadata address or
+  the app's own store's host, and the driver connects to the address that was checked (DNS
+  rebinding). A LAN address is allowed: a self-hosted company's database sits on its own network
+  (the plan said "public only"; that would refuse the main self-hosted case). No message the user
+  reads holds the password (`without_secrets`, applied where a connection test answers).
 - **Read-only is four layers** — the parse guard, a read-only transaction, a statement timeout with a row
   cap, and the user's read-only database role (the only real boundary; the rest is defence in depth).
   The parse guard refuses MySQL executable comments and optimizer hints (`/*!`, `/*M!`, `/*+`) in the raw

@@ -301,7 +301,7 @@ async def run_sql_agent(question: str, connector: SQLConnector, layer, llm: LLMC
     """Question -> guarded SQL -> result. A write request or write SQL raises GuardrailViolation
     (no retry); fan-out, metric and database errors get one shared guided retry. `conversation`
     (agents.utils.conversation_context) lets a follow-up refer to earlier turns."""
-    engine = connector._engine()
+    engine = await connector.engine()
     dialect = sql_dialect(engine)   # refuses an engine without a dialect row
     if layer and layer.dialect != dialect:   # written for another engine: its SQL would be wrong
         layer = None

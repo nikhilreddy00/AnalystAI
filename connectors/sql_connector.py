@@ -24,13 +24,14 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.pool import NullPool
 
 from agents.errors import GuardrailViolation, IngestionError
-from connectors.base import DataConnector, resolved, truncation_note, without_secrets
+from connectors.base import DataConnector, normalize_frame, resolved, truncation_note
 from guardrails import check_sql_readonly
 
 MAX_ROWS = 10_000
 LOAD_MAX_ROWS = 50_000   # a named table is loaded whole up to this; past it, the load says so
 TIMEOUT_S = 15
 CONNECT_TIMEOUT_S = 10
+_TYPE_CODE, _INTERNAL_SIZE, _MYSQL_TINY = 1, 3, 1   # cursor.description fields; FIELD_TYPE.TINY
 
 
 @dataclass(frozen=True)
@@ -73,7 +74,9 @@ DIALECTS: dict[str, Dialect] = {
         connect_args={"connect_timeout": CONNECT_TIMEOUT_S, "read_timeout": TIMEOUT_S + 15,
                       "local_infile": False, "init_command": "SET time_zone = '+00:00'"},
         one_database=True,
-        yes_no=lambda c: c[1] == 1 and c[3] == 1),   # TINY of display width 1: BOOL / TINYINT(1)
+        # a DB-API description is (name, type_code, display_size, internal_size, …): PyMySQL's
+        # TINY type (1) of width 1 is BOOL / TINYINT(1)
+        yes_no=lambda col: col[_TYPE_CODE] == _MYSQL_TINY and col[_INTERNAL_SIZE] == 1),
     "sqlite": Dialect(   # development only (refused in production): no statement timeout
         sqlglot="sqlite", driver="", drivers=frozenset({""}), query_keys=frozenset(),
         begin=("PRAGMA query_only = ON",), end=("PRAGMA query_only = OFF",)),
@@ -85,15 +88,11 @@ _UNREADABLE = ("The connection string couldn't be read. Use the form "
                "URL-encoded, e.g. %40 for @).")
 
 
-def _refuse(reason: str, message: str) -> IngestionError:
-    return IngestionError(reason, message)
-
-
 def dialect_of(engine) -> Dialect:
     """The engine's row, or IngestionError: nothing runs on an engine without one."""
     if (d := DIALECTS.get(engine.dialect.name)) is None:
-        raise _refuse(f"no dialect {engine.dialect.name}",
-                      f"{engine.dialect.name} databases aren't supported (PostgreSQL and MySQL are).")
+        raise IngestionError(f"no dialect {engine.dialect.name}", f"{engine.dialect.name} "
+                             "databases aren't supported (PostgreSQL and MySQL are).")
     return d
 
 
@@ -107,22 +106,22 @@ def safe_url(conn_str: str) -> tuple[URL, Dialect]:
         url = make_url(conn_str)
         url.port   # a raw '@' or ':' in the password lands in the port; reading it raises
     except Exception:   # noqa: BLE001 - the parser's message quotes the string
-        raise _refuse("unreadable connection string", _UNREADABLE) from None
+        raise IngestionError("unreadable connection string", _UNREADABLE) from None
     engine, _, driver = url.drivername.partition("+")
     engine = _ALIASES.get(engine, engine)
     d = DIALECTS.get(engine)
     if d is None or driver not in d.drivers:
-        raise _refuse(f"no dialect {url.drivername}",
+        raise IngestionError(f"no dialect {url.drivername}",
                       f"'{url.drivername}' isn't a supported database. Use postgresql:// or "
                       "mysql:// (SQLite for local development).")
     if extra := sorted(set(url.query) - d.query_keys):
-        raise _refuse("connection string options", "These connection string options aren't "
+        raise IngestionError("connection string options", "These connection string options aren't "
                       f"allowed: {', '.join(extra)}. Allowed: {', '.join(sorted(d.query_keys)) or 'none'}.")
     from api.config import settings
     url = url.set(drivername=f"{engine}+{d.driver}" if d.driver else engine)
     if settings.app_env == "production":
         if engine == "sqlite":
-            raise _refuse("sqlite in production", "SQLite is for development only. Connect a "
+            raise IngestionError("sqlite in production", "SQLite is for development only. Connect a "
                           "PostgreSQL or MySQL database instead.")
         url = d.pin(url, _checked_address(url))
     return url, d
@@ -140,19 +139,24 @@ def _checked_address(url: URL) -> str:
     not the name again (DNS rebinding)."""
     from api.config import settings
     if not url.host:
-        raise _refuse("no host", "The connection string has no host.")
+        raise IngestionError("no host", "The connection string has no host.")
     try:
         ips = [_plain(ip) for ip in resolved(url.host)]
-        own = make_url(settings.database_url)
+    except ValueError:
+        ips = []
+    if not ips:
+        raise IngestionError("host not found", f"The database host '{url.host}' wasn't found.")
+    own = make_url(settings.database_url)
+    # the app's own store not resolving is this server's problem, not the user's host: unchecked
+    # then, and loopback / link-local still refused
+    try:
         own_ips = {_plain(ip) for ip in resolved(own.host)} if own.host else set()
     except ValueError:
-        raise _refuse("host not found", f"The database host '{url.host}' wasn't found.") from None
-    if not ips:
-        raise _refuse("host not found", f"The database host '{url.host}' wasn't found.")
+        own_ips = set()
     for ip in ips:
         if ip.is_loopback or ip.is_link_local or ip.is_unspecified or ip.is_multicast or \
                 ip in own_ips:
-            raise _refuse("host refused", f"The database host '{url.host}' isn't allowed "
+            raise IngestionError("host refused", f"The database host '{url.host}' isn't allowed "
                           "(it is this server itself, or a reserved address).")
     return str(ips[0])
 
@@ -182,7 +186,7 @@ def sql_dialect(engine) -> str:
     return dialect_of(engine).sqlglot
 
 
-def _assert_single_select(sql: str, dialect: str | None = None) -> str:
+def _assert_single_select(sql: str, dialect: str) -> str:
     """Reject anything that isn't a single read query (parsed, not prefix-matched)."""
     sql = sql.strip().rstrip(";").strip()
     reason = check_sql_readonly(sql, dialect=dialect)
@@ -199,12 +203,14 @@ class QueryResult:
     yes_no: frozenset[str] = frozenset()   # columns the database types as a yes/no (TINYINT(1))
 
     def frame(self) -> pd.DataFrame:
-        """The one place a database result becomes a frame (ADR-0010): what a CSV of the same
-        table gives. NUMERIC/DECIMAL → float (coerce_float), a yes/no type → True/False, a
-        zero date ('0000-00-00', legacy MySQL) → blank, DATE objects → datetimes."""
+        """The one place a database result becomes a frame (ADR-0010), a table load and a
+        question's result alike: what a CSV of the same table gives. NUMERIC/DECIMAL → float
+        (coerce_float), a yes/no type holding only 0/1 → True/False (a TINYINT(1) may hold 2: then
+        it stays a number), a zero date ('0000-00-00', legacy MySQL) → blank, DATE objects →
+        datetimes; then the load rule every source ends in (normalize_frame)."""
         df = pd.DataFrame.from_records(self.rows, columns=self.columns, coerce_float=True)
         for col in df.columns:
-            if col in self.yes_no:
+            if col in self.yes_no and df[col].dropna().isin((0, 1)).all():
                 df[col] = df[col].map({1: True, 0: False})
                 continue
             if df[col].dtype != object:
@@ -213,7 +219,7 @@ class QueryResult:
             values = values[~values.isin(_ZERO_DATES)]
             if len(values) and values.map(lambda v: isinstance(v, datetime.date)).all():
                 df[col] = pd.to_datetime(df[col].where(~df[col].isin(_ZERO_DATES)))
-        return df
+        return normalize_frame(df)
 
 
 _ZERO_DATES = ("0000-00-00", "0000-00-00 00:00:00")
@@ -241,15 +247,8 @@ def run_readonly(engine, sql: str, max_rows: int = MAX_ROWS,
 
 
 class SQLConnector(DataConnector):
-    def __init__(self, config) -> None:
-        super().__init__(config)
-        from api.config import settings
-        if settings.app_env == "production" and \
-                (config.connection_string or "").lower().startswith("sqlite"):
-            raise IngestionError("sqlite in production", "SQLite is for development only. "
-                                 "Connect a PostgreSQL or MySQL database instead.")
-
     def _engine(self):
+        """Sync (production resolves the host): async callers use `engine()`."""
         conn_str = self.config.connection_string
         if not conn_str:
             raise ValueError("connection_string is required for SQL connector")
@@ -257,6 +256,10 @@ class SQLConnector(DataConnector):
         # NullPool: a connector lives for one request and builds an engine per call, so a pool
         # would leave idle connections open on the user's database (measured: 4 after 5 queries).
         return create_engine(url, poolclass=NullPool, connect_args=d.connect_args)
+
+    async def engine(self):
+        """The engine, built off the event loop (the production host check is a DNS lookup)."""
+        return await asyncio.to_thread(self._engine)
 
     def schema_context(self, engine) -> str:
         """Introspected tables and columns, for when no semantic layer is configured."""
@@ -273,12 +276,12 @@ class SQLConnector(DataConnector):
 
     async def query(self, sql: str, max_rows: int = MAX_ROWS) -> QueryResult:
         """Guard then execute read-only. Raises GuardrailViolation for anything but one read."""
-        engine = self._engine()
+        engine = await self.engine()
         sql = _assert_single_select(sql, sql_dialect(engine))
         return await asyncio.to_thread(run_readonly, engine, sql, max_rows)
 
     async def _read(self) -> pd.DataFrame:
-        engine = self._engine()
+        engine = await self.engine()
         table = self.config.table_name
 
         if not table:
@@ -313,7 +316,7 @@ class SQLConnector(DataConnector):
 
     async def test_connection(self) -> tuple[bool, str]:
         try:
-            engine = self._engine()
+            engine = await self.engine()
 
             def _probe() -> None:
                 with engine.connect() as conn:
@@ -327,5 +330,5 @@ class SQLConnector(DataConnector):
                 return True, ("Connection successful, but the semantic layer does not match this "
                               "database: " + "; ".join(stale[:5]))
             return True, "Connection successful"
-        except Exception as e:
-            return False, without_secrets(getattr(e, "user_message", str(e)), self.config)
+        except Exception as e:   # the route says it, through without_secrets (one owner)
+            return False, getattr(e, "user_message", str(e))

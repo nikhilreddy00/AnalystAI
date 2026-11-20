@@ -79,10 +79,12 @@ def test_sqlite_is_refused_in_production(monkeypatch):
     from api.config import settings
     monkeypatch.setattr(settings, "app_env", "production")
     with pytest.raises(IngestionError) as err:
-        _sql("sqlite:///x.db")
+        _sql("sqlite:///x.db")._engine()
+    with pytest.raises(IngestionError):
+        _sql("sqlite+pysqlite:///x.db")._engine()   # any spelling (Superset CVE-2023-39265)
     assert "SQLite" in err.value.user_message
     monkeypatch.setattr(settings, "app_env", "development")
-    assert _sql("sqlite:///x.db") is not None
+    assert _sql("sqlite:///x.db")._engine() is not None
 
 
 async def test_connectors_test_route_says_why_sqlite_is_refused(monkeypatch):
@@ -122,7 +124,8 @@ DIALECT_NAMES = ["sqlite", "postgresql", "mysql"]
 
 @pytest.mark.parametrize("name", DIALECT_NAMES)
 @pytest.mark.parametrize("write", ["INSERT INTO ro_t VALUES (2)", "DROP TABLE ro_t",
-                                   "DELETE FROM ro_t", "UPDATE ro_t SET a = 3"])
+                                   "DELETE FROM ro_t", "UPDATE ro_t SET a = 3",
+                                   "TRUNCATE TABLE ro_t", "CREATE TABLE ro_new (a INTEGER)"])
 def test_a_write_through_run_readonly_fails_on_every_dialect(tmp_path, name, write):
     """Layer 2 alone (the parse guard is skipped: run_readonly is called directly), on the real
     database: a write fails and the table is untouched."""
@@ -208,13 +211,12 @@ def test_the_connection_strings_users_copy_are_accepted(url):
                                  "postgresql://analyst:s3cr%40t-pw@127.0.0.1:1/x"])
 async def test_a_password_is_never_in_a_message(url):
     """A malformed string (a raw '@' / ':' in the password) or a failed connect: neither the
-    connector's nor the route's message holds the password."""
+    route's message (the one place a connection test reaches the user) holds the password."""
     from api.routes.connectors import test_connection
     config = ConnectorConfig(type=ConnectorType.SQL, connection_string=url)
-    ok, message = await get_connector(config).test_connection()
     route = await test_connection(config, None)
-    for text in (message, route.message):
-        assert not ok and "w0rd" not in text and "s3cr" not in text and "ss:w0rd" not in text
+    assert not route.success
+    assert "w0rd" not in route.message and "s3cr" not in route.message
 
 
 @pytest.mark.parametrize("host,refused", [("127.0.0.1", True), ("169.254.169.254", True),
@@ -259,6 +261,18 @@ def test_in_production_the_connection_goes_to_the_address_that_was_checked(monke
     engine = _sql(f"{scheme}://u:p@rebind.example:5432/db")._engine()
     pinned = {**engine.url.query, "host": engine.url.host}
     assert "93.184.216.34" in (pinned.get("hostaddr"), pinned["host"])
+
+
+def test_a_question_result_takes_the_same_load_rule_as_a_table_load():
+    """ADR-0010 "values are normalised once": a question's rows (QueryResult.frame, the SQL
+    agent's path) get the rule a table load does: text dates parse, '' is a blank. A TINYINT(1)
+    that holds a 2 is a number, not a yes/no with the 2 lost."""
+    from connectors.sql_connector import QueryResult
+    df = QueryResult(["day", "note", "flag", "level"],
+                     [("2026-01-05", "", 1, 2), ("2026-02-01", "x", 0, 0)], False,
+                     frozenset({"flag", "level"})).frame()
+    assert str(df["day"].dtype).startswith("datetime64") and df["note"].isna().tolist() == [True, False]
+    assert df["flag"].tolist() == [True, False] and df["level"].tolist() == [2, 0]
 
 
 async def test_a_named_table_load_asks_the_database_for_at_most_the_cap(tmp_path, monkeypatch):
