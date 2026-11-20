@@ -1,0 +1,29 @@
+id: e2e-99
+domain: retail
+source: mysql
+sql_question: true
+dataset:
+  name: simpson
+  seed: 1
+question: What is the conversion rate of the treatment group versus control?
+overview_done: true
+checks:
+- kind: number_in_answer
+  truth_key: pooled_conversion.treatment
+  rel_tol: 0.02
+  scales:
+  - 1
+  - 100
+- kind: number_in_answer
+  truth_key: pooled_conversion.control
+  rel_tol: 0.02
+  scales:
+  - 1
+  - 100
+hard_rules:
+- charts_lint_clean
+- charts_have_rationale
+- non_empty_or_error
+label_note: '5.8a audit pass 2: e2e-18 answered by the SQL agent in a MySQL database (no table
+  named): the question path the audit''s fixes touched (the table allowlist, columns by position,
+  the session setup) had no paid run on MySQL.'

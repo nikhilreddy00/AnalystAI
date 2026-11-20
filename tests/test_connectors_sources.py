@@ -714,7 +714,13 @@ _NOT_LISTED = {
     "sqlite": ["SELECT * FROM sqlite_master"],
     "postgresql": ["SELECT * FROM pg_shadow", "SELECT query FROM pg_stat_activity",
                    "SELECT * FROM PG_AUTHID", "SELECT * FROM information_schema.tables",
-                   "SELECT * FROM mine m JOIN pg_roles r ON true"],
+                   "SELECT * FROM mine m JOIN pg_roles r ON true",
+                   # security review of the fix: a CTE named after a table reads the real one
+                   # inside its own body; a function read as a table, or a table read by name
+                   "WITH pg_shadow AS (SELECT * FROM pg_shadow) SELECT * FROM pg_shadow",
+                   "SELECT * FROM pg_stat_get_activity(NULL) AS s",
+                   "SELECT table_to_xml('pg_authid', true, false, '')",
+                   "SELECT * FROM mine m, LATERAL (SELECT * FROM pg_authid) z"],
     "mysql": ["SELECT * FROM mysql.user", "SELECT * FROM other_5_8a.theirs",
               "SELECT * FROM information_schema.processlist",
               "SELECT * FROM `other_5_8a`.`theirs`",
@@ -733,7 +739,7 @@ async def test_a_question_reads_only_the_tables_the_connection_lists(tmp_path, n
         await conn.query(sql)
     said = err.value.user_message   # the parse guard refuses a qualified system table first
     assert "only the connected database's tables can be read" in said or \
-        "the database's own tables are not readable" in said
+        "the database's own tables are not readable" in said or "function not allowed" in said
 
 
 @pytest.mark.parametrize("name", DIALECT_NAMES)
@@ -743,7 +749,9 @@ async def test_a_question_reads_its_own_tables_by_any_spelling(tmp_path, name):
     for sql in ["SELECT a FROM mine", f"SELECT a FROM {quote('mine')}",
                 "WITH x AS (SELECT a FROM mine) SELECT a FROM x",
                 "SELECT m.a FROM mine AS m WHERE m.a IN (SELECT a FROM mine)",
-                "SELECT COUNT(*) FROM (SELECT a FROM mine) AS sub"]:
+                "SELECT COUNT(*) FROM (SELECT a FROM mine) AS sub",
+                "WITH RECURSIVE r AS (SELECT 1 AS n UNION ALL SELECT n + 1 FROM r WHERE n < 1) "
+                "SELECT a FROM mine JOIN r ON r.n = mine.a"]:
         assert (await conn.query(sql)).rows == [(1,)], sql
 
 

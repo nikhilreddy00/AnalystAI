@@ -21,11 +21,12 @@ from dataclasses import dataclass, field
 
 import pandas as pd
 import sqlglot
-from sqlglot import exp
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.engine import URL, make_url
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.pool import NullPool
+from sqlglot import exp
+from sqlglot.optimizer.scope import traverse_scope
 
 from agents.errors import AgentError, GuardrailViolation, IngestionError
 from connectors.base import DataConnector, normalize_frame, resolved, truncation_note
@@ -213,16 +214,27 @@ def _assert_single_select(sql: str, dialect: str) -> str:
 
 def _unlisted_tables(sql: str, d: Dialect, listed) -> list[str]:
     """The tables `sql` reads that the connection doesn't list (`_tables`: what may be read, one
-    rule for a load and a question). A CTE's name and a set-returning function aren't tables."""
+    rule for a load and a question). A name is a CTE only where sqlglot's scopes resolve it to one
+    (`WITH pg_shadow AS (SELECT * FROM pg_shadow)` reads the real one inside); the only function
+    read as a table is generate_series (pg_stat_get_activity(...) reads the server's sessions)."""
     tree = sqlglot.parse_one(sql, read=d.sqlglot)
+    try:
+        real = {id(s) for scope in traverse_scope(tree) for s in scope.sources.values()
+                if isinstance(s, exp.Table)}
+    except sqlglot.errors.SqlglotError:   # fail closed: tables we can't resolve aren't read
+        return ["(a query whose tables couldn't be resolved)"]
     ctes = {c.alias_or_name.lower() for c in tree.find_all(exp.CTE)}
     known = {name.lower() for name in listed}
     out = []
     for t in tree.find_all(exp.Table):
-        if not isinstance(t.this, exp.Identifier):   # generate_series(1, 3), unnest(...)
+        if isinstance(t.this, exp.ExplodingGenerateSeries):
+            continue
+        if not isinstance(t.this, exp.Identifier):
+            out.append(f"{t.this.sql(d.sqlglot).split('(')[0]}()")
             continue
         name = ".".join(p for p in (t.catalog, t.db, t.name) if p)
-        if name.lower() not in known and not (name == t.name and t.name.lower() in ctes):
+        cte_ref = id(t) not in real and name == t.name and t.name.lower() in ctes
+        if not cte_ref and name.lower() not in known:
             out.append(name)
     return out
 

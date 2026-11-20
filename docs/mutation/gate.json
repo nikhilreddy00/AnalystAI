@@ -367,10 +367,6 @@
   ],
   "hash": "7f7baff1f582e9b8"
  },
- "connectors/sql_connector.py::_plain": {
-  "equivalents": [],
-  "hash": "3db42b4f2eacc063"
- },
  "connectors/sql_connector.py::_tables": {
   "equivalents": [],
   "hash": "95c0422dc73d9ae1"

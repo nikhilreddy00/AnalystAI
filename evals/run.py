@@ -248,6 +248,8 @@ def source_config(case: dict, df: pd.DataFrame, csv: str) -> ConnectorConfig:
                 conn.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{schema}"'))
             df.to_sql(table, conn, index=False, if_exists="replace", schema=schema)
         engine.dispose()
+        if case.get("sql_question"):   # no table named: the question is answered in the database
+            return ConnectorConfig(type=ConnectorType.SQL, connection_string=url)
         return ConnectorConfig(type=ConnectorType.SQL, connection_string=url,
                                table_name=f"{schema}.{table}" if schema else table)
     path = UPLOADS / f"{stem}.{source}"

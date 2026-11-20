@@ -76,7 +76,9 @@ _EXECUTABLE_COMMENT = re.compile(r"/\*(!|M!|\+)")
 _SQL_DENY_PREFIXES = ("lo_", "dblink", "pg_read", "pg_ls_", "pg_stat_file", "pg_sleep",
                       "pg_advisory", "pg_terminate", "pg_cancel", "pg_reload", "pg_rotate",
                       "pg_file", "pg_logical", "pg_replication", "pg_create", "pg_drop",
-                      "pg_promote", "pg_switch", "pg_backup", "pg_import")
+                      "pg_promote", "pg_switch", "pg_backup", "pg_import",
+                      # other sessions' queries and the server's state (5.8a audit 2)
+                      "pg_stat_get", "pg_show")
 
 
 def _system_schemas(dialect: str | None) -> frozenset[str]:
@@ -116,7 +118,8 @@ def check_sql_readonly(sql: str, dialect: str | None) -> str | None:
             return "row locks (FOR UPDATE/SHARE) are not allowed"
         if isinstance(node, exp.Anonymous):   # every denied name parses as one (the corpora)
             name = node.name.lower()
-            if name in _SQL_DENY_FUNCS or name.startswith(_SQL_DENY_PREFIXES):
+            if name in _SQL_DENY_FUNCS or name.startswith(_SQL_DENY_PREFIXES) or \
+                    "_to_xml" in name:   # table_to_xml('pg_authid', …) reads a table by name
                 return f"function not allowed: {name}"
         if isinstance(node, exp.Table) and node.db.lower() in system:
             return f"the database's own tables are not readable: {node.db}"
