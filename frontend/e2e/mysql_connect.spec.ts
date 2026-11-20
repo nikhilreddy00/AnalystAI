@@ -69,3 +69,29 @@ test("the password field hides the password and sends it encoded in the string",
   await expect(page.locator("body")).not.toContainText(pw);
   await expect(page.locator("body")).not.toContainText(encodeURIComponent(pw));
 });
+
+// 5.8b review: a password with no user to go with was dropped without a word; and a password
+// typed on the SQL tab stayed in the form's state, hidden, after switching tabs and back.
+test("a password is never dropped silently nor kept across tabs", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await login(page);
+  const sent: Record<string, unknown>[] = [];
+  await page.route("**/connectors/test", async (route) => {
+    sent.push(route.request().postDataJSON());
+    await route.fulfill({ json: { success: false, message: "Login failed" } });
+  });
+  await page.goto("/chat");
+  await page.getByRole("button", { name: "SQL Database" }).click();
+  await page.getByLabel("Connection string").fill("postgresql://db.example.com:5432/acme");
+  await page.getByLabel("Password", { exact: true }).fill("s3cret");
+  await page.getByRole("button", { name: "Test and connect" }).click();
+  await expect(page.getByRole("status")).toContainText("Add the user to the connection string");
+  expect(sent).toEqual([]);
+  await page.getByRole("button", { name: "REST API" }).click();
+  await page.getByRole("button", { name: "SQL Database" }).click();
+  await page.getByLabel("Connection string").fill("postgresql://bob@db.example.com:5432/acme");
+  await page.getByRole("button", { name: "Test and connect" }).click();
+  await expect.poll(() => sent.length).toBe(1);
+  expect(sent[0]).toEqual(expect.objectContaining({
+    connection_string: "postgresql://bob@db.example.com:5432/acme" }));
+});

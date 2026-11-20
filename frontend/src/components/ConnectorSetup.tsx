@@ -165,7 +165,13 @@ export default function ConnectorSetup({ onConnectorReady }: ConnectorSetupProps
     try {
       const body: ConnectorConfig = { type, ...config } as ConnectorConfig;
       if (type === "sql" && body.connection_string) {
-        body.connection_string = withPassword(body.connection_string, password);
+        const withIt = withPassword(body.connection_string, password);
+        if (password && withIt === body.connection_string) {
+          // never dropped without a word (5.8b review): a password needs a user to go with
+          setStatus({ ok: false, message: "Add the user to the connection string (user@host) so the password can go with it." });
+          return;
+        }
+        body.connection_string = withIt;
       }
 
       const res = await fetch(`${API_URL}/connectors/test`, {
@@ -197,7 +203,7 @@ export default function ConnectorSetup({ onConnectorReady }: ConnectorSetupProps
               key={key}
               type="button"
               aria-pressed={active}
-              onClick={() => { setType(key); setConfig({}); setStatus(null); if (key !== "csv") setPreview(null); }}
+              onClick={() => { setType(key); setConfig({}); setPassword(""); setStatus(null); if (key !== "csv") setPreview(null); }}
               className={`flex items-center justify-center gap-1.5 rounded px-2 py-1.5 text-xs font-medium ${
                 active ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
               }`}
