@@ -94,10 +94,137 @@ async def test_connectors_test_route_says_why_sqlite_is_refused(monkeypatch):
     assert not r.success and "SQLite" in r.message and "ingestion:" not in r.message
 
 
-def test_mysql_says_it_is_planned():
+# ── 3b. every dialect (ADR-0010): read-only and timed on its real database, its connection
+# string allowlisted, its password never said. One test per property over every dialect row. ──
+
+def _db_urls(tmp_path) -> dict[str, str]:
+    """A scratch database per dialect: SQLite always, Postgres and MySQL where CI (or a local
+    run) names one. A dialect without one here is skipped, never passed."""
+    import os
+    urls = {"sqlite": f"sqlite:///{tmp_path / 'ro.sqlite'}"}
+    for name, env in (("postgresql", "TEST_PG_URL"), ("mysql", "TEST_MYSQL_URL")):
+        if os.environ.get(env):
+            urls[name] = os.environ[env]
+    return urls
+
+
+def _each_dialect(tmp_path, name):
+    from connectors.sql_connector import DIALECTS
+    assert name in DIALECTS, f"no dialect row: {name}"
+    url = _db_urls(tmp_path).get(name)
+    if not url:
+        pytest.skip(f"no {name} database here (CI sets one)")
+    return url
+
+
+DIALECT_NAMES = ["sqlite", "postgresql", "mysql"]
+
+
+@pytest.mark.parametrize("name", DIALECT_NAMES)
+@pytest.mark.parametrize("write", ["INSERT INTO ro_t VALUES (2)", "DROP TABLE ro_t",
+                                   "DELETE FROM ro_t", "UPDATE ro_t SET a = 3"])
+def test_a_write_through_run_readonly_fails_on_every_dialect(tmp_path, name, write):
+    """Layer 2 alone (the parse guard is skipped: run_readonly is called directly), on the real
+    database: a write fails and the table is untouched."""
+    from sqlalchemy import text
+
+    from connectors.sql_connector import SQLConnector, run_readonly
+    url = _each_dialect(tmp_path, name)
+    engine = SQLConnector(ConnectorConfig(type=ConnectorType.SQL, connection_string=url))._engine()
+    with engine.begin() as c:
+        c.execute(text("DROP TABLE IF EXISTS ro_t"))
+        c.execute(text("CREATE TABLE ro_t (a INTEGER)"))
+        c.execute(text("INSERT INTO ro_t VALUES (1)"))
+    with pytest.raises(Exception):
+        run_readonly(engine, write)
+    with engine.connect() as c:
+        assert c.execute(text("SELECT a FROM ro_t")).fetchall() == [(1,)]
+
+
+@pytest.mark.parametrize("name,slow", [("postgresql", "SELECT pg_sleep(20)"),
+                                       ("mysql", "SELECT SLEEP(20)")])
+def test_a_slow_query_stops_at_the_timeout(tmp_path, name, slow):
+    """Layer 3 on the real database. MySQL's SLEEP cut by max_execution_time returns 1 without
+    raising, so the check is the time it took."""
+    import time
+
+    from connectors.sql_connector import SQLConnector, run_readonly
+    url = _each_dialect(tmp_path, name)
+    engine = SQLConnector(ConnectorConfig(type=ConnectorType.SQL, connection_string=url))._engine()
+    start = time.monotonic()
+    try:
+        run_readonly(engine, slow, timeout_s=1)
+    except Exception:
+        pass
+    assert time.monotonic() - start < 5
+
+
+@pytest.mark.parametrize("url", ["mssql+pymssql://u:p@h/db", "oracle+oracledb://u:p@h/db",
+                                 "mysql+mysqldb://u:p@h/db", "sqlite+pysqlite:///x.db",
+                                 "h2:./x", "postgresql+pg8000://u:p@h/db", "not a url"])
+def test_an_engine_or_driver_without_a_dialect_row_is_refused(url):
+    """Fail closed: an engine (or a driver of a known engine) the dialect table doesn't name is
+    refused before any connection (Superset CVE-2023-39265 passed `sqlite+pysqlite://` by a
+    `sqlite://` blocklist)."""
+    with pytest.raises(IngestionError):
+        _sql(url)._engine()
+
+
+def test_run_readonly_refuses_an_engine_it_has_no_row_for():
+    from sqlalchemy import create_engine as ce
+
+    from connectors.sql_connector import run_readonly
+    with pytest.raises(IngestionError):
+        run_readonly(ce("mssql+pymssql://u:p@h/db"), "SELECT 1")
+
+
+@pytest.mark.parametrize("url", [
+    "mysql+pymysql://u:p@h/db?init_command=DROP%20TABLE%20t", "mysql+pymysql://u:p@h/db?local_infile=1",
+    "mysql+pymysql://u:p@h/db?client_flag=65536", "mysql+pymysql://u:p@h/db?unix_socket=/tmp/x",
+    "mysql+pymysql://u:p@h/db?read_default_file=/etc/my.cnf", "mysql+pymysql://u:p@h/db?ssl_key=/k",
+    "postgresql://u:p@h/db?host=/var/run/postgresql", "postgresql://u:p@h/db?passfile=/x",
+    "postgresql://u:p@h/db?service=x", "postgresql://u:p@h/db?sslkey=/k",
+    "postgresql://u:p@h/db?options=-c%20default_transaction_read_only%3Doff"])
+def test_a_connection_string_key_outside_the_allowlist_is_refused(url):
+    """Driver options in the URL reach the driver (PyMySQL runs init_command on connect)."""
     with pytest.raises(IngestionError) as err:
-        _sql("mysql://u:p@h/db")._engine()
-    assert "Phase 5.8" in err.value.user_message
+        _sql(url)._engine()
+    assert "p@h" not in err.value.user_message
+
+
+@pytest.mark.parametrize("url", [
+    "postgresql://u:p@ep-x.us-east-2.aws.neon.tech/db?sslmode=require&channel_binding=require",
+    "postgres://u:p@db.abc.supabase.co:5432/postgres", "postgresql+asyncpg://u:p@h/db",
+    "postgresql+psycopg://u:p@h/db?sslmode=verify-full&connect_timeout=5",
+    "mysql://u:p@h/db", "mysql+pymysql://u:p@h:3306/db?charset=utf8mb4"])
+def test_the_connection_strings_users_copy_are_accepted(url):
+    """Neon's and Supabase's copied strings, stored live configs (`postgres://`, `+asyncpg`)."""
+    assert _sql(url)._engine() is not None
+
+
+@pytest.mark.parametrize("url", ["mysql+pymysql://analyst:p@ss:w0rd@db.example.com/x",
+                                 "postgresql://analyst:p@ss:w0rd@db.example.com/x",
+                                 "postgresql://analyst:s3cr%40t-pw@127.0.0.1:1/x"])
+async def test_a_password_is_never_in_a_message(url):
+    """A malformed string (a raw '@' / ':' in the password) or a failed connect: neither the
+    connector's nor the route's message holds the password."""
+    from api.routes.connectors import test_connection
+    config = ConnectorConfig(type=ConnectorType.SQL, connection_string=url)
+    ok, message = await get_connector(config).test_connection()
+    route = await test_connection(config, None)
+    for text in (message, route.message):
+        assert not ok and "w0rd" not in text and "s3cr" not in text and "ss:w0rd" not in text
+
+
+async def test_a_named_table_load_asks_the_database_for_at_most_the_cap(tmp_path, monkeypatch):
+    """Drivers buffer a whole result before fetchmany: the load's SQL bounds the rows itself."""
+    import connectors.sql_connector as sc
+    seen = []
+    real = sc.run_readonly
+    monkeypatch.setattr(sc, "run_readonly", lambda e, sql, *a, **k: seen.append(sql) or real(
+        e, sql, *a, **k))
+    await _sql(_sqlite(tmp_path, pd.DataFrame({"a": [1]}))).load()
+    assert seen[0].endswith(f"LIMIT {sc.LOAD_MAX_ROWS + 1}")
 
 
 # ── 4. Sheets on pandas 3 ──────────────────────────────────────────────────────────────────

@@ -557,6 +557,49 @@ async def test_every_source_reads_the_same_as_the_csv(name, source, tmp_path, mo
         assert _answers(got, gc) == _answers(want, wc), source
 
 
+# The domain datasets reach a database as text and float64 (source_config writes the CSV-read
+# frame), so they never meet a database's own types: this table does, written with real DDL.
+_TYPED_DDL = """CREATE TABLE typed (id INT, active TINYINT(1), amount DECIMAL(12,2), day DATE,
+    stamp DATETIME(6), ts TIMESTAMP NULL, note VARCHAR(40), score DOUBLE)"""
+_TYPED_ROWS = ["(1, 1, 10.50, '2026-01-05', '2026-01-05 10:00:00.123456', '2026-01-05 10:00:00', 'Acme', 1.5)",
+               "(2, 0, 3.25, '0000-00-00', '2026-02-01 00:00:00', '2026-02-01 00:00:00', '', -0.0)",
+               "(3, 1, NULL, '2026-03-07', NULL, NULL, 'ACME', NULL)"]
+_TYPED_CSV = """id,active,amount,day,stamp,ts,note,score
+1,True,10.5,2026-01-05,2026-01-05 10:00:00.123456,2026-01-05 10:00:00,Acme,1.5
+2,False,3.25,,2026-02-01 00:00:00,2026-02-01 00:00:00,,0.0
+3,True,,2026-03-07,,,ACME,
+"""
+
+
+async def test_a_databases_own_types_read_as_the_csv_of_the_same_table():
+    """TINYINT(1) is a yes/no, DECIMAL a number, a zero date and '' are blanks, a TIMESTAMP its
+    UTC wall time, -0.0 is 0.0, case is kept ('Acme' ≠ 'ACME'): the frame a CSV of the same
+    table gives, dtypes included."""
+    from sqlalchemy import create_engine as ce
+    from sqlalchemy import text
+
+    from connectors.csv_connector import _read_bytes
+    url = os.environ.get("TEST_MYSQL_URL")
+    if not url:
+        pytest.skip("TEST_MYSQL_URL not set")
+    with ce(url).begin() as c:
+        c.execute(text("SET SESSION sql_mode = ''"))   # legacy dumps hold zero dates
+        c.execute(text("SET SESSION time_zone = '+00:00'"))
+        c.execute(text("DROP TABLE IF EXISTS typed"))
+        c.execute(text(_TYPED_DDL))
+        c.execute(text("INSERT INTO typed VALUES " + ", ".join(_TYPED_ROWS)))
+    got = await _sql_connector(url, "typed").load()
+    want = _read_bytes(_TYPED_CSV.encode(), ".csv")[0]
+    pd.testing.assert_frame_equal(got, want, check_exact=True)
+
+
+def _sql_connector(url: str, table: str):
+    from connectors.base import get_connector
+    from orchestrator.state import ConnectorConfig, ConnectorType
+    return get_connector(ConnectorConfig(type=ConnectorType.SQL, connection_string=url,
+                                         table_name=table))
+
+
 # ── Truth: healthcare (Domain 3) ──────────────────────────────────────────────────────────────
 
 def test_inpatient_tiles_are_the_truth():
