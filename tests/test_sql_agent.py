@@ -180,6 +180,21 @@ async def test_connection_test_reports_a_stale_semantic_layer(connector, monkeyp
     assert ok and "gone: table gone not found" in message
 
 
+async def test_a_layer_written_for_another_engine_is_reported_and_not_used(
+        recorded_llm, connector, monkeypatch):
+    """A Postgres layer on a MySQL (here SQLite) connection would have the model write the wrong
+    SQL: the connection test says so, and questions are answered from the live schema (5.8a)."""
+    import semantic_layer
+    pg_layer = LAYER.model_copy(update={"dialect": "postgres"})
+    monkeypatch.setattr(semantic_layer, "configured_layer", lambda: pg_layer)
+    ok, message = await connector.test_connection()
+    assert ok and "postgres" in message and "sqlite" in message
+    recorded_llm.responses.append(_answer("SELECT COUNT(*) FROM orders"))
+    await sql_agent.run_sql_agent("how many orders", connector, pg_layer, recorded_llm)
+    prompt = recorded_llm.calls[0]["messages"][0]["content"]
+    assert "Dialect: sqlite" in prompt and "<untrusted_data>" in prompt   # introspected, not the layer
+
+
 def test_context_without_a_conversation_is_byte_identical():
     """The 50 standalone SQL eval cases see exactly the Phase 4 prompt (no re-run needed)."""
     bare = sql_agent.build_context("revenue by status", LAYER, "sqlite").render()

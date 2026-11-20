@@ -47,6 +47,9 @@ class Dialect:
     connect_args: dict = field(default_factory=dict)
     one_database: bool = False       # a "schema" is a database: list only the URL's own
     yes_no: Callable[[tuple], bool] | None = None   # a cursor column the engine types as a yes/no
+    # production: the URL connecting to the checked address (the name stays for TLS where the
+    # driver can keep both; ponytail: MySQL has no TLS option yet, so its host becomes the IP)
+    pin: Callable[[URL, str], URL] = lambda url, ip: url.set(host=ip)
 
 
 DIALECTS: dict[str, Dialect] = {
@@ -56,7 +59,9 @@ DIALECTS: dict[str, Dialect] = {
                               "target_session_attrs"}),
         begin=("SET TRANSACTION READ ONLY", "SET LOCAL statement_timeout = {ms}"),
         system_schemas=frozenset({"information_schema", "pg_catalog", "pg_toast"}),
-        connect_args={"connect_timeout": CONNECT_TIMEOUT_S}),
+        connect_args={"connect_timeout": CONNECT_TIMEOUT_S},
+        # libpq connects to hostaddr and verifies TLS against host
+        pin=lambda url, ip: url.update_query_dict({"hostaddr": ip})),
     "mysql": Dialect(
         sqlglot="mysql", driver="pymysql", drivers=frozenset({"", "pymysql"}),
         query_keys=frozenset({"charset"}),
@@ -114,31 +119,42 @@ def safe_url(conn_str: str) -> tuple[URL, Dialect]:
         raise _refuse("connection string options", "These connection string options aren't "
                       f"allowed: {', '.join(extra)}. Allowed: {', '.join(sorted(d.query_keys)) or 'none'}.")
     from api.config import settings
+    url = url.set(drivername=f"{engine}+{d.driver}" if d.driver else engine)
     if settings.app_env == "production":
         if engine == "sqlite":
             raise _refuse("sqlite in production", "SQLite is for development only. Connect a "
                           "PostgreSQL or MySQL database instead.")
-        _assert_reachable_host(url)
-    return url.set(drivername=f"{engine}+{d.driver}" if d.driver else engine), d
+        url = d.pin(url, _checked_address(url))
+    return url, d
 
 
-def _assert_reachable_host(url: URL) -> None:
-    """Production: the database is never the app's own machine (loopback), a link-local or
-    cloud metadata address, or the app's own store. A LAN address is allowed (self-hosted)."""
+def _plain(ip):
+    """An IPv4-mapped IPv6 address (::ffff:127.0.0.1) as the IPv4 address it is."""
+    return getattr(ip, "ipv4_mapped", None) or ip
+
+
+def _checked_address(url: URL) -> str:
+    """Production: the address the database is reached at, checked. Never the app's own
+    machine (loopback), a link-local or cloud metadata address, or the app's own store's host
+    (any port). A LAN address is allowed (self-hosted). The caller connects to this address,
+    not the name again (DNS rebinding)."""
     from api.config import settings
     if not url.host:
         raise _refuse("no host", "The connection string has no host.")
     try:
-        ips = resolved(url.host)
+        ips = [_plain(ip) for ip in resolved(url.host)]
         own = make_url(settings.database_url)
-        own_ips = set(resolved(own.host)) if own.host else set()
+        own_ips = {_plain(ip) for ip in resolved(own.host)} if own.host else set()
     except ValueError:
         raise _refuse("host not found", f"The database host '{url.host}' wasn't found.") from None
+    if not ips:
+        raise _refuse("host not found", f"The database host '{url.host}' wasn't found.")
     for ip in ips:
         if ip.is_loopback or ip.is_link_local or ip.is_unspecified or ip.is_multicast or \
-                (ip in own_ips and (url.port or 0) in (own.port or 5432, 0)):
+                ip in own_ips:
             raise _refuse("host refused", f"The database host '{url.host}' isn't allowed "
                           "(it is this server itself, or a reserved address).")
+    return str(ips[0])
 
 
 def _tables(engine) -> dict[str, tuple[str | None, str]]:

@@ -219,7 +219,8 @@ async def test_a_password_is_never_in_a_message(url):
 
 @pytest.mark.parametrize("host,refused", [("127.0.0.1", True), ("169.254.169.254", True),
                                           ("appdb.internal", True), ("10.0.0.5", False),
-                                          ("93.184.216.34", False)])
+                                          ("93.184.216.34", False), ("mapped.example", True),
+                                          ("appdb-other-port.example", True)])
 def test_in_production_a_database_host_is_never_the_app_itself_or_the_cloud_metadata(
         monkeypatch, host, refused):
     """A user's database may sit on the company's LAN (self-hosted: 10.x is the usual case), but
@@ -228,17 +229,36 @@ def test_in_production_a_database_host_is_never_the_app_itself_or_the_cloud_meta
     import socket
 
     from api.config import settings
-    ips = {"appdb.internal": "10.1.2.3"}
+    ips = {"appdb.internal": "10.1.2.3", "appdb-other-port.example": "10.1.2.3",
+           "mapped.example": "::ffff:127.0.0.1"}   # IPv4-mapped IPv6 loopback
     monkeypatch.setattr(socket, "getaddrinfo",
                         lambda h, *a, **k: [(0, 0, 0, "", (ips.get(h, h), 0))])
     monkeypatch.setattr(settings, "app_env", "production")
     monkeypatch.setattr(settings, "database_url", "postgresql+asyncpg://a:b@appdb.internal:5432/x")
-    url = f"postgresql://u:p@{host}:5432/db"
+    port = 6543 if host == "appdb-other-port.example" else 5432   # the app's store host, any port
+    url = f"postgresql://u:p@{host}:{port}/db"
     if refused:
         with pytest.raises(IngestionError):
             _sql(url)._engine()
     else:
         assert _sql(url)._engine() is not None
+
+
+@pytest.mark.parametrize("scheme", ["postgresql", "mysql+pymysql"])
+def test_in_production_the_connection_goes_to_the_address_that_was_checked(monkeypatch, scheme):
+    """DNS rebinding: a name that resolves to a public address when checked and to loopback
+    when the driver resolves it again. The driver is handed the checked address."""
+    import socket
+
+    from api.config import settings
+    answers = iter(["93.184.216.34"] + ["127.0.0.1"] * 10)
+    monkeypatch.setattr(socket, "getaddrinfo",
+                        lambda h, *a, **k: [(0, 0, 0, "", (next(answers) if h == "rebind.example"
+                                                           else "10.9.9.9", 0))])
+    monkeypatch.setattr(settings, "app_env", "production")
+    engine = _sql(f"{scheme}://u:p@rebind.example:5432/db")._engine()
+    pinned = {**engine.url.query, "host": engine.url.host}
+    assert "93.184.216.34" in (pinned.get("hostaddr"), pinned["host"])
 
 
 async def test_a_named_table_load_asks_the_database_for_at_most_the_cap(tmp_path, monkeypatch):

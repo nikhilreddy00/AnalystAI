@@ -302,7 +302,9 @@ async def run_sql_agent(question: str, connector: SQLConnector, layer, llm: LLMC
     (no retry); fan-out, metric and database errors get one shared guided retry. `conversation`
     (agents.utils.conversation_context) lets a follow-up refer to earlier turns."""
     engine = connector._engine()
-    dialect = sql_dialect(engine) or "postgres"
+    dialect = sql_dialect(engine)   # refuses an engine without a dialect row
+    if layer and layer.dialect != dialect:   # written for another engine: its SQL would be wrong
+        layer = None
     introspected = "" if layer else await asyncio.to_thread(connector.schema_context, engine)
     messages: list[dict] = [{"role": "user", "content": build_context(
         question, layer, dialect, introspected, conversation).render()}]

@@ -61,7 +61,18 @@ def code_column_refs(code: str) -> set[str]:
 # transaction stops writes; these also leak data, sleep, lock or kill sessions, so the parse rejects
 # them first. Prefix entries end with "_" or are listed in _SQL_DENY_PREFIXES.
 _SQL_DENY_FUNCS = {"nextval", "setval", "set_config", "query_to_xml", "query_to_xml_and_xmlschema",
-                   "cursor_to_xml", "pg_notify", "txid_current", "pg_current_xact_id"}
+                   "cursor_to_xml", "pg_notify", "txid_current", "pg_current_xact_id",
+                   # MySQL (5.8a): sleep, burn CPU, take locks, read the server's files, wait
+                   "sleep", "benchmark", "get_lock", "release_lock", "release_all_locks",
+                   "is_free_lock", "is_used_lock", "load_file", "master_pos_wait",
+                   "source_pos_wait", "wait_for_executed_gtid_set"}
+# MySQL's own databases: users and password hashes, live sessions (5.8a)
+_SQL_DENY_SCHEMAS = {"mysql": {"mysql", "performance_schema", "sys"}}
+# /*! … */ and /*M! … */ are MySQL / MariaDB executable comments and /*+ … */ optimizer hints
+# (MAX_EXECUTION_TIME overrides the session timeout): the server runs what sqlglot reads as a
+# comment. Refused in the raw text, outside quoted literals, on every dialect.
+_EXECUTABLE_COMMENT = re.compile(r"/\*(!|M!|\+)")
+_QUOTED = re.compile(r"'(?:[^'\\]|\\.|'')*'|\"(?:[^\"\\]|\\.|\"\")*\"|`(?:[^`]|``)*`")
 _SQL_DENY_PREFIXES = ("lo_", "dblink", "pg_read", "pg_ls_", "pg_stat_file", "pg_sleep",
                       "pg_advisory", "pg_terminate", "pg_cancel", "pg_reload", "pg_rotate",
                       "pg_file", "pg_logical", "pg_replication", "pg_create", "pg_drop",
@@ -74,6 +85,8 @@ def check_sql_readonly(sql: str, dialect: str | None = None) -> str | None:
     `SELECT ... INTO new_table`, `FOR UPDATE` locks and side-effect functions (`nextval`,
     `pg_read_file`, `dblink`...). Defense in depth: the executor also runs a READ ONLY
     transaction (connectors/sql_connector.py)."""
+    if _EXECUTABLE_COMMENT.search(_QUOTED.sub("''", sql)):
+        return "executable comments and optimizer hints (/*! */, /*+ */) are not allowed"
     try:
         statements = [s for s in sqlglot.parse(sql, read=dialect) if s is not None]
     except sqlglot.errors.ParseError as exc:
@@ -92,10 +105,12 @@ def check_sql_readonly(sql: str, dialect: str | None = None) -> str | None:
             return "SELECT ... INTO creates a table"
         if isinstance(node, exp.Select) and node.args.get("locks"):
             return "row locks (FOR UPDATE/SHARE) are not allowed"
-        if isinstance(node, exp.Anonymous):
-            name = node.name.lower()
+        if isinstance(node, exp.Func):
+            name = (node.name if isinstance(node, exp.Anonymous) else node.sql_name()).lower()
             if name in _SQL_DENY_FUNCS or name.startswith(_SQL_DENY_PREFIXES):
                 return f"function not allowed: {name}"
+        if isinstance(node, exp.Table) and node.db.lower() in _SQL_DENY_SCHEMAS.get(dialect or "", ()):
+            return f"the database's own tables are not readable: {node.db}"
     return None
 
 
