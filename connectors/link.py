@@ -17,12 +17,13 @@ from urllib.parse import parse_qsl, unquote, urlencode, urljoin, urlparse
 import httpx
 
 from agents.errors import IngestionError
-from connectors.base import BodyTooLarge, HostNotFound, RefusedHost, capped_body, public_client
+from connectors.base import (FETCH_DEADLINE_S, BodyTooLarge, HostNotFound, RefusedHost,
+                             capped_body, public_client)
 from connectors.csv_connector import MAX_UPLOAD_MB
 
 MAX_HOPS = 5
 MAX_BYTES = MAX_UPLOAD_MB * 1024 * 1024
-DEADLINE_S = 120   # the whole download, every hop
+DEADLINE_S = FETCH_DEADLINE_S   # the whole download, every hop
 _XLSX = b"PK\x03\x04"   # a workbook is a zip
 _SHEET = re.compile(r"^/spreadsheets/d/([\w-]+)")
 _PUBLISHED = re.compile(r"^/spreadsheets/d/e/([\w-]+)")   # File > Share > Publish to web

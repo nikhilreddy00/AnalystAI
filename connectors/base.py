@@ -187,6 +187,9 @@ class HostNotFound(RefusedHost):
     """A host name that doesn't resolve: a typo, not a private address (5.8b audit)."""
 
 
+FETCH_DEADLINE_S = 120   # a user URL's whole fetch, every page or hop (httpx's timeout is per read)
+
+
 class BodyTooLarge(ValueError):
     """A response past the reader's byte cap."""
 

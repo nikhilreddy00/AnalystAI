@@ -6,7 +6,7 @@ import pytest
 from sqlalchemy import create_engine
 
 from agents import sql_agent
-from agents.errors import GuardrailViolation, LLMOutputError
+from agents.errors import GuardrailViolation, IngestionError, LLMOutputError
 from connectors.sql_connector import SQLConnector
 from llm.client import LLMResult
 from orchestrator.state import ConnectorConfig, ConnectorType
@@ -89,6 +89,48 @@ async def test_a_function_off_the_allow_list_gets_one_guided_retry(recorded_llm,
     ans = await sql_agent.run_sql_agent("how many orders", connector, LAYER, recorded_llm)
     assert ans.result.rows == [(2,)]
     assert "function not allowed: soundex" in recorded_llm.calls[1]["messages"][-1]["content"]
+
+
+async def test_a_second_function_refusal_ends_the_question(recorded_llm, connector, monkeypatch):
+    """One retry, not two (test analyst): the second refused function is final, and nothing ran."""
+    ran = []
+    monkeypatch.setattr(connector, "query", lambda *a, **k: ran.append(a))
+    recorded_llm.responses += [_answer("SELECT soundex(email) FROM orders")] * 2
+    with pytest.raises(GuardrailViolation, match="function not allowed: soundex") as err:
+        await sql_agent.run_sql_agent("how many orders", connector, LAYER, recorded_llm)
+    assert "couldn't write a query I can trust" in err.value.user_message
+    assert len(recorded_llm.calls) == 2 and ran == []
+
+
+async def test_a_database_that_cant_be_reached_costs_no_paid_retry(recorded_llm, connector,
+                                                                   monkeypatch):
+    """5.8b audit (silent-failure hunter): a question's first connection lists the tables; a
+    database down or a login refused there landed in 'the database rejected the query' and paid
+    a second model call. It is a session error, once."""
+    from sqlalchemy.exc import OperationalError
+
+    import connectors.sql_connector as sc
+
+    def down(engine):
+        raise OperationalError("connect", {}, Exception("Can't connect to server on 'db'"))
+    monkeypatch.setattr(sc, "_tables", down)
+    recorded_llm.responses += [_answer("SELECT COUNT(*) FROM orders")] * 2
+    with pytest.raises(IngestionError, match="session setup") as err:
+        await sql_agent.run_sql_agent("how many orders", connector, LAYER, recorded_llm)
+    assert "Can't connect" in err.value.user_message and len(recorded_llm.calls) == 1
+
+
+async def test_an_exploring_query_on_a_session_that_cant_open_stops_the_question(
+        recorded_llm, connector, monkeypatch):
+    """The same failure in a run_sql tool call was fed back as 'database error' for up to three
+    paid rounds (a SQL Server login that can write is refused on every session)."""
+    async def refused(*a, **k):
+        raise IngestionError("session setup", "CAN_WRITE: connect with a read-only login")
+    monkeypatch.setattr(connector, "query", refused)
+    recorded_llm.responses += [_tool("run_sql", sql="SELECT 1")]
+    with pytest.raises(IngestionError, match="session setup"):
+        await sql_agent.run_sql_agent("how many orders", connector, LAYER, recorded_llm)
+    assert len(recorded_llm.calls) == 1
 
 
 async def test_fanout_gets_one_guided_retry(recorded_llm, connector):

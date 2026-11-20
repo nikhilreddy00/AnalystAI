@@ -339,6 +339,28 @@ def test_in_production_an_unresolvable_app_store_refuses_rather_than_skips_the_c
     assert "db.lan" not in err.value.user_message and "server" in err.value.user_message
 
 
+@pytest.mark.parametrize(("scheme", "pinned"), [
+    # libpq connects to hostaddr and verifies TLS against host
+    ("postgresql", lambda u: (u.query["hostaddr"], u.host)),
+    # PyMySQL: do_connect dials the address, the name stays for TLS
+    ("mysql+pymysql", lambda u: (u.query["_analystai_checked_address"], u.host)),
+    ("mariadb", lambda u: (u.query["_analystai_checked_address"], u.host)),
+    # ODBC: Server is the address, the certificate is checked against the name
+    ("mssql", lambda u: (u.host, u.query["HostNameInCertificate"])),
+])
+def test_each_pin_keeps_the_name_for_tls(monkeypatch, scheme, pinned):
+    """5.8b audit (test analyst): the pin test only found the address somewhere in the URL; a
+    pin that replaced the name by the address would verify TLS against the address."""
+    import socket
+
+    from api.config import settings
+    monkeypatch.setattr(socket, "getaddrinfo", lambda h, *a, **k: [(0, 0, 0, "", (
+        "93.184.216.34" if h == "db.example.com" else "10.9.9.9", 0))])
+    monkeypatch.setattr(settings, "app_env", "production")
+    url = _sql(f"{scheme}://u:p@db.example.com:5432/db")._engine().url
+    assert pinned(url) == ("93.184.216.34", "db.example.com")
+
+
 @pytest.mark.parametrize("scheme", ["postgresql", "mysql+pymysql", "mariadb", "mssql"])
 def test_in_production_the_connection_goes_to_the_address_that_was_checked(monkeypatch, scheme):
     """DNS rebinding: a name that resolves to a public address when checked and to loopback
@@ -854,6 +876,8 @@ async def test_a_function_read_as_a_table_is_named_in_the_refusal(tmp_path):
      "tsql", []),
     ("WITH pg_shadow AS (SELECT * FROM pg_shadow) SELECT * FROM pg_shadow", "postgres",
      ["pg_shadow"]),
+    # a regression the 5.8b review found: LATERAL generate_series makes its own rows
+    ("SELECT g FROM mine CROSS JOIN LATERAL generate_series(mine.a, mine.a + 2) g", "postgres", []),
 ])
 def test_the_table_rule_names_whatever_isnt_a_listed_table(sql, dialect, unlisted):
     """Layer 1b on its own (the parse guard refuses most of these first; this rule is the one
@@ -888,6 +912,23 @@ def test_a_database_that_cant_be_reached_is_a_session_error_not_a_crash(tmp_path
         run_readonly(engine, "SELECT 1")
     assert str(err.value) == "ingestion: session setup"
     assert err.value.user_message.startswith("Couldn't open a read-only session on the database: ")
+
+
+async def test_a_capped_load_stands_when_its_count_cant_open_a_session(tmp_path, monkeypatch):
+    """5.8b audit: the count after a capped load caught SQLAlchemyError only, and a session that
+    couldn't open is an IngestionError: a load that had worked was thrown away."""
+    import connectors.sql_connector as sc
+    monkeypatch.setattr(sc, "LOAD_MAX_ROWS", 2)
+    real = sc.run_readonly
+
+    def count_fails(engine, sql, *a, **k):
+        if "count(" in sql.lower():
+            raise IngestionError("session setup", "Couldn't open a read-only session")
+        return real(engine, sql, *a, **k)
+    monkeypatch.setattr(sc, "run_readonly", count_fails)
+    conn = _sql(_sqlite(tmp_path, pd.DataFrame({"a": [1, 2, 3]})))
+    assert len(await conn.load()) == 2
+    assert any("the source has more" in n for n in conn.read_info["notes"])
 
 
 @pytest.mark.parametrize("name", DIALECT_NAMES)
@@ -1096,6 +1137,15 @@ def test_ssl_mode_verify_identity_refuses_a_certificate_no_known_ca_signed(tmp_p
     assert "CERTIFICATE_VERIFY_FAILED" in err.value.user_message
 
 
+def test_an_upper_case_ssl_mode_is_the_same_option(tmp_path):
+    """5.8b audit: the allowlist read keys without case, the TLS reader by exact case, so
+    SSL_MODE passed the one and reached PyMySQL as an unknown argument."""
+    from connectors.sql_connector import run_readonly
+    url = _each_dialect(tmp_path, "mysql") + "?SSL_MODE=REQUIRED"
+    rows = run_readonly(_engine_for(url), "SHOW SESSION STATUS LIKE 'Ssl_cipher'").rows
+    assert rows[0][1].startswith("TLS")
+
+
 @pytest.mark.parametrize("mode", ["DISABLED", "PREFERRED", "x", "required%20"])
 def test_an_ssl_mode_that_doesnt_encrypt_is_refused(mode):
     with pytest.raises(IngestionError) as err:
@@ -1202,6 +1252,44 @@ async def test_every_way_a_sql_server_login_can_write_is_refused(tmp_path, grant
     finally:
         with _admin(tmp_path, "mssql").begin() as c:
             c.execute(text(revoke))
+
+
+def test_a_sql_server_query_waits_for_a_lock_no_longer_than_the_timeout(tmp_path):
+    """A table another session holds is given up on at the query timeout (the test analyst asked
+    for LOCK_TIMEOUT's proof; it raced the driver's timeout at the same limit and was deleted)."""
+    import time
+
+    from sqlalchemy import text
+    from sqlalchemy.exc import SQLAlchemyError
+
+    from connectors.sql_connector import run_readonly
+    url = _each_dialect(tmp_path, "mssql")
+    admin = _admin(tmp_path, "mssql")
+    with admin.begin() as c:
+        c.execute(text("DROP TABLE IF EXISTS locked"))
+        c.execute(text("CREATE TABLE locked (a INTEGER)"))
+    holder = admin.connect()
+    try:
+        holder.execute(text("BEGIN TRANSACTION; SELECT * FROM locked WITH (TABLOCKX, HOLDLOCK)"))
+        start = time.monotonic()
+        with pytest.raises(SQLAlchemyError, match="Query timeout expired"):
+            run_readonly(_engine_for(url), "SELECT * FROM locked", timeout_s=1)
+        assert time.monotonic() - start < 5
+    finally:
+        holder.rollback()
+        holder.close()
+
+
+async def test_sql_server_apply_and_temp_tables_through_a_real_question(tmp_path):
+    """The table rule on the real listing (test analyst): APPLY over a query of the user's own
+    tables reads; a #temp table is never one of them."""
+    from agents.errors import GuardrailViolation
+    conn = _connector_with_mine(tmp_path, "mssql")
+    rows = (await conn.query("SELECT m.a, x.b FROM mine m CROSS APPLY (SELECT TOP 1 a AS b "
+                             "FROM mine) x")).rows
+    assert rows == [(1, 1)]
+    with pytest.raises(GuardrailViolation, match="#mine"):
+        await conn.query("SELECT * FROM #mine")
 
 
 def test_the_sql_server_admin_login_is_refused(tmp_path):

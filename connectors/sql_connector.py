@@ -190,8 +190,9 @@ DIALECTS: dict[str, Dialect] = {
         # different driver or connection: refused; the driver is set by code
         query_keys=frozenset({"encrypt", "trustservercertificate"}),
         fixed_query={"driver": "ODBC Driver 18 for SQL Server"},
-        begin=(_MSSQL_CANT_WRITE, "SET XACT_ABORT ON", "SET QUOTED_IDENTIFIER ON",
-               "SET LOCK_TIMEOUT {ms}"),
+        # no LOCK_TIMEOUT: the driver's query timeout already ends a lock wait (5.8b audit: the
+        # two raced at the same limit)
+        begin=(_MSSQL_CANT_WRITE, "SET XACT_ABORT ON", "SET QUOTED_IDENTIFIER ON"),
         driver_timeout=_query_timeout, recursive_ctes=True,
         system_schemas=frozenset({"sys", "information_schema", "guest", "db_owner",
                                   "db_accessadmin", "db_securityadmin", "db_ddladmin",
@@ -251,7 +252,10 @@ def safe_url(conn_str: str) -> tuple[URL, Dialect]:
         raise IngestionError("no database", "The connection string must name the database: "
                              f"{engine}://user:password@host:port/<database>.")
     from api.config import settings
-    url = url.set(drivername=f"{engine}+{d.driver}" if d.driver else engine)
+    url = url.set(drivername=f"{engine}+{d.driver}" if d.driver else engine,
+                  # one spelling for every reader after the allowlist (5.8b audit: SSL_MODE passed
+                  # it, then reached PyMySQL as an unknown argument)
+                  query={k.lower(): v for k, v in url.query.items()})
     url = url.update_query_dict(d.fixed_query)
     if settings.app_env == "production":
         if engine == "sqlite":
@@ -343,8 +347,9 @@ def _unlisted_tables(sql: str, d: Dialect, listed) -> list[str]:
     known = {name.lower() for name in listed}
     # T-SQL's APPLY / LATERAL over anything but a query reads a function's rows, not a table's
     # (5.8b red-team: CROSS APPLY sys.dm_exec_sql_text(..) never reached the walk below)
+    # (Postgres's LATERAL generate_series makes rows of its own, as it does read as a table)
     out = [f"APPLY {lat.this.sql(d.sqlglot).split('(')[0]}" for lat in tree.find_all(exp.Lateral)
-           if not isinstance(lat.this, (exp.Subquery, exp.Unnest))]
+           if not isinstance(lat.this, (exp.Subquery, exp.Unnest, exp.ExplodingGenerateSeries))]
     for t in tree.find_all(exp.Table):
         if isinstance(t.this, exp.ExplodingGenerateSeries):
             continue
@@ -394,6 +399,17 @@ class QueryResult:
         return normalize_frame(df)
 
 
+def _session_error(exc: SQLAlchemyError, engine) -> IngestionError:
+    """A session that couldn't be opened (no connection, a login refused, a statement the server
+    lacks) as the database's problem, never the query's: no paid retry. The driver's first line,
+    the password cut out."""
+    said = str(getattr(exc, "orig", None) or exc).strip().splitlines()[0][:300]
+    if engine.url.password:
+        said = said.replace(engine.url.password, "***")
+    return IngestionError("session setup", f"Couldn't open a read-only session on the database: "
+                          f"{said}")
+
+
 def run_readonly(engine, sql: str, max_rows: int = MAX_ROWS,
                  timeout_s: int = TIMEOUT_S) -> QueryResult:
     """Execute one query in a read-only transaction that is always rolled back, with the
@@ -413,11 +429,7 @@ def run_readonly(engine, sql: str, max_rows: int = MAX_ROWS,
     except SQLAlchemyError as exc:
         if conn is not None:
             conn.close()
-        said = str(getattr(exc, "orig", None) or exc).strip().splitlines()[0][:300]
-        if engine.url.password:
-            said = said.replace(engine.url.password, "***")
-        raise IngestionError("session setup", "Couldn't open a read-only session on the "
-                             f"database: {said}") from exc
+        raise _session_error(exc, engine) from exc
     with conn:
         try:
             result = conn.execute(text(sql))
@@ -480,7 +492,11 @@ class SQLConnector(DataConnector):
         engine = await self.engine()
         d = dialect_of(engine)
         sql = _assert_single_select(sql, d.sqlglot)
-        if unlisted := _unlisted_tables(sql, d, await asyncio.to_thread(_tables, engine)):
+        try:
+            listed = await asyncio.to_thread(_tables, engine)
+        except SQLAlchemyError as exc:   # the first connection a question makes: the database
+            raise _session_error(exc, engine) from exc   # down or the login gone, never the query's
+        if unlisted := _unlisted_tables(sql, d, listed):
             reason = f"only the connected database's tables can be read: {', '.join(unlisted)}"
             raise GuardrailViolation("sql", reason, f"Blocked unsafe SQL: {reason}.")
         return await asyncio.to_thread(run_readonly, engine, sql, max_rows)
@@ -519,7 +535,9 @@ class SQLConnector(DataConnector):
                 count = await asyncio.to_thread(run_readonly, engine, _sql_of(
                     select(func.count()).select_from(listed), engine), 1)
                 total = int(count.rows[0][0])
-            except SQLAlchemyError:   # a count past the timeout: "the source has more" still holds
+            # a count past the timeout, or its own session not opening: the rows already loaded
+            # stand, and "the source has more" still holds (5.8b audit)
+            except (SQLAlchemyError, IngestionError):
                 total = None
             self.read_info = {"notes": [truncation_note(
                 len(res.rows), total, f"a named table loads at most {LOAD_MAX_ROWS:,} rows; "

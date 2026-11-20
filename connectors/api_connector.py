@@ -5,6 +5,7 @@ Handles paginated responses automatically using a configurable pagination key.
 
 from __future__ import annotations
 
+import asyncio
 import json
 from typing import Any
 from urllib.parse import urlparse
@@ -12,7 +13,8 @@ from urllib.parse import urlparse
 import httpx
 import pandas as pd
 
-from connectors.base import BodyTooLarge, DataConnector, capped_body, public_client, truncation_note
+from connectors.base import (FETCH_DEADLINE_S, BodyTooLarge, DataConnector, capped_body,
+                             public_client, truncation_note)
 
 MAX_PAGES = 20          # safety cap to prevent infinite pagination loops
 PAGE_SIZE = 1000
@@ -104,11 +106,31 @@ class APIConnector(DataConnector):
         _http_url(url)
 
         headers = self._build_headers()
-        records: list[dict[str, Any]] = []
 
         # Redirects aren't followed; a next-page URL from the body is a new connection, checked
-        # by the client like the first
-        async with public_client(timeout=30) as client:
+        # by the client like the first. One deadline for every page (5.8b review: the timeout is
+        # per read, so a trickling server held a worker without end)
+        try:
+            records, next_url = await self._pages(url, headers)
+        except TimeoutError:
+            raise ValueError(f"The API didn't finish within {FETCH_DEADLINE_S} s.") from None
+
+        if not records:
+            return pd.DataFrame()
+
+        if next_url or len(records) > MAX_RECORDS:   # stopped at a cap, not at the last page
+            records = records[:MAX_RECORDS]
+            self.read_info = {"notes": [truncation_note(
+                len(records), None,
+                f"an API load stops at {MAX_PAGES} pages or {MAX_RECORDS:,} records")]}
+
+        return pd.json_normalize(records)
+
+    async def _pages(self, url: str, headers: dict) -> tuple[list, str | None]:
+        """The records of every page up to the caps, and the next page's URL if a cap stopped
+        it."""
+        records: list[dict[str, Any]] = []
+        async with asyncio.timeout(FETCH_DEADLINE_S), public_client(timeout=30) as client:
             page = 1
             next_url: str | None = url
 
@@ -132,17 +154,7 @@ class APIConnector(DataConnector):
                     )
 
                 page += 1
-
-        if not records:
-            return pd.DataFrame()
-
-        if next_url or len(records) > MAX_RECORDS:   # stopped at a cap, not at the last page
-            records = records[:MAX_RECORDS]
-            self.read_info = {"notes": [truncation_note(
-                len(records), None,
-                f"an API load stops at {MAX_PAGES} pages or {MAX_RECORDS:,} records")]}
-
-        return pd.json_normalize(records)
+        return records, next_url
 
     async def test_connection(self) -> tuple[bool, str]:
         url = self.config.url
@@ -150,10 +162,12 @@ class APIConnector(DataConnector):
             return False, "url not provided"
         try:
             _http_url(url)
-            async with public_client(timeout=10) as client, \
+            async with asyncio.timeout(FETCH_DEADLINE_S), public_client(timeout=10) as client, \
                     client.stream("GET", url, headers=self._build_headers()) as response:
                 _status(response)   # the status is the answer: no body is read
             return True, f"API reachable (HTTP {response.status_code})"
+        except TimeoutError:
+            return False, f"The API didn't answer within {FETCH_DEADLINE_S} s."
         except ValueError as e:   # ours: the URL, the host refused, an error status
             return False, str(e)
         except (httpx.HTTPError, httpx.InvalidURL) as e:   # its class names it, never the URL

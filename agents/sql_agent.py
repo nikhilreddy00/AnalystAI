@@ -16,7 +16,7 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
-from agents.errors import AgentError, GuardrailViolation, LLMOutputError
+from agents.errors import AgentError, GuardrailViolation, IngestionError, LLMOutputError
 from agents.utils import strip_markdown_fences
 from connectors.sql_connector import MAX_ROWS, QueryResult, SQLConnector, sql_dialect
 from guardrails import (
@@ -226,6 +226,8 @@ async def run_tool(name: str, args: dict, layer, connector: SQLConnector) -> tup
             res = await connector.query(str(args.get("sql", "")), max_rows=_PREVIEW_ROWS)
         except GuardrailViolation as exc:
             return f"blocked: {str(exc).split(': ', 1)[-1]}", True
+        except IngestionError:   # the session itself won't open (a login that can write, the
+            raise                # database down): no query fixes it, so no paid round (5.8b audit)
         except Exception as exc:   # a database error is feedback for the model, not a crash
             return f"database error: {_db_error(exc)}", True
         return _preview(res), False

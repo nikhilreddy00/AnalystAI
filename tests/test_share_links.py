@@ -185,8 +185,36 @@ def _zip(entries: dict[str, bytes]) -> bytes:
     return buf.getvalue()
 
 
+def _declared(zipped: bytes, size: int | None = None, version: int | None = None) -> bytes:
+    """A zip whose central directory declares another unpacked size or extract version (what
+    zipfile reads before unpacking): a bomb's shape without building one."""
+    import struct
+    at = zipped.index(b"PK\x01\x02")
+    out = bytearray(zipped)
+    if size is not None:
+        out[at + 24:at + 28] = struct.pack("<I", size)
+    if version is not None:
+        out[at + 6:at + 8] = struct.pack("<H", version)
+    return bytes(out)
+
+
+def test_a_real_sized_workbook_fits_under_the_unpacked_cap():
+    """5.8b review: 150 MB unpacked refused 20-30 MB workbooks (sheet XML packs 5-10 times)."""
+    from connectors.csv_connector import _MAX_UNPACKED, MAX_UPLOAD_MB
+    assert _MAX_UNPACKED >= 10 * MAX_UPLOAD_MB * 2**20
+
+
+def test_a_workbook_zip_can_t_open_is_not_a_table_never_a_crash():
+    """5.8b audit: a part's version zipfile can't read raised NotImplementedError: a 500."""
+    from agents.errors import IngestionError
+    from connectors.csv_connector import _NOT_A_TABLE, _read_bytes
+    with pytest.raises(IngestionError) as err:
+        _read_bytes(_declared(_xlsx(), version=100), ".xlsx")
+    assert err.value.user_message == _NOT_A_TABLE
+
+
 @pytest.mark.parametrize("content,why", [
-    (_zip({"xl/worksheets/sheet1.xml": b"0" * (160 * 2**20)}), "unpacks"),   # 160 MB from ~160 KB
+    (_declared(_zip({"xl/worksheets/sheet1.xml": b"0" * 1000}), size=2**31), "unpacks"),
     (_zip({f"x{i}.xml": b"" for i in range(10_001)}), "parts"),
     (_zip({"../../etc/cron.d/x": b"a"}), "parts"),
     (b"a," * 10_001 + b"\n1\n", "columns"),
