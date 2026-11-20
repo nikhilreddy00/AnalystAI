@@ -135,6 +135,29 @@ def _function_refused(node: exp.Func, dialect: str | None) -> str | None:
     return None
 
 
+# SQL Server runs a batch: a statement may follow another with no ';', and sqlglot reads
+# `FROM sales EXEC('…')` as a table aliased EXEC while the server runs the EXEC (5.8b security
+# review). These words are reserved there: never a name unless [bracketed] or "quoted", never in a
+# read (FETCH is: OFFSET … FETCH NEXT; OPENJSON and the like are one word of their own).
+_TSQL_BATCH_WORDS = frozenset("""EXEC EXECUTE RAISERROR KILL CHECKPOINT RECONFIGURE TRUNCATE
+    WAITFOR DECLARE THROW DBCC USE BEGIN COMMIT ROLLBACK SAVE INSERT UPDATE DELETE MERGE DROP
+    CREATE ALTER GRANT REVOKE DENY SET PRINT GOTO BACKUP RESTORE SHUTDOWN OPEN CLOSE DEALLOCATE
+    BULK IF WHILE RETURN BREAK CONTINUE READTEXT WRITETEXT UPDATETEXT SETUSER REVERT""".split())
+_QUOTED = frozenset({sqlglot.TokenType.STRING, sqlglot.TokenType.NATIONAL_STRING,
+                     sqlglot.TokenType.IDENTIFIER})
+
+
+def _tsql_batch_word(sql: str) -> str | None:
+    """The first T-SQL statement keyword in the text outside a string or a quoted name, else
+    None (a text the tokenizer can't read is the parse's to refuse)."""
+    try:
+        tokens = sqlglot.tokenize(sql, read="tsql")
+    except sqlglot.errors.SqlglotError:
+        return None
+    return next((t.text.upper() for t in tokens
+                 if t.token_type not in _QUOTED and t.text.upper() in _TSQL_BATCH_WORDS), None)
+
+
 def _system_schemas(dialect: str | None) -> frozenset[str]:
     """The engine's own catalogs a model query may not read (users and password hashes, other
     sessions' queries): its dialect row's system schemas, metadata (information_schema) aside."""
@@ -151,6 +174,8 @@ def check_sql_readonly(sql: str, dialect: str | None) -> str | None:
     transaction (connectors/sql_connector.py)."""
     if _EXECUTABLE_COMMENT.search(sql):
         return "executable comments and optimizer hints (/*! */, /*+ */) are not allowed"
+    if dialect == "tsql" and (word := _tsql_batch_word(sql)):
+        return f"a T-SQL statement keyword outside a string or [name] is not allowed: {word}"
     try:
         statements = [s for s in sqlglot.parse(sql, read=dialect) if s is not None]
     except sqlglot.errors.ParseError as exc:
@@ -163,6 +188,9 @@ def check_sql_readonly(sql: str, dialect: str | None) -> str | None:
     writes = (exp.Insert, exp.Update, exp.Delete, exp.Drop, exp.Create, exp.Alter, exp.Merge,
               exp.Command)
     system = _system_schemas(dialect)
+    # a function refusal is the one the SQL agent retries: it never hides a write, a catalog or a
+    # lock anywhere in the query (5.8b audit), so it is said only when the walk finds nothing hard
+    soft = None
     for node in stmt.walk():
         if isinstance(node, writes):
             return f"write/DDL inside query: {node.key.upper()}"
@@ -170,14 +198,14 @@ def check_sql_readonly(sql: str, dialect: str | None) -> str | None:
             return "SELECT ... INTO creates a table"
         if isinstance(node, exp.Select) and node.args.get("locks"):
             return "row locks (FOR UPDATE/SHARE) are not allowed"
-        if isinstance(node, exp.Func) and (reason := _function_refused(node, dialect)):
-            return reason
+        if isinstance(node, exp.Func) and not soft:
+            soft = _function_refused(node, dialect)
         if isinstance(node, exp.WithTableHint) and (
                 held := [h.sql() for h in node.expressions if h.sql().upper() not in _ALLOWED_HINTS]):
             return f"table hints that take locks are not allowed: {', '.join(held)}"
         if isinstance(node, exp.Table) and node.db.lower() in system:
             return f"the database's own tables are not readable: {node.db}"
-    return None
+    return soft
 
 
 # Fan-out and metric checks read a semantic layer (semantic_layer.SemanticLayer); typed loosely to
