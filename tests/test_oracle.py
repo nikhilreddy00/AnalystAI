@@ -448,6 +448,23 @@ def test_each_repair_has_its_own_trace_label():
 # ── Source invariance (Domain 3, user request 2026-11-03): the same table through every
 # connector reads as the same domain, roles and PHI mode, and every computable tile agrees.
 
+async def _linked(csv: str, folder, monkeypatch):
+    """A share link (5.8b): the sheet's CSV export through the guarded client's download, kept
+    as the link route keeps it (an upload of the same bytes), read by the file connector."""
+    import httpx
+
+    from connectors.base import get_connector
+    from connectors.link import download
+    from orchestrator.state import ConnectorConfig, ConnectorType
+    from tests.fake_network import serve
+    serve(monkeypatch, lambda r: httpx.Response(200, content=csv.encode(), headers={
+        "content-type": "text/csv; charset=utf-8"}))
+    content, suffix, _ = await download("https://docs.google.com/spreadsheets/d/x/edit")
+    path = folder / f"linked{suffix}"
+    path.write_bytes(content)
+    return get_connector(ConnectorConfig(type=ConnectorType.CSV, file_path=str(path)))
+
+
 def _mocked_source(source: str, df: pd.DataFrame, csv: str, monkeypatch):
     """A connector for the REST API or Google Sheets that serves `df` as those services do (JSON
     records; every cell a formatted string), through the production connector's load()."""
@@ -493,7 +510,7 @@ DATASETS_BY_PACK = {
 PACK_DATASETS = [n for names in DATASETS_BY_PACK.values() for n in names]
 ONE_PER_PACK = {names[0] for names in DATASETS_BY_PACK.values()}
 SOURCES = ["xlsx", "json", "parquet", "sqlite", "postgres", "mysql", "mariadb", "mssql", "api",
-           "sheets"]
+           "sheets", "link"]
 _DB_URL = {s: env for s, (env, _) in DB_SOURCES.items()}   # skipped locally without one
 # The contract fields that name where the table came from: every other field is the source's
 _SOURCE_FIELDS = {"source_type", "source_query", "source_evidence"}
@@ -559,7 +576,8 @@ async def test_every_source_reads_the_same_as_the_csv(name, source, tmp_path, mo
     monkeypatch.setattr(csvc, "_UPLOADS_DIR", tmp_path.resolve())
     case = {"dataset": {"name": name, "seed": 1}}
     df, _, csv = run.dataset(case)
-    conn = (_mocked_source(source, df, csv, monkeypatch) if source in ("api", "sheets") else
+    conn = (await _linked(csv, tmp_path, monkeypatch) if source == "link" else
+            _mocked_source(source, df, csv, monkeypatch) if source in ("api", "sheets") else
             get_connector(run.source_config({**case, "source": source}, df, csv)))
     frame = await conn.load()
     _, got, gc, _ = _prepared(frame, conn.build_data_contract(frame), conn.config.type, None)

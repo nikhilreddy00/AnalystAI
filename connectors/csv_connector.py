@@ -12,6 +12,7 @@ import asyncio
 import io
 import json
 import re
+import zipfile
 from collections import Counter
 from pathlib import Path
 
@@ -201,9 +202,37 @@ def _read_text_table(content: bytes, suffix: str) -> tuple[pd.DataFrame, dict]:
     return df, info
 
 
+# What a file may expand to when read (5.8b: uploads and share links): a workbook is a zip that
+# openpyxl unpacks whole, so a 50 MB upload could declare gigabytes; a CSV header could name
+# millions of columns. zipfile never unpacks a part past its declared size, so the declared
+# sizes are a real bound.
+_MAX_UNPACKED, _MAX_PARTS, _MAX_COLUMNS = 150 * 2**20, 10_000, 10_000
+
+
+def _readable_size(content: bytes, suffix: str) -> None:
+    if suffix == ".xlsx":
+        try:
+            parts = zipfile.ZipFile(io.BytesIO(content)).infolist()
+        except zipfile.BadZipFile as exc:
+            raise IngestionError("excel: BadZipFile", _NOT_A_TABLE) from exc
+        if sum(p.file_size for p in parts) > _MAX_UNPACKED:
+            raise IngestionError("workbook too large", "The workbook unpacks to more than "
+                                 f"{_MAX_UNPACKED // 2**20} MB, past what can be read.")
+        if len(parts) > _MAX_PARTS or any(p.filename.startswith("/") or ".." in p.filename
+                                          for p in parts):
+            raise IngestionError("workbook parts", "The workbook's parts aren't an Excel "
+                                 "workbook's. Save it again from Excel and upload that.")
+    elif suffix in (".csv", ".tsv"):
+        header = content[:2**20].split(b"\n", 1)[0]
+        if max(header.count(d) for d in (b",", b";", b"\t", b"|")) >= _MAX_COLUMNS:
+            raise IngestionError("too many columns", f"The file has more than {_MAX_COLUMNS:,} "
+                                 "columns, past what can be read.")
+
+
 def _read_bytes(content: bytes, suffix: str) -> tuple[pd.DataFrame, dict]:
     """The one reader behind every upload: (frame, how it was read). Unreadable input raises
     IngestionError with a message for the user; nothing loads silently wrong."""
+    _readable_size(content, suffix)
     if suffix in (".xlsx", ".xls"):
         if suffix == ".xls":
             raise IngestionError("xls needs xlrd", XLS_REFUSAL)

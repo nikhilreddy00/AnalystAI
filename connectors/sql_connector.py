@@ -19,7 +19,7 @@ import re
 import socket
 import ssl
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 import certifi
 import pandas as pd
@@ -128,8 +128,13 @@ def _connect_pinned(dialect, conn_rec, cargs, cparams):
     return conn
 
 
-_MYSQL = dict(
+_MYSQL = Dialect(
+    title="MySQL",
     sqlglot="mysql", driver="pymysql", drivers=frozenset({"", "pymysql"}),
+    # SESSION read only too: a DDL statement commits the open transaction implicitly and
+    # would run outside it; max_execution_time covers SELECT, the only statement let through
+    begin=("SET SESSION TRANSACTION READ ONLY", "SET SESSION max_execution_time = {ms}",
+           "START TRANSACTION READ ONLY"),
     query_keys=frozenset({"charset", "ssl_mode"}),
     pin=lambda url, ip: url.update_query_dict({_PINNED: ip}),
     system_schemas=frozenset({"information_schema", "mysql", "sys", "performance_schema"}),
@@ -157,16 +162,11 @@ DIALECTS: dict[str, Dialect] = {
         connect_args={"connect_timeout": CONNECT_TIMEOUT_S},
         # libpq connects to hostaddr and verifies TLS against host
         pin=lambda url, ip: url.update_query_dict({"hostaddr": ip})),
-    "mysql": Dialect(
-        title="MySQL", **_MYSQL,
-        # SESSION read only too: a DDL statement commits the open transaction implicitly and
-        # would run outside it; max_execution_time covers SELECT, the only statement let through
-        begin=("SET SESSION TRANSACTION READ ONLY", "SET SESSION max_execution_time = {ms}",
-               "START TRANSACTION READ ONLY")),
+    "mysql": _MYSQL,
     # MySQL's row but its timeout: max_statement_time is seconds and stops any statement (1969);
     # MariaDB has no max_execution_time (1193). Picked by the server (dialect_of), not the URL.
-    "mariadb": Dialect(
-        title="MariaDB", **_MYSQL,
+    "mariadb": replace(
+        _MYSQL, title="MariaDB",
         begin=("SET SESSION TRANSACTION READ ONLY", "SET SESSION max_statement_time = {s}",
                "START TRANSACTION READ ONLY")),
     "mssql": Dialect(
