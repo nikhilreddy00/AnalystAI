@@ -62,6 +62,7 @@ def code_column_refs(code: str) -> set[str]:
 # them first. Prefix entries end with "_" or are listed in _SQL_DENY_PREFIXES.
 _SQL_DENY_FUNCS = {"nextval", "setval", "set_config", "query_to_xml", "query_to_xml_and_xmlschema",
                    "cursor_to_xml", "pg_notify", "txid_current", "pg_current_xact_id",
+                   "ts_stat", "ts_rewrite",   # run a query given as text (audit 2)
                    # MySQL (5.8a): sleep, burn CPU, take locks, read the server's files, wait
                    "sleep", "benchmark", "get_lock", "release_lock", "release_all_locks",
                    "is_free_lock", "is_used_lock", "load_file", "master_pos_wait",
@@ -73,6 +74,7 @@ _SQL_DENY_FUNCS = {"nextval", "setval", "set_config", "query_to_xml", "query_to_
 # starts (security review: `/* ' */ /*!SLEEP(5)*/ /* ' */`). Cost: a literal holding these
 # three characters is refused too.
 _EXECUTABLE_COMMENT = re.compile(r"/\*(!|M!|\+)")
+_SQL_TEXT = re.compile(r"\s*\(?\s*(select|with|table|values)\b", re.IGNORECASE)   # a query as text
 _SQL_DENY_PREFIXES = ("lo_", "dblink", "pg_read", "pg_ls_", "pg_stat_file", "pg_sleep",
                       "pg_advisory", "pg_terminate", "pg_cancel", "pg_reload", "pg_rotate",
                       "pg_file", "pg_logical", "pg_replication", "pg_create", "pg_drop",
@@ -121,6 +123,11 @@ def check_sql_readonly(sql: str, dialect: str | None) -> str | None:
             if name in _SQL_DENY_FUNCS or name.startswith(_SQL_DENY_PREFIXES) or \
                     "_to_xml" in name:   # table_to_xml('pg_authid', …) reads a table by name
                 return f"function not allowed: {name}"
+            # the class (security review, audit 2): a function given a query as text runs it
+            # past every table rule (ts_stat, ts_rewrite, the next one); ponytail: a text built
+            # by concatenation isn't seen, the database role is the boundary (ADR-0010 layer 4)
+            if any(_SQL_TEXT.match(s.name) for s in node.find_all(exp.Literal) if s.is_string):
+                return f"function given a SQL statement as text: {name}"
         if isinstance(node, exp.Table) and node.db.lower() in system:
             return f"the database's own tables are not readable: {node.db}"
     return None

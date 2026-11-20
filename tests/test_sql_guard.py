@@ -120,6 +120,23 @@ def test_every_denied_function_is_refused_in_every_dialect(dialect):
     assert let_through == []
 
 
+@pytest.mark.parametrize("sql", [
+    "SELECT (ts_stat('SELECT to_tsvector(rolpassword) FROM pg_authid')).word",
+    "SELECT ts_rewrite('a'::tsquery, 'SELECT t, s FROM aliases')",
+    "SELECT some_future_fn('  with x as (select 1) select * from x')",
+    "SELECT f(1, 'TABLE pg_authid')",
+    "SELECT table_to_xmlschema('pg_authid', true, false, '')"])
+def test_a_function_given_sql_as_text_is_refused(sql):
+    """Security review (5.8a audit 2): a function that runs a query passed as text (ts_stat,
+    ts_rewrite, query_to_xml) reads past every table rule. Named ones are denied, and the class:
+    an unknown function whose text argument is a SQL statement."""
+    assert g.check_sql_readonly(sql, "postgres") is not None
+
+
+def test_a_function_given_ordinary_text_is_allowed():
+    assert g.check_sql_readonly("SELECT initcap('selection'), to_char(now(), 'YYYY')", "postgres") is None
+
+
 def test_the_catalog_rules_follow_the_dialect_rows():
     assert g.check_sql_readonly("SELECT * FROM pg_catalog.pg_authid", "postgres") == \
         "the database's own tables are not readable: pg_catalog"
