@@ -364,7 +364,8 @@
   "hash": "269bfd3d28e5870d"
  },
  "connectors/sql_connector.py::SQLConnector.query": {
-  "equivalents": []
+  "equivalents": [],
+  "hash": "a6ff5e91735f540f"
  },
  "connectors/sql_connector.py::SQLConnector.schema_context": {
   "equivalents": [],
