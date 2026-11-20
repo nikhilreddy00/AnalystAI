@@ -767,6 +767,8 @@ async def test_a_function_read_as_a_table_is_named_in_the_refusal(tmp_path):
         await conn.query("SELECT * FROM some_srf(1) AS s, other_srf(2) AS o")   # read as tables
     assert err.value.user_message == ("Blocked unsafe SQL: only the connected database's tables "
                                       "can be read: SOME_SRF(), OTHER_SRF().")
+    assert str(err.value) == ("sql: only the connected database's tables can be read: "
+                              "SOME_SRF(), OTHER_SRF()")   # the trace's reason
 
 
 async def test_a_postgres_set_returning_function_is_not_a_table(tmp_path):
