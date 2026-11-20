@@ -81,9 +81,14 @@ plan-mode step by name:
 - finished domains' filter reads: done (the oracle compares every dataset's cleaned rows from every source exactly, and the whole dashboard per pack; `domain_diff.py main`: every dataset identical)
 - all-domain answer probe: done (built-in answers byte-equal per pack from every source; golden on all 8 domains)
 - playwright specs: done (`mysql_connect.spec.ts`, plant-proven; the full suite 44/44 before it)
+- audit pass 2 (2026-11-20): golden 64/64 unchanged after the column-by-position change; full suite
+  4,092 passed (3 skipped, 3 xfailed) with Postgres and MySQL; mutation gate `--check` clean on every
+  changed function (survivors killed by tests, 5 equivalents named); e2e-99 1/1; no frontend change
 
-## Spend: $0.18 of $2.50 (ask $2.20, stop $2.35)
-E2E e2e-98 $0.0263; live stack $0.149 (one overview). Estimate was ≤ $0.60.
+## Spend: $0.30 of $2.50 (ask $2.20, stop $2.35)
+E2E e2e-98 $0.0263; live stack $0.149 (one overview). Estimate was ≤ $0.60. Audit pass 2: e2e-99 (a
+question answered by the SQL agent in MySQL, the path no paid run had covered) 0/1 $0.061 (the silent
+20-table schema cap, B12), fixed, then 1/1 $0.059 (`evals/reports/e2e-20261120T155812Z.md`).
 
 ## Audit
 | pass | who | majors | minors |
