@@ -20,6 +20,7 @@ from agents.errors import AgentError, GuardrailViolation, LLMOutputError
 from agents.utils import strip_markdown_fences
 from connectors.sql_connector import MAX_ROWS, QueryResult, SQLConnector, sql_dialect
 from guardrails import (
+    FUNCTION_REFUSED,
     UNTRUSTED_NOTE,
     check_sql_readonly,
     delimit_untrusted,
@@ -348,11 +349,16 @@ async def run_sql_agent(question: str, connector: SQLConnector, layer, llm: LLMC
             raise GuardrailViolation("sql", "model refused a write request", str(out["refusal"]))
         sql = str(out["sql"]).strip().rstrip(";").strip()
         metrics = [str(m) for m in out.get("metrics_used") or []]
+        problem = None
         if reason := check_sql_readonly(sql, dialect=dialect):
-            trace_verdict("sql", PROMPT_VERSION, "readonly")
-            raise GuardrailViolation("sql", reason, f"Blocked unsafe SQL: {reason}.")
+            # a function the allow list lacks is a soft rule (5.8b): the model tries another; a
+            # write, a second statement, a catalog or a lock never gets a second try
+            if not reason.startswith(FUNCTION_REFUSED):
+                trace_verdict("sql", PROMPT_VERSION, "readonly")
+                raise GuardrailViolation("sql", reason, f"Blocked unsafe SQL: {reason}.")
+            problem = ("function", reason)
 
-        problem = _review(sql, metrics, layer, dialect)
+        problem = problem or _review(sql, metrics, layer, dialect)
         if problem is None:
             try:
                 res = await connector.query(sql)

@@ -80,6 +80,17 @@ async def test_write_sql_is_blocked_without_a_retry(recorded_llm, connector):
     assert len(recorded_llm.calls) == 1
 
 
+async def test_a_function_off_the_allow_list_gets_one_guided_retry(recorded_llm, connector):
+    """5.8b red-team B1: with an allow list, a harmless function the list lacks would end the
+    question; the model gets the refusal and one try with another function (a write stays
+    final, above)."""
+    recorded_llm.responses += [_answer("SELECT soundex(email) FROM orders"),
+                               _answer("SELECT COUNT(*) FROM orders")]
+    ans = await sql_agent.run_sql_agent("how many orders", connector, LAYER, recorded_llm)
+    assert ans.result.rows == [(2,)]
+    assert "function not allowed: soundex" in recorded_llm.calls[1]["messages"][-1]["content"]
+
+
 async def test_fanout_gets_one_guided_retry(recorded_llm, connector):
     recorded_llm.responses += [_answer(FANOUT), _answer("SELECT SUM(fee) FROM orders")]
     ans = await sql_agent.run_sql_agent("total fees", connector, LAYER, recorded_llm)

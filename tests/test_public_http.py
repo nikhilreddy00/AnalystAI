@@ -38,7 +38,9 @@ def test_the_guarded_pool_is_still_where_httpx_keeps_it():
     """httpx has no network_backend option, so public_client replaces the transport's pool: an
     httpx upgrade that renames `_pool` would silently fall back to an unchecked network."""
     client = base.public_client()
-    assert isinstance(client._transport._pool._network_backend, base._CheckedNetwork)  # noqa: SLF001
+    network = client._transport._pool._network_backend  # noqa: SLF001
+    assert isinstance(network, base._CheckedNetwork)
+    assert isinstance(network._inner, httpcore.AnyIOBackend)   # the real sockets, under the check
 
 
 @pytest.mark.parametrize("address", ["127.0.0.1", "10.0.0.5", "192.168.1.2", "169.254.169.254",

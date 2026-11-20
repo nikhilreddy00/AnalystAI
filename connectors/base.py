@@ -220,12 +220,7 @@ class _CheckedNetwork(httpcore.AsyncNetworkBackend):
             except (httpcore.ConnectError, httpcore.ConnectTimeout) as exc:
                 failed = exc
         raise failed   # type: ignore[misc] - ips is never empty here
-
-    async def connect_unix_socket(self, path, timeout=None, socket_options=None):
-        raise httpcore.ConnectError("unix sockets are never fetched")
-
-    async def sleep(self, seconds: float) -> None:
-        await self._inner.sleep(seconds)
+    # no unix sockets (the base class refuses them) and no sleep: the client never retries
 
 
 def public_client(timeout: float = 30) -> httpx.AsyncClient:
