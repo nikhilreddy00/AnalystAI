@@ -82,18 +82,29 @@ def _query_timeout(dbapi_conn, seconds: int) -> None:
 
 # SQL Server has no read-only transaction (ADR-0010): its read-only layer is the login, required.
 # Every session first refuses a login that can change data: a server or database owner, a
-# writer or DDL role, a database-wide write permission, or an explicit grant to it (or a role it
-# is in) on any table, view or schema. `CAN_WRITE` marks it for the read-only plant test.
+# writer or DDL role, a database-wide write or EXECUTE permission, an explicit grant to it (or a
+# role it is in) on any table, view or schema, an IMPERSONATE (as a user who can write), or
+# owning a user schema or object (ownership is CONTROL and leaves no permission row; 5.8b audit).
+# Schema ids 5..16383 are users' schemas (1-4 dbo, guest, INFORMATION_SCHEMA, sys; 16384+ the
+# fixed roles'). `CAN_WRITE` marks it for the read-only plant test.
 _MSSQL_CANT_WRITE = (
     "IF IS_SRVROLEMEMBER('sysadmin') = 1 OR HAS_PERMS_BY_NAME(NULL, NULL, 'CONTROL SERVER') = 1 "
     "OR USER_NAME() = 'dbo' OR IS_ROLEMEMBER('db_owner') = 1 "
     "OR IS_ROLEMEMBER('db_datawriter') = 1 OR IS_ROLEMEMBER('db_ddladmin') = 1 "
     "OR EXISTS (SELECT 1 FROM fn_my_permissions(NULL, 'DATABASE') WHERE permission_name IN "
-    "('INSERT', 'UPDATE', 'DELETE', 'ALTER', 'CONTROL', 'CREATE TABLE', 'ALTER ANY SCHEMA')) "
+    "('INSERT', 'UPDATE', 'DELETE', 'ALTER', 'CONTROL', 'CREATE TABLE', 'ALTER ANY SCHEMA', "
+    "'EXECUTE', 'IMPERSONATE')) "
     "OR EXISTS (SELECT 1 FROM sys.database_permissions p WHERE p.state IN ('G', 'W') "
     "AND p.permission_name IN ('INSERT', 'UPDATE', 'DELETE', 'ALTER', 'CONTROL', "
-    "'TAKE OWNERSHIP') AND (p.grantee_principal_id = DATABASE_PRINCIPAL_ID() "
-    "OR IS_MEMBER(USER_NAME(p.grantee_principal_id)) = 1)) "
+    "'TAKE OWNERSHIP', 'EXECUTE', 'IMPERSONATE') AND (p.grantee_principal_id = "
+    "DATABASE_PRINCIPAL_ID() OR IS_MEMBER(USER_NAME(p.grantee_principal_id)) = 1)) "
+    "OR EXISTS (SELECT 1 FROM sys.server_permissions p WHERE p.state IN ('G', 'W') "
+    "AND p.permission_name IN ('IMPERSONATE', 'IMPERSONATE ANY LOGIN') "
+    "AND p.grantee_principal_id = SUSER_ID()) "
+    "OR EXISTS (SELECT 1 FROM sys.schemas s WHERE s.schema_id BETWEEN 5 AND 16383 "
+    "AND (s.principal_id = DATABASE_PRINCIPAL_ID() OR IS_MEMBER(USER_NAME(s.principal_id)) = 1)) "
+    "OR EXISTS (SELECT 1 FROM sys.objects o WHERE o.principal_id IS NOT NULL "
+    "AND (o.principal_id = DATABASE_PRINCIPAL_ID() OR IS_MEMBER(USER_NAME(o.principal_id)) = 1)) "
     "THROW 50001, 'CAN_WRITE: this login can change data. SQL Server has no read-only "
     "session, so connect with a read-only login (a user in db_datareader only).', 1;")
 _SSL_MODES = ("REQUIRED", "VERIFY_CA", "VERIFY_IDENTITY")   # the MySQL client's words for TLS

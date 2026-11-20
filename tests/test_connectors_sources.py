@@ -1168,6 +1168,56 @@ def test_in_production_a_pinned_mysql_without_a_port_dials_3306(monkeypatch):
     assert dialed == [("10.0.0.5", 3306)]
 
 
+@pytest.mark.parametrize(("grant", "revoke"), [
+    ("GRANT INSERT ON dbo.cw_t TO aai_reader", "REVOKE INSERT ON dbo.cw_t FROM aai_reader"),
+    ("GRANT UPDATE ON SCHEMA::dbo TO aai_reader", "REVOKE UPDATE ON SCHEMA::dbo FROM aai_reader"),
+    ("CREATE ROLE cw_role; GRANT DELETE ON dbo.cw_t TO cw_role; ALTER ROLE cw_role ADD MEMBER aai_reader",
+     "ALTER ROLE cw_role DROP MEMBER aai_reader; DROP ROLE cw_role"),
+    ("ALTER ROLE db_owner ADD MEMBER aai_reader", "ALTER ROLE db_owner DROP MEMBER aai_reader"),
+    ("EXEC('CREATE SCHEMA cw_owned AUTHORIZATION aai_reader')", "DROP SCHEMA cw_owned"),
+    ("GRANT IMPERSONATE ON USER::aai_writer TO aai_reader",
+     "REVOKE IMPERSONATE ON USER::aai_writer FROM aai_reader"),
+    ("GRANT EXECUTE TO aai_reader", "REVOKE EXECUTE FROM aai_reader"),
+])
+async def test_every_way_a_sql_server_login_can_write_is_refused(tmp_path, grant, revoke):
+    """5.8b audit (security review, test analyst): the can-write check was proven for
+    db_datawriter only. A grant on a table or a schema, a role holding one, db_owner, owning a
+    schema (ownership is CONTROL, with no permission row), impersonating a user who can write,
+    and EXECUTE (a procedure that writes) each make a login able to change data."""
+    from sqlalchemy import text
+
+    from connectors.sql_connector import run_readonly
+    url = _each_dialect(tmp_path, "mssql")
+    with _admin(tmp_path, "mssql").begin() as c:
+        c.execute(text("DROP TABLE IF EXISTS cw_t"))
+        c.execute(text("CREATE TABLE cw_t (a INTEGER)"))
+    engine = _engine_for(url)
+    assert run_readonly(engine, "SELECT 1").rows == [(1,)]   # the reader as it is: allowed
+    with _admin(tmp_path, "mssql").begin() as c:
+        c.execute(text(grant))
+    try:
+        with pytest.raises(IngestionError, match="session setup") as err:
+            run_readonly(engine, "SELECT 1")
+        assert "connect with a read-only login" in err.value.user_message
+    finally:
+        with _admin(tmp_path, "mssql").begin() as c:
+            c.execute(text(revoke))
+
+
+def test_the_sql_server_admin_login_is_refused(tmp_path):
+    import os
+
+    from sqlalchemy.engine import make_url
+
+    from connectors.sql_connector import run_readonly
+    _each_dialect(tmp_path, "mssql")
+    sa = make_url(os.environ["TEST_MSSQL_URL"])
+    url = sa.set(drivername="mssql").difference_update_query(["driver"]).render_as_string(
+        hide_password=False)
+    with pytest.raises(IngestionError, match="session setup"):
+        run_readonly(_engine_for(url), "SELECT 1")
+
+
 def test_sql_server_reads_double_quotes_as_names_as_the_guard_does(tmp_path):
     """P58-16 on SQL Server: QUOTED_IDENTIFIER is pinned on, so "a" is a column as sqlglot's
     T-SQL reads it, never the string 'a'."""
