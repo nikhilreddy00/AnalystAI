@@ -88,5 +88,5 @@ def serve(monkeypatch, handler, dns=None) -> Wire:
             answer = dns[host]
         return [(0, 0, 0, "", (ip, 0)) for ip in answer]
     monkeypatch.setattr(socket, "getaddrinfo", getaddrinfo)
-    monkeypatch.setattr(base, "_network", lambda: _Backend(wire))
+    monkeypatch.setattr(base, "_NETWORK", lambda: _Backend(wire))
     return wire

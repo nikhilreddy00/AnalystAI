@@ -69,7 +69,7 @@ async def test_the_connection_goes_to_the_address_that_was_checked(monkeypatch):
 async def test_every_address_is_tried_in_turn(monkeypatch):
     """No happy-eyeballs in httpcore: an IPv6-first answer on an IPv4-only host still connects."""
     wire = serve(monkeypatch, _json([1]), {"files.example": ["2606:4700::1111", PUBLIC]})
-    inner = base._network()
+    inner = base._NETWORK()
     connect_ipv4 = inner.connect_tcp
 
     async def connect(host, port, *a, **k):
@@ -78,7 +78,7 @@ async def test_every_address_is_tried_in_turn(monkeypatch):
             raise httpcore.ConnectError("no IPv6 route")
         return await connect_ipv4(host, port)
     monkeypatch.setattr(inner, "connect_tcp", connect)
-    monkeypatch.setattr(base, "_network", lambda: inner)
+    monkeypatch.setattr(base, "_NETWORK", lambda: inner)
     async with base.public_client() as client:
         assert (await client.get("https://files.example/a")).status_code == 200
     assert wire.connected == ["2606:4700::1111", PUBLIC]

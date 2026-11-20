@@ -197,8 +197,7 @@ def public_addresses(host: str) -> list:
     return ips
 
 
-def _network() -> httpcore.AsyncNetworkBackend:
-    return httpcore.AnyIOBackend()
+_NETWORK = httpcore.AnyIOBackend   # the real sockets under the check (tests swap in a fake)
 
 
 class _CheckedNetwork(httpcore.AsyncNetworkBackend):
@@ -207,7 +206,7 @@ class _CheckedNetwork(httpcore.AsyncNetworkBackend):
     TLS still verifies the certificate against the host name (httpcore's server_hostname)."""
 
     def __init__(self) -> None:
-        self._inner = _network()
+        self._inner = _NETWORK()
 
     async def connect_tcp(self, host, port, timeout=None, local_address=None,
                           socket_options=None):

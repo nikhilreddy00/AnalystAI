@@ -95,7 +95,9 @@ source_paths = ["domain_pack/", "agents/utils.py", "agents/targeted_analysis_age
                 # Domain 7: the one time rule and cleaning's fallback through it
                 "connectors/base.py", "agents/data_cleaning.py",
                 # 5.8a: the dialect table and the connection-string guard
-                "connectors/sql_connector.py"]
+                "connectors/sql_connector.py",
+                # 5.8b: the share-link download
+                "connectors/link.py"]
 # never evals/reference_kpis.py: the oracle is checked against the generators, not the product
 also_copy = ["agents/", "api/", "connectors/", "domain_packs/", "evals/", "llm/", "memory/",
              "orchestrator/", "prompts/", "sandbox/", "scripts/", "semantic_layers/", "worker/",
