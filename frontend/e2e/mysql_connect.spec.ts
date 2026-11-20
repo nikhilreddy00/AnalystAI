@@ -31,9 +31,9 @@ for (const answer of [
       await route.fulfill({ json: answer });
     });
     await page.goto("/chat");
-    await expect(page.getByText("a PostgreSQL or MySQL database")).toBeVisible();
+    await expect(page.getByText("a PostgreSQL, MySQL, MariaDB or SQL Server")).toBeVisible();
     await page.getByRole("button", { name: "SQL Database" }).click();
-    await expect(page.getByText("PostgreSQL (including Supabase and Neon) or MySQL")).toBeVisible();
+    await expect(page.getByText("PostgreSQL (including Supabase and Neon), MySQL, MariaDB or SQL Server")).toBeVisible();
     await page.getByLabel("Connection string").fill(URL);
     await page.getByLabel("Table name (optional)").fill("order_lines");
     await page.getByRole("button", { name: "Test and connect" }).click();
@@ -44,3 +44,28 @@ for (const answer of [
     await expect(page.locator("body")).not.toContainText(PASSWORD);
   });
 }
+
+// Phase 5.8b: the password has a field of its own that hides it; the form puts it into the
+// string URL-encoded (an '@' or ':' in it needs no hand-encoding), and the page never shows it.
+test("the password field hides the password and sends it encoded in the string", async ({ page }) => {
+  const pw = "p@ss:w0rd/5_8b";
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await login(page);
+  const sent: Record<string, unknown>[] = [];
+  await page.route("**/connectors/test", async (route) => {
+    sent.push(route.request().postDataJSON());
+    await route.fulfill({ json: { success: true, message: "Connection successful" } });
+  });
+  await page.goto("/chat");
+  await page.getByRole("button", { name: "SQL Database" }).click();
+  await page.getByLabel("Connection string").fill("mssql://reader@db.example.com:1433/acme");
+  const field = page.getByLabel("Password", { exact: true });
+  await expect(field).toHaveAttribute("type", "password");
+  await field.fill(pw);
+  await page.getByRole("button", { name: "Test and connect" }).click();
+  await expect.poll(() => sent.length).toBe(1);
+  expect(sent).toEqual([expect.objectContaining({
+    connection_string: `mssql://reader:${encodeURIComponent(pw)}@db.example.com:1433/acme` })]);
+  await expect(page.locator("body")).not.toContainText(pw);
+  await expect(page.locator("body")).not.toContainText(encodeURIComponent(pw));
+});

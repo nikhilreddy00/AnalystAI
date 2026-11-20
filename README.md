@@ -121,11 +121,12 @@ The API runs at `http://localhost:8000` — interactive docs at `http://localhos
 | Source | How to connect | Limits |
 |--------|----------------|--------|
 | **File upload** | .csv, .json, .jsonl, .parquet, .tsv, .xlsx in the UI | 50 MB per file; old .xls: save as .xlsx first |
-| **PostgreSQL, ask questions** | `postgresql://user:password@host:port/database`, no table name: the SQL agent writes one read-only query per question and aggregates in the database | 10,000 result rows, 15 s per query |
+| **Share link** | a public Google Sheets, Google Drive or Dropbox link, or any https CSV/xlsx URL, pasted under the upload; OneDrive/SharePoint 'Anyone' links too (tested on mocked links only) | copied once as a dataset version (paste again to refresh); 50 MB, 5 redirects, public hosts only |
+| **PostgreSQL, ask questions** | `postgresql://user:password@host:port/database` (hosted: `?sslmode=require`), no table name: the SQL agent writes one read-only query per question and aggregates in the database | 10,000 result rows, 15 s per query |
 | **PostgreSQL, one table** | the same + a table name | first 50,000 rows, 15 s, read-only |
-| **MySQL, ask questions** | `mysql://user:password@host:port/database`, no table name: the SQL agent writes one read-only query per question and aggregates in the database | 10,000 result rows, 15 s per query |
+| **MySQL, ask questions** | `mysql://user:password@host:port/database` (hosted, e.g. PlanetScale, RDS: `?ssl_mode=VERIFY_IDENTITY`), no table name: the SQL agent writes one read-only query per question and aggregates in the database | 10,000 result rows, 15 s per query |
 | **MySQL, one table** | the same + a table name | first 50,000 rows, 15 s, read-only |
-| **MariaDB, ask questions** | `mariadb://user:password@host:port/database`, no table name: the SQL agent writes one read-only query per question and aggregates in the database | 10,000 result rows, 15 s per query |
+| **MariaDB, ask questions** | `mariadb://user:password@host:port/database` (hosted: `?ssl_mode=VERIFY_IDENTITY`), no table name: the SQL agent writes one read-only query per question and aggregates in the database | 10,000 result rows, 15 s per query |
 | **MariaDB, one table** | the same + a table name | first 50,000 rows, 15 s, read-only |
 | **SQL Server, ask questions** | `mssql://user:password@host:port/database`; a read-only login (db_datareader only): a login that can write is refused, no table name: the SQL agent writes one read-only query per question and aggregates in the database | 10,000 result rows, 15 s per query |
 | **SQL Server, one table** | the same + a table name | first 50,000 rows, 15 s, read-only |

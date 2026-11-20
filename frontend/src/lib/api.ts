@@ -235,6 +235,19 @@ export async function uploadFile(file: File, datasetId?: string): Promise<Upload
   return data as UploadResponse;
 }
 
+/** A public share link (Google Sheets/Drive, OneDrive/SharePoint, Dropbox, any https CSV/xlsx),
+ * downloaded once by the server and filed exactly as an upload of the same file (Phase 5.8b). */
+export async function importLink(url: string, datasetId?: string): Promise<UploadResponse> {
+  const res = await fetch(`${API_URL}/connectors/link`, {
+    method: "POST",
+    headers: await getAuthHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify(datasetId ? { url, dataset_id: datasetId } : { url }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error((data as { detail?: string }).detail || "The link couldn't be imported");
+  return data as UploadResponse;
+}
+
 export type DashboardDataResult =
   | { status: "ok"; payload: DashboardDataPayload }
   | { status: "empty" }

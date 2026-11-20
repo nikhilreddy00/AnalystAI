@@ -186,6 +186,8 @@ def _zip(entries: dict[str, bytes]) -> bytes:
     (_zip({f"x{i}.xml": b"" for i in range(10_001)}), "parts"),
     (_zip({"../../etc/cron.d/x": b"a"}), "parts"),
     (b"a," * 10_001 + b"\n1\n", "columns"),
+    (b"report,2026\n\n" + b"a," * 10_001 + b"\n1\n", "columns"),   # header past a preamble
+    (b"x\r" + b"a;" * 10_001 + b"\r1\r", "columns"),                 # '\r' line endings
 ])
 def test_a_file_that_would_blow_up_when_read_is_refused_before_it_is(content, why):
     """Uploads and links share the one reader: a workbook is a zip whose parts openpyxl unpacks

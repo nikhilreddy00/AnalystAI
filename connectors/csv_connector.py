@@ -223,8 +223,10 @@ def _readable_size(content: bytes, suffix: str) -> None:
             raise IngestionError("workbook parts", "The workbook's parts aren't an Excel "
                                  "workbook's. Save it again from Excel and upload that.")
     elif suffix in (".csv", ".tsv"):
-        header = content[:2**20].split(b"\n", 1)[0]
-        if max(header.count(d) for d in (b",", b";", b"\t", b"|")) >= _MAX_COLUMNS:
+        # every line of the first MB, any line ending: the reader may take its header past a
+        # preamble (security review), and a '\r'-only file is one line to split(b"\n")
+        lines = content[:2**20].splitlines() or [b""]
+        if max(line.count(d) for line in lines for d in (b",", b";", b"\t", b"|")) >= _MAX_COLUMNS:
             raise IngestionError("too many columns", f"The file has more than {_MAX_COLUMNS:,} "
                                  "columns, past what can be read.")
 

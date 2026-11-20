@@ -306,10 +306,20 @@ def sources_table() -> str:
     from connectors import api_connector as api
     from connectors import sql_connector as sql
     from connectors.csv_connector import MAX_UPLOAD_MB, UPLOAD_SUFFIXES
-    # what a user must bring beyond the string (SQL Server has no read-only session: ADR-0010)
-    needs = {"mssql": "; a read-only login (db_datareader only): a login that can write is refused"}
+    from connectors import link
+    # what a user brings beyond the string (SQL Server has no read-only session: ADR-0010) and
+    # how hosted servers take TLS
+    needs = {"postgresql": " (hosted: `?sslmode=require`)",
+             "mysql": " (hosted, e.g. PlanetScale, RDS: `?ssl_mode=VERIFY_IDENTITY`)",
+             "mariadb": " (hosted: `?ssl_mode=VERIFY_IDENTITY`)",
+             "mssql": "; a read-only login (db_datareader only): a login that can write is refused"}
     rows = [("File upload", f"{', '.join(sorted(UPLOAD_SUFFIXES))} in the UI",
-             f"{MAX_UPLOAD_MB} MB per file; old .xls: save as .xlsx first")]
+             f"{MAX_UPLOAD_MB} MB per file; old .xls: save as .xlsx first"),
+            ("Share link", "a public Google Sheets, Google Drive or Dropbox link, or any https "
+             "CSV/xlsx URL, pasted under the upload; OneDrive/SharePoint 'Anyone' links too "
+             "(tested on mocked links only)",
+             f"copied once as a dataset version (paste again to refresh); {MAX_UPLOAD_MB} MB, "
+             f"{link.MAX_HOPS} redirects, public hosts only")]
     for key, d in sql.DIALECTS.items():
         if key == "sqlite":
             rows.append(("SQLite", "`sqlite:///path.db`",
