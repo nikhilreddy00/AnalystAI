@@ -356,7 +356,8 @@
     "old": "order = (\" ORDER BY \" + \", \".join(map(quote, key[\"constrained_columns\"]))",
     "reason": "SQL keywords are case-insensitive in every dialect"
    }
-  ]
+  ],
+  "hash": "4ec2dba4cba3167c"
  },
  "connectors/sql_connector.py::SQLConnector.engine": {
   "equivalents": [],
@@ -400,7 +401,8 @@
     "old": "out.append(f\"{t.this.sql(d.sqlglot).split('(')[0]}()\")",
     "reason": "only the refusal's wording: a function's name is printed the same (upper case) in every dialect"
    }
-  ]
+  ],
+  "hash": "a17a8344a7f011d5"
  },
  "connectors/sql_connector.py::dialect_of": {
   "equivalents": [],
@@ -684,7 +686,8 @@
     "old": "first = next((t for t in sqlglot.tokenize(text, read=dialect)",
     "reason": "the keyword check is the fast path: whatever the default tokenizer misses, parse_one(text, read=dialect) on the next line reads as a query in the connection's dialect"
    }
-  ]
+  ],
+  "hash": "b16d3baff8d83652"
  },
  "guardrails.py::_system_schemas": {
   "equivalents": [],
