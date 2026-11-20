@@ -306,7 +306,8 @@
     "old": "if not pd.api.types.is_numeric_dtype(df[col]) and (blank := df[col].eq(\"\")).any():",
     "reason": "the numeric test only skips work: a numeric column never equals '', so its blank mask is all False and nothing is masked either way"
    }
-  ]
+  ],
+  "hash": "57712ab7b45dfd85"
  },
  "connectors/base.py::resolved": {
   "equivalents": [],
@@ -320,10 +321,12 @@
     "old": "continue",
     "reason": "sqlite is DIALECTS' last row, so leaving the loop after its row is the same as continuing; a row added after it goes through the README test"
    }
-  ]
+  ],
+  "hash": "a8fd23d5257fbc61"
  },
  "connectors/base.py::without_secrets": {
-  "equivalents": []
+  "equivalents": [],
+  "hash": "7aca801387338cc3"
  },
  "connectors/sql_connector.py::QueryResult.frame": {
   "equivalents": [],
@@ -345,6 +348,10 @@
   "equivalents": [],
   "hash": "91502610be3f4dee"
  },
+ "connectors/sql_connector.py::_assert_single_select": {
+  "equivalents": [],
+  "hash": "7cc2d609e38d71a8"
+ },
  "connectors/sql_connector.py::_checked_address": {
   "equivalents": [
    {
@@ -353,7 +360,8 @@
     "old": "ips = []",
     "reason": "ips is read next only by `if not ips`, which refuses on None and [] alike"
    }
-  ]
+  ],
+  "hash": "7f7baff1f582e9b8"
  },
  "connectors/sql_connector.py::_plain": {
   "equivalents": [],
@@ -375,7 +383,8 @@
     "old": "conn.exec_driver_sql(statement.format(ms=int(timeout_s * 1000)))",
     "reason": "15,015 ms against 15,000: a statement timeout 15 ms longer, which no test can tell from the real one (the slow-query test allows seconds)"
    }
-  ]
+  ],
+  "hash": "655ada96cc927010"
  },
  "connectors/sql_connector.py::safe_url": {
   "equivalents": []

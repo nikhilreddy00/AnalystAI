@@ -500,6 +500,9 @@ _ALLOWED_HINT = ("The connection string couldn't be read. Use the form "
      "These connection string options aren't allowed: init_command. Allowed: charset."),
     ("mysql://u:p@h/db?local_infile=1&init_command=x", _DEV, "connection string options",
      "These connection string options aren't allowed: init_command, local_infile. Allowed: charset."),
+    ("postgresql://u:p@h/db?passfile=/x", _DEV, "connection string options",
+     "These connection string options aren't allowed: passfile. Allowed: application_name, "
+     "channel_binding, connect_timeout, sslmode, target_session_attrs."),
     ("sqlite:///x.db?mode=ro", _DEV, "connection string options",
      "These connection string options aren't allowed: mode. Allowed: none."),
     ("sqlite:///x.db", _PROD, "sqlite in production",
