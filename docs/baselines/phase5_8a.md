@@ -1,6 +1,6 @@
 # Phase 5.8a — the source contract + MySQL (2026-11-19)
 
-Wall clock: 3.6 h to merge-ready (first commit 2026-11-19 19:22 → merge pending the user's approval, PR #27)
+Wall clock: 3.6 h (first commit 2026-11-19 19:22 → merge pending the user's approval, PR #27; 3.6 h to merge-ready)
 Plan mode before it: ~1.5 h (four research agents, a red-team, the user's four decisions and a second
 pass on the execution workflow). Sized at 10.3 h; the breaker (4 h before the query-path step) never
 came near: that step was done at 0.8 h.
