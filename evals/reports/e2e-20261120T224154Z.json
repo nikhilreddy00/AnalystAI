@@ -1,0 +1,2942 @@
+{
+ "meta": {
+  "suite": "e2e",
+  "report": "e2e-20261120T224154Z",
+  "k": 1,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "8085723",
+  "started_at": "20261120T224154Z",
+  "only": "e2e-100,e2e-101,e2e-102,e2e-103,e2e-104",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 5,
+  "runs": 5,
+  "pass_rate": 1.0,
+  "case_majority_pass_rate": 1.0,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "hard_rules_na": 10,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 1,
+  "runs_with_prose_rewritten": 0,
+  "runs_with_pii_guard_hit": 0,
+  "cost_per_question_usd": 0.0242,
+  "latency_p50_s": 57.36,
+  "latency_p95_s": 64.23,
+  "by_domain": {
+   "insurance": {
+    "cases": 2,
+    "k_min": 1,
+    "k_max": 1,
+    "cases_passed_all_runs": 2,
+    "pass_rate": 1.0,
+    "hard_rule_violations": 0,
+    "hard_rules_na": 4,
+    "builtin_only_cases": [],
+    "model_dependent_passed": 0,
+    "model_dependent_cases": 0
+   },
+   "retail": {
+    "cases": 3,
+    "k_min": 1,
+    "k_max": 1,
+    "cases_passed_all_runs": 3,
+    "pass_rate": 1.0,
+    "hard_rule_violations": 0,
+    "hard_rules_na": 6,
+    "builtin_only_cases": [],
+    "model_dependent_passed": 0,
+    "model_dependent_cases": 0
+   }
+  }
+ },
+ "runs": {
+  "e2e-100": [
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": true,
+      "detail": "want \u22483.367e+07 [(1.0, None)] in answer; saw [33674954.88]"
+     },
+     {
+      "kind": "must_not_number",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "charts_lint_clean",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "charts_have_rationale",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     },
+     {
+      "rule": "pii_exits",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     }
+    ],
+    "error": null,
+    "answer": "Incurred losses: $33,674,954.88. How: Sum of Incurred; over counted rows (earlier valuations of claims left out).",
+    "pii_exits": {
+     "rule": "pii_exits",
+     "ok": true,
+     "na": true,
+     "detail": "n/a: no planted PII"
+    },
+    "pii_canary_hits": 0,
+    "pii_model_hits": 0,
+    "pii_planted": 0,
+    "approvals": [],
+    "output": {
+     "session_id": "4b5980ed-8f9d-4b98-8ba4-d69391482b97",
+     "user_id": "default",
+     "conversation_history": [
+      {
+       "role": "user",
+       "content": "How much have we incurred in total?",
+       "timestamp": "2026-11-20T22:42:56.028228Z"
+      },
+      {
+       "role": "assistant",
+       "content": "Incurred losses: $33,674,954.88. How: Sum of Incurred; over counted rows (earlier valuations of claims left out).",
+       "timestamp": "2026-11-20T22:42:57.179128Z"
+      }
+     ],
+     "connector_config": {
+      "type": "sql",
+      "file_path": null,
+      "connection_string": "mariadb+pymysql://root:***@127.0.0.1:33070/analystai_eval",
+      "table_name": "e2e_loss_run_1",
+      "spreadsheet_id": null,
+      "sheet_name": null,
+      "service_account_json": null,
+      "url": null,
+      "auth_type": null,
+      "auth_value": null,
+      "api_key_header": null,
+      "pagination_key": null
+     },
+     "task_plan": {
+      "raw_query": "How much have we incurred in total?",
+      "target_metrics": [
+       "Incurred"
+      ],
+      "timeframe": null,
+      "segments": [],
+      "analysis_types": [
+       "eda"
+      ],
+      "output_format": "both",
+      "resume_from": null,
+      "clarification_needed": false,
+      "clarification_question": null,
+      "question_intent": "top_n",
+      "targeted_params": {
+       "target_columns": [
+        "Incurred"
+       ],
+       "metric_column": "Incurred",
+       "date_column": null,
+       "segment_column": null,
+       "segment_value": null,
+       "group_by": null,
+       "variant_column": null,
+       "n": null,
+       "order": "desc",
+       "frequency": null,
+       "test_type": null,
+       "aggregation": "sum",
+       "chart_type": null,
+       "kpi": "incurred",
+       "period_start": null,
+       "period_end": null,
+       "compare": null
+      }
+     },
+     "data_contract": {
+      "source_type": "sql",
+      "row_count": 38255,
+      "column_count": 14,
+      "columns": [
+       {
+        "name": "Claim Number",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "CLM-000001",
+         "CLM-000001",
+         "CLM-000001",
+         "CLM-000001",
+         "CLM-000001"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "id: the insurance claim id",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Claimant Number",
+        "dtype": "int64",
+        "nullable": false,
+        "sample_values": [
+         1,
+         1,
+         1,
+         1,
+         1
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "category: the insurance claimant (a code)",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Policy Number",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "POL-01535",
+         "POL-01535",
+         "POL-01535",
+         "POL-01535",
+         "POL-01535"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "id: the insurance policy",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Line of Business",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Home",
+         "Home",
+         "Home",
+         "Home",
+         "Home"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Coverage",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Dwelling",
+         "Dwelling",
+         "Dwelling",
+         "Dwelling",
+         "Dwelling"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Loss Date",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2024-03-31T00:00:00",
+         "2024-03-31T00:00:00",
+         "2024-03-31T00:00:00",
+         "2024-03-31T00:00:00",
+         "2024-03-31T00:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Report Date",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2024-04-04T00:00:00",
+         "2024-04-04T00:00:00",
+         "2024-04-04T00:00:00",
+         "2024-04-04T00:00:00",
+         "2024-04-04T00:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Valuation Date",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2026-09-30T00:00:00",
+         "2026-06-30T00:00:00",
+         "2026-03-31T00:00:00",
+         "2025-12-31T00:00:00",
+         "2025-09-30T00:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Claim Status",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Closed",
+         "Closed",
+         "Closed",
+         "Closed",
+         "Closed"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Paid to Date",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         15720.96,
+         15720.96,
+         15720.96,
+         15720.96,
+         15720.96
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Case Reserve",
+        "dtype": "float64",
+        "nullable": true,
+        "sample_values": [
+         6280.2,
+         6288.38,
+         3058.44,
+         4106.84,
+         4782.12
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 70.93,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Incurred",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         15720.96,
+         15720.96,
+         15720.96,
+         15720.96,
+         15720.96
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Salvage Subrogation",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         0.0,
+         0.0,
+         0.0,
+         0.0,
+         0.0
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Cat Event",
+        "dtype": "str",
+        "nullable": true,
+        "sample_values": [
+         "CAT-2024-HAIL",
+         "CAT-2024-HAIL",
+         "CAT-2024-HAIL",
+         "CAT-2024-HAIL",
+         "CAT-2024-HAIL"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 96.08,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       }
+      ],
+      "sample_rows": [
+       {
+        "Claim Number": "CLM-000001",
+        "Claimant Number": 1,
+        "Policy Number": "POL-01535",
+        "Line of Business": "Home",
+        "Coverage": "Dwelling",
+        "Loss Date": "2024-03-31T00:00:00",
+        "Report Date": "2024-04-04T00:00:00",
+        "Valuation Date": "2026-09-30T00:00:00",
+        "Claim Status": "Closed",
+        "Paid to Date": 15720.96,
+        "Case Reserve": null,
+        "Incurred": 15720.96,
+        "Salvage Subrogation": 0.0,
+        "Cat Event": null
+       },
+       {
+        "Claim Number": "CLM-000001",
+        "Claimant Number": 1,
+        "Policy Number": "POL-01535",
+        "Line of Business": "Home",
+        "Coverage": "Dwelling",
+        "Loss Date": "2024-03-31T00:00:00",
+        "Report Date": "2024-04-04T00:00:00",
+        "Valuation Date": "2026-06-30T00:00:00",
+        "Claim Status": "Closed",
+        "Paid to Date": 15720.96,
+        "Case Reserve": null,
+        "Incurred": 15720.96,
+        "Salvage Subrogation": 0.0,
+        "Cat Event": null
+       },
+       {
+        "Claim Number": "CLM-000001",
+        "Claimant Number": 1,
+        "Policy Number": "POL-01535",
+        "Line of Business": "Home",
+        "Coverage": "Dwelling",
+        "Loss Date": "2024-03-31T00:00:00",
+        "Report Date": "2024-04-04T00:00:00",
+        "Valuation Date": "2026-03-31T00:00:00",
+        "Claim Status": "Closed",
+        "Paid to Date": 15720.96,
+        "Case Reserve": null,
+        "Incurred": 15720.96,
+        "Salvage Subrogation": 0.0,
+        "Cat Event": null
+       },
+       {
+        "Claim Number": "CLM-000001",
+        "Claimant Number": 1,
+        "Policy Number": "POL-01535",
+        "Line of Business": "Home",
+        "Coverage": "Dwelling",
+        "Loss Date": "2024-03-31T00:00:00",
+        "Report Date": "2024-04-04T00:00:00",
+        "Valuation Date": "2025-12-31T00:00:00",
+        "Claim Status": "Closed",
+        "Paid to Date": 15720.96,
+        "Case Reserve": null,
+        "Incurred": 15720.96,
+        "Salvage Subrogation": 0.0,
+        "Cat Event": null
+       },
+       {
+        "Claim Number": "CLM-000001",
+        "Claimant Number": 1,
+        "Policy Number": "POL-01535",
+        "Line of Business": "Home",
+        "Coverage": "Dwelling",
+        "Loss Date": "2024-03-31T00:00:00",
+        "Report Date": "2024-04-04T00:00:00",
+        "Valuation Date": "2025-09-30T00:00:00",
+        "Claim Status": "Closed",
+        "Paid to Date": 15720.96,
+        "Case Reserve": null,
+        "Incurred": 15720.96,
+        "Salvage Subrogation": 0.0,
+        "Cat Event": null
+       }
+      ],
+      "date_columns": [
+       "Loss Date",
+       "Report Date",
+       "Valuation Date"
+      ],
+      "id_columns": [
+       "Claim Number",
+       "Policy Number"
+      ],
+      "metric_columns": [
+       "Paid to Date",
+       "Case Reserve",
+       "Incurred",
+       "Salvage Subrogation"
+      ],
+      "schema_summary": "38,255 rows \u00d7 14 columns. Dates: Loss Date from 2022-01-01 to 2026-09-28 (daily). Metrics: Paid to Date, Case Reserve, Incurred, Salvage Subrogation. Identifiers: Claim Number, Policy Number. Categories: Claimant Number, Line of Business, Coverage, Claim Status, Cat Event. Blank by the file's layout, not missing (filled only for the rows whose status needs one): Case Reserve. Blank by the file's layout, not missing (filled only on the rows it applies to; blank means none): Cat Event.",
+      "source_query": null,
+      "source_evidence": {
+       "id": "source:data",
+       "kind": "source",
+       "claim": "Loaded 38,255 rows \u00d7 14 columns from the database.",
+       "code": "database connector load()",
+       "result_excerpt": "{\"roles\": {\"id\": [\"Claim Number\", \"Policy Number\"], \"category\": [\"Claimant Number\", \"Line of Business\", \"Coverage\", \"Claim Status\", \"Cat Event\"], \"date\": [\"Loss Date\", \"Report Date\", \"Valuation Date\"], \"metric\": [\"Paid to Date\", \"Case Reserve\", \"Incurred\", \"Salvage Subrogation\"]}, \"personal_data\": {}, \"fingerprint\": \"f5e8c56e35245188\"}",
+       "row_count": 38255,
+       "confidence": "high",
+       "confidence_reason": "Read as-is: no layout guessing was needed.",
+       "assumptions": []
+      },
+      "fingerprint": "f5e8c56e3524518880f4aff32914c3925587084d9fbf355ee1a59b0027bfed22",
+      "pii_columns": [],
+      "phi": false,
+      "deidentification": [],
+      "deidentified": false,
+      "domain": "insurance",
+      "roles": {
+       "date": "Loss Date",
+       "valuation_date": "Valuation Date",
+       "report_date": "Report Date",
+       "policy": "Policy Number",
+       "claim_id": "Claim Number",
+       "claimant": "Claimant Number",
+       "line": "Line of Business",
+       "coverage": "Coverage",
+       "cat_event": "Cat Event",
+       "incurred": "Incurred",
+       "paid": "Paid to Date",
+       "reserve": "Case Reserve",
+       "recoveries": "Salvage Subrogation",
+       "status": "Claim Status"
+      },
+      "domain_confidence": "strong"
+     },
+     "cleaning_audit": {
+      "decisions": [
+       {
+        "column": "Case Reserve",
+        "operation": "keep",
+        "strategy": "conditional",
+        "reason": "Filled only for rows whose status needs it, so other rows are blank by design; 0% of those rows have no value. Kept as it is.",
+        "rows_affected": 0,
+        "before_null_pct": 70.9,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "Cat Event",
+        "operation": "keep",
+        "strategy": "marker",
+        "reason": "Filled only on the rows it applies to, so 36755 blanks mean none, not missing values. Kept as it is.",
+        "rows_affected": 0,
+        "before_null_pct": 96.1,
+        "after_null_pct": 96.1,
+        "rows_removed": 0
+       },
+       {
+        "column": "*",
+        "operation": "flag",
+        "strategy": "non_product",
+        "reason": "34280 earlier valuations of claims: only each claimant's latest valuation counts; kept in the data.",
+        "rows_affected": 34280,
+        "before_null_pct": 0.0,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       }
+      ],
+      "rows_before": 38255,
+      "rows_after": 38255,
+      "columns_coerced": [],
+      "duplicates_removed": 0,
+      "outliers_flagged": [
+       "Incurred has a heavy-tailed distribution \u2014 14.4% of values exceed the outlier threshold. This likely reflects natural variation, not anomalies."
+      ],
+      "high_null_columns": [],
+      "summary": "Outliers flagged (kept) in: Incurred. Final dataset: 38255 rows (started with 38255).",
+      "anomaly_report": {
+       "flags": [
+        {
+         "column": "Incurred",
+         "extreme_count": 0,
+         "mild_count": 0,
+         "extreme_pct": 14.419030192131748,
+         "lower_bound": 17.56784811062191,
+         "upper_bound": 832803.7189879522,
+         "mild_lower_bound": 183.31976933569996,
+         "mild_upper_bound": 83893.3732647737,
+         "used_log_transform": true,
+         "heavy_tailed": true,
+         "message": "Incurred has a heavy-tailed distribution \u2014 14.4% of values exceed the outlier threshold. This likely reflects natural variation, not anomalies."
+        }
+       ],
+       "methodology_note": "",
+       "eligible_columns": [
+        "Paid to Date",
+        "Incurred",
+        "Salvage Subrogation"
+       ],
+       "skipped_columns": {
+        "Claim Number": "constant or unsupported",
+        "Policy Number": "constant or unsupported",
+        "Line of Business": "binary column (only 2 values)",
+        "Coverage": "non-numeric",
+        "Loss Date": "datetime column",
+        "Report Date": "datetime column",
+        "Valuation Date": "datetime column",
+        "Claim Status": "non-numeric",
+        "Case Reserve": "70.9% missing",
+        "Cat Event": "constant or unsupported"
+       }
+      },
+      "skipped_columns": [],
+      "date_ranges": {
+       "Loss Date": [
+        "2022-01-01",
+        "2026-09-28",
+        57
+       ],
+       "Report Date": [
+        "2022-01-03",
+        "2026-09-30",
+        57
+       ],
+       "Valuation Date": [
+        "2022-12-31",
+        "2026-09-30",
+        46
+       ]
+      },
+      "grain": "aggregate",
+      "partial_months": {
+       "Loss Date": [
+        "2026-09",
+        28
+       ]
+      },
+      "main_currency": null,
+      "spell_story": [],
+      "window_span": {}
+     },
+     "analysis_findings": null,
+     "chart_configs": [],
+     "insight_report": null,
+     "targeted_response": {
+      "intent": "top_n",
+      "answer_text": "Incurred losses: $33,674,954.88. How: Sum of Incurred; over counted rows (earlier valuations of claims left out).",
+      "chart_configs": [],
+      "table_data": [],
+      "table_columns": [],
+      "suggestions": [],
+      "unanswerable_reason": null,
+      "generated_at": "2026-11-20T22:42:57.173093Z"
+     },
+     "expert_review": null,
+     "narrative": {
+      "column_display_names": {
+       "Claim Number": "Claim Number",
+       "Claimant Number": "Claimant Number",
+       "Policy Number": "Policy Number",
+       "Line of Business": "Line of Business",
+       "Coverage": "Coverage",
+       "Loss Date": "Loss Date",
+       "Report Date": "Report Date",
+       "Valuation Date": "Valuation Date",
+       "Claim Status": "Claim Status",
+       "Paid to Date": "Paid to Date",
+       "Case Reserve": "Case Reserve",
+       "Incurred": "Incurred Amount",
+       "Salvage Subrogation": "Salvage & Subrogation",
+       "Cat Event": "Catastrophe Event"
+      },
+      "entity_singular": "claim valuation",
+      "entity_plural": "claim valuations"
+     },
+     "iteration": 1,
+     "quality_check_attempts": 0,
+     "high_null_answer": null,
+     "prior_pii": [],
+     "error_retryable": true,
+     "error_reask": true,
+     "overview_done": true,
+     "dataset_name": null,
+     "file_hash": null,
+     "dataset_id": null,
+     "dataset_version_id": null,
+     "status": "completed",
+     "cleaned_data_path": "/Users/uvnikhil/Projects/AnalystAI/session_data/4b5980ed-8f9d-4b98-8ba4-d69391482b97/cleaned_data.parquet",
+     "error_message": null,
+     "created_at": "2026-11-20T22:42:00.886898Z",
+     "updated_at": "2026-11-20T22:42:57.179133Z"
+    },
+    "domain": "insurance",
+    "latency_s": 64.72,
+    "cost_usd": 0.01734,
+    "llm_calls": 3,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "[\n  \"What is the total Incurred loss by accident year (derived from Loss Date) across each Line of Business, and how much of the most recent accident years' Incurred is still backed by open Case Reserves versus already paid out via Paid to Date?\",\n  \"How many claims currently have an open Claim Status, what is the aggregate Case Reserve on those open claims, and how does that open reserve break down by Coverage and Line of Business?\",\n  \"Which Cat Events account for the largest share of total Incurred losses, and how do their average Paid to Date and Case Reserve compare to non-catastrophe claims within the same Line of Business and Coverage?\",\n  \"What is the average lag in days between Loss Date and Report Date across Line of Business and Coverage, and are there specific segments where reporting lag is unusually long \u2014 which could signal adverse development risk on still-open Case Reserves?\",\n  \"How has the ratio of Salvage Subrogation recoveries to total Incurred trended by Loss Date accident quarter, and are there Lines of Business or Coverages where recoveries are disproportionately low relative to Paid to Date, suggesting missed recovery opportunities?\"\n]",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "{\n  \"column_display_names\": {\n    \"Claim Number\": \"Claim Number\",\n    \"Claimant Number\": \"Claimant Number\",\n    \"Policy Number\": \"Policy Number\",\n    \"Line of Business\": \"Line of Business\",\n    \"Coverage\": \"Coverage\",\n    \"Loss Date\": \"Loss Date\",\n    \"Report Date\": \"Report Date\",\n    \"Valuation Date\": \"Valuation Date\",\n    \"Claim Status\": \"Claim Status\",\n    \"Paid to Date\": \"Paid to Date\",\n    \"Case Reserve\": \"Case Reserve\",\n    \"Incurred\": \"Incurred Amount\",\n    \"Salvage Subrogation\": \"Salvage & Subrogation\",\n    \"Cat Event\": \"Catastrophe Event\"\n  },\n  \"entity_singular\": \"claim valuation\",\n  \"entity_plural\": \"claim valuations\"\n}",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "```json\n{\n  \"raw_query\": \"How much have we incurred in total?\",\n  \"target_metrics\": [\"Incurred\"],\n  \"timeframe\": null,\n  \"segments\": [],\n  \"analysis_types\": [\"eda\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"top_n\",\n  \"targeted_params\": {\n    \"target_columns\": [\"Incurred\"],\n    \"metric_column\": \"Incurred\",\n    \"date_column\": null,\n    \"segment_column\": null,\n    \"segment_value\": null,\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": \"desc\",\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"sum\",\n    \"chart_type\": null\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "e2e-101": [
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": true,
+      "detail": "want \u22480.4 [(1.0, None), (100.0, None)] in answer; saw [60.0, 40.0]"
+     },
+     {
+      "kind": "number_in_answer",
+      "ok": true,
+      "detail": "want \u22480.6 [(1.0, None), (100.0, None)] in answer; saw [60.0, 40.0]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "charts_lint_clean",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "charts_have_rationale",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     },
+     {
+      "rule": "pii_exits",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     }
+    ],
+    "error": null,
+    "answer": "mean(conversion_rate_pct) by group: 'control' leads at 60.00; 'treatment' is lowest at 40.00.",
+    "pii_exits": {
+     "rule": "pii_exits",
+     "ok": true,
+     "na": true,
+     "detail": "n/a: no planted PII"
+    },
+    "pii_canary_hits": 0,
+    "pii_model_hits": 0,
+    "pii_planted": 0,
+    "approvals": [],
+    "output": {
+     "session_id": "4d882d08-fa3b-4bdf-9bf1-50da2a422f45",
+     "user_id": "default",
+     "conversation_history": [
+      {
+       "role": "user",
+       "content": "What is the conversion rate of the treatment group versus control?",
+       "timestamp": "2026-11-20T22:43:03.117159Z"
+      },
+      {
+       "role": "assistant",
+       "content": "mean(conversion_rate_pct) by group: 'control' leads at 60.00; 'treatment' is lowest at 40.00.",
+       "timestamp": "2026-11-20T22:43:03.165421Z"
+      }
+     ],
+     "connector_config": {
+      "type": "sql",
+      "file_path": null,
+      "connection_string": "mariadb+pymysql://root:***@127.0.0.1:33070/analystai_eval",
+      "table_name": null,
+      "spreadsheet_id": null,
+      "sheet_name": null,
+      "service_account_json": null,
+      "url": null,
+      "auth_type": null,
+      "auth_value": null,
+      "api_key_header": null,
+      "pagination_key": null
+     },
+     "task_plan": {
+      "raw_query": "What is the conversion rate of the treatment group versus control?",
+      "target_metrics": [
+       "conversion_rate_pct"
+      ],
+      "timeframe": null,
+      "segments": [
+       "group"
+      ],
+      "analysis_types": [
+       "eda",
+       "segmentation"
+      ],
+      "output_format": "both",
+      "resume_from": null,
+      "clarification_needed": false,
+      "clarification_question": null,
+      "question_intent": "segment_compare",
+      "targeted_params": {
+       "target_columns": [],
+       "metric_column": "conversion_rate_pct",
+       "date_column": null,
+       "segment_column": "group",
+       "segment_value": null,
+       "group_by": "group",
+       "variant_column": null,
+       "n": null,
+       "order": null,
+       "frequency": null,
+       "test_type": null,
+       "aggregation": "mean",
+       "chart_type": null,
+       "kpi": null,
+       "period_start": null,
+       "period_end": null,
+       "compare": null
+      }
+     },
+     "data_contract": {
+      "source_type": "sql",
+      "row_count": 2,
+      "column_count": 4,
+      "columns": [
+       {
+        "name": "group",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "control",
+         "treatment"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "visitors",
+        "dtype": "int64",
+        "nullable": false,
+        "sample_values": [
+         1000,
+         1000
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "conversions",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         600.0,
+         400.0
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "conversion_rate_pct",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         60.0,
+         40.0
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       }
+      ],
+      "sample_rows": [
+       {
+        "group": "control",
+        "visitors": 1000,
+        "conversions": 600.0,
+        "conversion_rate_pct": 60.0
+       },
+       {
+        "group": "treatment",
+        "visitors": 1000,
+        "conversions": 400.0,
+        "conversion_rate_pct": 40.0
+       }
+      ],
+      "date_columns": [],
+      "id_columns": [],
+      "metric_columns": [
+       "visitors",
+       "conversions",
+       "conversion_rate_pct"
+      ],
+      "schema_summary": "2 rows \u00d7 4 columns. Metrics: visitors, conversions, conversion_rate_pct. Categories: group.",
+      "source_query": {
+       "id": "sql:query",
+       "kind": "query",
+       "claim": "2 row(s) from one read-only query",
+       "code": "SELECT\n  `group`,\n  COUNT(*)                                   AS visitors,\n  SUM(converted)                             AS conversions,\n  ROUND(SUM(converted) / COUNT(*) * 100, 2) AS conversion_rate_pct\nFROM analystai_eval.e2e_simpson_1\nGROUP BY `group`\nORDER BY `group`",
+       "result_excerpt": "[{\"group\": \"control\", \"visitors\": 1000, \"conversions\": \"600\", \"conversion_rate_pct\": \"60.00\"}, {\"group\": \"treatment\", \"visitors\": 1000, \"conversions\": \"400\", \"conversion_rate_pct\": \"40.00\"}]",
+       "row_count": 2,
+       "confidence": "medium",
+       "confidence_reason": "no semantic layer: metric meaning was inferred from names",
+       "assumptions": []
+      },
+      "source_evidence": {
+       "id": "source:data",
+       "kind": "source",
+       "claim": "Loaded 2 rows \u00d7 4 columns from the database.",
+       "code": "database connector load()",
+       "result_excerpt": "{\"roles\": {\"category\": [\"group\"], \"metric\": [\"visitors\", \"conversions\", \"conversion_rate_pct\"]}, \"personal_data\": {}, \"fingerprint\": \"d7ba387dd84008ba\"}",
+       "row_count": 2,
+       "confidence": "high",
+       "confidence_reason": "Read as-is: no layout guessing was needed.",
+       "assumptions": []
+      },
+      "fingerprint": "d7ba387dd84008ba5f34c820b02277a7497d3bd274766c3c42941aece78162be",
+      "pii_columns": [],
+      "phi": false,
+      "deidentification": [],
+      "deidentified": false,
+      "domain": null,
+      "roles": {},
+      "domain_confidence": null
+     },
+     "cleaning_audit": {
+      "decisions": [],
+      "rows_before": 2,
+      "rows_after": 2,
+      "columns_coerced": [],
+      "duplicates_removed": 0,
+      "outliers_flagged": [],
+      "high_null_columns": [],
+      "summary": "Final dataset: 2 rows (started with 2).",
+      "anomaly_report": {
+       "flags": [],
+       "methodology_note": "",
+       "eligible_columns": [],
+       "skipped_columns": {
+        "group": "binary column (only 2 values)",
+        "visitors": "constant or unsupported",
+        "conversions": "binary column (only 2 values)",
+        "conversion_rate_pct": "binary column (only 2 values)"
+       }
+      },
+      "skipped_columns": [],
+      "date_ranges": {},
+      "grain": null,
+      "partial_months": {},
+      "main_currency": null,
+      "spell_story": [],
+      "window_span": {}
+     },
+     "analysis_findings": null,
+     "chart_configs": [],
+     "insight_report": null,
+     "targeted_response": {
+      "intent": "segment_compare",
+      "answer_text": "mean(conversion_rate_pct) by group: 'control' leads at 60.00; 'treatment' is lowest at 40.00.",
+      "chart_configs": [
+       {
+        "id": "f13b16ae-5d5d-4db7-a06b-3b7d747d3a94",
+        "chart_type": "BarChart",
+        "title": "Average Conversion Rate % by Group",
+        "data": [
+         {
+          "group": "control",
+          "conversion_rate_pct": 60.0,
+          "conversion_rate_pct__n": 1
+         },
+         {
+          "group": "treatment",
+          "conversion_rate_pct": 40.0,
+          "conversion_rate_pct__n": 1
+         }
+        ],
+        "x_key": "group",
+        "y_keys": [
+         "conversion_rate_pct"
+        ],
+        "colors": [],
+        "x_label": "Group",
+        "y_label": "Average Conversion Rate %",
+        "show_legend": false,
+        "show_grid": true,
+        "source_finding": "group_bars",
+        "value_format": "number",
+        "layout_hint": "half_width",
+        "rationale": {
+         "rule": "targeted:segment_compare\u2192bars",
+         "reason": "Compares mean conversion_rate_pct across group.",
+         "x": "group",
+         "y": "conversion_rate_pct",
+         "split": null,
+         "aggregation": "mean",
+         "n_rows": 2,
+         "evidence_ids": [],
+         "code": "df.groupby('group')['conversion_rate_pct'].mean()",
+         "confidence": null
+        },
+        "placement": "summary",
+        "lint_warnings": [],
+        "error_key": null,
+        "split_key": null,
+        "reference_lines": []
+       }
+      ],
+      "table_data": [],
+      "table_columns": [],
+      "suggestions": [],
+      "unanswerable_reason": null,
+      "generated_at": "2026-11-20T22:43:03.165258Z"
+     },
+     "expert_review": null,
+     "narrative": {
+      "column_display_names": {
+       "group": "Group",
+       "visitors": "Visitors",
+       "conversions": "Conversions",
+       "conversion_rate_pct": "Conversion Rate %"
+      },
+      "entity_singular": "experiment group",
+      "entity_plural": "experiment groups"
+     },
+     "iteration": 1,
+     "quality_check_attempts": 0,
+     "high_null_answer": null,
+     "prior_pii": [],
+     "error_retryable": true,
+     "error_reask": true,
+     "overview_done": true,
+     "dataset_name": null,
+     "file_hash": null,
+     "dataset_id": null,
+     "dataset_version_id": null,
+     "status": "completed",
+     "cleaned_data_path": "/Users/uvnikhil/Projects/AnalystAI/session_data/4d882d08-fa3b-4bdf-9bf1-50da2a422f45/cleaned_data.parquet",
+     "error_message": null,
+     "created_at": "2026-11-20T22:42:01.003711Z",
+     "updated_at": "2026-11-20T22:43:03.165423Z"
+    },
+    "domain": "retail",
+    "latency_s": 62.29,
+    "cost_usd": 0.0367,
+    "llm_calls": 6,
+    "truncated_calls": 0,
+    "rejections": [
+     "format"
+    ],
+    "replies": [
+     {
+      "text": "Let me first check the data to understand the group values and conversion structure.",
+      "stop_reason": "tool_use",
+      "tool_calls": [
+       {
+        "id": "toolu_01KrHs3m8jCpWwXPsgVtBKkj",
+        "name": "run_sql",
+        "input": {
+         "sql": "SELECT `group`, COUNT(*) AS visitors, SUM(converted) AS conversions FROM analystai_eval.e2e_simpson_1 GROUP BY `group`"
+        }
+       }
+      ]
+     },
+     {
+      "text": "Got it \u2014 two groups, clear structure. Here's the query:\n\n```sql\nSELECT\n  `group`,\n  COUNT(*)                                   AS visitors,\n  SUM(converted)                             AS conversions,\n  ROUND(SUM(converted) / COUNT(*) * 100, 2) AS conversion_rate_pct\nFROM analystai_eval.e2e_simpson_1\nGROUP BY `group`\nORDER BY `group`\n```\n\n{\"sql\": \"SELECT\\n  `group`,\\n  COUNT(*)                                   AS visitors,\\n  SUM(converted)                             AS conversions,\\n  ROUND(SUM(converted) / COUNT(*) * 100, 2) AS conversion_rate_pct\\nFROM analystai_eval.e2e_simpson_1\\nGROUP BY `group`\\nORDER BY `group`\", \"metrics_used\": []}\n\n---\n\n### Results\n\n| Group | Visitors | Conversions | Conversion Rate |\n|-----------|----------|-------------|-----------------|\n| Control | 1,000 | 600 | **60.00%** |\n| Treatment | 1,000 | 400 | **40.00%** |\n\n### Key Takeaway\nThe **control group outperforms the treatment group** by **20 percentage points** (60% vs. 40%). At face value, the treatment appears to be *hurting* conversions. However, this dataset is named `e2e_simpson_1`, which is a strong hint that **Simpson's Paradox** may be at play \u2014 the aggregate result could be misleading if the groups differ in composition across sub-segments (e.g., `department`). It would be worth breaking down the conversion rates by `department` to check for a reversal in the per-segment results.",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "{\"sql\": \"SELECT\\n  `group`,\\n  COUNT(*)                                   AS visitors,\\n  SUM(converted)                             AS conversions,\\n  ROUND(SUM(converted) / COUNT(*) * 100, 2) AS conversion_rate_pct\\nFROM analystai_eval.e2e_simpson_1\\nGROUP BY `group`\\nORDER BY `group`\", \"metrics_used\": []}",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "[\n  \"Which group has the higher conversion_rate_pct, and how large is the absolute percentage point difference between the two groups?\",\n  \"Is the difference in conversions between the two groups statistically significant given their respective visitor volumes?\",\n  \"Does the group with more visitors also achieve a proportionally higher number of conversions, or does volume not correlate with conversion efficiency?\",\n  \"What is the combined overall conversion_rate_pct across both groups when visitors and conversions are aggregated together?\",\n  \"If the lower-performing group matched the conversion_rate_pct of the higher-performing group, how many additional conversions would it generate given its current visitor count?\"\n]",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "{\n  \"column_display_names\": {\n    \"group\": \"Group\",\n    \"visitors\": \"Visitors\",\n    \"conversions\": \"Conversions\",\n    \"conversion_rate_pct\": \"Conversion Rate %\"\n  },\n  \"entity_singular\": \"experiment group\",\n  \"entity_plural\": \"experiment groups\"\n}",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "```json\n{\n  \"raw_query\": \"What is the conversion rate of the treatment group versus control?\",\n  \"target_metrics\": [\"conversion_rate_pct\"],\n  \"timeframe\": null,\n  \"segments\": [\"group\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": \"conversion_rate_pct\",\n    \"date_column\": null,\n    \"segment_column\": \"group\",\n    \"segment_value\": null,\n    \"group_by\": \"group\",\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"mean\",\n    \"chart_type\": null\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "e2e-102": [
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": true,
+      "detail": "want \u22483.367e+07 [(1.0, None)] in answer; saw [33674954.88]"
+     },
+     {
+      "kind": "must_not_number",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "charts_lint_clean",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "charts_have_rationale",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     },
+     {
+      "rule": "pii_exits",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     }
+    ],
+    "error": null,
+    "answer": "Incurred losses: $33,674,954.88. How: Sum of Incurred; over counted rows (earlier valuations of claims left out).",
+    "pii_exits": {
+     "rule": "pii_exits",
+     "ok": true,
+     "na": true,
+     "detail": "n/a: no planted PII"
+    },
+    "pii_canary_hits": 0,
+    "pii_model_hits": 0,
+    "pii_planted": 0,
+    "approvals": [],
+    "output": {
+     "session_id": "986076dd-f612-47d4-9258-ecc86df4fbe2",
+     "user_id": "default",
+     "conversation_history": [
+      {
+       "role": "user",
+       "content": "How much have we incurred in total?",
+       "timestamp": "2026-11-20T22:42:54.850386Z"
+      },
+      {
+       "role": "assistant",
+       "content": "Incurred losses: $33,674,954.88. How: Sum of Incurred; over counted rows (earlier valuations of claims left out).",
+       "timestamp": "2026-11-20T22:42:56.115022Z"
+      }
+     ],
+     "connector_config": {
+      "type": "sql",
+      "file_path": null,
+      "connection_string": "mssql://aai_reader:***@127.0.0.1:14330/analystai_eval?TrustServerCertificate=yes",
+      "table_name": "e2e_loss_run_1",
+      "spreadsheet_id": null,
+      "sheet_name": null,
+      "service_account_json": null,
+      "url": null,
+      "auth_type": null,
+      "auth_value": null,
+      "api_key_header": null,
+      "pagination_key": null
+     },
+     "task_plan": {
+      "raw_query": "How much have we incurred in total?",
+      "target_metrics": [
+       "Incurred"
+      ],
+      "timeframe": null,
+      "segments": [],
+      "analysis_types": [
+       "eda"
+      ],
+      "output_format": "both",
+      "resume_from": null,
+      "clarification_needed": false,
+      "clarification_question": null,
+      "question_intent": "top_n",
+      "targeted_params": {
+       "target_columns": [
+        "Incurred"
+       ],
+       "metric_column": "Incurred",
+       "date_column": null,
+       "segment_column": null,
+       "segment_value": null,
+       "group_by": null,
+       "variant_column": null,
+       "n": null,
+       "order": "desc",
+       "frequency": null,
+       "test_type": null,
+       "aggregation": "sum",
+       "chart_type": null,
+       "kpi": "incurred",
+       "period_start": null,
+       "period_end": null,
+       "compare": null
+      }
+     },
+     "data_contract": {
+      "source_type": "sql",
+      "row_count": 38255,
+      "column_count": 14,
+      "columns": [
+       {
+        "name": "Claim Number",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "CLM-001428",
+         "CLM-001428",
+         "CLM-001428",
+         "CLM-001428",
+         "CLM-001428"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "id: the insurance claim id",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Claimant Number",
+        "dtype": "int64",
+        "nullable": false,
+        "sample_values": [
+         1,
+         1,
+         1,
+         1,
+         1
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "category: the insurance claimant (a code)",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Policy Number",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "POL-02055",
+         "POL-02055",
+         "POL-02055",
+         "POL-02055",
+         "POL-02055"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "id: the insurance policy",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Line of Business",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Auto",
+         "Auto",
+         "Auto",
+         "Auto",
+         "Auto"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Coverage",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Bodily Injury",
+         "Bodily Injury",
+         "Bodily Injury",
+         "Bodily Injury",
+         "Bodily Injury"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Loss Date",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2023-04-29T00:00:00",
+         "2023-04-29T00:00:00",
+         "2023-04-29T00:00:00",
+         "2023-04-29T00:00:00",
+         "2023-04-29T00:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Report Date",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2023-05-02T00:00:00",
+         "2023-05-02T00:00:00",
+         "2023-05-02T00:00:00",
+         "2023-05-02T00:00:00",
+         "2023-05-02T00:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Valuation Date",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2025-12-31T00:00:00",
+         "2025-09-30T00:00:00",
+         "2025-06-30T00:00:00",
+         "2025-03-31T00:00:00",
+         "2024-12-31T00:00:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Claim Status",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Closed",
+         "Closed",
+         "Closed",
+         "Closed",
+         "Closed"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Paid to Date",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         28760.94,
+         28760.94,
+         28760.94,
+         28760.94,
+         28760.94
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Case Reserve",
+        "dtype": "float64",
+        "nullable": true,
+        "sample_values": [
+         8568.14,
+         11489.41,
+         12762.67,
+         11504.38,
+         2399.64
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 70.93,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Incurred",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         28760.94,
+         28760.94,
+         28760.94,
+         28760.94,
+         28760.94
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Salvage Subrogation",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         0.0,
+         0.0,
+         0.0,
+         0.0,
+         0.0
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Cat Event",
+        "dtype": "str",
+        "nullable": true,
+        "sample_values": [
+         "CAT-2024-HAIL",
+         "CAT-2024-HAIL",
+         "CAT-2024-HAIL",
+         "CAT-2024-HAIL",
+         "CAT-2024-HAIL"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 96.08,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       }
+      ],
+      "sample_rows": [
+       {
+        "Claim Number": "CLM-001428",
+        "Claimant Number": 1,
+        "Policy Number": "POL-02055",
+        "Line of Business": "Auto",
+        "Coverage": "Bodily Injury",
+        "Loss Date": "2023-04-29T00:00:00",
+        "Report Date": "2023-05-02T00:00:00",
+        "Valuation Date": "2025-12-31T00:00:00",
+        "Claim Status": "Closed",
+        "Paid to Date": 28760.94,
+        "Case Reserve": null,
+        "Incurred": 28760.94,
+        "Salvage Subrogation": 0.0,
+        "Cat Event": null
+       },
+       {
+        "Claim Number": "CLM-001428",
+        "Claimant Number": 1,
+        "Policy Number": "POL-02055",
+        "Line of Business": "Auto",
+        "Coverage": "Bodily Injury",
+        "Loss Date": "2023-04-29T00:00:00",
+        "Report Date": "2023-05-02T00:00:00",
+        "Valuation Date": "2025-09-30T00:00:00",
+        "Claim Status": "Closed",
+        "Paid to Date": 28760.94,
+        "Case Reserve": null,
+        "Incurred": 28760.94,
+        "Salvage Subrogation": 0.0,
+        "Cat Event": null
+       },
+       {
+        "Claim Number": "CLM-001428",
+        "Claimant Number": 1,
+        "Policy Number": "POL-02055",
+        "Line of Business": "Auto",
+        "Coverage": "Bodily Injury",
+        "Loss Date": "2023-04-29T00:00:00",
+        "Report Date": "2023-05-02T00:00:00",
+        "Valuation Date": "2025-06-30T00:00:00",
+        "Claim Status": "Closed",
+        "Paid to Date": 28760.94,
+        "Case Reserve": null,
+        "Incurred": 28760.94,
+        "Salvage Subrogation": 0.0,
+        "Cat Event": null
+       },
+       {
+        "Claim Number": "CLM-001428",
+        "Claimant Number": 1,
+        "Policy Number": "POL-02055",
+        "Line of Business": "Auto",
+        "Coverage": "Bodily Injury",
+        "Loss Date": "2023-04-29T00:00:00",
+        "Report Date": "2023-05-02T00:00:00",
+        "Valuation Date": "2025-03-31T00:00:00",
+        "Claim Status": "Closed",
+        "Paid to Date": 28760.94,
+        "Case Reserve": null,
+        "Incurred": 28760.94,
+        "Salvage Subrogation": 0.0,
+        "Cat Event": null
+       },
+       {
+        "Claim Number": "CLM-001428",
+        "Claimant Number": 1,
+        "Policy Number": "POL-02055",
+        "Line of Business": "Auto",
+        "Coverage": "Bodily Injury",
+        "Loss Date": "2023-04-29T00:00:00",
+        "Report Date": "2023-05-02T00:00:00",
+        "Valuation Date": "2024-12-31T00:00:00",
+        "Claim Status": "Closed",
+        "Paid to Date": 28760.94,
+        "Case Reserve": null,
+        "Incurred": 28760.94,
+        "Salvage Subrogation": 0.0,
+        "Cat Event": null
+       }
+      ],
+      "date_columns": [
+       "Loss Date",
+       "Report Date",
+       "Valuation Date"
+      ],
+      "id_columns": [
+       "Claim Number",
+       "Policy Number"
+      ],
+      "metric_columns": [
+       "Paid to Date",
+       "Case Reserve",
+       "Incurred",
+       "Salvage Subrogation"
+      ],
+      "schema_summary": "38,255 rows \u00d7 14 columns. Dates: Loss Date from 2022-01-01 to 2026-09-28 (daily). Metrics: Paid to Date, Case Reserve, Incurred, Salvage Subrogation. Identifiers: Claim Number, Policy Number. Categories: Claimant Number, Line of Business, Coverage, Claim Status, Cat Event. Blank by the file's layout, not missing (filled only for the rows whose status needs one): Case Reserve. Blank by the file's layout, not missing (filled only on the rows it applies to; blank means none): Cat Event.",
+      "source_query": null,
+      "source_evidence": {
+       "id": "source:data",
+       "kind": "source",
+       "claim": "Loaded 38,255 rows \u00d7 14 columns from the database.",
+       "code": "database connector load()",
+       "result_excerpt": "{\"roles\": {\"id\": [\"Claim Number\", \"Policy Number\"], \"category\": [\"Claimant Number\", \"Line of Business\", \"Coverage\", \"Claim Status\", \"Cat Event\"], \"date\": [\"Loss Date\", \"Report Date\", \"Valuation Date\"], \"metric\": [\"Paid to Date\", \"Case Reserve\", \"Incurred\", \"Salvage Subrogation\"]}, \"personal_data\": {}, \"fingerprint\": \"f5e8c56e35245188\"}",
+       "row_count": 38255,
+       "confidence": "high",
+       "confidence_reason": "Read as-is: no layout guessing was needed.",
+       "assumptions": []
+      },
+      "fingerprint": "f5e8c56e3524518880f4aff32914c3925587084d9fbf355ee1a59b0027bfed22",
+      "pii_columns": [],
+      "phi": false,
+      "deidentification": [],
+      "deidentified": false,
+      "domain": "insurance",
+      "roles": {
+       "date": "Loss Date",
+       "valuation_date": "Valuation Date",
+       "report_date": "Report Date",
+       "policy": "Policy Number",
+       "claim_id": "Claim Number",
+       "claimant": "Claimant Number",
+       "line": "Line of Business",
+       "coverage": "Coverage",
+       "cat_event": "Cat Event",
+       "incurred": "Incurred",
+       "paid": "Paid to Date",
+       "reserve": "Case Reserve",
+       "recoveries": "Salvage Subrogation",
+       "status": "Claim Status"
+      },
+      "domain_confidence": "strong"
+     },
+     "cleaning_audit": {
+      "decisions": [
+       {
+        "column": "Case Reserve",
+        "operation": "keep",
+        "strategy": "conditional",
+        "reason": "Filled only for rows whose status needs it, so other rows are blank by design; 0% of those rows have no value. Kept as it is.",
+        "rows_affected": 0,
+        "before_null_pct": 70.9,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "Cat Event",
+        "operation": "keep",
+        "strategy": "marker",
+        "reason": "Filled only on the rows it applies to, so 36755 blanks mean none, not missing values. Kept as it is.",
+        "rows_affected": 0,
+        "before_null_pct": 96.1,
+        "after_null_pct": 96.1,
+        "rows_removed": 0
+       },
+       {
+        "column": "*",
+        "operation": "flag",
+        "strategy": "non_product",
+        "reason": "34280 earlier valuations of claims: only each claimant's latest valuation counts; kept in the data.",
+        "rows_affected": 34280,
+        "before_null_pct": 0.0,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       }
+      ],
+      "rows_before": 38255,
+      "rows_after": 38255,
+      "columns_coerced": [],
+      "duplicates_removed": 0,
+      "outliers_flagged": [
+       "Incurred has a heavy-tailed distribution \u2014 14.4% of values exceed the outlier threshold. This likely reflects natural variation, not anomalies."
+      ],
+      "high_null_columns": [],
+      "summary": "Outliers flagged (kept) in: Incurred. Final dataset: 38255 rows (started with 38255).",
+      "anomaly_report": {
+       "flags": [
+        {
+         "column": "Incurred",
+         "extreme_count": 0,
+         "mild_count": 0,
+         "extreme_pct": 14.419030192131748,
+         "lower_bound": 17.56784811062191,
+         "upper_bound": 832803.7189879522,
+         "mild_lower_bound": 183.31976933569996,
+         "mild_upper_bound": 83893.3732647737,
+         "used_log_transform": true,
+         "heavy_tailed": true,
+         "message": "Incurred has a heavy-tailed distribution \u2014 14.4% of values exceed the outlier threshold. This likely reflects natural variation, not anomalies."
+        }
+       ],
+       "methodology_note": "",
+       "eligible_columns": [
+        "Paid to Date",
+        "Incurred",
+        "Salvage Subrogation"
+       ],
+       "skipped_columns": {
+        "Claim Number": "constant or unsupported",
+        "Policy Number": "constant or unsupported",
+        "Line of Business": "binary column (only 2 values)",
+        "Coverage": "non-numeric",
+        "Loss Date": "datetime column",
+        "Report Date": "datetime column",
+        "Valuation Date": "datetime column",
+        "Claim Status": "non-numeric",
+        "Case Reserve": "70.9% missing",
+        "Cat Event": "constant or unsupported"
+       }
+      },
+      "skipped_columns": [],
+      "date_ranges": {
+       "Loss Date": [
+        "2022-01-01",
+        "2026-09-28",
+        57
+       ],
+       "Report Date": [
+        "2022-01-03",
+        "2026-09-30",
+        57
+       ],
+       "Valuation Date": [
+        "2022-12-31",
+        "2026-09-30",
+        46
+       ]
+      },
+      "grain": "aggregate",
+      "partial_months": {
+       "Loss Date": [
+        "2026-09",
+        28
+       ]
+      },
+      "main_currency": null,
+      "spell_story": [],
+      "window_span": {}
+     },
+     "analysis_findings": null,
+     "chart_configs": [],
+     "insight_report": null,
+     "targeted_response": {
+      "intent": "top_n",
+      "answer_text": "Incurred losses: $33,674,954.88. How: Sum of Incurred; over counted rows (earlier valuations of claims left out).",
+      "chart_configs": [],
+      "table_data": [],
+      "table_columns": [],
+      "suggestions": [],
+      "unanswerable_reason": null,
+      "generated_at": "2026-11-20T22:42:56.109628Z"
+     },
+     "expert_review": null,
+     "narrative": {
+      "column_display_names": {
+       "Claim Number": "Claim Number",
+       "Claimant Number": "Claimant Number",
+       "Policy Number": "Policy Number",
+       "Line of Business": "Line of Business",
+       "Coverage": "Coverage Type",
+       "Loss Date": "Loss Date",
+       "Report Date": "Report Date",
+       "Valuation Date": "Valuation Date",
+       "Claim Status": "Claim Status",
+       "Paid to Date": "Paid to Date",
+       "Case Reserve": "Case Reserve",
+       "Incurred": "Incurred Amount",
+       "Salvage Subrogation": "Salvage & Subrogation",
+       "Cat Event": "Catastrophe Event"
+      },
+      "entity_singular": "claim valuation",
+      "entity_plural": "claim valuations"
+     },
+     "iteration": 1,
+     "quality_check_attempts": 0,
+     "high_null_answer": null,
+     "prior_pii": [],
+     "error_retryable": true,
+     "error_reask": true,
+     "overview_done": true,
+     "dataset_name": null,
+     "file_hash": null,
+     "dataset_id": null,
+     "dataset_version_id": null,
+     "status": "completed",
+     "cleaned_data_path": "/Users/uvnikhil/Projects/AnalystAI/session_data/986076dd-f612-47d4-9258-ecc86df4fbe2/cleaned_data.parquet",
+     "error_message": null,
+     "created_at": "2026-11-20T22:42:34.332876Z",
+     "updated_at": "2026-11-20T22:42:56.115026Z"
+    },
+    "domain": "insurance",
+    "latency_s": 57.36,
+    "cost_usd": 0.01723,
+    "llm_calls": 3,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "[\n  \"What is the total Incurred loss by accident year (derived from Loss Date) across each Line of Business, and how much of the most recent accident years' Incurred is still sitting in open Case Reserve versus already Paid to Date?\",\n  \"How many claims currently have an open Claim Status, what is the aggregate Case Reserve on those open claims, and how does that reserve concentration break down by Coverage and Line of Business?\",\n  \"Which Cat Events account for the largest share of total Incurred losses, and how do their Paid to Date and Case Reserve balances compare to non-catastrophe claims within the same Line of Business and Coverage?\",\n  \"What is the average and total reporting lag (days between Loss Date and Report Date) by Line of Business and Claim Status, and are there any claims where the Report Date significantly trails the Loss Date in a way that could signal late-reported large losses?\",\n  \"How has the ratio of Salvage Subrogation recoveries to total Incurred trended by Loss Date accident year and Coverage, and which specific Coverage types show the highest recovery rates that could inform future reserving assumptions?\"\n]",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "{\n  \"column_display_names\": {\n    \"Claim Number\": \"Claim Number\",\n    \"Claimant Number\": \"Claimant Number\",\n    \"Policy Number\": \"Policy Number\",\n    \"Line of Business\": \"Line of Business\",\n    \"Coverage\": \"Coverage Type\",\n    \"Loss Date\": \"Loss Date\",\n    \"Report Date\": \"Report Date\",\n    \"Valuation Date\": \"Valuation Date\",\n    \"Claim Status\": \"Claim Status\",\n    \"Paid to Date\": \"Paid to Date\",\n    \"Case Reserve\": \"Case Reserve\",\n    \"Incurred\": \"Incurred Amount\",\n    \"Salvage Subrogation\": \"Salvage & Subrogation\",\n    \"Cat Event\": \"Catastrophe Event\"\n  },\n  \"entity_singular\": \"claim valuation\",\n  \"entity_plural\": \"claim valuations\"\n}",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "```json\n{\n  \"raw_query\": \"How much have we incurred in total?\",\n  \"target_metrics\": [\"Incurred\"],\n  \"timeframe\": null,\n  \"segments\": [],\n  \"analysis_types\": [\"eda\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"top_n\",\n  \"targeted_params\": {\n    \"target_columns\": [\"Incurred\"],\n    \"metric_column\": \"Incurred\",\n    \"date_column\": null,\n    \"segment_column\": null,\n    \"segment_value\": null,\n    \"group_by\": null,\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": \"desc\",\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"sum\",\n    \"chart_type\": null\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "e2e-103": [
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": true,
+      "detail": "want \u22480.4 [(1.0, None), (100.0, None)] in answer; saw [0.6, 0.4]"
+     },
+     {
+      "kind": "number_in_answer",
+      "ok": true,
+      "detail": "want \u22480.6 [(1.0, None), (100.0, None)] in answer; saw [0.6, 0.4]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "charts_lint_clean",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "charts_have_rationale",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     },
+     {
+      "rule": "pii_exits",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     }
+    ],
+    "error": null,
+    "answer": "mean(conversion_rate) by group: 'control' leads at 0.6000; 'treatment' is lowest at 0.4000.",
+    "pii_exits": {
+     "rule": "pii_exits",
+     "ok": true,
+     "na": true,
+     "detail": "n/a: no planted PII"
+    },
+    "pii_canary_hits": 0,
+    "pii_model_hits": 0,
+    "pii_planted": 0,
+    "approvals": [],
+    "output": {
+     "session_id": "082226e5-05d1-45da-b03d-59608da02710",
+     "user_id": "default",
+     "conversation_history": [
+      {
+       "role": "user",
+       "content": "What is the conversion rate of the treatment group versus control?",
+       "timestamp": "2026-11-20T22:42:53.085946Z"
+      },
+      {
+       "role": "assistant",
+       "content": "mean(conversion_rate) by group: 'control' leads at 0.6000; 'treatment' is lowest at 0.4000.",
+       "timestamp": "2026-11-20T22:42:53.120412Z"
+      }
+     ],
+     "connector_config": {
+      "type": "sql",
+      "file_path": null,
+      "connection_string": "mssql://aai_reader:***@127.0.0.1:14330/analystai_eval?TrustServerCertificate=yes",
+      "table_name": null,
+      "spreadsheet_id": null,
+      "sheet_name": null,
+      "service_account_json": null,
+      "url": null,
+      "auth_type": null,
+      "auth_value": null,
+      "api_key_header": null,
+      "pagination_key": null
+     },
+     "task_plan": {
+      "raw_query": "What is the conversion rate of the treatment group versus control?",
+      "target_metrics": [
+       "conversion_rate"
+      ],
+      "timeframe": null,
+      "segments": [
+       "group"
+      ],
+      "analysis_types": [
+       "eda",
+       "segmentation"
+      ],
+      "output_format": "both",
+      "resume_from": null,
+      "clarification_needed": false,
+      "clarification_question": null,
+      "question_intent": "segment_compare",
+      "targeted_params": {
+       "target_columns": [],
+       "metric_column": "conversion_rate",
+       "date_column": null,
+       "segment_column": "group",
+       "segment_value": null,
+       "group_by": "group",
+       "variant_column": null,
+       "n": null,
+       "order": null,
+       "frequency": null,
+       "test_type": null,
+       "aggregation": "mean",
+       "chart_type": null,
+       "kpi": null,
+       "period_start": null,
+       "period_end": null,
+       "compare": null
+      }
+     },
+     "data_contract": {
+      "source_type": "sql",
+      "row_count": 2,
+      "column_count": 4,
+      "columns": [
+       {
+        "name": "group",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "control",
+         "treatment"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "total_visitors",
+        "dtype": "int64",
+        "nullable": false,
+        "sample_values": [
+         1000,
+         1000
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "total_conversions",
+        "dtype": "int64",
+        "nullable": false,
+        "sample_values": [
+         600,
+         400
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "conversion_rate",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         0.6,
+         0.4
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       }
+      ],
+      "sample_rows": [
+       {
+        "group": "control",
+        "total_visitors": 1000,
+        "total_conversions": 600,
+        "conversion_rate": 0.6
+       },
+       {
+        "group": "treatment",
+        "total_visitors": 1000,
+        "total_conversions": 400,
+        "conversion_rate": 0.4
+       }
+      ],
+      "date_columns": [],
+      "id_columns": [],
+      "metric_columns": [
+       "total_visitors",
+       "total_conversions",
+       "conversion_rate"
+      ],
+      "schema_summary": "2 rows \u00d7 4 columns. Metrics: total_visitors, total_conversions, conversion_rate. Categories: group.",
+      "source_query": {
+       "id": "sql:query",
+       "kind": "query",
+       "claim": "2 row(s) from one read-only query",
+       "code": "SELECT\n    [group],\n    COUNT(*)                                        AS total_visitors,\n    SUM(converted)                                  AS total_conversions,\n    CAST(SUM(converted) AS FLOAT) / COUNT(*)        AS conversion_rate\nFROM dbo.e2e_simpson_1\nGROUP BY [group]\nORDER BY [group]",
+       "result_excerpt": "[{\"group\": \"control\", \"total_visitors\": 1000, \"total_conversions\": 600, \"conversion_rate\": 0.6}, {\"group\": \"treatment\", \"total_visitors\": 1000, \"total_conversions\": 400, \"conversion_rate\": 0.4}]",
+       "row_count": 2,
+       "confidence": "medium",
+       "confidence_reason": "no semantic layer: metric meaning was inferred from names",
+       "assumptions": []
+      },
+      "source_evidence": {
+       "id": "source:data",
+       "kind": "source",
+       "claim": "Loaded 2 rows \u00d7 4 columns from the database.",
+       "code": "database connector load()",
+       "result_excerpt": "{\"roles\": {\"category\": [\"group\"], \"metric\": [\"total_visitors\", \"total_conversions\", \"conversion_rate\"]}, \"personal_data\": {}, \"fingerprint\": \"923d6541108d16f1\"}",
+       "row_count": 2,
+       "confidence": "high",
+       "confidence_reason": "Read as-is: no layout guessing was needed.",
+       "assumptions": []
+      },
+      "fingerprint": "923d6541108d16f17655c9a7ddb403a847c437f8a57358921b89599057524c38",
+      "pii_columns": [],
+      "phi": false,
+      "deidentification": [],
+      "deidentified": false,
+      "domain": null,
+      "roles": {},
+      "domain_confidence": null
+     },
+     "cleaning_audit": {
+      "decisions": [],
+      "rows_before": 2,
+      "rows_after": 2,
+      "columns_coerced": [],
+      "duplicates_removed": 0,
+      "outliers_flagged": [],
+      "high_null_columns": [],
+      "summary": "Final dataset: 2 rows (started with 2).",
+      "anomaly_report": {
+       "flags": [],
+       "methodology_note": "",
+       "eligible_columns": [],
+       "skipped_columns": {
+        "group": "binary column (only 2 values)",
+        "total_visitors": "constant or unsupported",
+        "total_conversions": "binary column (only 2 values)",
+        "conversion_rate": "binary column (only 2 values)"
+       }
+      },
+      "skipped_columns": [],
+      "date_ranges": {},
+      "grain": null,
+      "partial_months": {},
+      "main_currency": null,
+      "spell_story": [],
+      "window_span": {}
+     },
+     "analysis_findings": null,
+     "chart_configs": [],
+     "insight_report": null,
+     "targeted_response": {
+      "intent": "segment_compare",
+      "answer_text": "mean(conversion_rate) by group: 'control' leads at 0.6000; 'treatment' is lowest at 0.4000.",
+      "chart_configs": [
+       {
+        "id": "6d3a5653-93d7-494e-bb10-c27e65b03836",
+        "chart_type": "BarChart",
+        "title": "Average Conversion Rate by Group",
+        "data": [
+         {
+          "group": "control",
+          "conversion_rate": 0.6,
+          "conversion_rate__n": 1
+         },
+         {
+          "group": "treatment",
+          "conversion_rate": 0.4,
+          "conversion_rate__n": 1
+         }
+        ],
+        "x_key": "group",
+        "y_keys": [
+         "conversion_rate"
+        ],
+        "colors": [],
+        "x_label": "Group",
+        "y_label": "Average Conversion Rate",
+        "show_legend": false,
+        "show_grid": true,
+        "source_finding": "group_bars",
+        "value_format": "number",
+        "layout_hint": "half_width",
+        "rationale": {
+         "rule": "targeted:segment_compare\u2192bars",
+         "reason": "Compares mean conversion_rate across group.",
+         "x": "group",
+         "y": "conversion_rate",
+         "split": null,
+         "aggregation": "mean",
+         "n_rows": 2,
+         "evidence_ids": [],
+         "code": "df.groupby('group')['conversion_rate'].mean()",
+         "confidence": null
+        },
+        "placement": "summary",
+        "lint_warnings": [],
+        "error_key": null,
+        "split_key": null,
+        "reference_lines": []
+       }
+      ],
+      "table_data": [],
+      "table_columns": [],
+      "suggestions": [],
+      "unanswerable_reason": null,
+      "generated_at": "2026-11-20T22:42:53.120255Z"
+     },
+     "expert_review": null,
+     "narrative": {
+      "column_display_names": {
+       "group": "Group",
+       "total_visitors": "Total Visitors",
+       "total_conversions": "Total Conversions",
+       "conversion_rate": "Conversion Rate"
+      },
+      "entity_singular": "experiment group",
+      "entity_plural": "experiment groups"
+     },
+     "iteration": 1,
+     "quality_check_attempts": 0,
+     "high_null_answer": null,
+     "prior_pii": [],
+     "error_retryable": true,
+     "error_reask": true,
+     "overview_done": true,
+     "dataset_name": null,
+     "file_hash": null,
+     "dataset_id": null,
+     "dataset_version_id": null,
+     "status": "completed",
+     "cleaned_data_path": "/Users/uvnikhil/Projects/AnalystAI/session_data/082226e5-05d1-45da-b03d-59608da02710/cleaned_data.parquet",
+     "error_message": null,
+     "created_at": "2026-11-20T22:42:34.755041Z",
+     "updated_at": "2026-11-20T22:42:53.120415Z"
+    },
+    "domain": "retail",
+    "latency_s": 18.8,
+    "cost_usd": 0.0286,
+    "llm_calls": 5,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "Let me look at the relevant table first to understand the data structure.",
+      "stop_reason": "tool_use",
+      "tool_calls": [
+       {
+        "id": "toolu_01M4AmNErthLQxd2igwcwXJu",
+        "name": "run_sql",
+        "input": {
+         "sql": "SELECT TOP 5 * FROM dbo.e2e_simpson_1"
+        }
+       }
+      ]
+     },
+     {
+      "text": "{\"sql\": \"SELECT\\n    [group],\\n    COUNT(*)                                        AS total_visitors,\\n    SUM(converted)                                  AS total_conversions,\\n    CAST(SUM(converted) AS FLOAT) / COUNT(*)        AS conversion_rate\\nFROM dbo.e2e_simpson_1\\nGROUP BY [group]\\nORDER BY [group]\", \"metrics_used\": []}",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "[\"Which group has the higher conversion_rate, and by how much does it outperform the other group?\", \"Is the difference in conversion_rate between the two groups statistically significant enough to justify a business decision?\", \"How do total_visitors compare across groups, and could an imbalance in traffic volume be skewing the conversion_rate results?\", \"Does the group with more total_visitors also generate more total_conversions, or does the smaller-traffic group punch above its weight?\", \"If we scaled the higher-performing group's conversion_rate to the total_visitors of the lower-performing group, how many additional conversions could we expect to gain?\"]",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "{\n  \"column_display_names\": {\n    \"group\": \"Group\",\n    \"total_visitors\": \"Total Visitors\",\n    \"total_conversions\": \"Total Conversions\",\n    \"conversion_rate\": \"Conversion Rate\"\n  },\n  \"entity_singular\": \"experiment group\",\n  \"entity_plural\": \"experiment groups\"\n}",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "{\n  \"raw_query\": \"What is the conversion rate of the treatment group versus control?\",\n  \"target_metrics\": [\"conversion_rate\"],\n  \"timeframe\": null,\n  \"segments\": [\"group\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": \"conversion_rate\",\n    \"date_column\": null,\n    \"segment_column\": \"group\",\n    \"segment_value\": null,\n    \"group_by\": \"group\",\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"mean\",\n    \"chart_type\": null\n  }\n}",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ],
+  "e2e-104": [
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": true,
+      "detail": "want \u22480.4 [(1.0, None), (100.0, None)] in answer; saw [0.6, 1000.0, 0.4, 1000.0, 33.33, 0.0, 0.6, 0.4, 33.3333, 0.0, 0.05]"
+     },
+     {
+      "kind": "number_in_answer",
+      "ok": true,
+      "detail": "want \u22480.6 [(1.0, None), (100.0, None)] in answer; saw [0.6, 1000.0, 0.4, 1000.0, 33.33, 0.0, 0.6, 0.4, 33.3333, 0.0, 0.05]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "charts_lint_clean",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "charts_have_rationale",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     },
+     {
+      "rule": "pii_exits",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     }
+    ],
+    "error": null,
+    "answer": "control mean=0.600 (n=1000), treatment mean=0.400 (n=1000). Lift = -33.33%; p=0.0000 (significant).\nmean(control) 0.6\nmean(treatment) 0.4\nlift_pct -33.3333\np_value 0.0\nsignificant_at_0.05 yes",
+    "pii_exits": {
+     "rule": "pii_exits",
+     "ok": true,
+     "na": true,
+     "detail": "n/a: no planted PII"
+    },
+    "pii_canary_hits": 0,
+    "pii_model_hits": 0,
+    "pii_planted": 0,
+    "approvals": [],
+    "output": {
+     "session_id": "fd4fe214-9139-4f92-8859-e21ef1a6a0e0",
+     "user_id": "default",
+     "conversation_history": [
+      {
+       "role": "user",
+       "content": "What is the conversion rate of the treatment group versus control?",
+       "timestamp": "2026-11-20T22:42:48.189630Z"
+      },
+      {
+       "role": "assistant",
+       "content": "control mean=0.600 (n=1000), treatment mean=0.400 (n=1000). Lift = -33.33%; p=0.0000 (significant).",
+       "timestamp": "2026-11-20T22:42:48.262129Z"
+      }
+     ],
+     "connector_config": {
+      "type": "csv",
+      "file_path": "/Users/uvnikhil/Projects/AnalystAI/uploads/evals/simpson-1-link.csv",
+      "connection_string": null,
+      "table_name": null,
+      "spreadsheet_id": null,
+      "sheet_name": null,
+      "service_account_json": null,
+      "url": null,
+      "auth_type": null,
+      "auth_value": null,
+      "api_key_header": null,
+      "pagination_key": null
+     },
+     "task_plan": {
+      "raw_query": "What is the conversion rate of the treatment group versus control?",
+      "target_metrics": [
+       "converted"
+      ],
+      "timeframe": null,
+      "segments": [
+       "group"
+      ],
+      "analysis_types": [
+       "eda",
+       "segmentation"
+      ],
+      "output_format": "both",
+      "resume_from": null,
+      "clarification_needed": false,
+      "clarification_question": null,
+      "question_intent": "ab_significance",
+      "targeted_params": {
+       "target_columns": [],
+       "metric_column": "converted",
+       "date_column": null,
+       "segment_column": "group",
+       "segment_value": null,
+       "group_by": "group",
+       "variant_column": "group",
+       "n": null,
+       "order": null,
+       "frequency": null,
+       "test_type": null,
+       "aggregation": "mean",
+       "chart_type": null,
+       "kpi": null,
+       "period_start": null,
+       "period_end": null,
+       "compare": null
+      }
+     },
+     "data_contract": {
+      "source_type": "csv",
+      "row_count": 2000,
+      "column_count": 5,
+      "columns": [
+       {
+        "name": "visitor_id",
+        "dtype": "int64",
+        "nullable": false,
+        "sample_values": [
+         1,
+         2,
+         3,
+         4,
+         5
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "whole numbers named as an identifier ('visitor_id')",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "department",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Easy",
+         "Hard",
+         "Hard",
+         "Hard",
+         "Hard"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "group",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "control",
+         "treatment",
+         "treatment",
+         "treatment",
+         "treatment"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "converted",
+        "dtype": "int64",
+        "nullable": false,
+        "sample_values": [
+         1,
+         0,
+         1,
+         1,
+         0
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "session_minutes",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         24.8,
+         3.8,
+         1.2,
+         7.2,
+         4.7
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       }
+      ],
+      "sample_rows": [
+       {
+        "visitor_id": 1,
+        "department": "Easy",
+        "group": "control",
+        "converted": 1,
+        "session_minutes": 24.8
+       },
+       {
+        "visitor_id": 2,
+        "department": "Hard",
+        "group": "treatment",
+        "converted": 0,
+        "session_minutes": 3.8
+       },
+       {
+        "visitor_id": 3,
+        "department": "Hard",
+        "group": "treatment",
+        "converted": 1,
+        "session_minutes": 1.2
+       },
+       {
+        "visitor_id": 4,
+        "department": "Hard",
+        "group": "treatment",
+        "converted": 1,
+        "session_minutes": 7.2
+       },
+       {
+        "visitor_id": 5,
+        "department": "Hard",
+        "group": "treatment",
+        "converted": 0,
+        "session_minutes": 4.7
+       }
+      ],
+      "date_columns": [],
+      "id_columns": [
+       "visitor_id"
+      ],
+      "metric_columns": [
+       "converted",
+       "session_minutes"
+      ],
+      "schema_summary": "2,000 rows \u00d7 5 columns. Metrics: converted, session_minutes. Identifiers: visitor_id. Categories: department, group.",
+      "source_query": null,
+      "source_evidence": {
+       "id": "source:data",
+       "kind": "source",
+       "claim": "Loaded 2,000 rows \u00d7 5 columns from a CSV file.",
+       "code": "pd.read_csv(<uploaded file>, encoding='utf-8', sep=',')",
+       "result_excerpt": "{\"roles\": {\"id\": [\"visitor_id\"], \"category\": [\"department\", \"group\"], \"metric\": [\"converted\", \"session_minutes\"]}, \"personal_data\": {}, \"fingerprint\": \"7eef26c2c530f420\"}",
+       "row_count": 2000,
+       "confidence": "high",
+       "confidence_reason": "Read as-is: no layout guessing was needed.",
+       "assumptions": []
+      },
+      "fingerprint": "7eef26c2c530f4202d153998d8de8250463ff5c6d267574e0f299bd14c9d1f63",
+      "pii_columns": [],
+      "phi": false,
+      "deidentification": [],
+      "deidentified": false,
+      "domain": null,
+      "roles": {},
+      "domain_confidence": null
+     },
+     "cleaning_audit": {
+      "decisions": [],
+      "rows_before": 2000,
+      "rows_after": 2000,
+      "columns_coerced": [],
+      "duplicates_removed": 0,
+      "outliers_flagged": [
+       "7 extreme outliers in session_minutes (0.4% of data, threshold: values > 46.60)"
+      ],
+      "high_null_columns": [],
+      "summary": "Outliers flagged (kept) in: session_minutes. Final dataset: 2000 rows (started with 2000).",
+      "anomaly_report": {
+       "flags": [
+        {
+         "column": "session_minutes",
+         "extreme_count": 7,
+         "mild_count": 62,
+         "extreme_pct": 0.35000000000000003,
+         "lower_bound": -24.799999999999997,
+         "upper_bound": 46.599999999999994,
+         "mild_lower_bound": -9.5,
+         "mild_upper_bound": 31.299999999999997,
+         "used_log_transform": false,
+         "heavy_tailed": false,
+         "message": "7 extreme outliers in session_minutes (0.4% of data, threshold: values > 46.60)"
+        }
+       ],
+       "methodology_note": "",
+       "eligible_columns": [
+        "session_minutes"
+       ],
+       "skipped_columns": {
+        "visitor_id": "id column",
+        "department": "binary column (only 2 values)",
+        "group": "binary column (only 2 values)",
+        "converted": "binary column (only 2 values)"
+       }
+      },
+      "skipped_columns": [],
+      "date_ranges": {},
+      "grain": null,
+      "partial_months": {},
+      "main_currency": null,
+      "spell_story": [],
+      "window_span": {}
+     },
+     "analysis_findings": null,
+     "chart_configs": [],
+     "insight_report": null,
+     "targeted_response": {
+      "intent": "ab_significance",
+      "answer_text": "control mean=0.600 (n=1000), treatment mean=0.400 (n=1000). Lift = -33.33%; p=0.0000 (significant).",
+      "chart_configs": [
+       {
+        "id": "c048e98f-8ffe-4425-a7c6-bac22b8d4746",
+        "chart_type": "BarChart",
+        "title": "Conversion Rate by Test Group",
+        "data": [
+         {
+          "group": "control",
+          "converted": 60.0,
+          "converted__n": 1000,
+          "converted__ci": [
+           3.069,
+           2.993
+          ]
+         },
+         {
+          "group": "treatment",
+          "converted": 40.0,
+          "converted__n": 1000,
+          "converted__ci": [
+           2.993,
+           3.069
+          ]
+         }
+        ],
+        "x_key": "group",
+        "y_keys": [
+         "converted"
+        ],
+        "colors": [],
+        "x_label": "Test Group",
+        "y_label": "Conversion Rate (%)",
+        "show_legend": false,
+        "show_grid": true,
+        "source_finding": "group_bars",
+        "value_format": "percent",
+        "layout_hint": "half_width",
+        "rationale": {
+         "rule": "targeted:ab\u2192group means",
+         "reason": "Mean converted per group with 95% confidence intervals. The test result is in the table.",
+         "x": "group",
+         "y": "converted",
+         "split": null,
+         "aggregation": "mean",
+         "n_rows": 2000,
+         "evidence_ids": [],
+         "code": "df.groupby('group')['converted'].mean()",
+         "confidence": null
+        },
+        "placement": "summary",
+        "lint_warnings": [],
+        "error_key": "__ci",
+        "split_key": null,
+        "reference_lines": []
+       }
+      ],
+      "table_data": [
+       {
+        "metric": "mean(control)",
+        "value": 0.6
+       },
+       {
+        "metric": "mean(treatment)",
+        "value": 0.4
+       },
+       {
+        "metric": "lift_pct",
+        "value": -33.3333
+       },
+       {
+        "metric": "p_value",
+        "value": 0.0
+       },
+       {
+        "metric": "significant_at_0.05",
+        "value": "yes"
+       }
+      ],
+      "table_columns": [
+       "metric",
+       "value"
+      ],
+      "suggestions": [],
+      "unanswerable_reason": null,
+      "generated_at": "2026-11-20T22:42:48.261944Z"
+     },
+     "expert_review": null,
+     "narrative": {
+      "column_display_names": {
+       "visitor_id": "Visitor ID",
+       "department": "Department",
+       "group": "Test Group",
+       "converted": "Converted",
+       "session_minutes": "Session Minutes"
+      },
+      "entity_singular": "visitor",
+      "entity_plural": "visitors"
+     },
+     "iteration": 1,
+     "quality_check_attempts": 0,
+     "high_null_answer": null,
+     "prior_pii": [],
+     "error_retryable": true,
+     "error_reask": true,
+     "overview_done": true,
+     "dataset_name": null,
+     "file_hash": null,
+     "dataset_id": null,
+     "dataset_version_id": null,
+     "status": "completed",
+     "cleaned_data_path": "/Users/uvnikhil/Projects/AnalystAI/session_data/fd4fe214-9139-4f92-8859-e21ef1a6a0e0/cleaned_data.parquet",
+     "error_message": null,
+     "created_at": "2026-11-20T22:42:35.245835Z",
+     "updated_at": "2026-11-20T22:42:48.262131Z"
+    },
+    "domain": "retail",
+    "latency_s": 13.52,
+    "cost_usd": 0.02089,
+    "llm_calls": 3,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "[\n  \"What is the overall conversion rate across all visitors, and how does it differ between the two groups in the 'group' column \u2014 suggesting which group is performing better in the experiment?\",\n  \"Which departments have the highest and lowest conversion rates, and are any departments significantly underperforming relative to the dataset average?\",\n  \"Is there a meaningful correlation between session_minutes and converted \u2014 do visitors who spend more time in a session convert at a higher rate?\",\n  \"Are there any anomalous combinations of department and group where session_minutes are unusually high or low compared to the rest of the dataset, potentially indicating data quality issues or outlier behavior?\",\n  \"Within each department, how does average session_minutes compare between converted and non-converted visitors, and does this relationship hold consistently across all departments or only in specific ones?\"\n]",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "{\n  \"column_display_names\": {\n    \"visitor_id\": \"Visitor ID\",\n    \"department\": \"Department\",\n    \"group\": \"Test Group\",\n    \"converted\": \"Converted\",\n    \"session_minutes\": \"Session Minutes\"\n  },\n  \"entity_singular\": \"visitor\",\n  \"entity_plural\": \"visitors\"\n}",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "```json\n{\n  \"raw_query\": \"What is the conversion rate of the treatment group versus control?\",\n  \"target_metrics\": [\"converted\"],\n  \"timeframe\": null,\n  \"segments\": [\"group\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"ab_significance\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": \"converted\",\n    \"date_column\": null,\n    \"segment_column\": \"group\",\n    \"segment_value\": null,\n    \"group_by\": \"group\",\n    \"variant_column\": \"group\",\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"mean\",\n    \"chart_type\": null\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ]
+ }
+}

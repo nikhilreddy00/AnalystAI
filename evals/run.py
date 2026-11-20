@@ -224,6 +224,18 @@ def score_analysis(case: dict, findings, error: str | None, baseline: bool = Tru
             **({"builtin_only": builtin_only(case)} if baseline and "domain" in case else {})}
 
 
+# user:password up to the LAST '@' before the host (a raw '@' may sit in the password)
+_URL_PASSWORD = re.compile(r"(://[^:/@\s\"]+:)[^\s\"]*@(?=[^@/?\s\"]*(?:[/?\"\s]|$))")
+_SECRET_KEYS = re.compile(r'("(?:auth_value|service_account_json)": )"(?:[^"\\]|\\.)+"')
+
+
+def without_credentials(report_text: str) -> str:
+    """A report as it may be committed (the repo is public): a run's stored session carries its
+    connector config, so any URL's password, the API's auth value and a service-account key are
+    masked (5.8b, recurrence of P58-06: 5.8a covered messages, traces and SSE, never reports)."""
+    return _SECRET_KEYS.sub(r'\1"***"', _URL_PASSWORD.sub(r"\1***@", report_text))
+
+
 # A database source: the scratch database's URL that writes the table, and the one the connector
 # reads with when they differ (SQL Server's reader: the can-write check refuses the admin).
 DB_SOURCES = {"postgres": ("TEST_PG_URL", None), "mysql": ("TEST_MYSQL_URL", None),
@@ -2099,7 +2111,7 @@ async def main() -> None:
 
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    (out / f"{name}.json").write_text(json.dumps(report, indent=1, default=str))
+    (out / f"{name}.json").write_text(without_credentials(json.dumps(report, indent=1, default=str)))
     (out / f"{name}.md").write_text(to_markdown(report))
     print(json.dumps(report["summary"], indent=1))
     if "compare" in report:

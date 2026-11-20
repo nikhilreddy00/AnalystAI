@@ -196,6 +196,24 @@ def test_numbers_grounded_hard_rule(sales):
     assert not hard_rule("numbers_grounded", df, _findings(statistical_tests=[t2]))[0]
 
 
+def test_a_report_never_holds_a_credential():
+    """5.8b (recurrence of P58-06): a run's stored session carries its connector config, and the
+    E2E report of 5.8a published a scratch database's password. The writer masks; every committed
+    report is held to it."""
+    import json
+    import subprocess
+
+    from evals.run import without_credentials
+    config = {"connection_string": "mssql://reader:p@ss;w0rd@db:1433/x?TrustServerCertificate=yes",
+              "auth_value": 'tok-"9"', "service_account_json": '{"private_key": "k"}'}
+    text = without_credentials(json.dumps({"runs": {"c": [{"output": {"connector_config": config}}]}}))
+    assert "w0rd" not in text and "tok-" not in text and "private_key" not in text
+    assert "mssql://reader:***@db:1433/x" in text and json.loads(text)   # still the report
+    leaked = subprocess.run(["git", "grep", "-lE", r'://[^:/@" ]+:[^@/" *]+@', "--",
+                             "evals/reports/*"], capture_output=True, text=True, check=False)
+    assert leaked.stdout == ""
+
+
 def test_every_case_is_well_formed():
     for suite, kinds in (("analysis", ANALYSIS_CHECKS), ("e2e", E2E_CHECKS)):
         cases = load_cases(suite, None)
