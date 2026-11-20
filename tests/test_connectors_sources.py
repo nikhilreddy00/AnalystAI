@@ -246,6 +246,22 @@ def test_in_production_a_database_host_is_never_the_app_itself_or_the_cloud_meta
         assert _sql(url)._engine() is not None
 
 
+def test_in_production_an_unresolvable_app_store_refuses_rather_than_skips_the_check(monkeypatch):
+    """Fail closed (security review): if the app's own store host doesn't resolve, the check
+    can't tell the user's host from it, so the connection is refused, and the message says it
+    is this server's problem, not the user's host."""
+    import socket
+
+    from api.config import settings
+    monkeypatch.setattr(socket, "getaddrinfo", lambda h, *a, **k: (_ for _ in ()).throw(
+        socket.gaierror("down")) if h == "appdb.internal" else [(0, 0, 0, "", ("10.0.0.5", 0))])
+    monkeypatch.setattr(settings, "app_env", "production")
+    monkeypatch.setattr(settings, "database_url", "postgresql+asyncpg://a:b@appdb.internal:5432/x")
+    with pytest.raises(IngestionError) as err:
+        _sql("postgresql://u:p@db.lan:5432/db")._engine()
+    assert "db.lan" not in err.value.user_message and "server" in err.value.user_message
+
+
 @pytest.mark.parametrize("scheme", ["postgresql", "mysql+pymysql"])
 def test_in_production_the_connection_goes_to_the_address_that_was_checked(monkeypatch, scheme):
     """DNS rebinding: a name that resolves to a public address when checked and to loopback

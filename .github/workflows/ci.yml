@@ -83,6 +83,26 @@ jobs:
           TEST_PG_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/analystai_eval
           CI_SHARD: ""
 
+  # Phase 5.8a: no secret (a connection string with a password, a key) enters the history;
+  # dependencies with a known vulnerability are listed (pip-audit reports, not yet blocking:
+  # 14 locked packages had advisories at 5.8a; the upgrade is its own PR before v0.1).
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_COMMENTS: false
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.11"
+      - run: uv export --frozen --no-hashes --no-emit-project --format requirements-txt -o req.txt
+      - run: uvx pip-audit -r req.txt --disable-pip --no-deps
+        continue-on-error: true
+
   # Phase 5.7: every finished domain's deterministic suites, $0 (no model call), on every push.
   zero-suites:
     runs-on: ubuntu-latest

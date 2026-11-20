@@ -147,12 +147,14 @@ def _checked_address(url: URL) -> str:
     if not ips:
         raise IngestionError("host not found", f"The database host '{url.host}' wasn't found.")
     own = make_url(settings.database_url)
-    # the app's own store not resolving is this server's problem, not the user's host: unchecked
-    # then, and loopback / link-local still refused
+    # fail closed: without the app store's addresses the check can't tell the user's host from it
+    # (the message says it's this server's problem, not the user's host)
     try:
         own_ips = {_plain(ip) for ip in resolved(own.host)} if own.host else set()
     except ValueError:
-        own_ips = set()
+        raise IngestionError("own store unresolved", "This server can't check database hosts "
+                             "right now (its own database address didn't resolve). Try again "
+                             "shortly, or ask the administrator.") from None
     for ip in ips:
         if ip.is_loopback or ip.is_link_local or ip.is_unspecified or ip.is_multicast or \
                 ip in own_ips:
@@ -300,12 +302,13 @@ class SQLConnector(DataConnector):
         # LIMIT: a driver buffers the whole result before fetchmany (ponytail: LIMIT syntax;
         # SQL Server's TOP comes with its dialect row in 5.8b)
         res = await asyncio.to_thread(run_readonly, engine,
-                                      f"SELECT * FROM {qualified} LIMIT {LOAD_MAX_ROWS + 1}",
+                                      # noqa below: `qualified` is a listed table, quoted
+                                      f"SELECT * FROM {qualified} LIMIT {LOAD_MAX_ROWS + 1}",  # noqa: S608
                                       LOAD_MAX_ROWS)
         if res.truncated:
             try:
                 count = await asyncio.to_thread(run_readonly, engine,
-                                                f"SELECT COUNT(*) FROM {qualified}", 1)
+                                                f"SELECT COUNT(*) FROM {qualified}", 1)  # noqa: S608
                 total = int(count.rows[0][0])
             except SQLAlchemyError:   # a count past the timeout: "the source has more" still holds
                 total = None
