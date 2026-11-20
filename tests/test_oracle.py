@@ -585,7 +585,11 @@ async def test_every_source_reads_the_same_as_the_csv(name, source, tmp_path, mo
     # are this test's; whether an answer depends on order is the row-order invariance's)
     from connectors.csv_connector import CSVConnector, _read_bytes
     from orchestrator.state import ConnectorConfig, ConnectorType
-    if (reordered := _in_the_order_of(frame, _read_bytes(csv.encode(), ".csv")[0])) is not None:
+    reordered = _in_the_order_of(frame, _read_bytes(csv.encode(), ".csv")[0])
+    # only a database table has no row order; a file, a sheet, an API or a link keeps its rows'
+    # order, so a reader that reordered them fails here (5.8b audit, test analyst)
+    assert reordered is None or source in _DB_URL, f"{source} reordered the rows"
+    if reordered is not None:
         csv_conn = CSVConnector(ConnectorConfig(type=ConnectorType.CSV))
         _, want, wc, _ = _prepared(reordered, csv_conn.build_data_contract(reordered),
                                    ConnectorType.CSV, None)

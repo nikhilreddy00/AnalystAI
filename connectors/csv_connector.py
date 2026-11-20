@@ -220,6 +220,7 @@ def _read_text_table(content: bytes, suffix: str) -> tuple[pd.DataFrame, dict]:
 # Unpacked: 20 times the upload cap (sheet XML packs 5 to 10 times: a real 50 MB workbook fits;
 # 5.8b review: 150 MB refused 20-30 MB workbooks); a bomb packs a thousand times
 _MAX_UNPACKED, _MAX_PARTS, _MAX_COLUMNS = 20 * MAX_UPLOAD_MB * 2**20, 10_000, 10_000
+_MAX_RATIO, _RATIO_FROM = 200, 10 * 2**20   # a part over 10 MB packed more than 200 times
 
 
 def _readable_size(content: bytes, suffix: str) -> None:
@@ -230,7 +231,11 @@ def _readable_size(content: bytes, suffix: str) -> None:
         # NotImplementedError past the check: a 500 for the user's file)
         except (zipfile.BadZipFile, NotImplementedError, ValueError, OSError, EOFError) as exc:
             raise IngestionError(f"excel: {type(exc).__name__}", _NOT_A_TABLE) from exc
-        if sum(p.file_size for p in parts) > _MAX_UNPACKED:
+        # the total sized to real workbooks, and each large part's packing to real XML's (5-10x;
+        # a bomb packs ~1000x: 5.8b security review of the raised total)
+        if sum(p.file_size for p in parts) > _MAX_UNPACKED or any(
+                p.file_size > _RATIO_FROM and p.file_size > _MAX_RATIO * max(p.compress_size, 1)
+                for p in parts):
             raise IngestionError("workbook too large", "The workbook unpacks to more than "
                                  f"{_MAX_UNPACKED // 2**20} MB, past what can be read.")
         if len(parts) > _MAX_PARTS or any(p.filename.startswith("/") or ".." in p.filename

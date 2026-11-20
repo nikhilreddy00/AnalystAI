@@ -208,6 +208,9 @@ def test_a_report_never_holds_a_credential():
               "auth_value": 'tok-"9"', "service_account_json": '{"private_key": "k"}'}
     text = without_credentials(json.dumps({"runs": {"c": [{"output": {"connector_config": config}}]}}))
     assert "w0rd" not in text and "tok-" not in text and "private_key" not in text
+    # a quote in a password is escaped in JSON (test analyst): the mask still reaches the host
+    quoted = without_credentials(json.dumps({"cs": 'mysql://u:p"w0rd@db/x'}))
+    assert "w0rd" not in quoted and json.loads(quoted) == {"cs": "mysql://u:***@db/x"}
     assert "mssql://reader:***@db:1433/x" in text and json.loads(text)   # still the report
     leaked = subprocess.run(["git", "grep", "-lE", r'://[^:/@" ]+:[^@/" *]+@', "--",
                              "evals/reports/*"], capture_output=True, text=True, check=False)

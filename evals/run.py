@@ -225,7 +225,7 @@ def score_analysis(case: dict, findings, error: str | None, baseline: bool = Tru
 
 
 # user:password up to the LAST '@' before the host (a raw '@' may sit in the password)
-_URL_PASSWORD = re.compile(r"(://[^:/@\s\"]+:)[^\s\"]*@(?=[^@/?\s\"]*(?:[/?\"\s]|$))")
+_URL_PASSWORD = re.compile(r"(://[^:/@\s\"]+:)(?:[^\s\"\\]|\\.)*@(?=[^@/?\s\"]*(?:[/?\"\s]|$))")
 _SECRET_KEYS = re.compile(r'("(?:auth_value|service_account_json)": )"(?:[^"\\]|\\.)+"')
 
 
