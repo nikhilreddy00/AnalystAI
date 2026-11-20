@@ -277,6 +277,28 @@
  "connectors/base.py::_CheckedNetwork.connect_tcp": {
   "equivalents": []
  },
+ "connectors/base.py::public_client": {
+  "equivalents": [
+   {
+    "n": 1,
+    "old": "return httpx.AsyncClient(transport=transport, timeout=timeout, follow_redirects=False,",
+    "new": "return httpx.AsyncClient(transport=transport, timeout=timeout, trust_env=False, headers={\"Accept-Encoding\": \"identity\"})",
+    "reason": "httpx 0.28's AsyncClient defaults to follow_redirects=False (test_the_guarded_client_settings pins the attribute)"
+   },
+   {
+    "n": 1,
+    "old": "trust_env=False, headers={\"Accept-Encoding\": \"identity\"})",
+    "new": "trust_env=False, headers={\"accept-encoding\": \"identity\"})",
+    "reason": "HTTP header names are case-insensitive (RFC 9110 5.1) and httpx compares them that way"
+   },
+   {
+    "n": 1,
+    "old": "trust_env=False, headers={\"Accept-Encoding\": \"identity\"})",
+    "new": "trust_env=False, headers={\"ACCEPT-ENCODING\": \"identity\"})",
+    "reason": "HTTP header names are case-insensitive (RFC 9110 5.1) and httpx compares them that way"
+   }
+  ]
+ },
  "connectors/base.py::_inside": {
   "equivalents": []
  },
@@ -426,6 +448,38 @@
  },
  "connectors/sql_connector.py::_connect_pinned": {
   "equivalents": []
+ },
+ "connectors/sql_connector.py::_connect_pinned": {
+  "equivalents": [
+   {
+    "n": 1,
+    "old": "conn = dialect.loaded_dbapi.connect(*cargs, **cparams, defer_connect=True)",
+    "new": "conn = dialect.loaded_dbapi.connect(**cparams, defer_connect=True)",
+    "reason": "SQLAlchemy's MySQL/MariaDB PyMySQL dialect passes every connect argument by keyword (create_connect_args returns an empty list), so cargs is always empty"
+   }
+  ]
+ },
+ "connectors/sql_connector.py::SQLConnector.test_connection": {
+  "equivalents": [
+   {
+    "n": 1,
+    "old": "await asyncio.to_thread(run_readonly, engine, \"SELECT 1\", 1)",
+    "new": "await asyncio.to_thread(run_readonly, engine, \"select 1\", 1)",
+    "reason": "SQL keywords are case-insensitive on every engine"
+   },
+   {
+    "n": 1,
+    "old": "await asyncio.to_thread(run_readonly, engine, \"SELECT 1\", 1)",
+    "new": "await asyncio.to_thread(run_readonly, engine, \"SELECT 1\", 2)",
+    "reason": "SELECT 1 returns one row: a cap of 1, 2 or the default never truncates it, and the probe reads no row"
+   },
+   {
+    "n": 1,
+    "old": "await asyncio.to_thread(run_readonly, engine, \"SELECT 1\", 1)",
+    "new": "await asyncio.to_thread(run_readonly, engine, \"SELECT 1\", )",
+    "reason": "SELECT 1 returns one row: a cap of 1, 2 or the default never truncates it, and the probe reads no row"
+   }
+  ]
  },
  "connectors/sql_connector.py::_query_timeout": {
   "equivalents": [],
