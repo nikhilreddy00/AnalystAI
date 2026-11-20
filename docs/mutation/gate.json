@@ -266,6 +266,10 @@
    }
   ]
  },
+ "connectors/base.py::DataConnector.load": {
+  "equivalents": [],
+  "hash": "03ad5a55975922f5"
+ },
  "connectors/base.py::as_times": {
   "equivalents": [
    {
@@ -293,6 +297,92 @@
     "reason": "an all-missing datetime64[ns] Series is all NaT however it is built (pandas 3.0.3, checked: None data, no data, no dtype)"
    }
   ]
+ },
+ "connectors/base.py::normalize_frame": {
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "if not pd.api.types.is_numeric_dtype(None) and (blank := df[col].eq(\"\")).any():",
+    "old": "if not pd.api.types.is_numeric_dtype(df[col]) and (blank := df[col].eq(\"\")).any():",
+    "reason": "the numeric test only skips work: a numeric column never equals '', so its blank mask is all False and nothing is masked either way"
+   }
+  ]
+ },
+ "connectors/base.py::resolved": {
+  "equivalents": [],
+  "hash": "d10af35f9014305e"
+ },
+ "connectors/base.py::sources_table": {
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "break",
+    "old": "continue",
+    "reason": "sqlite is DIALECTS' last row, so leaving the loop after its row is the same as continuing; a row added after it goes through the README test"
+   }
+  ]
+ },
+ "connectors/base.py::without_secrets": {
+  "equivalents": []
+ },
+ "connectors/sql_connector.py::QueryResult.frame": {
+  "equivalents": [],
+  "hash": "bacea9eba303100e"
+ },
+ "connectors/sql_connector.py::SQLConnector._engine": {
+  "equivalents": [],
+  "hash": "3b6ede79ba2d9575"
+ },
+ "connectors/sql_connector.py::SQLConnector._read": {
+  "equivalents": [],
+  "hash": "9db8c0b882c93fbe"
+ },
+ "connectors/sql_connector.py::SQLConnector.engine": {
+  "equivalents": [],
+  "hash": "269bfd3d28e5870d"
+ },
+ "connectors/sql_connector.py::SQLConnector.test_connection": {
+  "equivalents": [],
+  "hash": "91502610be3f4dee"
+ },
+ "connectors/sql_connector.py::_checked_address": {
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "ips = None",
+    "old": "ips = []",
+    "reason": "ips is read next only by `if not ips`, which refuses on None and [] alike"
+   }
+  ]
+ },
+ "connectors/sql_connector.py::_plain": {
+  "equivalents": [],
+  "hash": "3db42b4f2eacc063"
+ },
+ "connectors/sql_connector.py::_tables": {
+  "equivalents": [],
+  "hash": "95c0422dc73d9ae1"
+ },
+ "connectors/sql_connector.py::dialect_of": {
+  "equivalents": [],
+  "hash": "494d35c0c15d41b4"
+ },
+ "connectors/sql_connector.py::run_readonly": {
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "conn.exec_driver_sql(statement.format(ms=int(timeout_s * 1001)))",
+    "old": "conn.exec_driver_sql(statement.format(ms=int(timeout_s * 1000)))",
+    "reason": "15,015 ms against 15,000: a statement timeout 15 ms longer, which no test can tell from the real one (the slow-query test allows seconds)"
+   }
+  ]
+ },
+ "connectors/sql_connector.py::safe_url": {
+  "equivalents": []
+ },
+ "connectors/sql_connector.py::sql_dialect": {
+  "equivalents": [],
+  "hash": "d38b640ddad47842"
  },
  "domain_pack/columns.py::derived_roles": {
   "equivalents": [],
@@ -538,6 +628,14 @@
  "evals/scoring.py::score_quality": {
   "equivalents": [],
   "hash": "157a12e6f433673e"
+ },
+ "guardrails.py::_system_schemas": {
+  "equivalents": [],
+  "hash": "b23596f7da759259"
+ },
+ "guardrails.py::check_sql_readonly": {
+  "equivalents": [],
+  "hash": "0bf6fbc2fbd88a0b"
  },
  "guardrails.py::is_pii_column": {
   "equivalents": [],

@@ -214,7 +214,7 @@ def sources_table() -> str:
             rows.append(("SQLite", "`sqlite:///path.db`",
                          "development only; refused when `APP_ENV=production`"))
             continue
-        name = names.get(key, key)
+        name = names[key]   # a new dialect names itself here
         rows += [(f"{name}, ask questions", f"`{key}://user:password@host:port/database`, no table "
                   "name: the SQL agent writes one read-only query per question and aggregates in "
                   "the database", f"{sql.MAX_ROWS:,} result rows, {sql.TIMEOUT_S} s per query"),

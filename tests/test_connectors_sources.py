@@ -498,6 +498,8 @@ _ALLOWED_HINT = ("The connection string couldn't be read. Use the form "
      "local development)."),
     ("mysql://u:p@h/db?init_command=x", _DEV, "connection string options",
      "These connection string options aren't allowed: init_command. Allowed: charset."),
+    ("mysql://u:p@h/db?local_infile=1&init_command=x", _DEV, "connection string options",
+     "These connection string options aren't allowed: init_command, local_infile. Allowed: charset."),
     ("sqlite:///x.db?mode=ro", _DEV, "connection string options",
      "These connection string options aren't allowed: mode. Allowed: none."),
     ("sqlite:///x.db", _PROD, "sqlite in production",
@@ -560,7 +562,7 @@ def test_an_engine_without_a_row_is_refused_in_so_many_words():
     ("mysql://reader:p:a:ss@h/db", None, None, "bad mysql://reader:p:a:ss@h/db p:a:ss reader:p:a:ss",
      "bad *** *** ***"),
     ("postgresql://reader:s3cr%40t@h/db", None, None, "pw s3cr@t and s3cr%40t", "pw *** and ***"),
-    ("postgresql://onlyuser@h/db", None, None, "user onlyuser", "user ***"),
+    ("postgresql://onlyuser@h/db", None, None, "user onlyuser XXXX", "user *** XXXX"),
     ("postgresql://a:zzz@h/db", None, None, "a:zzz", "***"),     # longest first, not abc order
     ("postgresql://u:abc@h/db", None, None, "abc", "***"),       # three characters: a secret
     ("postgresql://u:ab@h/db", None, None, "ab cab", "ab cab"),  # two: too short to cut safely
@@ -621,6 +623,14 @@ def test_a_result_of_exactly_the_cap_is_not_truncated(tmp_path):
 def test_the_engine_keeps_no_idle_connections_on_the_users_database():
     from sqlalchemy.pool import NullPool
     assert isinstance(_sql("postgresql://u:p@h/db")._engine().pool, NullPool)
+
+
+def test_every_sources_datetimes_read_at_one_resolution():
+    """A DATE read as [s] or a parquet [ns] column is [us], as the CSV reader gives it."""
+    from connectors.base import normalize_frame
+    df = pd.DataFrame({"d": pd.to_datetime(["2026-01-05"]).as_unit("s"),
+                       "n": pd.to_datetime(["2026-01-05 10:00"]).as_unit("ns")})
+    assert list(normalize_frame(df).dtypes.astype(str)) == ["datetime64[us]", "datetime64[us]"]
 
 
 def test_a_blank_text_column_from_a_database_stays_text():
