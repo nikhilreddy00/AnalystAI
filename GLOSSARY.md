@@ -134,15 +134,27 @@ Domain words (ALOS, readmission, NPL …) live in `domain_packs/<domain>.yaml`, 
   time, never across them.
 - **Invalid reading** — a measured value its own quality flag marks as not a measurement (a
   historian's Bad): blanked like a sentinel, the row kept and counted in the log; never averaged.
-- **Source** — where a table comes from: a file, a database, a Google Sheet, an API (later a share link
-  or a SaaS import). A database engine is a **dialect** of the one SQL source, never a source of its own
+- **Source** — where a table comes from: a file, a share link, a database, a Google Sheet, an API (later
+  a SaaS import). A database engine is a **dialect** of the one SQL source, never a source of its own
   (ADR-0010).
-- **Dialect** — a database engine the SQL source speaks (postgres, mysql; sqlite in development). Its
-  row in `DIALECTS` names its drivers, URL keys, read-only and timeout statements; an engine without a
-  row is refused.
+- **Dialect** — a database engine the SQL source speaks (postgres, mysql, mariadb, mssql; sqlite in
+  development). Its row in `DIALECTS` names its drivers, URL keys, read-only and timeout statements; an
+  engine without a row is refused. MySQL vs MariaDB is decided by the server, not the URL.
+- **Read-only login** — SQL Server's read-only layer: it has no read-only session, so a login that can
+  change data is refused when the session opens. On Postgres and MySQL the read-only role is
+  recommended (the transaction is read-only anyway); on SQL Server it is required.
+- **Share link** — a public URL to one file or sheet (Google Sheets/Drive, OneDrive/SharePoint "anyone"
+  links, Dropbox, any https CSV/xlsx). Its URL is a credential: never stored, logged or echoed.
 - **Live query / snapshot load / import** — a question answered by read-only SQL in the user's database;
-  a named table loaded whole into the pipeline (capped, the cap disclosed); a SaaS copy kept in local
-  DuckDB and refreshed on demand (5.8c).
+  a named table loaded whole into the pipeline (capped, the cap disclosed); a copy kept and refreshed on
+  demand: a share link imported once as a dataset version (paste again for a newer copy, 5.8b), a SaaS
+  copy in local DuckDB (5.8c).
+- **Checked address** — an address the server connects to only after `resolved()` has unwrapped it (an
+  IPv4 address inside an IPv6 one is that IPv4 address) and its host rule passed: public internet for a
+  URL fetch (`public_client`), not loopback/link-local/the app's store for a database. The connection goes
+  to that address, never to the name again.
+- **Allowed function** — a function the SQL parse guard lets a model query call: a typed sqlglot class
+  or a per-dialect name on the allow list; anything else is refused by name.
 - **Source invariance** — the same table from every source gives the same contract, cleaned frame,
   tiles and built-in answers; one oracle test owns it.
 - **Zero-event group** — a group whose ratio has a denominator of 0 (a machine with run time and

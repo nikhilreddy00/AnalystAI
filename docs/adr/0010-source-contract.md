@@ -57,6 +57,31 @@ actually read-only (`run_readonly` set nothing for any other engine) and any SQL
   marked expected-to-fail silently.
 - One E2E case per new source at k=1 and a browser check that connects it.
 
+## Amendment, 5.8b (2026-11-20)
+Research: `docs/research/2026-11-20-5.8b-sources.md`. Decided with the user: the SQL Server driver, its
+read-only login, links as imports.
+- **MariaDB and SQL Server are rows.** MariaDB is MySQL's row with its own timeout (`max_statement_time`, seconds),
+  picked by the server (SQLAlchemy's `is_mariadb`), not the URL's word. SQL Server (pyodbc + ODBC Driver 18, the driver
+  set by code; only `encrypt` and `trustservercertificate` from the user) has **no read-only session, so its read-only
+  layer is the login, required**: each session first refuses a login that can change data, and the query then runs in a
+  transaction that is always rolled back; the driver gives the statement timeout. Layer 4 becomes layer 2 there.
+- **The parse guard's functions are an allow list** (typed sqlglot classes, including the nodes sqlglot builds from
+  syntax and other dialects' spellings, plus per-dialect names it doesn't know); a deny list never ends. A refused
+  function gets the SQL agent's one guided retry; a write, a catalog or a lock never does.
+- **What may be read stays one rule** (`_tables`), now walking T-SQL's APPLY over functions, `#temp`/`##temp`, and
+  T-SQL's always-recursive CTEs.
+- **Every host the server fetches for a user goes through one guarded client** (`connectors.base.public_client`): each
+  connection (a retry, a redirect hop) resolves once, refuses unless every address is public after unwrapping
+  IPv4-in-IPv6 forms (NAT64, 6to4, Teredo, mapped, translated, compatible), connects to the checked address, keeps TLS
+  on the name, ignores proxy settings and asks for no compression. Database hosts keep their rule (a LAN host is fine)
+  over the same `resolved()`.
+- **A share link is an import**, not a live source: downloaded once (https on every hop, ≤ 5 redirects, the upload
+  cap counted while streaming, only a workbook or text accepted) and filed as an upload of the same bytes. The link is a
+  credential: never stored, logged or echoed (messages name the host only), and eval reports mask credentials.
+- **MySQL/MariaDB TLS** is `ssl_mode` in the client's own words; the CAs are certifi's and the operator's bundle (the
+  image ships AWS RDS's), never a path from the user; the pinned socket keeps the name for verification.
+- **Every file read is bounded before it is parsed**: a workbook's declared unpacked size and parts, a CSV header's width.
+
 ## Consequences
 - MariaDB (its own timeout variable) and SQL Server (no read-only transaction; CI-only database) come in
   5.8b as rows of the same table. Snowflake and BigQuery (5.8d) likewise.
