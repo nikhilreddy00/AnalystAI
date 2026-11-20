@@ -21,7 +21,8 @@ from dataclasses import dataclass, field
 
 import pandas as pd
 import sqlglot
-from sqlalchemy import create_engine, inspect, text
+from sqlalchemy import column, create_engine, func, inspect, literal_column, select, text
+from sqlalchemy import table as sql_table
 from sqlalchemy.engine import URL, make_url
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.pool import NullPool
@@ -49,24 +50,70 @@ _ZERO_DATE = re.compile(r"0000-00-00( 00:00:00(\.0+)?)?")
 class Dialect:
     """What the SQL source knows about one database engine. Every reader of the engine's kind
     reads this row; an engine without one is refused everywhere."""
+    title: str                       # its name in every message and the README's source list
     sqlglot: str                     # the parse guard's and the SQL agent's dialect name
     driver: str                      # the one driver the engine is opened with ("" = the default)
     drivers: frozenset[str]          # spellings accepted in a user's string, opened as `driver`
-    query_keys: frozenset[str]       # URL keys passed to the driver; any other key is refused
-    begin: tuple[str, ...]           # run first on each connection: read only, then the timeout
+    query_keys: frozenset[str]       # URL keys passed to the driver (lower case); others refused
+    # run first on each connection: read only, then the timeout ({ms} / {s} the timeout)
+    begin: tuple[str, ...]
     end: tuple[str, ...] = ()        # run after the rollback
     system_schemas: frozenset[str] = frozenset()   # the engine's own catalogs, never a user table
     connect_args: dict = field(default_factory=dict)
+    fixed_query: dict = field(default_factory=dict)   # URL keys set by code, after the allowlist
     one_database: bool = False       # a "schema" is a database: list only the URL's own
+    # every CTE may refer to itself (T-SQL has no RECURSIVE keyword); elsewhere, a CTE's own name
+    # inside its body is the real table (5.8a: WITH pg_shadow AS (SELECT * FROM pg_shadow))
+    recursive_ctes: bool = False
     yes_no: Callable[[tuple], bool] | None = None   # a cursor column the engine types as a yes/no
     dates: Callable[[tuple], bool] | None = None    # one it types as a date (may hold zero dates)
+    # the statement timeout where the engine has no statement for it: (DB-API connection, s)
+    driver_timeout: Callable[[object, int], None] | None = None
     # production: the URL connecting to the checked address (the name stays for TLS where the
     # driver can keep both; ponytail: MySQL has no TLS option yet, so its host becomes the IP)
     pin: Callable[[URL, str], URL] = lambda url, ip: url.set(host=ip)
 
 
+def _query_timeout(dbapi_conn, seconds: int) -> None:
+    dbapi_conn.timeout = seconds   # pyodbc: each statement's timeout (SQL Server has no SET)
+
+
+# SQL Server has no read-only transaction (ADR-0010): its read-only layer is the login, required.
+# Every session first refuses a login that can change data: a server or database owner, a
+# writer or DDL role, a database-wide write permission, or an explicit grant to it (or a role it
+# is in) on any table, view or schema. `CAN_WRITE` marks it for the read-only plant test.
+_MSSQL_CANT_WRITE = (
+    "IF IS_SRVROLEMEMBER('sysadmin') = 1 OR HAS_PERMS_BY_NAME(NULL, NULL, 'CONTROL SERVER') = 1 "
+    "OR USER_NAME() = 'dbo' OR IS_ROLEMEMBER('db_owner') = 1 "
+    "OR IS_ROLEMEMBER('db_datawriter') = 1 OR IS_ROLEMEMBER('db_ddladmin') = 1 "
+    "OR EXISTS (SELECT 1 FROM fn_my_permissions(NULL, 'DATABASE') WHERE permission_name IN "
+    "('INSERT', 'UPDATE', 'DELETE', 'ALTER', 'CONTROL', 'CREATE TABLE', 'ALTER ANY SCHEMA')) "
+    "OR EXISTS (SELECT 1 FROM sys.database_permissions p WHERE p.state IN ('G', 'W') "
+    "AND p.permission_name IN ('INSERT', 'UPDATE', 'DELETE', 'ALTER', 'CONTROL', "
+    "'TAKE OWNERSHIP') AND (p.grantee_principal_id = DATABASE_PRINCIPAL_ID() "
+    "OR IS_MEMBER(USER_NAME(p.grantee_principal_id)) = 1)) "
+    "THROW 50001, 'CAN_WRITE: this login can change data. SQL Server has no read-only "
+    "session, so connect with a read-only login (a user in db_datareader only).', 1;")
+_MYSQL = dict(
+    sqlglot="mysql", driver="pymysql", drivers=frozenset({"", "pymysql"}),
+    query_keys=frozenset({"charset"}),
+    system_schemas=frozenset({"information_schema", "mysql", "sys", "performance_schema"}),
+    # UTC; and the parse guard reads strings and quotes as MySQL's default mode does, so a
+    # server's ANSI_QUOTES / NO_BACKSLASH_ESCAPES can't make the two read a query differently
+    connect_args={"connect_timeout": CONNECT_TIMEOUT_S, "read_timeout": TIMEOUT_S + 15,
+                  "local_infile": False, "init_command":
+                  "SET time_zone = '+00:00', sql_mode = REPLACE(REPLACE(@@sql_mode, "
+                  "'NO_BACKSLASH_ESCAPES', ''), 'ANSI_QUOTES', '')"},
+    one_database=True,
+    # a DB-API description is (name, type_code, display_size, internal_size, …): PyMySQL's
+    # TINY type (1) of width 1 is BOOL / TINYINT(1); the same on MariaDB (5.8b, checked)
+    yes_no=lambda col: col[_TYPE_CODE] == _MYSQL_TINY and col[_INTERNAL_SIZE] == 1,
+    dates=lambda col: col[_TYPE_CODE] in _MYSQL_DATES)
+
+
 DIALECTS: dict[str, Dialect] = {
     "postgresql": Dialect(
+        title="PostgreSQL",
         sqlglot="postgres", driver="psycopg", drivers=frozenset({"", "psycopg", "asyncpg"}),
         query_keys=frozenset({"sslmode", "channel_binding", "connect_timeout", "application_name",
                               "target_session_attrs"}),
@@ -76,28 +123,41 @@ DIALECTS: dict[str, Dialect] = {
         # libpq connects to hostaddr and verifies TLS against host
         pin=lambda url, ip: url.update_query_dict({"hostaddr": ip})),
     "mysql": Dialect(
-        sqlglot="mysql", driver="pymysql", drivers=frozenset({"", "pymysql"}),
-        query_keys=frozenset({"charset"}),
+        title="MySQL", **_MYSQL,
         # SESSION read only too: a DDL statement commits the open transaction implicitly and
         # would run outside it; max_execution_time covers SELECT, the only statement let through
         begin=("SET SESSION TRANSACTION READ ONLY", "SET SESSION max_execution_time = {ms}",
-               "START TRANSACTION READ ONLY"),
-        system_schemas=frozenset({"information_schema", "mysql", "sys", "performance_schema"}),
-        # UTC; and the parse guard reads strings and quotes as MySQL's default mode does, so a
-        # server's ANSI_QUOTES / NO_BACKSLASH_ESCAPES can't make the two read a query differently
-        connect_args={"connect_timeout": CONNECT_TIMEOUT_S, "read_timeout": TIMEOUT_S + 15,
-                      "local_infile": False, "init_command":
-                      "SET time_zone = '+00:00', sql_mode = REPLACE(REPLACE(@@sql_mode, "
-                      "'NO_BACKSLASH_ESCAPES', ''), 'ANSI_QUOTES', '')"},
-        one_database=True,
-        # a DB-API description is (name, type_code, display_size, internal_size, …): PyMySQL's
-        # TINY type (1) of width 1 is BOOL / TINYINT(1)
-        yes_no=lambda col: col[_TYPE_CODE] == _MYSQL_TINY and col[_INTERNAL_SIZE] == 1,
-        dates=lambda col: col[_TYPE_CODE] in _MYSQL_DATES),
+               "START TRANSACTION READ ONLY")),
+    # MySQL's row but its timeout: max_statement_time is seconds and stops any statement (1969);
+    # MariaDB has no max_execution_time (1193). Picked by the server (dialect_of), not the URL.
+    "mariadb": Dialect(
+        title="MariaDB", **_MYSQL,
+        begin=("SET SESSION TRANSACTION READ ONLY", "SET SESSION max_statement_time = {s}",
+               "START TRANSACTION READ ONLY")),
+    "mssql": Dialect(
+        title="SQL Server",
+        sqlglot="tsql", driver="pyodbc", drivers=frozenset({"", "pyodbc"}),
+        # `driver`, `odbc_connect`, `dsn` and every other ODBC attribute are the user's way to a
+        # different driver or connection: refused; the driver is set by code
+        query_keys=frozenset({"encrypt", "trustservercertificate"}),
+        fixed_query={"driver": "ODBC Driver 18 for SQL Server"},
+        begin=(_MSSQL_CANT_WRITE, "SET XACT_ABORT ON", "SET QUOTED_IDENTIFIER ON",
+               "SET LOCK_TIMEOUT {ms}"),
+        driver_timeout=_query_timeout, recursive_ctes=True,
+        system_schemas=frozenset({"sys", "information_schema", "guest", "db_owner",
+                                  "db_accessadmin", "db_securityadmin", "db_ddladmin",
+                                  "db_backupoperator", "db_datareader", "db_datawriter",
+                                  "db_denydatareader", "db_denydatawriter"}),
+        connect_args={"timeout": CONNECT_TIMEOUT_S},   # pyodbc.connect: the login timeout
+        # the driver connects to the checked address and verifies TLS against the name
+        pin=lambda url, ip: url.set(host=ip).update_query_dict(
+            {"HostNameInCertificate": url.host})),
     "sqlite": Dialect(   # development only (refused in production): no statement timeout
+        title="SQLite",
         sqlglot="sqlite", driver="", drivers=frozenset({""}), query_keys=frozenset(),
         begin=("PRAGMA query_only = ON",), end=("PRAGMA query_only = OFF",)),
 }
+SUPPORTED = ", ".join(f"{d.title} ({key}://)" for key, d in DIALECTS.items() if key != "sqlite")
 _ALIASES = {"postgres": "postgresql"}   # Heroku's and Supabase's copied strings
 SYSTEM_SCHEMAS = frozenset().union(*(d.system_schemas for d in DIALECTS.values()))
 _UNREADABLE = ("The connection string couldn't be read. Use the form "
@@ -106,10 +166,13 @@ _UNREADABLE = ("The connection string couldn't be read. Use the form "
 
 
 def dialect_of(engine) -> Dialect:
-    """The engine's row, or IngestionError: nothing runs on an engine without one."""
-    if (d := DIALECTS.get(engine.dialect.name)) is None:
-        raise IngestionError(f"no dialect {engine.dialect.name}", f"{engine.dialect.name} "
-                             "databases aren't supported (PostgreSQL and MySQL are).")
+    """The engine's row, or IngestionError: nothing runs on an engine without one. The server
+    decides MySQL vs MariaDB (SQLAlchemy knows it after the first connection): a `mysql://`
+    string reaching a MariaDB server takes MariaDB's row."""
+    name = "mariadb" if getattr(engine.dialect, "is_mariadb", False) else engine.dialect.name
+    if (d := DIALECTS.get(name)) is None:
+        raise IngestionError(f"no dialect {name}", f"{name} databases aren't supported "
+                             f"(these are: {SUPPORTED}).")
     return d
 
 
@@ -129,9 +192,10 @@ def safe_url(conn_str: str) -> tuple[URL, Dialect]:
     d = DIALECTS.get(engine)
     if d is None or driver not in d.drivers:
         raise IngestionError(f"no dialect {url.drivername}",
-                      f"'{url.drivername}' isn't a supported database. Use postgresql:// or "
-                      "mysql:// (SQLite for local development).")
-    if extra := sorted(set(url.query) - d.query_keys):
+                      f"'{url.drivername}' isn't a supported database. Use {SUPPORTED} "
+                      "(SQLite for local development).")
+    # keys compare as the driver reads them: ODBC's without case (TrustServerCertificate)
+    if extra := sorted(k for k in url.query if k.lower() not in d.query_keys):
         raise IngestionError("connection string options", "These connection string options aren't "
                       f"allowed: {', '.join(extra)}. Allowed: {', '.join(sorted(d.query_keys)) or 'none'}.")
     if d.one_database and not url.database:   # else every database on the server is listed
@@ -139,10 +203,11 @@ def safe_url(conn_str: str) -> tuple[URL, Dialect]:
                              f"{engine}://user:password@host:port/<database>.")
     from api.config import settings
     url = url.set(drivername=f"{engine}+{d.driver}" if d.driver else engine)
+    url = url.update_query_dict(d.fixed_query)
     if settings.app_env == "production":
         if engine == "sqlite":
-            raise IngestionError("sqlite in production", "SQLite is for development only. Connect a "
-                          "PostgreSQL or MySQL database instead.")
+            raise IngestionError("sqlite in production", "SQLite is for development only. Connect "
+                                 f"one of {SUPPORTED} instead.")
         url = d.pin(url, _checked_address(url))
     return url, d
 
@@ -189,7 +254,7 @@ def _tables(engine) -> dict[str, tuple[str | None, str]]:
     default = inspector.default_schema_name
     schemas = [default] if d.one_database and default else inspector.get_schema_names()
     out: dict[str, tuple[str | None, str]] = {}
-    for schema in [s for s in schemas if s not in d.system_schemas
+    for schema in [s for s in schemas if s.lower() not in d.system_schemas   # INFORMATION_SCHEMA
                    and not s.startswith("pg_temp") and not s.startswith("pg_toast")]:
         for table in inspector.get_table_names(schema=schema):
             out[f"{schema}.{table}"] = (schema, table)
@@ -219,23 +284,39 @@ def _unlisted_tables(sql: str, d: Dialect, listed) -> list[str]:
     (`WITH pg_shadow AS (SELECT * FROM pg_shadow)` reads the real one inside); the only function
     read as a table is generate_series (pg_stat_get_activity(...) reads the server's sessions)."""
     tree = sqlglot.parse_one(sql, read=d.sqlglot)
+    if d.recursive_ctes:   # read as the engine reads it: each CTE may name itself
+        for with_ in tree.find_all(exp.With):
+            with_.set("recursive", True)
     # a query sqlglot can't resolve raises here and is never run (fail closed)
     real = {id(s) for scope in traverse_scope(tree) for s in scope.sources.values()
             if isinstance(s, exp.Table)}
     ctes = {c.alias_or_name.lower() for c in tree.find_all(exp.CTE)}
     known = {name.lower() for name in listed}
-    out = []
+    # T-SQL's APPLY / LATERAL over anything but a query reads a function's rows, not a table's
+    # (5.8b red-team: CROSS APPLY sys.dm_exec_sql_text(..) never reached the walk below)
+    out = [f"APPLY {lat.this.sql(d.sqlglot).split('(')[0]}" for lat in tree.find_all(exp.Lateral)
+           if not isinstance(lat.this, (exp.Subquery, exp.Unnest))]
     for t in tree.find_all(exp.Table):
         if isinstance(t.this, exp.ExplodingGenerateSeries):
             continue
         if not isinstance(t.this, exp.Identifier):
             out.append(f"{t.this.sql(d.sqlglot).split('(')[0]}()")
             continue
+        # #temp and ##global_temp read as `temp`: never one of the user's tables
+        if t.this.args.get("temporary") or t.this.args.get("global_"):
+            out.append(f"#{t.name}")
+            continue
         name = ".".join(p for p in (t.catalog, t.db, t.name) if p)
         cte_ref = id(t) not in real and name == t.name and t.name.lower() in ctes
         if not cte_ref and name.lower() not in known:
             out.append(name)
     return out
+
+
+def _sql_of(statement, engine) -> str:
+    """A Core statement as the engine's own SQL text, values inlined (run_readonly takes text:
+    a bound LIMIT would reach it as a placeholder)."""
+    return str(statement.compile(engine, compile_kwargs={"literal_binds": True}))
 
 
 @dataclass
@@ -271,12 +352,15 @@ def run_readonly(engine, sql: str, max_rows: int = MAX_ROWS,
     guard — callers do (layer 1). An engine without a dialect row is refused; a session that
     can't be opened read-only and timed (no connection, a statement the server lacks) is an
     IngestionError, never the query's fault."""
-    d = dialect_of(engine)
+    dialect_of(engine)   # refused before any connection
     conn = None
     try:
         conn = engine.connect()
+        d = dialect_of(engine)   # again: the server is known now (MySQL or MariaDB)
+        if d.driver_timeout:
+            d.driver_timeout(conn.connection.dbapi_connection, timeout_s)
         for statement in d.begin:
-            conn.exec_driver_sql(statement.format(ms=int(timeout_s * 1000)))
+            conn.exec_driver_sql(statement.format(ms=int(timeout_s * 1000), s=timeout_s))
     except SQLAlchemyError as exc:
         if conn is not None:
             conn.close()
@@ -359,25 +443,21 @@ class SQLConnector(DataConnector):
                 f"Table '{table}' does not exist. Available tables: {list(valid_tables)[:20]}"
             )
         schema, name = valid_tables[table]
-        quote = engine.dialect.identifier_preparer.quote_identifier
-        qualified = f"{quote(schema)}.{quote(name)}" if schema else quote(name)
         # Past the cap, the first rows by key: the same rows each run (a resumed run re-reads).
         # ponytail: a table without a key reads the database's order; ordering by every column
         # can pass the timeout on a big table
         key = (await asyncio.to_thread(inspect(engine).get_pk_constraint, name, schema))
-        order = (" ORDER BY " + ", ".join(map(quote, key["constrained_columns"]))
-                 if key.get("constrained_columns") else "")
-        # The same read-only, timed path as a question (the name was checked just above).
-        # LIMIT: a driver buffers the whole result before fetchmany (ponytail: LIMIT syntax;
-        # SQL Server's TOP comes with its dialect row in 5.8b)
-        res = await asyncio.to_thread(run_readonly, engine,
-                                      # noqa below: `qualified` is a listed table, quoted
-                                      f"SELECT * FROM {qualified}{order} LIMIT {LOAD_MAX_ROWS + 1}",  # noqa: S608
-                                      LOAD_MAX_ROWS)
+        listed = sql_table(name, *map(column, key.get("constrained_columns") or ()), schema=schema)
+        # The same read-only, timed path as a question (the name was checked just above), written
+        # by the engine's own compiler: LIMIT, or SQL Server's TOP (a driver buffers the whole
+        # result before fetchmany, so the database is asked for at most the cap)
+        load = select(literal_column("*")).select_from(listed).order_by(*listed.c) \
+            .limit(LOAD_MAX_ROWS + 1)
+        res = await asyncio.to_thread(run_readonly, engine, _sql_of(load, engine), LOAD_MAX_ROWS)
         if res.truncated:
             try:
-                count = await asyncio.to_thread(run_readonly, engine,
-                                                f"SELECT COUNT(*) FROM {qualified}", 1)  # noqa: S608
+                count = await asyncio.to_thread(run_readonly, engine, _sql_of(
+                    select(func.count()).select_from(listed), engine), 1)
                 total = int(count.rows[0][0])
             except SQLAlchemyError:   # a count past the timeout: "the source has more" still holds
                 total = None
@@ -389,12 +469,9 @@ class SQLConnector(DataConnector):
     async def test_connection(self) -> tuple[bool, str]:
         try:
             engine = await self.engine()
-
-            def _probe() -> None:
-                with engine.connect() as conn:
-                    conn.execute(text("SELECT 1"))
-
-            await asyncio.to_thread(_probe)
+            # the session a question gets (5.8b red-team M6): a SQL Server login that can write,
+            # or a server missing a statement, fails here, not on the first question
+            await asyncio.to_thread(run_readonly, engine, "SELECT 1", 1)
             from semantic_layer import check_against_db, configured_layer
             layer = configured_layer()
             stale = await asyncio.to_thread(check_against_db, layer, engine) if layer else []

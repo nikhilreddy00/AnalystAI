@@ -128,11 +128,17 @@ async def test_an_api_error_never_quotes_the_url(monkeypatch):
     assert not ok and "403" in message and "SECRET123" not in message
 
 
-def test_no_request_url_reaches_the_server_log():
+def test_no_request_url_reaches_the_server_log(monkeypatch):
     """P58-06 (5.8b recurrence): httpx logs `HTTP Request: GET <url>` at INFO and the app's root
-    logger is at INFO, so every share link's token and API key in a query would be written."""
+    logger is at INFO, so every share link's token and API key in a query would be written. The
+    API and the worker both start with `install()` (no handlers here: the scrub filter would
+    stay on pytest's own and change other tests' records)."""
     import logging
 
-    import api.main  # noqa: F401 - the entry point sets the levels
+    from api.logging_scrub import install
+    monkeypatch.setattr(logging.getLogger(), "handlers", [])
+    for name in ("httpx", "httpcore"):
+        monkeypatch.setattr(logging.getLogger(name), "level", logging.NOTSET)
+    install()
     assert logging.getLogger("httpx").getEffectiveLevel() >= logging.WARNING
     assert logging.getLogger("httpcore").getEffectiveLevel() >= logging.WARNING

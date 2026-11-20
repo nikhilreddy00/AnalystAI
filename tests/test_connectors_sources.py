@@ -4,6 +4,7 @@ file format or a database through the same graph path. Offline: no network, no k
 from __future__ import annotations
 
 import json
+import re
 
 import httpx
 import pandas as pd
@@ -64,17 +65,6 @@ async def test_an_uncapped_table_load_has_no_truncation_note(tmp_path):
 
 # ── 2. the table load goes through the read-only, timed path ───────────────────────────────
 
-async def test_the_table_load_runs_through_run_readonly(tmp_path, monkeypatch):
-    import connectors.sql_connector as sc
-    seen = []
-    real = sc.run_readonly
-    monkeypatch.setattr(sc, "run_readonly", lambda e, sql, *a, **k: seen.append(sql) or real(
-        e, sql, *a, **k))
-    conn = _sql(_sqlite(tmp_path, pd.DataFrame({"a": [1]})))
-    await conn.load()
-    assert seen and seen[0] == 'SELECT * FROM "t" LIMIT 50001'   # no key: no ORDER BY
-
-
 # ── 3. SQLite is a development database ────────────────────────────────────────────────────
 
 def test_sqlite_is_refused_in_production(monkeypatch):
@@ -101,14 +91,19 @@ async def test_connectors_test_route_says_why_sqlite_is_refused(monkeypatch):
 # ── 3b. every dialect (ADR-0010): read-only and timed on its real database, its connection
 # string allowlisted, its password never said. One test per property over every dialect row. ──
 
+# The connector's URL per dialect (SQL Server's: the read-only login the can-write check lets
+# through) and, where it differs, the admin URL that writes the fixtures (5.8b red-team B5).
+_DB_ENV = {"postgresql": "TEST_PG_URL", "mysql": "TEST_MYSQL_URL", "mariadb": "TEST_MARIADB_URL",
+           "mssql": "TEST_MSSQL_READER_URL"}
+_ADMIN_ENV = {"mssql": "TEST_MSSQL_URL"}
+
+
 def _db_urls(tmp_path) -> dict[str, str]:
-    """A scratch database per dialect: SQLite always, Postgres and MySQL where CI (or a local
-    run) names one. A dialect without one here is skipped, never passed."""
+    """A scratch database per dialect: SQLite always, the others where CI (or a local run,
+    scripts/test_dbs.sh) names one. A dialect without one here is skipped, never passed."""
     import os
     urls = {"sqlite": f"sqlite:///{tmp_path / 'ro.sqlite'}"}
-    for name, env in (("postgresql", "TEST_PG_URL"), ("mysql", "TEST_MYSQL_URL")):
-        if os.environ.get(env):
-            urls[name] = os.environ[env]
+    urls |= {name: os.environ[env] for name, env in _DB_ENV.items() if os.environ.get(env)}
     return urls
 
 
@@ -121,17 +116,30 @@ def _each_dialect(tmp_path, name):
     return url
 
 
-DIALECT_NAMES = ["sqlite", "postgresql", "mysql"]
+DIALECT_NAMES = ["sqlite", "postgresql", "mysql", "mariadb", "mssql"]
 # The database's own read-only refusal, per dialect: a write must fail for THIS reason. Any error
 # passed before (audit pass 2, B3): a no-row INSERT fails on fetchmany and the rollback undoes it,
-# so 5 of 6 writes passed with SQLite's read-only row emptied.
+# so 5 of 6 writes passed with SQLite's read-only row emptied. SQL Server has no read-only
+# transaction: its reason is the read-only login's ("…permission was denied", "…do not have
+# permission").
 _READ_ONLY_ERROR = {"sqlite": "readonly", "postgresql": "read-only transaction",
-                    "mysql": "READ ONLY transaction"}
+                    "mysql": "READ ONLY transaction", "mariadb": "READ ONLY transaction",
+                    "mssql": "permission"}
 
 
 def _engine_for(url):
     from connectors.sql_connector import SQLConnector
     return SQLConnector(ConnectorConfig(type=ConnectorType.SQL, connection_string=url))._engine()
+
+
+def _admin(tmp_path, name):
+    """The engine that writes a test's fixtures: the connector's own, except SQL Server's
+    read-only login, which can't (its admin URL, as the database's owner would)."""
+    import os
+
+    from sqlalchemy import create_engine
+    url = _each_dialect(tmp_path, name)
+    return create_engine(os.environ[_ADMIN_ENV[name]]) if name in _ADMIN_ENV else _engine_for(url)
 
 
 @pytest.mark.parametrize("name", DIALECT_NAMES)
@@ -148,16 +156,21 @@ def test_a_write_through_run_readonly_fails_on_every_dialect(tmp_path, name, wri
     if name == "sqlite" and write.startswith("TRUNCATE"):
         pytest.skip("SQLite has no TRUNCATE (it doesn't parse: no read-only proof)")
     engine = _engine_for(_each_dialect(tmp_path, name))
-    with engine.begin() as c:
+    with _admin(tmp_path, name).begin() as c:
         c.execute(text("DROP TABLE IF EXISTS ro_t"))
         c.execute(text("DROP TABLE IF EXISTS ro_new"))
         c.execute(text("CREATE TABLE ro_t (a INTEGER)"))
         c.execute(text("INSERT INTO ro_t VALUES (1)"))
     with pytest.raises(SQLAlchemyError, match=_READ_ONLY_ERROR[name]):
         run_readonly(engine, write)
-    with engine.connect() as c:
+    with _admin(tmp_path, name).connect() as c:
         assert c.execute(text("SELECT a FROM ro_t")).fetchall() == [(1,)]
     assert "ro_new" not in inspect(engine).get_table_names()
+
+
+# what makes each row read-only, removed by the plant below: the read-only transaction (SQLite's
+# query_only); SQL Server's can-write check (its read-only login is then swapped for one that can)
+_READ_ONLY_STATEMENT = re.compile(r"READ ONLY|query_only|CAN_WRITE", re.I)
 
 
 @pytest.mark.parametrize("name", DIALECT_NAMES)
@@ -165,31 +178,39 @@ def test_without_its_read_only_statements_no_write_is_refused_as_read_only(tmp_p
                                                                           monkeypatch):
     """The plant, kept (retro 5.8a): mutation testing can't mutate a data row, so the write test
     above was never shown to depend on `begin`. Each dialect row's read-only statements removed,
-    the database no longer refuses the write as read-only."""
+    the database no longer refuses the write as read-only (SQL Server: a login that can write,
+    no longer refused by the session's check, runs its write)."""
     import dataclasses
+    import os
 
     from sqlalchemy import text
     from sqlalchemy.exc import SQLAlchemyError
 
     import connectors.sql_connector as sc
-    engine = _engine_for(_each_dialect(tmp_path, name))
-    with engine.begin() as c:
+    url = _each_dialect(tmp_path, name)
+    if name == "mssql":
+        url = os.environ["TEST_MSSQL_WRITER_URL"]
+    engine = _engine_for(url)
+    with _admin(tmp_path, name).begin() as c:
         c.execute(text("DROP TABLE IF EXISTS ro_t"))
         c.execute(text("CREATE TABLE ro_t (a INTEGER)"))
     row = sc.DIALECTS[name]
-    kept = tuple(s for s in row.begin if "READ ONLY" not in s.upper() and "query_only" not in s)
+    kept = tuple(s for s in row.begin if not _READ_ONLY_STATEMENT.search(s))
     assert kept != row.begin   # the row has read-only statements to remove
     monkeypatch.setitem(sc.DIALECTS, name, dataclasses.replace(row, begin=kept, end=()))
-    # the DROP runs; reading its (absent) rows then fails: anything but the read-only refusal
+    # the write runs; reading its (absent) rows then fails: anything but the read-only refusal
     with pytest.raises((SQLAlchemyError, AttributeError)) as err:
-        sc.run_readonly(engine, "DROP TABLE ro_t")
+        sc.run_readonly(engine, "DELETE FROM ro_t")
     assert _READ_ONLY_ERROR[name] not in str(err.value)
 
 
 @pytest.mark.parametrize("name,slow", [("postgresql", "SELECT pg_sleep(20)"),
-                                       ("mysql", "SELECT SLEEP(20)")])
+                                       ("mysql", "SELECT SLEEP(20)"),
+                                       ("mariadb", "SELECT SLEEP(20)"),
+                                       ("mssql", "WAITFOR DELAY '00:00:20'")])
 def test_a_slow_query_stops_at_the_timeout(tmp_path, name, slow):
-    """Layer 3 on the real database: Postgres cancels the statement; MySQL's SLEEP cut by
+    """Layer 3 on the real database: Postgres cancels the statement, MariaDB interrupts it
+    (1969), SQL Server's driver gives up at its query timeout; MySQL's SLEEP cut by
     max_execution_time returns 1 instead of 0 (no error). Any other error fails the test."""
     import time
 
@@ -198,15 +219,26 @@ def test_a_slow_query_stops_at_the_timeout(tmp_path, name, slow):
     from connectors.sql_connector import run_readonly
     engine = _engine_for(_each_dialect(tmp_path, name))
     start = time.monotonic()
-    if name == "postgresql":
-        with pytest.raises(OperationalError, match="statement timeout"):
-            run_readonly(engine, slow, timeout_s=1)
-    else:
+    if name == "mysql":
         assert run_readonly(engine, slow, timeout_s=1).rows == [(1,)]
+    else:
+        reason = {"postgresql": "statement timeout", "mariadb": "max_statement_time exceeded",
+                  "mssql": "timeout expired"}[name]
+        with pytest.raises(OperationalError, match=f"(?i){reason}"):
+            run_readonly(engine, slow, timeout_s=1)
     assert time.monotonic() - start < 5
 
 
-@pytest.mark.parametrize("url", ["mssql+pymssql://u:p@h/db", "oracle+oracledb://u:p@h/db",
+def test_a_mysql_string_pointed_at_a_mariadb_server_reads_with_the_mariadb_row(tmp_path):
+    """5.8b: the row follows the server, not the URL's word. MariaDB has no max_execution_time:
+    MySQL's row there failed every session (1193)."""
+    from connectors.sql_connector import run_readonly
+    url = _each_dialect(tmp_path, "mariadb").replace("mariadb+pymysql://", "mysql+pymysql://")
+    assert run_readonly(_engine_for(url), "SELECT 1").rows == [(1,)]
+
+
+@pytest.mark.parametrize("url", ["mssql+pymssql://u:p@h/db", "mssql+pytds://u:p@h/db",
+                                 "mariadb+mariadbconnector://u:p@h/db", "oracle+oracledb://u:p@h/db",
                                  "mysql+mysqldb://u:p@h/db", "sqlite+pysqlite:///x.db",
                                  "h2:./x", "postgresql+pg8000://u:p@h/db", "not a url"])
 def test_an_engine_or_driver_without_a_dialect_row_is_refused(url):
@@ -220,7 +252,7 @@ def test_an_engine_or_driver_without_a_dialect_row_is_refused(url):
 def test_run_readonly_refuses_an_engine_it_has_no_row_for():
     """Before any connection: an engine of a kind without a row (its driver need not exist)."""
     from connectors.sql_connector import run_readonly
-    engine = type("Engine", (), {"dialect": type("D", (), {"name": "mssql"})(),
+    engine = type("Engine", (), {"dialect": type("D", (), {"name": "oracle"})(),
                                  "connect": lambda self: pytest.fail("connected")})()
     with pytest.raises(IngestionError):
         run_readonly(engine, "SELECT 1")
@@ -335,15 +367,27 @@ def test_a_question_result_takes_the_same_load_rule_as_a_table_load():
     assert df["flag"].tolist() == [True, False] and df["level"].tolist() == [2, 0]
 
 
-async def test_a_named_table_load_asks_the_database_for_at_most_the_cap(tmp_path, monkeypatch):
-    """Drivers buffer a whole result before fetchmany: the load's SQL bounds the rows itself."""
+@pytest.mark.parametrize("name", DIALECT_NAMES)
+async def test_a_named_table_load_asks_the_database_for_at_most_the_cap(tmp_path, monkeypatch,
+                                                                         name):
+    """Drivers buffer a whole result before fetchmany: the load's SQL bounds the rows itself, in
+    the engine's own words (SQL Server has no LIMIT: TOP), through run_readonly, on the real
+    database."""
+    from sqlalchemy import text
+
     import connectors.sql_connector as sc
+    url = _each_dialect(tmp_path, name)
+    with _admin(tmp_path, name).begin() as c:
+        c.execute(text("DROP TABLE IF EXISTS capped"))
+        c.execute(text("CREATE TABLE capped (a INTEGER)"))
+        c.execute(text("INSERT INTO capped VALUES (1)"))
     seen = []
     real = sc.run_readonly
     monkeypatch.setattr(sc, "run_readonly", lambda e, sql, *a, **k: seen.append(sql) or real(
         e, sql, *a, **k))
-    await _sql(_sqlite(tmp_path, pd.DataFrame({"a": [1]}))).load()
-    assert seen[0].endswith(f"LIMIT {sc.LOAD_MAX_ROWS + 1}")
+    df = await _sql(url, "capped").load()
+    cap = f"TOP {sc.LOAD_MAX_ROWS + 1}" if name == "mssql" else f"LIMIT {sc.LOAD_MAX_ROWS + 1}"
+    assert df["a"].tolist() == [1] and cap in seen[0] and "ORDER BY" not in seen[0]   # no key
 
 
 # ── 4. Sheets on pandas 3 ──────────────────────────────────────────────────────────────────
@@ -526,8 +570,11 @@ _ALLOWED_HINT = ("The connection string couldn't be read. Use the form "
 @pytest.mark.parametrize("url,env,reason,message", [
     ("not a url", _DEV, "unreadable connection string", _ALLOWED_HINT),
     ("mssql+pymssql://u:p@h/db", _DEV, "no dialect mssql+pymssql",
-     "'mssql+pymssql' isn't a supported database. Use postgresql:// or mysql:// (SQLite for "
-     "local development)."),
+     "'mssql+pymssql' isn't a supported database. Use PostgreSQL (postgresql://), MySQL "
+     "(mysql://), MariaDB (mariadb://), SQL Server (mssql://) (SQLite for local development)."),
+    ("mssql://u:p@h/db?odbc_connect=DRIVER%3Dx&Driver=y&TrustServerCertificate=yes", _DEV,
+     "connection string options", "These connection string options aren't allowed: Driver, "
+     "odbc_connect. Allowed: encrypt, trustservercertificate."),
     ("mysql://u:p@h/db?init_command=x", _DEV, "connection string options",
      "These connection string options aren't allowed: init_command. Allowed: charset."),
     ("mysql://u:p@h/db?local_infile=1&init_command=x", _DEV, "connection string options",
@@ -538,7 +585,8 @@ _ALLOWED_HINT = ("The connection string couldn't be read. Use the form "
     ("sqlite:///x.db?mode=ro", _DEV, "connection string options",
      "These connection string options aren't allowed: mode. Allowed: none."),
     ("sqlite:///x.db", _PROD, "sqlite in production",
-     "SQLite is for development only. Connect a PostgreSQL or MySQL database instead."),
+     "SQLite is for development only. Connect one of PostgreSQL (postgresql://), MySQL "
+     "(mysql://), MariaDB (mariadb://), SQL Server (mssql://) instead."),
     ("postgresql://u:p@/db", _PROD, "no host", "The connection string has no host."),
     ("postgresql://u:p@nowhere.invalid/db", _PROD, "host not found",
      "The database host 'nowhere.invalid' wasn't found."),
@@ -585,11 +633,12 @@ def test_in_production_an_app_store_without_a_host_checks_only_the_users():
 
 def test_an_engine_without_a_row_is_refused_in_so_many_words():
     from connectors.sql_connector import dialect_of
-    engine = type("Engine", (), {"dialect": type("D", (), {"name": "mssql"})()})()
+    engine = type("Engine", (), {"dialect": type("D", (), {"name": "oracle"})()})()
     with pytest.raises(IngestionError) as err:
         dialect_of(engine)
     assert (str(err.value), err.value.user_message) == (
-        "ingestion: no dialect mssql", "mssql databases aren't supported (PostgreSQL and MySQL are).")
+        "ingestion: no dialect oracle", "oracle databases aren't supported (these are: "
+        "PostgreSQL (postgresql://), MySQL (mysql://), MariaDB (mariadb://), SQL Server (mssql://)).")
 
 
 @pytest.mark.parametrize("conn,auth,sa,message,want", [
@@ -702,7 +751,7 @@ def test_a_join_returning_two_id_columns_reads_on_every_dialect(tmp_path, name):
 
     from connectors.sql_connector import run_readonly
     engine = _engine_for(_each_dialect(tmp_path, name))
-    with engine.begin() as c:
+    with _admin(tmp_path, name).begin() as c:
         for t in ("ja", "jb"):
             c.execute(text(f"DROP TABLE IF EXISTS {t}"))
             c.execute(text(f"CREATE TABLE {t} (id INTEGER)"))
@@ -714,11 +763,11 @@ def test_a_join_returning_two_id_columns_reads_on_every_dialect(tmp_path, name):
 def _connector_with_mine(tmp_path, name):
     from sqlalchemy import text
     url = _each_dialect(tmp_path, name)
-    with _engine_for(url).begin() as c:
+    with _admin(tmp_path, name).begin() as c:
         c.execute(text("DROP TABLE IF EXISTS mine"))
         c.execute(text("CREATE TABLE mine (a INTEGER)"))
         c.execute(text("INSERT INTO mine VALUES (1)"))
-        if name == "mysql":
+        if name in ("mysql", "mariadb"):
             c.execute(text("CREATE DATABASE IF NOT EXISTS other_5_8a"))
             c.execute(text("CREATE TABLE IF NOT EXISTS other_5_8a.theirs (a INTEGER)"))
     return _sql(url, None)
@@ -769,8 +818,9 @@ async def test_a_question_reads_its_own_tables_by_any_spelling(tmp_path, name):
                 "WITH x AS (SELECT a FROM mine) SELECT a FROM x",
                 "SELECT m.a FROM mine AS m WHERE m.a IN (SELECT a FROM mine)",
                 "SELECT COUNT(*) FROM (SELECT a FROM mine) AS sub",
-                "WITH RECURSIVE r AS (SELECT 1 AS n UNION ALL SELECT n + 1 FROM r WHERE n < 1) "
-                "SELECT a FROM mine JOIN r ON r.n = mine.a"]:
+                # T-SQL's recursive CTE has no RECURSIVE keyword
+                f"WITH {'' if name == 'mssql' else 'RECURSIVE '}r AS (SELECT 1 AS n UNION ALL "
+                "SELECT n + 1 FROM r WHERE n < 1) SELECT a FROM mine JOIN r ON r.n = mine.a"]:
         assert (await conn.query(sql)).rows == [(1,)], sql
 
 
@@ -779,10 +829,36 @@ async def test_a_function_read_as_a_table_is_named_in_the_refusal(tmp_path):
     conn = _connector_with_mine(tmp_path, "postgresql")
     with pytest.raises(GuardrailViolation) as err:
         await conn.query("SELECT * FROM some_srf(1) AS s, other_srf(2) AS o")   # read as tables
-    assert err.value.user_message == ("Blocked unsafe SQL: only the connected database's tables "
-                                      "can be read: SOME_SRF(), OTHER_SRF().")
-    assert str(err.value) == ("sql: only the connected database's tables can be read: "
-                              "SOME_SRF(), OTHER_SRF()")   # the trace's reason
+    assert err.value.user_message == "Blocked unsafe SQL: function not allowed: some_srf."
+    assert str(err.value) == "sql: function not allowed: some_srf"   # the trace's reason
+
+
+@pytest.mark.parametrize(("sql", "dialect", "unlisted"), [
+    ("SELECT * FROM some_srf(1) AS s, other_srf(2) AS o", "postgres", ["SOME_SRF()", "OTHER_SRF()"]),
+    ("SELECT * FROM mine CROSS APPLY sys.dm_exec_sql_text(mine.a) q", "tsql",
+     ["APPLY sys.dm_exec_sql_text"]),
+    ("SELECT * FROM mine OUTER APPLY f(mine.a) q", "tsql", ["APPLY F"]),
+    ("SELECT * FROM #mine", "tsql", ["#mine"]), ("SELECT * FROM ##mine", "tsql", ["#mine"]),
+    ("SELECT * FROM OPENDATASOURCE('x', 'y').db.dbo.mine", "tsql", ["dbo.mine()"]),
+    ("SELECT * FROM master..mine", "tsql", ["master.mine"]),
+    ("SELECT * FROM other.dbo.mine", "tsql", ["other.dbo.mine"]),
+    ("SELECT * FROM mine CROSS APPLY (SELECT TOP 1 a FROM mine) q", "tsql", []),
+    ("SELECT * FROM [dbo].[mine]", "tsql", []),
+    # T-SQL's CTEs are recursive without the keyword; Postgres's aren't: there the inner name is
+    # the real table (5.8a), here the CTE itself
+    ("WITH r AS (SELECT 1 AS n UNION ALL SELECT n + 1 FROM r WHERE n < 3) SELECT n FROM r",
+     "tsql", []),
+    ("WITH pg_shadow AS (SELECT * FROM pg_shadow) SELECT * FROM pg_shadow", "postgres",
+     ["pg_shadow"]),
+])
+def test_the_table_rule_names_whatever_isnt_a_listed_table(sql, dialect, unlisted):
+    """Layer 1b on its own (the parse guard refuses most of these first; this rule is the one
+    owner of "what may be read", so it holds without it): a function's rows, an APPLY over a
+    function, a temp table and a table in another database are never the connection's tables
+    (5.8b red-team B3: APPLY and #temp got past it)."""
+    from connectors.sql_connector import DIALECTS, _unlisted_tables
+    d = next(r for r in DIALECTS.values() if r.sqlglot == dialect)
+    assert _unlisted_tables(sql, d, {"mine": None, "dbo.mine": None}) == unlisted
 
 
 async def test_a_postgres_set_returning_function_is_not_a_table(tmp_path):
@@ -810,15 +886,15 @@ def test_a_database_that_cant_be_reached_is_a_session_error_not_a_crash(tmp_path
     assert err.value.user_message.startswith("Couldn't open a read-only session on the database: ")
 
 
-@pytest.mark.parametrize("name", ["postgresql", "mysql"])
+@pytest.mark.parametrize("name", DIALECT_NAMES)
 async def test_a_capped_table_load_reads_the_first_rows_by_key(tmp_path, name, monkeypatch):
     """B8: LIMIT without ORDER BY read an arbitrary subset past the cap (two runs, two datasets;
-    a resumed run: 'the data changed'). A keyed table loads in key order."""
+    a resumed run: 'the data changed'). A keyed table loads in key order (SQL Server: TOP)."""
     from sqlalchemy import text
 
     import connectors.sql_connector as sc
     url = _each_dialect(tmp_path, name)
-    with _engine_for(url).begin() as c:
+    with _admin(tmp_path, name).begin() as c:
         c.execute(text("DROP TABLE IF EXISTS keyed"))
         c.execute(text("CREATE TABLE keyed (k INTEGER PRIMARY KEY, v INTEGER)"))
         c.execute(text("INSERT INTO keyed VALUES (5, 50), (3, 30), (9, 90), (1, 10)"))
@@ -849,20 +925,22 @@ async def test_zero_dates_are_blanked_only_where_the_database_types_a_date(tmp_p
     assert df["v"].tolist() == ["0000-00-00"]
 
 
-def test_the_mysql_session_mode_reads_sql_as_the_guard_does(tmp_path):
-    """B11a: with ANSI_QUOTES or NO_BACKSLASH_ESCAPES on the server, MySQL would read a string
-    differently from the parse guard. The connection's init_command takes both off."""
+@pytest.mark.parametrize("name", ["mysql", "mariadb"])
+def test_the_mysql_session_mode_reads_sql_as_the_guard_does(tmp_path, name):
+    """B11a: with ANSI_QUOTES or NO_BACKSLASH_ESCAPES on the server, MySQL (and MariaDB) would
+    read a string differently from the parse guard. The connection's init_command takes both
+    off."""
     import pymysql
     from sqlalchemy.engine import make_url
 
     from connectors.sql_connector import DIALECTS
-    u = make_url(_each_dialect(tmp_path, "mysql"))
+    u = make_url(_each_dialect(tmp_path, name))
     c = pymysql.connect(host=u.host, port=u.port, user=u.username, password=u.password,
                         database=u.database)
     try:
         cur = c.cursor()
         cur.execute("SET SESSION sql_mode = 'ANSI_QUOTES,NO_BACKSLASH_ESCAPES,STRICT_ALL_TABLES'")
-        cur.execute(DIALECTS["mysql"].connect_args["init_command"])
+        cur.execute(DIALECTS[name].connect_args["init_command"])
         cur.execute("SELECT @@SESSION.sql_mode, @@SESSION.time_zone")
         mode, tz = cur.fetchone()
     finally:
@@ -944,6 +1022,59 @@ async def test_every_table_reaches_the_model_by_name(tmp_path):
     assert all(f"t{i:02d}" in context for i in range(60))
     assert "columns not shown" in context and len(context) < 20_000
     assert "`main.t58`, `main.t59`" in context
+
+
+async def test_sql_server_tables_reach_the_model_by_schema_and_no_catalog_does(tmp_path):
+    """P58-17 on SQL Server: the default schema `dbo` is named like Postgres's `public`, another
+    user schema too, and none of its catalog or role schemas (sys, INFORMATION_SCHEMA, db_*)."""
+    from sqlalchemy import text
+
+    from connectors.sql_connector import _tables
+    url = _each_dialect(tmp_path, "mssql")
+    with _admin(tmp_path, "mssql").begin() as c:
+        c.execute(text("DROP TABLE IF EXISTS mine"))
+        c.execute(text("CREATE TABLE mine (a INTEGER)"))
+        c.execute(text("IF SCHEMA_ID('sales') IS NULL EXEC('CREATE SCHEMA sales')"))
+        c.execute(text("DROP TABLE IF EXISTS sales.orders"))
+        c.execute(text("CREATE TABLE sales.orders (b INTEGER)"))
+    conn = _sql(url, None)
+    engine = await conn.engine()
+    listed = _tables(engine)
+    assert {"mine", "dbo.mine", "sales.orders"} <= set(listed)
+    assert not [t for t in listed if t.split(".")[0].lower() in
+                {"sys", "information_schema", "guest", "db_owner", "db_datareader"}]
+    context = conn.schema_context(engine)
+    assert "`dbo.mine`" in context and "`sales.orders`" in context
+
+
+async def test_a_sql_server_login_that_can_write_is_refused_before_any_query(tmp_path):
+    """Decision 2 (ADR-0010): SQL Server has no read-only session, so a login that can change
+    data is refused when the session opens: an IngestionError that says what to do (no paid
+    retry, P58-14), at "Test connection" too (red-team M6)."""
+    import os
+
+    from connectors.sql_connector import run_readonly
+    _each_dialect(tmp_path, "mssql")
+    conn = _sql(os.environ["TEST_MSSQL_WRITER_URL"], None)
+    with pytest.raises(IngestionError, match="session setup") as err:
+        run_readonly(await conn.engine(), "SELECT 1")
+    assert "connect with a read-only login" in err.value.user_message
+    ok, message = await conn.test_connection()
+    assert not ok and "read-only login" in message
+
+
+def test_sql_server_reads_double_quotes_as_names_as_the_guard_does(tmp_path):
+    """P58-16 on SQL Server: QUOTED_IDENTIFIER is pinned on, so "a" is a column as sqlglot's
+    T-SQL reads it, never the string 'a'."""
+    from sqlalchemy import text
+
+    from connectors.sql_connector import run_readonly
+    url = _each_dialect(tmp_path, "mssql")
+    with _admin(tmp_path, "mssql").begin() as c:
+        c.execute(text("DROP TABLE IF EXISTS quoted"))
+        c.execute(text("CREATE TABLE quoted (a INTEGER)"))
+        c.execute(text("INSERT INTO quoted VALUES (7)"))
+    assert run_readonly(_engine_for(url), 'SELECT "a" FROM quoted').rows == [(7,)]
 
 
 @pytest.mark.parametrize("extra,second_described", [(0, False), (1, True)])

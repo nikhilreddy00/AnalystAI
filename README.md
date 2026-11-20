@@ -125,6 +125,10 @@ The API runs at `http://localhost:8000` — interactive docs at `http://localhos
 | **PostgreSQL, one table** | the same + a table name | first 50,000 rows, 15 s, read-only |
 | **MySQL, ask questions** | `mysql://user:password@host:port/database`, no table name: the SQL agent writes one read-only query per question and aggregates in the database | 10,000 result rows, 15 s per query |
 | **MySQL, one table** | the same + a table name | first 50,000 rows, 15 s, read-only |
+| **MariaDB, ask questions** | `mariadb://user:password@host:port/database`, no table name: the SQL agent writes one read-only query per question and aggregates in the database | 10,000 result rows, 15 s per query |
+| **MariaDB, one table** | the same + a table name | first 50,000 rows, 15 s, read-only |
+| **SQL Server, ask questions** | `mssql://user:password@host:port/database`; a read-only login (db_datareader only): a login that can write is refused, no table name: the SQL agent writes one read-only query per question and aggregates in the database | 10,000 result rows, 15 s per query |
+| **SQL Server, one table** | the same + a table name | first 50,000 rows, 15 s, read-only |
 | **SQLite** | `sqlite:///path.db` | development only; refused when `APP_ENV=production` |
 | **Google Sheets** | Spreadsheet ID + sheet name + service-account JSON | read as the sheet's CSV export |
 | **REST API** | URL + auth (Bearer, API key with a configurable header, Basic) + optional pagination key | 20 pages or 100,000 records; public hosts only |

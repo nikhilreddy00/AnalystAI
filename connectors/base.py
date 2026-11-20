@@ -306,19 +306,20 @@ def sources_table() -> str:
     from connectors import api_connector as api
     from connectors import sql_connector as sql
     from connectors.csv_connector import MAX_UPLOAD_MB, UPLOAD_SUFFIXES
-    names = {"postgresql": "PostgreSQL", "mysql": "MySQL"}
+    # what a user must bring beyond the string (SQL Server has no read-only session: ADR-0010)
+    needs = {"mssql": "; a read-only login (db_datareader only): a login that can write is refused"}
     rows = [("File upload", f"{', '.join(sorted(UPLOAD_SUFFIXES))} in the UI",
              f"{MAX_UPLOAD_MB} MB per file; old .xls: save as .xlsx first")]
-    for key in sql.DIALECTS:
+    for key, d in sql.DIALECTS.items():
         if key == "sqlite":
             rows.append(("SQLite", "`sqlite:///path.db`",
                          "development only; refused when `APP_ENV=production`"))
             continue
-        name = names[key]   # a new dialect names itself here
-        rows += [(f"{name}, ask questions", f"`{key}://user:password@host:port/database`, no table "
-                  "name: the SQL agent writes one read-only query per question and aggregates in "
-                  "the database", f"{sql.MAX_ROWS:,} result rows, {sql.TIMEOUT_S} s per query"),
-                 (f"{name}, one table", "the same + a table name",
+        rows += [(f"{d.title}, ask questions", f"`{key}://user:password@host:port/database`"
+                  f"{needs.get(key, '')}, no table name: the SQL agent writes one read-only query "
+                  "per question and aggregates in the database",
+                  f"{sql.MAX_ROWS:,} result rows, {sql.TIMEOUT_S} s per query"),
+                 (f"{d.title}, one table", "the same + a table name",
                   f"first {sql.LOAD_MAX_ROWS:,} rows, {sql.TIMEOUT_S} s, read-only")]
     rows += [("Google Sheets", "Spreadsheet ID + sheet name + service-account JSON",
               "read as the sheet's CSV export"),
