@@ -387,7 +387,8 @@
     "old": "conn.exec_driver_sql(statement.format(ms=int(timeout_s * 1000)))",
     "reason": "15,015 ms against 15,000: a statement timeout 15 ms longer, which no test can tell from the real one (the slow-query test allows seconds)"
    }
-  ]
+  ],
+  "hash": "655ada96cc927010"
  },
  "connectors/sql_connector.py::safe_url": {
   "equivalents": [],
