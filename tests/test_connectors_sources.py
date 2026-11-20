@@ -8,6 +8,8 @@ import json
 import httpx
 import pandas as pd
 import pytest
+from hypothesis import given
+from hypothesis import strategies as st
 from sqlalchemy import create_engine
 
 from agents.errors import IngestionError
@@ -120,6 +122,16 @@ def _each_dialect(tmp_path, name):
 
 
 DIALECT_NAMES = ["sqlite", "postgresql", "mysql"]
+# The database's own read-only refusal, per dialect: a write must fail for THIS reason. Any error
+# passed before (audit pass 2, B3): a no-row INSERT fails on fetchmany and the rollback undoes it,
+# so 5 of 6 writes passed with SQLite's read-only row emptied.
+_READ_ONLY_ERROR = {"sqlite": "readonly", "postgresql": "read-only transaction",
+                    "mysql": "READ ONLY transaction"}
+
+
+def _engine_for(url):
+    from connectors.sql_connector import SQLConnector
+    return SQLConnector(ConnectorConfig(type=ConnectorType.SQL, connection_string=url))._engine()
 
 
 @pytest.mark.parametrize("name", DIALECT_NAMES)
@@ -128,37 +140,43 @@ DIALECT_NAMES = ["sqlite", "postgresql", "mysql"]
                                    "TRUNCATE TABLE ro_t", "CREATE TABLE ro_new (a INTEGER)"])
 def test_a_write_through_run_readonly_fails_on_every_dialect(tmp_path, name, write):
     """Layer 2 alone (the parse guard is skipped: run_readonly is called directly), on the real
-    database: a write fails and the table is untouched."""
-    from sqlalchemy import text
+    database: a write is refused as a read-only write, and nothing changed."""
+    from sqlalchemy import inspect, text
+    from sqlalchemy.exc import SQLAlchemyError
 
-    from connectors.sql_connector import SQLConnector, run_readonly
-    url = _each_dialect(tmp_path, name)
-    engine = SQLConnector(ConnectorConfig(type=ConnectorType.SQL, connection_string=url))._engine()
+    from connectors.sql_connector import run_readonly
+    if name == "sqlite" and write.startswith("TRUNCATE"):
+        pytest.skip("SQLite has no TRUNCATE (it doesn't parse: no read-only proof)")
+    engine = _engine_for(_each_dialect(tmp_path, name))
     with engine.begin() as c:
         c.execute(text("DROP TABLE IF EXISTS ro_t"))
+        c.execute(text("DROP TABLE IF EXISTS ro_new"))
         c.execute(text("CREATE TABLE ro_t (a INTEGER)"))
         c.execute(text("INSERT INTO ro_t VALUES (1)"))
-    with pytest.raises(Exception):
+    with pytest.raises(SQLAlchemyError, match=_READ_ONLY_ERROR[name]):
         run_readonly(engine, write)
     with engine.connect() as c:
         assert c.execute(text("SELECT a FROM ro_t")).fetchall() == [(1,)]
+    assert "ro_new" not in inspect(engine).get_table_names()
 
 
 @pytest.mark.parametrize("name,slow", [("postgresql", "SELECT pg_sleep(20)"),
                                        ("mysql", "SELECT SLEEP(20)")])
 def test_a_slow_query_stops_at_the_timeout(tmp_path, name, slow):
-    """Layer 3 on the real database. MySQL's SLEEP cut by max_execution_time returns 1 without
-    raising, so the check is the time it took."""
+    """Layer 3 on the real database: Postgres cancels the statement; MySQL's SLEEP cut by
+    max_execution_time returns 1 instead of 0 (no error). Any other error fails the test."""
     import time
 
-    from connectors.sql_connector import SQLConnector, run_readonly
-    url = _each_dialect(tmp_path, name)
-    engine = SQLConnector(ConnectorConfig(type=ConnectorType.SQL, connection_string=url))._engine()
+    from sqlalchemy.exc import OperationalError
+
+    from connectors.sql_connector import run_readonly
+    engine = _engine_for(_each_dialect(tmp_path, name))
     start = time.monotonic()
-    try:
-        run_readonly(engine, slow, timeout_s=1)
-    except Exception:
-        pass
+    if name == "postgresql":
+        with pytest.raises(OperationalError, match="statement timeout"):
+            run_readonly(engine, slow, timeout_s=1)
+    else:
+        assert run_readonly(engine, slow, timeout_s=1).rows == [(1,)]
     assert time.monotonic() - start < 5
 
 
@@ -640,3 +658,190 @@ def test_a_blank_text_column_from_a_database_stays_text():
     from connectors.sql_connector import QueryResult
     df = QueryResult(["note"], [(None,), (None,)], False).frame()
     assert not str(df["note"].dtype).startswith("datetime64")
+
+
+# ── audit pass 2 (5.8a): the bugs four fresh reviewers found, each pinned here ─────────────────
+
+_FRAME_CELLS = st.one_of(st.none(), st.just(""), st.integers(-3, 3), st.floats(allow_nan=False,
+                         allow_infinity=False, width=32), st.sampled_from(
+                         ["a", "2026-01-05", "0000-00-00", "0000-00-00 00:00:00.000000"]))
+
+
+@given(names=st.lists(st.sampled_from(["id", "x", "y"]), min_size=1, max_size=4),
+       data=st.data())
+def test_any_result_shape_becomes_a_frame_without_losing_a_column(names, data):
+    """B1: a join's two `id` columns crashed the result → frame step ('truth value of a Series is
+    ambiguous') on every dialect: column steps ran before names are made unique. Any names
+    (duplicates too), any cells: the frame keeps every column, in order."""
+    from connectors.base import normalize_frame
+    from connectors.sql_connector import QueryResult
+    rows = [tuple(data.draw(_FRAME_CELLS) for _ in names)
+            for _ in range(data.draw(st.integers(0, 3)))]
+    df = QueryResult(list(names), rows, False, frozenset(names[:1])).frame()
+    assert list(df.columns) == names and len(df) == len(rows)
+    assert list(normalize_frame(df).columns) == names
+
+
+@pytest.mark.parametrize("name", DIALECT_NAMES)
+def test_a_join_returning_two_id_columns_reads_on_every_dialect(tmp_path, name):
+    from sqlalchemy import text
+
+    from connectors.sql_connector import run_readonly
+    engine = _engine_for(_each_dialect(tmp_path, name))
+    with engine.begin() as c:
+        for t in ("ja", "jb"):
+            c.execute(text(f"DROP TABLE IF EXISTS {t}"))
+            c.execute(text(f"CREATE TABLE {t} (id INTEGER)"))
+            c.execute(text(f"INSERT INTO {t} VALUES (1)"))
+    df = run_readonly(engine, "SELECT ja.id, jb.id FROM ja JOIN jb ON ja.id = jb.id").frame()
+    assert list(df.columns) == ["id", "id"] and df.shape == (1, 2)
+
+
+def _connector_with_mine(tmp_path, name):
+    from sqlalchemy import text
+    url = _each_dialect(tmp_path, name)
+    with _engine_for(url).begin() as c:
+        c.execute(text("DROP TABLE IF EXISTS mine"))
+        c.execute(text("CREATE TABLE mine (a INTEGER)"))
+        c.execute(text("INSERT INTO mine VALUES (1)"))
+        if name == "mysql":
+            c.execute(text("CREATE DATABASE IF NOT EXISTS other_5_8a"))
+            c.execute(text("CREATE TABLE IF NOT EXISTS other_5_8a.theirs (a INTEGER)"))
+    return _sql(url, None)
+
+
+_NOT_LISTED = {
+    "sqlite": ["SELECT * FROM sqlite_master"],
+    "postgresql": ["SELECT * FROM pg_shadow", "SELECT query FROM pg_stat_activity",
+                   "SELECT * FROM PG_AUTHID", "SELECT * FROM information_schema.tables",
+                   "SELECT * FROM mine m JOIN pg_roles r ON true"],
+    "mysql": ["SELECT * FROM mysql.user", "SELECT * FROM other_5_8a.theirs",
+              "SELECT * FROM information_schema.processlist",
+              "SELECT * FROM `other_5_8a`.`theirs`",
+              "SELECT a FROM mine WHERE a IN (SELECT a FROM other_5_8a.theirs)"],
+}
+
+
+@pytest.mark.parametrize("name,sql", [(n, s) for n, qs in _NOT_LISTED.items() for s in qs])
+async def test_a_question_reads_only_the_tables_the_connection_lists(tmp_path, name, sql):
+    """B2: what a question may read is THE connection's table list (_tables), the rule the table
+    load already had. The parse guard's system-schema list caught `pg_catalog.pg_shadow` but not
+    `pg_shadow`, and nothing stopped a MySQL query reading another database on the server."""
+    from agents.errors import GuardrailViolation
+    conn = _connector_with_mine(tmp_path, name)
+    with pytest.raises(GuardrailViolation) as err:
+        await conn.query(sql)
+    assert "only the connected database's tables can be read" in err.value.user_message
+
+
+@pytest.mark.parametrize("name", DIALECT_NAMES)
+async def test_a_question_reads_its_own_tables_by_any_spelling(tmp_path, name):
+    conn = _connector_with_mine(tmp_path, name)
+    quote = (await conn.engine()).dialect.identifier_preparer.quote_identifier
+    for sql in ["SELECT a FROM mine", f"SELECT a FROM {quote('mine')}",
+                "WITH x AS (SELECT a FROM mine) SELECT a FROM x",
+                "SELECT m.a FROM mine AS m WHERE m.a IN (SELECT a FROM mine)",
+                "SELECT COUNT(*) FROM (SELECT a FROM mine) AS sub"]:
+        assert (await conn.query(sql)).rows == [(1,)], sql
+
+
+async def test_a_postgres_set_returning_function_is_not_a_table(tmp_path):
+    conn = _connector_with_mine(tmp_path, "postgresql")
+    assert len((await conn.query("SELECT * FROM generate_series(1, 3) AS g")).rows) == 3
+
+
+def test_a_mysql_string_must_name_its_database():
+    """B7: without one, every database on the server was listed to the model."""
+    with pytest.raises(IngestionError) as err:
+        _sql("mysql+pymysql://u:p@h:3306/")._engine()
+    assert "name the database" in err.value.user_message
+
+
+@pytest.mark.parametrize("name", ["postgresql", "mysql"])
+async def test_a_capped_table_load_reads_the_first_rows_by_key(tmp_path, name, monkeypatch):
+    """B8: LIMIT without ORDER BY read an arbitrary subset past the cap (two runs, two datasets;
+    a resumed run: 'the data changed'). A keyed table loads in key order."""
+    from sqlalchemy import text
+
+    import connectors.sql_connector as sc
+    url = _each_dialect(tmp_path, name)
+    with _engine_for(url).begin() as c:
+        c.execute(text("DROP TABLE IF EXISTS keyed"))
+        c.execute(text("CREATE TABLE keyed (k INTEGER PRIMARY KEY, v INTEGER)"))
+        c.execute(text("INSERT INTO keyed VALUES (5, 50), (3, 30), (9, 90), (1, 10)"))
+        c.execute(text("UPDATE keyed SET v = v + 1 WHERE k = 1"))   # PG: k=1 moves to the end
+    monkeypatch.setattr(sc, "LOAD_MAX_ROWS", 2)
+    assert list((await _sql(url, "keyed").load())["k"]) == [1, 3]
+
+
+async def test_zero_dates_are_blanked_only_where_the_database_types_a_date(tmp_path):
+    """B9: '0000-00-00' was blanked in any text column of any dialect; a VARCHAR holding it is
+    text the user wrote (the CSV of it keeps it)."""
+    conn = _connector_with_mine(tmp_path, "postgresql")
+    df = (await conn.query("SELECT CAST('0000-00-00' AS varchar) AS v FROM mine")).frame()
+    assert df["v"].tolist() == ["0000-00-00"]
+
+
+def test_the_mysql_session_mode_reads_sql_as_the_guard_does(tmp_path):
+    """B11a: with ANSI_QUOTES or NO_BACKSLASH_ESCAPES on the server, MySQL would read a string
+    differently from the parse guard. The connection's init_command takes both off."""
+    import pymysql
+    from sqlalchemy.engine import make_url
+
+    from connectors.sql_connector import DIALECTS
+    u = make_url(_each_dialect(tmp_path, "mysql"))
+    c = pymysql.connect(host=u.host, port=u.port, user=u.username, password=u.password,
+                        database=u.database)
+    try:
+        cur = c.cursor()
+        cur.execute("SET SESSION sql_mode = 'ANSI_QUOTES,NO_BACKSLASH_ESCAPES,STRICT_ALL_TABLES'")
+        cur.execute(DIALECTS["mysql"].connect_args["init_command"])
+        cur.execute("SELECT @@SESSION.sql_mode, @@SESSION.time_zone")
+        mode, tz = cur.fetchone()
+    finally:
+        c.close()
+    assert set(mode.split(",")) == {"STRICT_ALL_TABLES"} and tz == "+00:00"
+
+
+async def test_a_connection_test_bug_is_logged_not_shown_as_a_connection_problem(
+        tmp_path, monkeypatch, caplog):
+    """B11b: a programming error in the connection test read as the user's connection failing."""
+    import semantic_layer
+    monkeypatch.setattr(semantic_layer, "configured_layer", lambda: {}["missing"])
+    ok, message = await _sql(_sqlite(tmp_path, pd.DataFrame({"a": [1]})), None).test_connection()
+    assert not ok and "missing" not in message and "unexpected error" in message
+    assert any(r.exc_info for r in caplog.records)
+
+
+def test_a_mapped_ipv6_address_resolves_as_its_ipv4_address(monkeypatch):
+    """B11d: one normalisation for every host check (the API's and the database's)."""
+    import ipaddress
+    import socket
+
+    from connectors.base import resolved
+    monkeypatch.setattr(socket, "getaddrinfo",
+                        lambda *a, **k: [(0, 0, 0, "", ("::ffff:127.0.0.1", 0, 0, 0))])
+    assert resolved("x") == [ipaddress.ip_address("127.0.0.1")]
+
+
+def test_the_app_store_is_not_published_on_the_network():
+    """B4: the store's port on every interface (with default credentials) let a connection to
+    the host's LAN address reach it: the own-store check knows its address, not every route to
+    it. Compose binds it to loopback."""
+    from pathlib import Path
+
+    import yaml
+    compose = yaml.safe_load((Path(__file__).parent.parent / "docker-compose.yml").read_text())
+    ports = compose["services"]["postgres"].get("ports", [])
+    assert all(str(p).startswith("127.0.0.1:") for p in ports), ports
+
+
+def test_a_safety_test_names_the_reason_it_expects():
+    """Audit pass 2 (B3, B10): expecting any Exception, or swallowing one, let a safety test
+    pass on any error. The source and guard tests name the error they expect."""
+    import re
+    from pathlib import Path
+    here = Path(__file__).parent
+    for f in ("test_connectors_sources.py", "test_sql_guard.py"):
+        source = (here / f).read_text()
+        assert not re.search(r"raises\(Exception\)|except Exception:\s*\n\s*pass", source), f

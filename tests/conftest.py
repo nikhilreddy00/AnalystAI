@@ -37,6 +37,11 @@ def _worker_database(var: str) -> None:
 
 _worker_database("TEST_PG_URL")
 _worker_database("TEST_MYSQL_URL")
+# CI's backend job (it sets CI_SHARD) has both databases: a test needing one skips locally without
+# it, never in CI (audit pass 2: ~42 MySQL tests would have skipped unseen had the URL been lost).
+if os.environ.get("CI") and "CI_SHARD" in os.environ:
+    if missing := [v for v in ("TEST_PG_URL", "TEST_MYSQL_URL") if not os.environ.get(v)]:
+        raise RuntimeError(f"CI's backend job must set {', '.join(missing)}")
 
 
 def _hypothesis_profiles() -> None:

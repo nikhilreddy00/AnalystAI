@@ -578,7 +578,8 @@ _TYPED_DDL = """CREATE TABLE typed (id INT, active TINYINT(1), amount DECIMAL(12
     stamp DATETIME(6), ts TIMESTAMP NULL, note VARCHAR(40), score DOUBLE)"""
 _TYPED_ROWS = ["(1, 1, 10.50, '2026-01-05', '2026-01-05 10:00:00.123456', '2026-01-05 10:00:00', 'Acme', 1.5)",
                "(2, 0, 3.25, '0000-00-00', '2026-02-01 00:00:00', '2026-02-01 00:00:00', '', -0.0)",
-               "(3, 1, NULL, '2026-03-07', NULL, NULL, 'ACME', NULL)",
+               # a DATETIME(6) zero date reads back with its fraction (audit pass 2: B9)
+               "(3, 1, NULL, '2026-03-07', '0000-00-00 00:00:00.000000', NULL, 'ACME', NULL)",
                "(4, 0, 0.10, '2026-03-08', '2026-03-08 09:30:00', NULL, 'Café £5 – Zürich', 2.25)"]
 _TYPED_CSV = """id,active,amount,day,stamp,ts,note,score
 1,True,10.5,2026-01-05,2026-01-05 10:00:00.123456,2026-01-05 10:00:00,Acme,1.5
@@ -598,7 +599,7 @@ async def test_a_databases_own_types_read_as_the_csv_of_the_same_table():
     from connectors.csv_connector import _read_bytes
     url = os.environ.get("TEST_MYSQL_URL")
     if not url:
-        pytest.skip("TEST_MYSQL_URL not set")
+        pytest.skip("TEST_MYSQL_URL not set")   # never in CI (tests/conftest.py)
     with ce(url).begin() as c:
         c.execute(text("SET SESSION sql_mode = ''"))   # legacy dumps hold zero dates
         c.execute(text("SET SESSION time_zone = '+00:00'"))

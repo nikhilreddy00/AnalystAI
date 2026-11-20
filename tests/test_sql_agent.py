@@ -195,6 +195,36 @@ async def test_a_layer_written_for_another_engine_is_reported_and_not_used(
     assert "Dialect: sqlite" in prompt and "<untrusted_data>" in prompt   # introspected, not the layer
 
 
+async def test_a_skipped_layer_is_said_not_silent(recorded_llm, connector, monkeypatch):
+    """Audit pass 2 (B6): the evidence said 'no semantic layer' while one was configured, and
+    nothing was traced. It says the layer was skipped and why."""
+    traced = []
+    monkeypatch.setattr(sql_agent, "trace_verdict", lambda agent, version, rule: traced.append(rule))
+    pg_layer = LAYER.model_copy(update={"dialect": "postgres"})
+    recorded_llm.responses.append(_answer("SELECT COUNT(*) FROM orders"))
+    ans = await sql_agent.run_sql_agent("how many orders", connector, pg_layer, recorded_llm)
+    assert "layer_dialect" in traced
+    assert "semantic layer skipped: written for postgres, this database is sqlite" in \
+        ans.evidence.confidence_reason
+
+
+async def test_a_session_that_cant_open_is_not_blamed_on_the_query(recorded_llm, connector,
+                                                                    monkeypatch):
+    """Audit pass 2 (B5): a failing read-only/timeout statement (MariaDB has no
+    max_execution_time) read as 'the database rejected the query' and cost a paid retry."""
+    import dataclasses
+
+    import connectors.sql_connector as sc
+    from agents.errors import IngestionError
+    bad = dataclasses.replace(sc.DIALECTS["sqlite"], begin=("SET no_such_variable = 1",))
+    monkeypatch.setitem(sc.DIALECTS, "sqlite", bad)
+    recorded_llm.responses.append(_answer("SELECT COUNT(*) FROM orders"))
+    with pytest.raises(IngestionError) as err:
+        await sql_agent.run_sql_agent("how many orders", connector, None, recorded_llm)
+    assert len(recorded_llm.calls) == 1   # no guided retry
+    assert err.value.user_message.startswith("Couldn't open a read-only session on the database")
+
+
 def test_context_without_a_conversation_is_byte_identical():
     """The 50 standalone SQL eval cases see exactly the Phase 4 prompt (no re-run needed)."""
     bare = sql_agent.build_context("revenue by status", LAYER, "sqlite").render()
