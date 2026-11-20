@@ -5,27 +5,43 @@ import pytest
 from llm.client import RecordedClient, set_client
 
 
-def _worker_database() -> None:
+def _worker_database(var: str) -> None:
     """Each pytest-xdist worker gets its own scratch database (<db>_gw0, <db>_gw1 …), created on
-    first use, so the Postgres tests run in parallel without sharing schemas (CI ran the whole
-    suite serially because of them: 22 min). Set before any test module reads TEST_PG_URL."""
-    url, worker = os.environ.get("TEST_PG_URL"), os.environ.get("PYTEST_XDIST_WORKER")
-    if not url or not worker:
+    first use, so the database tests run in parallel without sharing schemas (CI ran the whole
+    suite serially because of them: 22 min). Set before any test module reads the URL.
+    MySQL's is created utf8mb4_bin, so text compares as pandas does (a default `_ci` collation
+    would read 'Acme' and 'ACME' as one value)."""
+    url, worker = os.environ.get(var), os.environ.get("PYTEST_XDIST_WORKER")
+    if not url:
         return
     from sqlalchemy import create_engine, text
     from sqlalchemy.engine import make_url
     base = make_url(url)
-    name = f"{base.database}_{worker}"
-    admin = create_engine(base.set(drivername="postgresql+psycopg", database="postgres"),
-                          isolation_level="AUTOCOMMIT")
-    with admin.connect() as c:
-        if not c.execute(text("select 1 from pg_database where datname = :n"), {"n": name}).first():
-            c.execute(text(f'CREATE DATABASE "{name}"'))
+    name = f"{base.database}_{worker}" if worker else base.database
+    if base.get_backend_name() == "mysql":
+        admin = create_engine(base.set(database=None), isolation_level="AUTOCOMMIT")
+        with admin.connect() as c:
+            c.execute(text(f"CREATE DATABASE IF NOT EXISTS `{name}` "
+                           "CHARACTER SET utf8mb4 COLLATE utf8mb4_bin"))
+    elif worker:
+        admin = create_engine(base.set(drivername="postgresql+psycopg", database="postgres"),
+                              isolation_level="AUTOCOMMIT")
+        with admin.connect() as c:
+            if not c.execute(text("select 1 from pg_database where datname = :n"), {"n": name}).first():
+                c.execute(text(f'CREATE DATABASE "{name}"'))
+    else:
+        return
     admin.dispose()
-    os.environ["TEST_PG_URL"] = base.set(database=name).render_as_string(hide_password=False)
+    os.environ[var] = base.set(database=name).render_as_string(hide_password=False)
 
 
-_worker_database()
+_worker_database("TEST_PG_URL")
+_worker_database("TEST_MYSQL_URL")
+# CI's backend job (it sets CI_SHARD) has both databases: a test needing one skips locally without
+# it, never in CI (audit pass 2: ~42 MySQL tests would have skipped unseen had the URL been lost).
+if os.environ.get("CI") and "CI_SHARD" in os.environ:
+    if missing := [v for v in ("TEST_PG_URL", "TEST_MYSQL_URL") if not os.environ.get(v)]:
+        raise RuntimeError(f"CI's backend job must set {', '.join(missing)}")
 
 
 def _hypothesis_profiles() -> None:

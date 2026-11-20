@@ -65,6 +65,8 @@ class Metric(_Strict):
 
     @cached_property
     def parsed(self) -> exp.Expression:
+        # ponytail: metric expressions parse as Postgres (every shipped layer is); a MySQL layer
+        # with backticked names needs the layer's dialect here (first MySQL layer, not 5.8a)
         return sqlglot.parse_one(self.expr, read="postgres")
 
     def terms(self) -> list[str]:
@@ -218,6 +220,9 @@ def check_against_db(layer: SemanticLayer, engine) -> list[str]:
     makes the agent write SQL against columns that no longer exist)."""
     from sqlalchemy import inspect
 
+    from connectors.sql_connector import sql_dialect
+    if layer.dialect != (dialect := sql_dialect(engine)):   # the SQL agent won't use it
+        return [f"the layer is written for {layer.dialect}, this database is {dialect}"]
     insp = inspect(engine)
     problems = []
     for t in layer.tables:

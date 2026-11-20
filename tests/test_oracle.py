@@ -39,17 +39,24 @@ def _built(name: str, seed: int = 1, transform: str = ""):
 
 @cache
 def _built_once(name: str, seed: int = 1, transform: str = ""):
-    from agents.cleaning_agent import run_cleaning_agent
-    from agents.ingestion_agent import prepare_frame
     from connectors.csv_connector import CSVConnector, _read_bytes
-    from orchestrator.state import AnalysisSession, AnalysisTask, ConnectorConfig, ConnectorType
+    from orchestrator.state import ConnectorConfig, ConnectorType
     raw, truth = datagen.make(name, seed)
     raw = TRANSFORMS[transform](raw) if transform else raw
     df = _read_bytes(raw.to_csv(index=False).encode(), ".csv")[0]
     contract = CSVConnector(ConnectorConfig(type=ConnectorType.CSV)).build_data_contract(df)
+    return _prepared(df, contract, ConnectorType.CSV, truth)
+
+
+def _prepared(df: pd.DataFrame, contract, source_type, truth):
+    """A loaded frame and its contract on to what the agents read, as ingestion and cleaning
+    hand them on: every source takes this one path after its load (the source oracle below)."""
+    from agents.cleaning_agent import run_cleaning_agent
+    from agents.ingestion_agent import prepare_frame
+    from orchestrator.state import AnalysisSession, AnalysisTask
     # patient data: the PHI-protected copy, as production builds it (smoke run: pooling a
     # float code column broke parquet; this adapter skipped the step)
-    df, contract = prepare_frame(df, contract, ConnectorType.CSV, scope="oracle")
+    df, contract = prepare_frame(df, contract, source_type, scope="oracle")
     s = AnalysisSession(session_id="oracle", data_contract=contract, task_plan=AnalysisTask(
         raw_query="o", analysis_types=["eda"], target_metrics=[]))
     s.__dict__["_df_parquet"] = _parquet(df)
@@ -473,37 +480,142 @@ def _mocked_source(source: str, df: pd.DataFrame, csv: str, monkeypatch):
     return conn
 
 
-@pytest.mark.parametrize("name", ["inpatient", "health_claims", "loan_tape", "retail_lines",
-                                  "policies", "loss_run", "hr_roster", "hr_snapshots",
-                                  "saas_subscriptions", "saas_mrr_snapshots", "saas_invoices",
-                                  "shift_production", "work_orders", "machine_readings",
-                                  "tms_shipments", "order_lines", "dock_appointments"])
-@pytest.mark.parametrize("source",["xlsx", "json", "parquet", "sqlite", "postgres", "api", "sheets"])
+# Each pack's datasets (the pack each one reads as is checked in test_dashboard_filters'
+# test_every_domain_dataset_is_in_the_every_filter_check); the property hook reads it too.
+DATASETS_BY_PACK = {
+    "retail": ["retail_lines", "store_weeks", "b2b_invoices"],
+    "banking": ["loan_tape", "loan_tape_messy", "card_ledger", "bank_balances", "bank_statement",
+                "ledger_drcr", "deposits_daily"],
+    "healthcare": ["inpatient", "encounters", "health_claims"],
+    "insurance": ["policies", "loss_run", "claims"],
+    "hr": ["hr_roster", "hr_roster_onerow", "hr_snapshots", "employees"],
+    "saas": ["saas_subscriptions", "saas_mrr_snapshots", "saas_invoices", "subscriptions",
+             "saas_accounts"],
+    "iot": ["shift_production", "work_orders", "machine_readings", "sensor_readings"],
+    "logistics": ["tms_shipments", "order_lines", "dock_appointments", "shipments"],
+}
+PACK_DATASETS = [n for names in DATASETS_BY_PACK.values() for n in names]
+ONE_PER_PACK = {names[0] for names in DATASETS_BY_PACK.values()}
+SOURCES = ["xlsx", "json", "parquet", "sqlite", "postgres", "mysql", "api", "sheets"]
+_DB_URL = {"postgres": "TEST_PG_URL", "mysql": "TEST_MYSQL_URL"}   # skipped locally without one
+# The contract fields that name where the table came from: every other field is the source's
+_SOURCE_FIELDS = {"source_type", "source_query", "source_evidence"}
+# What a format can't carry, named with why (never a silent skip): the rest is still compared
+_FORMAT_LIMITS = {"xlsx": "Excel stores every number as a double: a whole 30.0 reads back as an int"}
+
+
+def _answers(clean: pd.DataFrame, contract) -> str:
+    """What a user reads off one frame with no model call: the whole dashboard (tiles and chart
+    rows, through filtered_dashboard as the API serves it) and the built-in answers."""
+    from agents.analysis_agent import builtin_result
+    from agents.visualization_agent import filtered_dashboard
+    from orchestrator.state import AnalysisTask
+    from tests.test_dashboard_filters import _charts
+    charts = _charts(clean, contract)
+    task = AnalysisTask(raw_query="overview", analysis_types=["eda", "trend", "segmentation"],
+                        target_metrics=contract.metric_columns[:3])
+    order = {c.id: f"chart {i}" for i, c in enumerate(charts)}   # an id is a fresh uuid each build
+
+    def named(v):
+        if isinstance(v, dict):
+            return {order.get(k, k): named(x) for k, x in v.items()}
+        return [named(x) for x in v] if isinstance(v, list) else order.get(v, v) if isinstance(v, str) else v
+    board = named(filtered_dashboard(clean, contract, charts, {}))
+    return json.dumps([board, builtin_result(clean, contract, task, None)], sort_keys=True,
+                      default=str)
+
+
+@pytest.mark.parametrize("name", PACK_DATASETS)
+@pytest.mark.parametrize("source", SOURCES)
 async def test_every_source_reads_the_same_as_the_csv(name, source, tmp_path, monkeypatch):
+    """The class owner for source invariance (ADR-0010): a domain's table loaded from any source
+    and taken on through production's path gives the CSV's contract (but for the fields naming
+    the source) and the CSV's cleaned frame, dtypes included; one dataset per pack also gives
+    byte-identical tiles, chart rows and built-in answers (functions of frame and contract, so
+    the frame check carries the other datasets). A new source joins SOURCES, never a copy."""
     import connectors.csv_connector as csvc
-    import domain_pack
     from connectors.base import get_connector
     from evals import run
-    if source == "postgres" and not os.environ.get("TEST_PG_URL"):
-        pytest.skip("TEST_PG_URL not set")
+    if (env := _DB_URL.get(source)) and not os.environ.get(env):
+        pytest.skip(f"{env} not set")
     monkeypatch.setattr(run, "UPLOADS", tmp_path)
     monkeypatch.setattr(csvc, "_UPLOADS_DIR", tmp_path.resolve())
     case = {"dataset": {"name": name, "seed": 1}}
     df, _, csv = run.dataset(case)
+    conn = (_mocked_source(source, df, csv, monkeypatch) if source in ("api", "sheets") else
+            get_connector(run.source_config({**case, "source": source}, df, csv)))
+    frame = await conn.load()
+    _, got, gc, _ = _prepared(frame, conn.build_data_contract(frame), conn.config.type, None)
+    _, want, wc, _ = _built(name)
+    lossy = source in _FORMAT_LIMITS   # then only the int/float type, and the hash over it, may differ
+    skip = {**dict.fromkeys(_SOURCE_FIELDS, True),
+            **({"fingerprint": True, "columns": {"__all__": {"dtype"}}} if lossy else {})}
+    assert gc.model_dump(exclude=skip) == wc.model_dump(exclude=skip), source
+    # the same rows, exactly, in any order: a SQL table has no row order (Postgres returned one
+    # in another); whether an answer depends on order is the row-order invariance's to say
+    if lossy:
+        got = got.astype({c: want[c].dtype for c in got.columns if got[c].dtype != want[c].dtype})
+    assert (list(got.columns), list(got.dtypes.astype(str))) == \
+        (list(want.columns), list(want.dtypes.astype(str))), source
+    assert sorted(pd.util.hash_pandas_object(got, index=False)) == \
+        sorted(pd.util.hash_pandas_object(want, index=False)), source
+    if name in ONE_PER_PACK:
+        assert _answers(got, gc) == _answers(want, wc), source
 
-    async def read(src):
-        conn = (_mocked_source(src, df, csv, monkeypatch) if src in ("api", "sheets") else
-                get_connector(run.source_config({**case, "source": src}, df, csv)))
-        frame = await conn.load()
-        return frame, conn.build_data_contract(frame)
-    (want, wc), (got, gc) = await read("csv"), await read(source)
-    assert (gc.domain, gc.domain_confidence, gc.phi) == (wc.domain, wc.domain_confidence, wc.phi)
-    assert gc.roles == wc.roles and len(got) == len(want)
-    pack = domain_pack.pack_for(wc.domain)
-    for k in (k for k in pack.kpis if domain_pack.computable(pack, k.name, wc.roles)):
-        a = domain_pack.compute_kpi(want, wc.roles, pack, k.name)
-        b = domain_pack.compute_kpi(got, gc.roles, pack, k.name)
-        assert (a is None and b is None) or b == pytest.approx(a, rel=1e-9), (source, k.name, a, b)
+
+def test_a_tables_fingerprint_does_not_depend_on_its_row_order():
+    """A SQL table has no row order; a resumed run re-reads its source and compares the
+    fingerprint (orchestrator/runner.py), so a reordered read is not "the data changed"."""
+    from agents.ingestion_agent import fingerprint
+    _, clean, _, _ = _built("retail_lines")
+    assert fingerprint(clean) == fingerprint(clean.sample(frac=1, random_state=7))
+    assert fingerprint(clean) != fingerprint(clean.iloc[1:])
+
+
+# The domain datasets reach a database as text and float64 (source_config writes the CSV-read
+# frame), so they never meet a database's own types: this table does, written with real DDL.
+_TYPED_DDL = """CREATE TABLE typed (id INT, active TINYINT(1), amount DECIMAL(12,2), day DATE,
+    stamp DATETIME(6), ts TIMESTAMP NULL, note VARCHAR(40), score DOUBLE)"""
+_TYPED_ROWS = ["(1, 1, 10.50, '2026-01-05', '2026-01-05 10:00:00.123456', '2026-01-05 10:00:00', 'Acme', 1.5)",
+               "(2, 0, 3.25, '0000-00-00', '2026-02-01 00:00:00', '2026-02-01 00:00:00', '', -0.0)",
+               # a DATETIME(6) zero date reads back with its fraction (audit pass 2: B9)
+               "(3, 1, NULL, '2026-03-07', '0000-00-00 00:00:00.000000', NULL, 'ACME', NULL)",
+               "(4, 0, 0.10, '2026-03-08', '2026-03-08 09:30:00', NULL, 'Café £5 – Zürich', 2.25)"]
+_TYPED_CSV = """id,active,amount,day,stamp,ts,note,score
+1,True,10.5,2026-01-05,2026-01-05 10:00:00.123456,2026-01-05 10:00:00,Acme,1.5
+2,False,3.25,,2026-02-01 00:00:00,2026-02-01 00:00:00,,0.0
+3,True,,2026-03-07,,,ACME,
+4,False,0.1,2026-03-08,2026-03-08 09:30:00,,Café £5 – Zürich,2.25
+"""
+
+
+async def test_a_databases_own_types_read_as_the_csv_of_the_same_table():
+    """TINYINT(1) is a yes/no, DECIMAL a number, a zero date and '' are blanks, a TIMESTAMP its
+    UTC wall time, -0.0 is 0.0, case is kept ('Acme' ≠ 'ACME'): the frame a CSV of the same
+    table gives, dtypes included."""
+    from sqlalchemy import create_engine as ce
+    from sqlalchemy import text
+
+    from connectors.csv_connector import _read_bytes
+    url = os.environ.get("TEST_MYSQL_URL")
+    if not url:
+        pytest.skip("TEST_MYSQL_URL not set")   # never in CI (tests/conftest.py)
+    with ce(url).begin() as c:
+        c.execute(text("SET SESSION sql_mode = ''"))   # legacy dumps hold zero dates
+        c.execute(text("SET SESSION time_zone = '+00:00'"))
+        c.execute(text("DROP TABLE IF EXISTS typed"))
+        c.execute(text(_TYPED_DDL))
+        c.execute(text("INSERT INTO typed VALUES " + ", ".join(_TYPED_ROWS)))
+    got = await _sql_connector(url, "typed").load()
+    want = _read_bytes(_TYPED_CSV.encode(), ".csv")[0]
+    pd.testing.assert_frame_equal(got, want, check_exact=True)
+
+
+def _sql_connector(url: str, table: str):
+    from connectors.base import get_connector
+    from orchestrator.state import ConnectorConfig, ConnectorType
+    return get_connector(ConnectorConfig(type=ConnectorType.SQL, connection_string=url,
+                                         table_name=table))
 
 
 # ── Truth: healthcare (Domain 3) ──────────────────────────────────────────────────────────────

@@ -45,8 +45,19 @@ jobs:
         ports: ["5432:5432"]
         options: >-
           --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+      mysql:      # Phase 5.8a: the MySQL source (oracle, read-only and guard tests)
+        image: mysql:8.4   # pinned: mysql:latest is 26.x (Metabase's CI broke on it)
+        env:
+          MYSQL_ROOT_PASSWORD: mysql
+          MYSQL_DATABASE: analystai_eval
+        ports: ["3306:3306"]
+        # a real query over TCP: `mysqladmin ping` answers the image's init server before it's ready
+        options: >-
+          --health-cmd "mysql -h127.0.0.1 -uroot -pmysql -e 'SELECT 1'"
+          --health-interval 5s --health-timeout 5s --health-retries 30
     env:
       TEST_PG_URL: postgresql+psycopg://postgres:postgres@localhost:5432/analystai_eval
+      TEST_MYSQL_URL: mysql+pymysql://root:mysql@127.0.0.1:3306/analystai_eval
       CI_SHARD: ${{ matrix.shard }}/4
       TEST_ORDER_SEED: ${{ github.event_name == 'schedule' && github.run_id || '' }}
       # nightly: the property tests' 500-example profile (tests/conftest.py); else 25, derandomized
@@ -71,6 +82,29 @@ jobs:
         env:
           TEST_PG_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/analystai_eval
           CI_SHARD: ""
+
+  # Phase 5.8a: no secret (a connection string with a password, a key) enters the history;
+  # dependencies with a known vulnerability are listed (pip-audit reports, not yet blocking:
+  # 14 locked packages had advisories at 5.8a; the upgrade is its own PR before v0.1).
+  security:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read   # the token handed to a third-party action can only read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      # third-party actions pinned to a commit (a moved tag can't swap the code that sees the token)
+      - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7   # v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_COMMENTS: false
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e   # v6
+        with:
+          python-version: "3.11"
+      - run: uv export --frozen --no-hashes --no-emit-project --format requirements-txt -o req.txt
+      - run: uvx pip-audit -r req.txt --disable-pip --no-deps
+        continue-on-error: true
 
   # Phase 5.7: every finished domain's deterministic suites, $0 (no model call), on every push.
   zero-suites:

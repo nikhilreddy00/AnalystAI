@@ -64,7 +64,9 @@ GATED = ("domain_pack/spell.py", "domain_pack/ledger.py", "domain_pack/columns.p
          "domain_pack/story.py",
          # retro Domain 7: the review's 7 recurrences all lived outside the gate (the time and
          # epoch rules, the PII check, the targeted answers), so "checks green" never read them
-         "connectors/base.py", "guardrails.py", "agents/targeted_analysis_agent.py")
+         "connectors/base.py", "guardrails.py", "agents/targeted_analysis_agent.py",
+         # 5.8a: the dialect table, the connection-string guard, the result-to-frame rule
+         "connectors/sql_connector.py")
 GATE = "docs/mutation/gate.json"
 
 

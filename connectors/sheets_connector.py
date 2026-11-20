@@ -32,7 +32,7 @@ class SheetsConnector(DataConnector):
         creds = Credentials.from_service_account_info(info, scopes=SCOPES)
         return gspread.authorize(creds)
 
-    async def load(self) -> pd.DataFrame:
+    async def _read(self) -> pd.DataFrame:
         spreadsheet_id = self.config.spreadsheet_id
         sheet_name = self.config.sheet_name
 

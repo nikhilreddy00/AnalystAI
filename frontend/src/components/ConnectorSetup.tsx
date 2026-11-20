@@ -243,7 +243,11 @@ export default function ConnectorSetup({ onConnectorReady }: ConnectorSetupProps
       {/* SQL */}
       {type === "sql" && (
         <div className="space-y-2.5">
-          <Field label="Connection string" placeholder="postgresql://user:pass@host:5432/db" onChange={(v) => update("connection_string", v)} />
+          <Field label="Connection string" placeholder="postgresql://user:pass@host:5432/db or mysql://user:pass@host:3306/db" onChange={(v) => update("connection_string", v)} />
+          <p className="text-xs text-muted-foreground">
+            PostgreSQL (including Supabase and Neon) or MySQL. Connect with a read-only user: every
+            query also runs read-only and timed.
+          </p>
           <Field label="Table name (optional)" placeholder="Leave blank to ask questions across the whole database" onChange={(v) => update("table_name", v)} />
         </div>
       )}

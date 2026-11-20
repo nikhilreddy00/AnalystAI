@@ -40,6 +40,7 @@ dependencies = [
     "psycopg[binary]>=3.2",
     "langgraph-checkpoint-postgres>=3.2.0",
     "greenlet>=3.5.0",
+    "pymysql>=1.1.1",
 ]
 
 [project.optional-dependencies]
@@ -52,6 +53,18 @@ dev = [
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+
+[tool.ruff.lint]
+# 5.8a: flake8-bandit's security rules (ruff `S`) on the product. Left out: assert (S101),
+# subprocess in tooling (S603/S607), and try/except/pass|continue (S110/S112: the silent-failure
+# review reads those); tests, scripts and evals build SQL and exec on purpose.
+extend-select = ["S"]
+ignore = ["S101", "S603", "S607", "S110", "S112"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S"]
+"scripts/**" = ["S"]
+"evals/**" = ["S"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
@@ -76,11 +89,14 @@ source_paths = ["domain_pack/", "agents/utils.py", "agents/targeted_analysis_age
                 "agents/claims.py", "agents/prose_judge.py", "agents/insight_agent.py",
                 "agents/quality_agent.py", "agents/drill_down_agent.py", "guardrails.py",
                 # Domain 7: the one time rule and cleaning's fallback through it
-                "connectors/base.py", "agents/data_cleaning.py"]
+                "connectors/base.py", "agents/data_cleaning.py",
+                # 5.8a: the dialect table and the connection-string guard
+                "connectors/sql_connector.py"]
 # never evals/reference_kpis.py: the oracle is checked against the generators, not the product
 also_copy = ["agents/", "api/", "connectors/", "domain_packs/", "evals/", "llm/", "memory/",
              "orchestrator/", "prompts/", "sandbox/", "scripts/", "semantic_layers/", "worker/",
-             "semantic_layer.py"]
+             "semantic_layer.py", "README.md",   # README: tests/test_sources_readme.py
+             "docker-compose.yml"]   # the store's port: test_the_app_store_is_not_published…
 
 [tool.importlinter]
 # The domain_pack layers (Phase 5.7b-1): a module imports only the layers below it, so a rule

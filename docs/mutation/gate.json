@@ -266,6 +266,10 @@
    }
   ]
  },
+ "connectors/base.py::DataConnector.load": {
+  "equivalents": [],
+  "hash": "03ad5a55975922f5"
+ },
  "connectors/base.py::as_times": {
   "equivalents": [
    {
@@ -293,6 +297,136 @@
     "reason": "an all-missing datetime64[ns] Series is all NaT however it is built (pandas 3.0.3, checked: None data, no data, no dtype)"
    }
   ]
+ },
+ "connectors/base.py::normalize_frame": {
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "if not pd.api.types.is_numeric_dtype(None) and (blank := s.eq(\"\")).any():",
+    "old": "if not pd.api.types.is_numeric_dtype(s) and (blank := s.eq(\"\")).any():",
+    "reason": "the numeric test only skips work: a numeric column never equals '', so its blank mask is all False and nothing is masked either way"
+   }
+  ],
+  "hash": "457cb9c5401fbfb6"
+ },
+ "connectors/base.py::resolved": {
+  "equivalents": [],
+  "hash": "87ffbda1cc1e8277"
+ },
+ "connectors/base.py::sources_table": {
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "break",
+    "old": "continue",
+    "reason": "sqlite is DIALECTS' last row, so leaving the loop after its row is the same as continuing; a row added after it goes through the README test"
+   }
+  ],
+  "hash": "a8fd23d5257fbc61"
+ },
+ "connectors/base.py::without_secrets": {
+  "equivalents": [],
+  "hash": "7aca801387338cc3"
+ },
+ "connectors/sql_connector.py::QueryResult.frame": {
+  "equivalents": [],
+  "hash": "07aa78d7d410dd98"
+ },
+ "connectors/sql_connector.py::SQLConnector._engine": {
+  "equivalents": [],
+  "hash": "3b6ede79ba2d9575"
+ },
+ "connectors/sql_connector.py::SQLConnector._read": {
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "f\"SELECT COUNT(*) FROM {qualified}\", )  # noqa: S608",
+    "old": "f\"SELECT COUNT(*) FROM {qualified}\", 1)  # noqa: S608",
+    "reason": "the row cap of a COUNT(*): it returns exactly one row, so a cap of 1, 2 or the default reads the same row"
+   },
+   {
+    "n": 1,
+    "new": "f\"SELECT COUNT(*) FROM {qualified}\", 2)  # noqa: S608",
+    "old": "f\"SELECT COUNT(*) FROM {qualified}\", 1)  # noqa: S608",
+    "reason": "the row cap of a COUNT(*): it returns exactly one row, so a cap of 1, 2 or the default reads the same row"
+   },
+   {
+    "n": 1,
+    "new": "order = (\" order by \" + \", \".join(map(quote, key[\"constrained_columns\"]))",
+    "old": "order = (\" ORDER BY \" + \", \".join(map(quote, key[\"constrained_columns\"]))",
+    "reason": "SQL keywords are case-insensitive in every dialect"
+   }
+  ],
+  "hash": "4ec2dba4cba3167c"
+ },
+ "connectors/sql_connector.py::SQLConnector.engine": {
+  "equivalents": [],
+  "hash": "269bfd3d28e5870d"
+ },
+ "connectors/sql_connector.py::SQLConnector.query": {
+  "equivalents": [],
+  "hash": "a6ff5e91735f540f"
+ },
+ "connectors/sql_connector.py::SQLConnector.schema_context": {
+  "equivalents": [],
+  "hash": "555e358a61d46829"
+ },
+ "connectors/sql_connector.py::SQLConnector.test_connection": {
+  "equivalents": [],
+  "hash": "8ff8877fd9241813"
+ },
+ "connectors/sql_connector.py::_assert_single_select": {
+  "equivalents": [],
+  "hash": "7cc2d609e38d71a8"
+ },
+ "connectors/sql_connector.py::_checked_address": {
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "ips = None",
+    "old": "ips = []",
+    "reason": "ips is read next only by `if not ips`, which refuses on None and [] alike"
+   }
+  ],
+  "hash": "9c4b934289052559"
+ },
+ "connectors/sql_connector.py::_tables": {
+  "equivalents": [],
+  "hash": "95c0422dc73d9ae1"
+ },
+ "connectors/sql_connector.py::_unlisted_tables": {
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "out.append(f\"{t.this.sql(None).split('(')[0]}()\")",
+    "old": "out.append(f\"{t.this.sql(d.sqlglot).split('(')[0]}()\")",
+    "reason": "only the refusal's wording: a function's name is printed the same (upper case) in every dialect"
+   }
+  ],
+  "hash": "a17a8344a7f011d5"
+ },
+ "connectors/sql_connector.py::dialect_of": {
+  "equivalents": [],
+  "hash": "494d35c0c15d41b4"
+ },
+ "connectors/sql_connector.py::run_readonly": {
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "conn.exec_driver_sql(statement.format(ms=int(timeout_s * 1001)))",
+    "old": "conn.exec_driver_sql(statement.format(ms=int(timeout_s * 1000)))",
+    "reason": "15,015 ms against 15,000: a statement timeout 15 ms longer, which no test can tell from the real one (the slow-query test allows seconds)"
+   }
+  ],
+  "hash": "386be338eed64b2a"
+ },
+ "connectors/sql_connector.py::safe_url": {
+  "equivalents": [],
+  "hash": "c5c991b122699bea"
+ },
+ "connectors/sql_connector.py::sql_dialect": {
+  "equivalents": [],
+  "hash": "d38b640ddad47842"
  },
  "domain_pack/columns.py::derived_roles": {
   "equivalents": [],
@@ -538,6 +672,31 @@
  "evals/scoring.py::score_quality": {
   "equivalents": [],
   "hash": "157a12e6f433673e"
+ },
+ "guardrails.py::_is_sql_text": {
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "first = next((t for t in sqlglot.tokenize(text, read=None)",
+    "old": "first = next((t for t in sqlglot.tokenize(text, read=dialect)",
+    "reason": "the keyword check is the fast path: whatever the default tokenizer misses, parse_one(text, read=dialect) on the next line reads as a query in the connection's dialect"
+   },
+   {
+    "n": 1,
+    "new": "first = next((t for t in sqlglot.tokenize(text, )",
+    "old": "first = next((t for t in sqlglot.tokenize(text, read=dialect)",
+    "reason": "the keyword check is the fast path: whatever the default tokenizer misses, parse_one(text, read=dialect) on the next line reads as a query in the connection's dialect"
+   }
+  ],
+  "hash": "b16d3baff8d83652"
+ },
+ "guardrails.py::_system_schemas": {
+  "equivalents": [],
+  "hash": "b23596f7da759259"
+ },
+ "guardrails.py::check_sql_readonly": {
+  "equivalents": [],
+  "hash": "10765bbff88ac960"
  },
  "guardrails.py::is_pii_column": {
   "equivalents": [],

@@ -6,7 +6,9 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-analystai}
       POSTGRES_DB: ${POSTGRES_DB:-analystai}
     ports:
-      - "5432:5432"
+      # loopback only: the app's store (default credentials) must not be reachable from the
+      # network; a SQL source can't name it by another of the host's addresses (5.8a audit 2)
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:

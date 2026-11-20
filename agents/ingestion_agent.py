@@ -21,6 +21,7 @@ import json
 import re
 from dataclasses import dataclass
 
+import numpy as np
 import pandas as pd
 
 from agents.data_cleaning import try_numeric_conversion
@@ -183,13 +184,15 @@ def _profiled(s: pd.Series) -> pd.Series:
 
 
 def fingerprint(df: pd.DataFrame) -> str:
-    """Content hash of the loaded table (names, types, values): same file → same contract."""
+    """Content hash of the loaded table (names, types, values): same table → same contract, in
+    any row order. A SQL table has none: Postgres returned one table's rows in another order on a
+    later read (5.8a), which a resumed run read as "the data changed" (orchestrator/runner.py)."""
     try:
         rows = pd.util.hash_pandas_object(df, index=False).values
     except TypeError:   # unhashable cells (lists from JSON)
         rows = pd.util.hash_pandas_object(df.astype(str), index=False).values
     head = json.dumps([[str(c), str(t)] for c, t in df.dtypes.items()]).encode()
-    return hashlib.sha256(head + rows.tobytes()).hexdigest()
+    return hashlib.sha256(head + np.sort(rows).tobytes()).hexdigest()
 
 
 def _as_dates(s: pd.Series) -> pd.Series:

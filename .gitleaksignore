@@ -1,0 +1,3 @@
+# One line per accepted finding: <commit>:<file>:<rule>:<line> (gitleaks' fingerprint).
+# A made-up password the Playwright spec checks never reaches the page (Phase 5.8a); not a secret.
+224bdbd21350b0a0408ec08de855a21c107f6fe2:frontend/e2e/mysql_connect.spec.ts:generic-api-key:7

@@ -61,19 +61,58 @@ def code_column_refs(code: str) -> set[str]:
 # transaction stops writes; these also leak data, sleep, lock or kill sessions, so the parse rejects
 # them first. Prefix entries end with "_" or are listed in _SQL_DENY_PREFIXES.
 _SQL_DENY_FUNCS = {"nextval", "setval", "set_config", "query_to_xml", "query_to_xml_and_xmlschema",
-                   "cursor_to_xml", "pg_notify", "txid_current", "pg_current_xact_id"}
+                   "cursor_to_xml", "pg_notify", "txid_current", "pg_current_xact_id",
+                   "ts_stat", "ts_rewrite",   # run a query given as text (audit 2)
+                   # MySQL (5.8a): sleep, burn CPU, take locks, read the server's files, wait
+                   "sleep", "benchmark", "get_lock", "release_lock", "release_all_locks",
+                   "is_free_lock", "is_used_lock", "load_file", "master_pos_wait",
+                   "source_pos_wait", "wait_for_executed_gtid_set"}
+# /*! … */ and /*M! … */ are MySQL / MariaDB executable comments and /*+ … */ optimizer hints
+# (MAX_EXECUTION_TIME overrides the session timeout): the server runs what sqlglot reads as a
+# comment. Refused anywhere in the raw text, on every dialect, quotes included: any scanner of
+# ours that skips quoted text can disagree with the server's about where a quote or comment
+# starts (security review: `/* ' */ /*!SLEEP(5)*/ /* ' */`). Cost: a literal holding these
+# three characters is refused too.
+_EXECUTABLE_COMMENT = re.compile(r"/\*(!|M!|\+)")
+_SQL_TEXT_STARTS = {"SELECT", "WITH", "TABLE", "VALUES"}
+
+
+def _is_sql_text(text: str, dialect: str | None) -> bool:
+    """A string literal that is a query (a function given it runs it): its first token past
+    comments and brackets is a statement keyword (sqlglot's tokenizer: linear, no regex to
+    backtrack), or sqlglot reads it as a query."""
+    try:
+        first = next((t for t in sqlglot.tokenize(text, read=dialect)
+                      if t.token_type != sqlglot.TokenType.L_PAREN), None)
+        if first is not None and first.text.upper() in _SQL_TEXT_STARTS:
+            return True
+        return isinstance(sqlglot.parse_one(text, read=dialect), exp.Query)
+    except sqlglot.errors.SqlglotError:
+        return False
 _SQL_DENY_PREFIXES = ("lo_", "dblink", "pg_read", "pg_ls_", "pg_stat_file", "pg_sleep",
                       "pg_advisory", "pg_terminate", "pg_cancel", "pg_reload", "pg_rotate",
                       "pg_file", "pg_logical", "pg_replication", "pg_create", "pg_drop",
-                      "pg_promote", "pg_switch", "pg_backup", "pg_import")
+                      "pg_promote", "pg_switch", "pg_backup", "pg_import",
+                      # other sessions' queries and the server's state (5.8a audit 2)
+                      "pg_stat_get", "pg_show")
 
 
-def check_sql_readonly(sql: str, dialect: str | None = None) -> str | None:
+def _system_schemas(dialect: str | None) -> frozenset[str]:
+    """The engine's own catalogs a model query may not read (users and password hashes, other
+    sessions' queries): its dialect row's system schemas, metadata (information_schema) aside."""
+    from connectors.sql_connector import DIALECTS
+    return frozenset().union(*(d.system_schemas for d in DIALECTS.values() if d.sqlglot == dialect)) \
+        - {"information_schema"}
+
+
+def check_sql_readonly(sql: str, dialect: str | None) -> str | None:
     """Exactly one statement, and it is a read (SELECT / UNION / CTE-select). Parsed, not
     prefix-matched, so `WITH x AS (DELETE ...)` and `SELECT 1; DROP ...` are both caught, as are
     `SELECT ... INTO new_table`, `FOR UPDATE` locks and side-effect functions (`nextval`,
     `pg_read_file`, `dblink`...). Defense in depth: the executor also runs a READ ONLY
     transaction (connectors/sql_connector.py)."""
+    if _EXECUTABLE_COMMENT.search(sql):
+        return "executable comments and optimizer hints (/*! */, /*+ */) are not allowed"
     try:
         statements = [s for s in sqlglot.parse(sql, read=dialect) if s is not None]
     except sqlglot.errors.ParseError as exc:
@@ -85,6 +124,7 @@ def check_sql_readonly(sql: str, dialect: str | None = None) -> str | None:
         return f"only read queries are allowed, got {stmt.key.upper()}"
     writes = (exp.Insert, exp.Update, exp.Delete, exp.Drop, exp.Create, exp.Alter, exp.Merge,
               exp.Command)
+    system = _system_schemas(dialect)
     for node in stmt.walk():
         if isinstance(node, writes):
             return f"write/DDL inside query: {node.key.upper()}"
@@ -92,10 +132,19 @@ def check_sql_readonly(sql: str, dialect: str | None = None) -> str | None:
             return "SELECT ... INTO creates a table"
         if isinstance(node, exp.Select) and node.args.get("locks"):
             return "row locks (FOR UPDATE/SHARE) are not allowed"
-        if isinstance(node, exp.Anonymous):
+        if isinstance(node, exp.Anonymous):   # every denied name parses as one (the corpora)
             name = node.name.lower()
-            if name in _SQL_DENY_FUNCS or name.startswith(_SQL_DENY_PREFIXES):
+            if name in _SQL_DENY_FUNCS or name.startswith(_SQL_DENY_PREFIXES) or \
+                    "_to_xml" in name:   # table_to_xml('pg_authid', …) reads a table by name
                 return f"function not allowed: {name}"
+            # the class (security review, audit 2): a function given a query as text runs it
+            # past every table rule (ts_stat, ts_rewrite, the next one); ponytail: a text built
+            # by concatenation isn't seen, the database role is the boundary (ADR-0010 layer 4)
+            if any(_is_sql_text(s.name, dialect) for s in node.find_all(exp.Literal, exp.RawString)
+                   if isinstance(s, exp.RawString) or s.is_string):   # RawString: $q$ … $q$
+                return f"function given a SQL statement as text: {name}"
+        if isinstance(node, exp.Table) and node.db.lower() in system:
+            return f"the database's own tables are not readable: {node.db}"
     return None
 
 

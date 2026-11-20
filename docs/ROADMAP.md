@@ -630,7 +630,7 @@ dataset should land in a workspace users can come back to. Expected size: 2 sess
   (`docs/baselines/phase5_7_d7_19.md`: `count_rows`, the model's KPI and count breakdowns by the
   product; e2e-89, logi-4, logi-7 3/3 at k=3; $1.99, 5.1 h). Open: e2e-97 (D1-16, its own PR),
   PR24-03 (a count by record key), counts across currencies (the banking follow-up).
-  Next: 5.8 (needs sign-off).
+  Next: 5.8a (signed off 2026-11-19).
 - **SaaS follow-ups (Domain 6, 2026-11-06):** a billing parameter (interval_count) charted as a
   measure (a role-kind change, its own re-measure); the column path's count of a level on a list is
   subscriptions, not customers (the KPI path is right); an add-on listed as a plan; the older
@@ -784,18 +784,32 @@ dataset should land in a workspace users can come back to. Expected size: 2 sess
   fix opened a small-cell gap, caught by the security review and closed).
 
 ### Phase 5.8: Data sources (added 2026-11-03 at the user's request)
-- **Why:** every domain was proven on CSV uploads only, while small companies keep data in
-  spreadsheets, SaaS exports, Postgres (56% of developers), MySQL (41%) and SQL Server (30%)
-  (Stack Overflow 2025; `docs/research/2026-11-03-healthcare.md` is the domain file, the source
-  survey is in the Domain 3 review note). Every peer (Metabase, Superset, Vanna, WrenAI) ships
-  PG + MySQL + SQL Server + Snowflake + BigQuery. Domain 3 fixes the existing connectors (silent
-  truncation, SQLite path, Sheets crash, API shapes) and adds a source-invariance oracle.
-- **Work (in order, one session, plan mode, ~$1 paid):** MySQL/MariaDB (`pymysql`); public-link
-  Google Sheets via the CSV export URL (no service account); DuckDB as the file engine (large
-  CSV/Parquet/Excel out of core, S3/GCS; lifts the 50 MB cap); SQL Server (`pymssql`);
-  Shopify/Stripe via `dlt` into DuckDB. Later: Snowflake, BigQuery, Redshift, Databricks.
-- **Done when:** each new source passes the source-invariance oracle for every finished domain,
-  one E2E case per source at k=1, and the browser check connects each one.
+- **Why:** every domain was proven on file uploads, while small companies keep data in
+  spreadsheets, SaaS tools, Postgres (58% of developers), MySQL (35%) and SQL Server (27%)
+  (Stack Overflow 2026; 2025 was 56/41/30). Every peer ships PG + MySQL + SQL Server + Snowflake +
+  BigQuery; no open-source peer ships OneDrive/Drive spreadsheets or Stripe/Shopify/HubSpot/GA4/
+  QuickBooks built in. Research, peer table and tiered list: `docs/research/2026-11-19-data-sources.md`;
+  decisions: ADR-0010.
+- **Split (user, 2026-11-19; one session, one PR, one sign-off each, like 5.7b):**
+  - **5.8a:** the source contract (fail-closed dialect table, connection-string allowlist, MySQL
+    comment/hint refusal, no password in messages, one value normalisation, the oracle extended to
+    every dataset and source, a generated README source list) + MySQL (+ Supabase/Neon as named
+    Postgres options).
+  - **5.8b:** MariaDB + SQL Server (CI-only databases, rows of the same table) + share-link files
+    (public Google Sheet, OneDrive/SharePoint/Drive links, https CSV/xlsx; a per-hop SSRF guard).
+  - **5.8c:** DuckDB file reader (cap ~250 MB, a clear message past it; analysis stays pandas) +
+    Stripe/HubSpot/Shopify/GA4 imported by `dlt` into DuckDB with a Refresh button.
+  - **5.8d:** Snowflake + BigQuery. After v0.1: QuickBooks/Xero (registered OAuth app), private
+    Drive/OneDrive via OAuth.
+- **Decisions:** databases are queried live (questions → read-only SQL, a named table → a capped
+  snapshot); SaaS is imported (DuckDB copy, refreshed on demand); Airbyte is never a dependency (ELv2).
+- **Done when (each sub-phase):** each new source passes the source-invariance oracle for every
+  finished domain (contracts, cleaned frames, tiles, built-in answers), plant-proven; one E2E case
+  per source at k=1; the browser check connects each one; the README source list is generated.
+- **Status:** 5.8a ✅ 2026-11-19 (`docs/baselines/phase5_8a.md`): MySQL as a fail-closed dialect row,
+  the oracle over 33 datasets × 8 sources (it found and fixed SQL/API text dates, JSON floats, -0.0
+  and Postgres row order on the old sources), the guard against MySQL's executable comments, no
+  password in a message, e2e-98 k=1, the live 1440 px check; $0.18, ~3 h. Next: 5.8b (needs sign-off).
 
 ### Phase 6: End-to-end hardening and open-source release (v0.1)
 Order of the remaining work (2026-11-03): Phase 5.7 (domain depth, one domain per session) →
@@ -873,4 +887,5 @@ without a committed eval report or test run that shows the number.
 | 5.5 | Domain coverage: ~8 domain datasets in analysis + E2E evals, PHI masking, generic labels (added 2026-10-27) | ✅ done (2026-11-01) — `docs/baselines/phase5_5.md` (8 domains pass: 6 every run, IoT + SaaS by majority; analysis 68/68 k=1, domain 22/22 k=3 majority; e2e 34/34, hard 0; PHI recall 100%, over-masking 0; E2B gets pseudonyms; prompt v8 (ratio + question); final audit bar NOT met in 3 passes, 2 narrow reviews after; $4.37; ADR-0008; merged 2026-11-01) |
 | 5.7 | Domain depth, one domain per session (added 2026-11-01): domain pack + expert brief per domain, every agent tested end to end; **< $5 eval spend per domain session**; order: 1 sales/retail (pilot) → 2 banking → 3 healthcare → 4 insurance → 5 HR → 6 SaaS → 7 IoT → 8 logistics | 1 retail ✅ 11-02, 2 banking ✅ 11-02, plan v2 recurring bug classes ✅ 11-03, 3 healthcare ✅ 11-03, 4 insurance ✅ 11-03, 5 HR ✅ 11-05, 6 SaaS ✅ 11-06, 7 IoT ✅ 11-17 (`phase5_7_iot.md`; E2E 10/11, e2e-89 open as D7-19), 8 logistics ✅ 11-18 (`phase5_7_logistics.md`; 3.6 h, $4.45; analysis 9 cases, logi-4 open; E2E 8/9, e2e-97 open; both to the D7-19 PR), D7-19 PR ✅ 11-19 (`phase5_7_d7_19.md`; e2e-89, logi-4, logi-7 3/3; 5.1 h, $1.99; e2e-97 its own PR), post-Domain-6 review (PR #1/#2) ✅ 11-06: metrics, spend, audits and time per domain in `docs/baselines/phase5_7_<domain>.md` — next: **5.7b structural fixes** (the 9 recurring classes in PR #1, the ledger charts, the `domain_pack.py` split; plan mode with domain-modeling + codebase-design, $0 unless measured), then **7 IoT** |
 | 5.7b | Structural fixes, from audits to properties (added 2026-11-09): 3 sessions, $0 / $0 / ≤ $5 | **5.7b-1 foundations ✅ (2026-11-09)** `docs/baselines/phase5_7b_1.md` (retro ledger 234 rows; reference oracle = truth and product on all 6 spell datasets; P1–P5 + D on 5 small-book shapes and 25 pack datasets, 12 known failures pinned xfail-strict by class; mutation baseline of 23 spell/ledger/pack-column functions, 80.1% (lowest: layout_columns, filled_statuses ~35%); `domain_pack/` in 8 layers under import-linter, golden + domain_diff + snapshot text byte-identical; $0); **5.7b-2a ✅ (2026-11-10)** `docs/baselines/phase5_7b_2.md` (`Window` and `KPIValue` from one constructor each, declared snapshot cadence; 11 of 12 xfails flipped, 2 new findings pinned; no number moved by the window; C5 CHANGES listed; mutation gate on changed lines; $0); **5.7b-2b ✅ (2026-11-12)** same file (one `term_rows`, an entity × part ledger with transfer moves, C4 by the question, the scorer reads the reference; 2 xfails flipped, PR9-01 found and fixed; CHANGES only on SaaS by-segment moves; $0 rescore, pass rates unchanged; $0); **5.7b-2c ✅ (2026-11-13)** same file (units by the KPI's own unit with a deterministic ask, scale declared per header with one `rate_values`, ledger sentences in `SpellWords` under an output guard, `{window}`/`{moves}`/`{cohort}` from the data, the pre-push mutation gate in hook and CI; last xfail flipped; C1–C7 and C9 closed, UNENFORCED 88 → 83; 643 changed-line mutants, 103 survivors → 7 named equivalents; CHANGES only on saas_invoices billings dates; $0); **5.7b-3 ✅ (2026-11-16)** `docs/baselines/phase5_7b_3.md` (typed claims checked and written by code, causal and benchmark regexes deleted, a binary prose judge on Sonnet 4.6 with held-out TPR 0.92 / TNR 0.94; MRR bridge and NRR line on the SaaS overview; the audit procedure in the 5.7 contract; the property hook with a 4-pack gap due before v0.1; C8 closed, UNENFORCED 83 → 78; insight 0.96 at k=1 with 0 hard, quality checks-only 0.86 = B0, live 0.82 (critic drift, judge false positives, recorded); E2E 6/6; CHANGES only on the 4 SaaS datasets' charts; $3.85) — **5.7b done**; next **7 IoT** (needs sign-off) |
+| 5.8 | Data sources, split a/b/c/d (2026-11-19) | **5.8a ✅ (2026-11-19)** `docs/baselines/phase5_8a.md`: source contract + MySQL; oracle 33 datasets × 8 sources; e2e-98 k=1; live MySQL at 1440 px; $0.18. 5.8b/c/d pending |
 | 6 | E2E hardening + open-source v0.1 release | pending |

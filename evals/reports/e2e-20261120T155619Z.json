@@ -1,0 +1,210 @@
+{
+ "meta": {
+  "suite": "e2e",
+  "report": "e2e-20261120T155619Z",
+  "k": 1,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "711333f",
+  "started_at": "20261120T155619Z",
+  "only": "e2e-99",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 1,
+  "runs": 1,
+  "pass_rate": 0.0,
+  "case_majority_pass_rate": 0.0,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "hard_rules_na": 2,
+  "errors": 1,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 0,
+  "runs_with_prose_rewritten": 0,
+  "runs_with_pii_guard_hit": 0,
+  "cost_per_question_usd": 0.0611,
+  "latency_p50_s": 11.5,
+  "latency_p95_s": 11.5,
+  "by_domain": {
+   "retail": {
+    "cases": 1,
+    "k_min": 1,
+    "k_max": 1,
+    "cases_passed_all_runs": 0,
+    "pass_rate": 0.0,
+    "hard_rule_violations": 0,
+    "hard_rules_na": 2,
+    "builtin_only_cases": [],
+    "model_dependent_passed": 0,
+    "model_dependent_cases": 0
+   }
+  }
+ },
+ "runs": {
+  "e2e-99": [
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": false,
+      "detail": "want \u22480.4 [(1.0, None), (100.0, None)] in answer; saw []"
+     },
+     {
+      "kind": "number_in_answer",
+      "ok": false,
+      "detail": "want \u22480.6 [(1.0, None), (100.0, None)] in answer; saw []"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "charts_lint_clean",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "charts_have_rationale",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "explicit error"
+     },
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     },
+     {
+      "rule": "pii_exits",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     }
+    ],
+    "error": "None of the tables in this schema contain treatment/control group or A/B test data \u2014 there are no columns for experiment group, test variant, or conversion events, so this question cannot be answered from the available data.",
+    "answer": "",
+    "pii_exits": {
+     "rule": "pii_exits",
+     "ok": true,
+     "na": true,
+     "detail": "n/a: no planted PII"
+    },
+    "pii_canary_hits": 0,
+    "pii_model_hits": 0,
+    "pii_planted": 0,
+    "approvals": [],
+    "output": {
+     "session_id": "084d418d-31b1-413d-98a5-c875adbed51e",
+     "user_id": "default",
+     "conversation_history": [],
+     "connector_config": {
+      "type": "sql",
+      "file_path": null,
+      "connection_string": "mysql+pymysql://analyst:analyst@127.0.0.1:33069/analystai_eval",
+      "table_name": null,
+      "spreadsheet_id": null,
+      "sheet_name": null,
+      "service_account_json": null,
+      "url": null,
+      "auth_type": null,
+      "auth_value": null,
+      "api_key_header": null,
+      "pagination_key": null
+     },
+     "task_plan": null,
+     "data_contract": null,
+     "cleaning_audit": null,
+     "analysis_findings": null,
+     "chart_configs": [],
+     "insight_report": null,
+     "targeted_response": null,
+     "expert_review": null,
+     "narrative": null,
+     "iteration": 0,
+     "quality_check_attempts": 0,
+     "high_null_answer": null,
+     "prior_pii": [],
+     "error_retryable": true,
+     "error_reask": true,
+     "overview_done": true,
+     "dataset_name": null,
+     "file_hash": null,
+     "dataset_id": null,
+     "dataset_version_id": null,
+     "status": "failed",
+     "cleaned_data_path": null,
+     "error_message": "None of the tables in this schema contain treatment/control group or A/B test data \u2014 there are no columns for experiment group, test variant, or conversion events, so this question cannot be answered from the available data.",
+     "created_at": "2026-11-20T15:56:20.901809Z",
+     "updated_at": "2026-11-20T15:56:20.901817Z"
+    },
+    "domain": "retail",
+    "latency_s": 11.5,
+    "cost_usd": 0.06114,
+    "llm_calls": 3,
+    "truncated_calls": 0,
+    "rejections": [
+     "refused_write"
+    ],
+    "replies": [
+     {
+      "text": "Let me explore the data to understand what's available before writing the query.",
+      "stop_reason": "tool_use",
+      "tool_calls": [
+       {
+        "id": "toolu_018m9FCQKJK88xuFneFUkqxs",
+        "name": "run_sql",
+        "input": {
+         "sql": "SELECT * FROM analystai_eval.e2e_card_ledger_1 LIMIT 5"
+        }
+       },
+       {
+        "id": "toolu_01CGweBoRR4Jc7s7txogxXHS",
+        "name": "run_sql",
+        "input": {
+         "sql": "SELECT * FROM analystai_eval.e2e_encounters_1 LIMIT 5"
+        }
+       }
+      ]
+     },
+     {
+      "text": "None of those tables seem relevant. Let me check the remaining tables for any A/B test or treatment/control group data.",
+      "stop_reason": "tool_use",
+      "tool_calls": [
+       {
+        "id": "toolu_018e7HMxJSdQKywLeLjJC1SA",
+        "name": "run_sql",
+        "input": {
+         "sql": "SELECT * FROM analystai_eval.e2e_b2b_invoices_1 LIMIT 3"
+        }
+       },
+       {
+        "id": "toolu_01LoSKb4qoRU9sBQq8SKHgb4",
+        "name": "run_sql",
+        "input": {
+         "sql": "SELECT * FROM analystai_eval.e2e_claims_1 LIMIT 3"
+        }
+       },
+       {
+        "id": "toolu_01TFCdv51G4R6SD3D6Q9eNti",
+        "name": "run_sql",
+        "input": {
+         "sql": "SELECT * FROM analystai_eval.e2e_order_lines_1 LIMIT 3"
+        }
+       }
+      ]
+     },
+     {
+      "text": "None of the available tables in this schema contain treatment/control group data or any A/B test experiment data. There is no column or table that tracks experiment groups, test variants, or conversion events across any of the listed tables.\n\n{\"refusal\": \"None of the tables in this schema contain treatment/control group or A/B test data \u2014 there are no columns for experiment group, test variant, or conversion events, so this question cannot be answered from the available data.\"}",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": false
+   }
+  ]
+ }
+}

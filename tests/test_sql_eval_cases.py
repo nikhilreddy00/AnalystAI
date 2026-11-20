@@ -17,9 +17,7 @@ ROOT = Path(__file__).parent.parent
 CASES = [yaml.safe_load(p.read_text()) for p in sorted((ROOT / "evals/cases/sql").glob("*.yaml"))]
 ANSWERABLE = [c for c in CASES if c["category"] != "attack"]
 LAYERS = {d: semantic_layer.load(ROOT / f"evals/sql/{d}.yaml") for d in ("retail", "banking")}
-PG_URL = os.environ.get("TEST_PG_URL")
-if os.environ.get("CI") and not PG_URL:   # never let CI pass by skipping the database half
-    raise RuntimeError("CI must set TEST_PG_URL")
+PG_URL = os.environ.get("TEST_PG_URL")   # CI must set it: tests/conftest.py
 
 
 def _ids(cases):

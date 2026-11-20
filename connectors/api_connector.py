@@ -5,15 +5,13 @@ Handles paginated responses automatically using a configurable pagination key.
 
 from __future__ import annotations
 
-import ipaddress
-import socket
 from typing import Any
 from urllib.parse import urlparse
 
 import httpx
 import pandas as pd
 
-from connectors.base import DataConnector, truncation_note
+from connectors.base import DataConnector, resolved, truncation_note
 
 MAX_PAGES = 20          # safety cap to prevent infinite pagination loops
 PAGE_SIZE = 1000
@@ -29,16 +27,8 @@ def _assert_public_url(url: str) -> None:
     host = parsed.hostname
     if not host:
         raise ValueError("URL is missing a hostname.")
-    try:
-        infos = socket.getaddrinfo(host, None)
-    except socket.gaierror as exc:
-        raise ValueError(f"Could not resolve hostname '{host}': {exc}") from exc
-    for info in infos:
-        addr = info[4][0]
-        try:
-            ip = ipaddress.ip_address(addr)
-        except ValueError:
-            continue
+    for ip in resolved(host):
+        addr = str(ip)
         if (
             ip.is_private
             or ip.is_loopback
@@ -94,7 +84,7 @@ class APIConnector(DataConnector):
 
         return headers
 
-    async def load(self) -> pd.DataFrame:
+    async def _read(self) -> pd.DataFrame:
         url = self.config.url
         if not url:
             raise ValueError("url is required for API connector")

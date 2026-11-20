@@ -12,7 +12,7 @@ import guardrails as g
     "SELECT 1 UNION SELECT 2",
 ])
 def test_readonly_sql_passes(sql):
-    assert g.check_sql_readonly(sql) is None
+    assert g.check_sql_readonly(sql, "postgres") is None
 
 
 @pytest.mark.parametrize("sql", [
@@ -23,7 +23,7 @@ def test_readonly_sql_passes(sql):
     "select ((",
 ])
 def test_write_or_multi_sql_blocked(sql):
-    assert g.check_sql_readonly(sql)
+    assert g.check_sql_readonly(sql, "postgres")
 
 
 def test_code_allowlist():

@@ -7,7 +7,9 @@ Adding a new source (Notion, Airtable, etc.) = add one subclass, zero agent chan
 from __future__ import annotations
 
 import datetime
+import ipaddress
 import re
+import socket
 from abc import ABC, abstractmethod
 
 import pandas as pd
@@ -107,6 +109,39 @@ def as_times(s: pd.Series) -> pd.Series:
     return parsed.where(dated | text.str.contains(HAS_YEAR_RE, regex=True).fillna(False))
 
 
+def without_secrets(message: str, config: ConnectorConfig) -> str:
+    """`message` with the config's credentials cut out: a driver's error can quote its URL. The
+    connection string whole, its user-info part (everything between :// and the last @ before
+    the path, so a malformed string is covered too) and its decoded password, and the API key."""
+    from urllib.parse import unquote
+    conn = config.connection_string or ""
+    secrets = {conn, config.auth_value or "", config.service_account_json or ""}
+    if (m := re.match(r"^[^:/]+://(.*)@[^@/]*(/|$)", conn)) is not None:
+        userinfo = m.group(1)
+        password = userinfo.split(":", 1)[1] if ":" in userinfo else ""
+        secrets |= {userinfo, password, unquote(password)}
+    for s in sorted((s for s in secrets if len(s) >= 3), key=len, reverse=True):
+        message = message.replace(s, "***")
+    return message
+
+
+def resolved(host: str) -> list:
+    """The addresses `host` resolves to (ipaddress objects); ValueError if it doesn't resolve.
+    The one lookup behind every host check (the API's SSRF guard, a database's host)."""
+    try:
+        infos = socket.getaddrinfo(host, None)
+    except socket.gaierror as exc:
+        raise ValueError(f"Could not resolve hostname '{host}': {exc}") from exc
+    out = []
+    for info in infos:
+        try:
+            ip = ipaddress.ip_address(info[4][0])
+        except ValueError:
+            continue
+        out.append(getattr(ip, "ipv4_mapped", None) or ip)   # ::ffff:127.0.0.1 is 127.0.0.1
+    return out
+
+
 # A capped load names its cap: the source evidence carries this note and the report's alerts find
 # it by this start (agents/insight_agent._alerts). One wording for every connector.
 TRUNCATED = "Only the first "
@@ -120,15 +155,39 @@ def truncation_note(kept: int, total: int | None, limit: str) -> str:
     return f"{TRUNCATED}{kept:,}{of} rows were loaded ({limit}{more})."
 
 
+def normalize_frame(df: pd.DataFrame) -> pd.DataFrame:
+    """The one load rule after any source's read (ADR-0010), so a table reads the same from each:
+    '' is a blank; a text column whose values are all dates becomes datetimes (5.8a: dates read
+    from SQL and the API stayed text), at one resolution (us); -0.0 is 0.0. The file reader, the
+    databases, the Sheet and the API all end here. Columns by position: names are made unique
+    later (ingestion), and a SQL join can return two `id` columns (audit pass 2)."""
+    for i in range(df.shape[1]):
+        s = df.iloc[:, i]
+        if not pd.api.types.is_numeric_dtype(s) and (blank := s.eq("")).any():
+            s = s.mask(blank)   # '' is a blank, as a CSV reads it (MySQL, JSON keep it)
+        if (parsed := parse_text_dates(s)) is not None:
+            s = parsed
+        if pd.api.types.is_datetime64_any_dtype(s):
+            s = s.dt.as_unit("us")   # one resolution: a DATE column read as [s]
+        elif pd.api.types.is_float_dtype(s):
+            s = s + 0.0   # -0.0 → 0.0: a CSV keeps "-0.0", JSON and SQL don't ("-$0.00")
+        df.isetitem(i, s)
+    return df
+
+
 class DataConnector(ABC):
     read_info: dict = {}   # how the last load read the source (file connector); see source evidence
 
     def __init__(self, config: ConnectorConfig) -> None:
         self.config = config
 
-    @abstractmethod
     async def load(self) -> pd.DataFrame:
-        """Load data from the source and return a clean DataFrame."""
+        """The source's table, read and then normalised by the one load rule."""
+        return normalize_frame(await self._read())
+
+    @abstractmethod
+    async def _read(self) -> pd.DataFrame:
+        """Read the table from the source as it stores it."""
 
     @abstractmethod
     async def test_connection(self) -> tuple[bool, str]:
@@ -143,6 +202,35 @@ class DataConnector(ABC):
         every eval harness gets the same contract from the same frame."""
         from agents.ingestion_agent import build_contract
         return build_contract(df, self.config.type, self.read_info)
+
+
+def sources_table() -> str:
+    """README's "Data sources and limits" table, built from the connectors' own formats,
+    dialects and caps (tests/test_sources_readme.py keeps the README equal to it)."""
+    from connectors import api_connector as api
+    from connectors import sql_connector as sql
+    from connectors.csv_connector import MAX_UPLOAD_MB, UPLOAD_SUFFIXES
+    names = {"postgresql": "PostgreSQL", "mysql": "MySQL"}
+    rows = [("File upload", f"{', '.join(sorted(UPLOAD_SUFFIXES))} in the UI",
+             f"{MAX_UPLOAD_MB} MB per file; old .xls: save as .xlsx first")]
+    for key in sql.DIALECTS:
+        if key == "sqlite":
+            rows.append(("SQLite", "`sqlite:///path.db`",
+                         "development only; refused when `APP_ENV=production`"))
+            continue
+        name = names[key]   # a new dialect names itself here
+        rows += [(f"{name}, ask questions", f"`{key}://user:password@host:port/database`, no table "
+                  "name: the SQL agent writes one read-only query per question and aggregates in "
+                  "the database", f"{sql.MAX_ROWS:,} result rows, {sql.TIMEOUT_S} s per query"),
+                 (f"{name}, one table", "the same + a table name",
+                  f"first {sql.LOAD_MAX_ROWS:,} rows, {sql.TIMEOUT_S} s, read-only")]
+    rows += [("Google Sheets", "Spreadsheet ID + sheet name + service-account JSON",
+              "read as the sheet's CSV export"),
+             ("REST API", "URL + auth (Bearer, API key with a configurable header, Basic) + "
+              "optional pagination key",
+              f"{api.MAX_PAGES} pages or {api.MAX_RECORDS:,} records; public hosts only")]
+    return ("| Source | How to connect | Limits |\n|--------|----------------|--------|\n"
+            + "\n".join(f"| **{a}** | {b} | {c} |" for a, b, c in rows))
 
 
 def get_connector(config: ConnectorConfig) -> DataConnector:
