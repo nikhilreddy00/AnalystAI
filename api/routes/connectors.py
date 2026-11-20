@@ -116,7 +116,10 @@ async def _register(request: Request, current_user: UserProfile, content: bytes,
     """THE path a file's bytes take to a dataset version, an upload's or a link's: read as
     ingestion will read them (refused now if they aren't a table), hashed, stored, versioned."""
     file_hash = hashlib.sha256(content).hexdigest()
-    safe_name = filename
+    # a name only ever names the dataset (the file is stored as <uuid><suffix>): its base name,
+    # whoever wrote it (the browser's, or a link server's Content-Disposition, '\' included)
+    safe_name = Path(filename.replace("\\", "/")).name
+    filename = safe_name
     try:   # the same reader ingestion uses: a file that isn't a table is refused now, not later
         df, _ = await asyncio.to_thread(_read_bytes, content, suffix)
     except IngestionError as exc:

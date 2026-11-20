@@ -83,6 +83,15 @@ async def test_uploads_become_versions_of_a_dataset(ws):
     assert ds["latest"]["rows"] == first["dataset"]["latest"]["rows"] + 1
 
 
+async def test_a_file_name_only_ever_names_the_dataset_by_its_base_name(ws):
+    """5.8b security review: an upload's or a share link's name (a server's Content-Disposition)
+    names the dataset only; a path in it, with either slash, is cut to its base name."""
+    client, _, _, csv = ws
+    r = await _upload(client, csv, name="..\\..\\q3 orders.csv")
+    assert r.status_code == 200 and r.json()["dataset_name"] == "q3 orders"
+    assert r.json()["filename"] == "q3 orders.csv"
+
+
 async def test_a_file_that_is_not_a_table_is_refused_at_upload(ws):
     client, _, deps, _ = ws
     r = await _upload(client, b"", name="empty.csv")
