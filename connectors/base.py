@@ -12,6 +12,7 @@ import ipaddress
 import re
 import socket
 import ssl
+import zlib
 from abc import ABC, abstractmethod
 
 import anyio.to_thread
@@ -132,38 +133,44 @@ def _config_secrets(config: ConnectorConfig) -> set[str]:
 
 
 _SECRET_KEY = re.compile(r"key|token|sig|secret|auth|pass|pwd|code", re.IGNORECASE)
-# Every credential this process has been handed, masked wherever text leaves it: one registry and
-# one redactor (Airflow's SecretsMasker; the run's PII values work the same way). 5.8a and 5.8b
-# masked per sink, and each new sink leaked (logs, three report writers, a query's key: P58-06).
-# Registered where any connector is built (`get_connector`); a frozenset swapped, never mutated,
-# so a log line on another thread reads it while a run registers. Six characters at least: a
-# short value would mask its letters everywhere.
-_SECRETS: frozenset[str] = frozenset()
+# Every credential this process has been handed, masked where text reaches an operator: the log
+# filter and the eval reports (Airflow's SecretsMasker). 5.8a and 5.8b masked per sink, and each
+# new sink leaked (logs, three report writers, a query's key: P58-06). Registered where any
+# connector is built (`get_connector`). Text a USER reads is masked with that config's own
+# credentials only (`without_secrets`): one tenant's password masking another's text would tell
+# them it guessed right (automated security review of the hardening). Bounded: the newest 4,096
+# values of at most 8 KB, six characters at least (a short one would mask its letters
+# everywhere), matched by one pattern built when the registry changes. Swapped, never mutated, so
+# a log line on another thread reads it while a run registers.
+_MAX_SECRETS, _MAX_SECRET_CHARS = 4096, 8192
+_SECRETS: tuple[tuple[str, ...], re.Pattern | None] = ((), None)
 
 
 def register_secrets(*values: str) -> None:
     global _SECRETS
-    if new := {v for v in values if v and len(v) >= 6} - _SECRETS:
-        _SECRETS = _SECRETS | new
+    known = _SECRETS[0]
+    new = [v for v in dict.fromkeys(values)
+           if v and 6 <= len(v) <= _MAX_SECRET_CHARS and v not in known]
+    if new:
+        kept = (*known, *new)[-_MAX_SECRETS:]
+        by_length = sorted(kept, key=len, reverse=True)   # a password inside its string goes too
+        _SECRETS = (kept, re.compile("|".join(map(re.escape, by_length))))
 
 
 def redact(text: str) -> str:
-    """`text` with every registered credential as ***, longest first (a password inside its
-    connection string goes with the string)."""
-    for secret in sorted(_SECRETS, key=len, reverse=True):
-        if secret in text:
-            text = text.replace(secret, "***")
-    return text
+    """`text` with every registered credential as *** (operator sinks: logs, eval reports)."""
+    pattern = _SECRETS[1]
+    return pattern.sub("***", text) if pattern is not None else text
 
 
 def without_secrets(message: str, config: ConnectorConfig) -> str:
-    """`message` with the config's credentials cut out: a driver's error can quote its URL. Its
-    short ones too (≥ 3 characters), which the process-wide registry leaves alone."""
+    """`message` with this config's credentials cut out, short ones too (≥ 3 characters): a
+    driver's error can quote its URL. Never another config's: see `_SECRETS`."""
     secrets = _config_secrets(config)
-    register_secrets(*secrets)
+    register_secrets(*secrets)   # and remembered for the logs
     for s in sorted((s for s in secrets if len(s) >= 3), key=len, reverse=True):
         message = message.replace(s, "***")
-    return redact(message)
+    return message
 
 
 _NAT64 = ipaddress.ip_network("64:ff9b::/96")
@@ -229,19 +236,39 @@ class BodyTooLarge(ValueError):
     """A response past the reader's byte cap."""
 
 
+_ZLIB_AUTO = 32 + zlib.MAX_WBITS   # zlib reads a gzip or a zlib header, whichever it finds
+
+
 async def capped_body(response: httpx.Response, cap: int) -> bytes:
-    """A response's body as sent, at most `cap` bytes, counted as it arrives (a size the server
-    states can't be trusted). Asked for identity, a server may still compress, and a compressed
-    chunk expands past any cap in one decode (5.8b audit: zstd), so a Content-Encoding other than
-    identity is refused (ValueError) and the raw bytes are counted."""
+    """A response's body, at most `cap` bytes once decoded, counted as it arrives (a size the
+    server states can't be trusted). Asked for identity, a server may still compress: gzip and
+    deflate are decoded here, each chunk to no more than the cap has left, so a bomb is refused
+    as too large and never expanded (httpx would decode a chunk whole: 5.8b audit, zstd). 5.8b
+    refused every compressed answer, and an API or CDN that gzips anyway (it loaded before)
+    stopped loading (senior audit). zstd and brotli have no decoder here: said, not read."""
     encoding = response.headers.get("content-encoding", "identity").strip().lower()
-    if encoding not in ("", "identity"):
-        raise ValueError(f"it compressed its answer ({encoding}) though asked not to")
+    if encoding in ("", "identity"):
+        decoder = None
+    elif encoding in ("gzip", "x-gzip", "deflate"):
+        decoder = zlib.decompressobj(_ZLIB_AUTO)
+    else:
+        raise ValueError(f"it compressed its answer as {encoding}, which isn't read here")
     body = bytearray()
-    async for chunk in response.aiter_raw():
-        body += chunk
-        if len(body) > cap:
-            raise BodyTooLarge   # each caller says it in its own words (the link's, the API's)
+    try:
+        async for chunk in response.aiter_raw():
+            if decoder is not None:
+                chunk = decoder.decompress(chunk, cap + 1 - len(body))
+                if decoder.unconsumed_tail:   # more would come out than the cap has left
+                    raise BodyTooLarge
+            body += chunk
+            if len(body) > cap:
+                raise BodyTooLarge   # each caller says it in its own words (the link's, the API's)
+        if decoder is not None:
+            body += decoder.flush(cap + 1 - len(body))
+            if len(body) > cap:
+                raise BodyTooLarge
+    except zlib.error:
+        raise ValueError(f"its {encoding} answer couldn't be unpacked") from None
     return bytes(body)
 
 

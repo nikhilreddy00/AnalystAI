@@ -188,7 +188,9 @@ def _widest_record(text: str, sep: str) -> int:
     wider than its header and then drops the extra ones: 2.5 s a MB, so one 50 MB line of commas
     under a two-column header held a worker for minutes (found in the hardening's own probe; the
     deleted cheap gate had refused it, along with narrow files holding a long quoted cell)."""
-    if max((line.count(sep) for line in text.splitlines()), default=0) < _MAX_COLUMNS:
+    # lines as pandas ends them: str.splitlines also splits at \x1c, \x0c, U+2028…, which pandas
+    # reads inside a row, so a wide row could hide its width from this count (automated review)
+    if max((line.count(sep) for line in _LINE_END.split(text)), default=0) < _MAX_COLUMNS:
         return 0
     widest, pos = 0, 0
     while pos < len(text) and widest <= _MAX_COLUMNS:

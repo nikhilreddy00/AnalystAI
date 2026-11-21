@@ -6,6 +6,7 @@ The route is the production path; the network is a fake under the production cli
 redirect chains research measured, docs/research/2026-11-20-5.8b-sources.md)."""
 from __future__ import annotations
 
+import functools
 import io
 import logging
 from functools import cache
@@ -280,6 +281,16 @@ def test_a_wide_data_row_under_a_narrow_header_is_refused_fast_and_small():
     assert took < 10 and peak < 12 * len(hostile), (took, peak / 2**20)
 
 
+def test_a_wide_row_split_by_a_character_pandas_reads_inside_a_row_is_refused():
+    """str.splitlines ends a line at \\x1c, \\x0c, U+2028; pandas reads on: each 'line' looked
+    narrow to the pre-count while pandas saw one row of 20,000 fields (automated review)."""
+    from agents.errors import IngestionError
+    from connectors.csv_connector import _read_bytes
+    row = b"\x1c".join(b"," * 1_000 for _ in range(20))
+    with pytest.raises(IngestionError, match="too many columns"):
+        _read_bytes(b"a,b\n1,2\n" + row + b"\n", ".csv")
+
+
 def test_a_header_hiding_its_width_behind_a_mid_field_quote_is_refused():
     """Automated review: `a"b,,,,…` counted as one field, then pandas built every one."""
     from agents.errors import IngestionError
@@ -552,22 +563,65 @@ def test_more_share_links_are_rewritten_to_their_file(shared, direct):
 
 # ── 5.8b audit pass 1 (silent-failure hunter, code review, test analyst) ────────────────────
 
-@pytest.mark.parametrize("encoding", ["gzip", "zstd", "br", "deflate"])
-async def test_a_compressed_answer_is_refused_not_unpacked(client, monkeypatch, encoding):
-    """Asked for identity, a server may still compress; httpx would unpack a chunk to any size
-    before the cap counted it (a zstd bomb). Refused, counted raw."""
+@pytest.mark.parametrize("encoding", ["gzip", "deflate"])
+async def test_a_gzipped_answer_is_read_with_its_size_counted_unpacked(client, monkeypatch, encoding):
+    """Senior audit: 5.8b refused every compressed answer, and a host that gzips anyway (it
+    loaded before) stopped loading. Decoded here, the cap counted on what comes out."""
     import gzip
     import zlib
+    packed = {"gzip": gzip.compress, "deflate": zlib.compress}[encoding](CSV)
+    serve(monkeypatch, lambda r: httpx.Response(200, content=packed, headers={
+        "content-type": "text/csv", "content-encoding": encoding}))
+    r = await _link(client, "https://files.example/q.csv")
+    assert r.status_code == 200, r.text
 
+
+@functools.cache
+def _gzip_bomb() -> bytes:   # 1 GB of zeros packs to ~1 MB
+    import gzip
+    return gzip.compress(b"0" * (1024 * 2**20), compresslevel=9)
+
+
+async def test_a_gzip_bomb_is_refused_as_too_large_never_unpacked(client, monkeypatch):
+    bomb = _gzip_bomb()
+    serve(monkeypatch, lambda r: httpx.Response(200, content=bomb, headers={
+        "content-type": "text/csv", "content-encoding": "gzip"}))
+    assert (await _link(client, "https://files.example/q.csv")).status_code == 413
+
+
+async def test_the_body_reader_never_holds_more_than_its_cap_unpacking():
+    """Each chunk is decoded to no more than the cap has left: the 1 GB bomb is refused holding
+    about twice the cap (measured on the reader itself: the in-process fake network the route
+    test uses keeps its own copies)."""
+    import tracemalloc
+
+    from connectors.base import BodyTooLarge, capped_body
+    bomb, cap = _gzip_bomb(), 50 * 2**20
+
+    class Answer:
+        headers = {"content-encoding": "gzip"}
+
+        async def aiter_raw(self):
+            for i in range(0, len(bomb), 65536):
+                yield bomb[i:i + 65536]
+    tracemalloc.start()
+    with pytest.raises(BodyTooLarge):
+        await capped_body(Answer(), cap)
+    peak = tracemalloc.get_traced_memory()[1]
+    tracemalloc.stop()
+    assert peak < 3 * cap, peak / 2**20
+
+
+@pytest.mark.parametrize("encoding", ["zstd", "br"])
+async def test_a_compression_without_a_decoder_here_is_said(client, monkeypatch, encoding):
     import zstandard
-    packed = {"gzip": gzip.compress, "deflate": zlib.compress, "br": lambda b: b,
-              "zstd": zstandard.ZstdCompressor().compress}[encoding](CSV)
+    packed = {"br": lambda b: b, "zstd": zstandard.ZstdCompressor().compress}[encoding](CSV)
     serve(monkeypatch, lambda r: httpx.Response(200, content=packed, headers={
         "content-type": "text/csv", "content-encoding": encoding}))
     r = await _link(client, "https://files.example/q.csv")
     assert r.status_code == 400
     assert r.json()["detail"] == ("The file at files.example couldn't be read: it compressed its "
-                                  f"answer ({encoding}) though asked not to.")
+                                  f"answer as {encoding}, which isn't read here.")
 
 
 def _parquet() -> bytes:
@@ -649,7 +703,7 @@ async def test_each_refusal_carries_its_own_code(monkeypatch, why, code):
     import gzip
     answer = {"busy": lambda: httpx.Response(503),   # built per request, as the route tests do
               "compressed": lambda: httpx.Response(200, content=gzip.compress(CSV), headers={
-                  "content-encoding": "gzip"})}.get(why, _ok)
+                  "content-encoding": "br"})}.get(why, _ok)
     serve(monkeypatch, lambda r: answer())
 
     def missing(*a, **k):

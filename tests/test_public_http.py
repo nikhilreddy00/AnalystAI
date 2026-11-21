@@ -223,11 +223,22 @@ async def test_an_api_page_past_the_cap_or_compressed_is_refused(monkeypatch):
     with pytest.raises(IngestionError, match="api") as err:
         await conn.load()
     assert "larger than" in err.value.user_message
-    serve(monkeypatch, lambda r: httpx.Response(200, content=gzip.compress(b"[]"), headers={
-        "content-encoding": "gzip"}))
+    # a gzipped answer is read (senior audit: 5.8b refused it), its unpacked size counted
+    monkeypatch.setattr(ac, "MAX_LOAD_BYTES", 10_000)
+    serve(monkeypatch, lambda r: httpx.Response(200, content=gzip.compress(b'[{"a": 7}]'),
+                                                headers={"content-encoding": "gzip"}))
+    assert list((await conn.load())["a"]) == [7]
+    serve(monkeypatch, lambda r: httpx.Response(200, content=gzip.compress(b"[" + b" " * 20_000 + b"]"),
+                                                headers={"content-encoding": "gzip"}))
     with pytest.raises(IngestionError) as err:
         await conn.load()
-    assert "compressed its answer" in err.value.user_message
+    assert "larger than" in err.value.user_message
+    serve(monkeypatch, lambda r: httpx.Response(200, content=b"[]", headers={
+        "content-encoding": "br"}))
+    with pytest.raises(IngestionError) as err:
+        await conn.load()
+    assert "compressed its answer as br" in err.value.user_message
+    monkeypatch.setattr(ac, "MAX_LOAD_BYTES", 40)
     # an empty Content-Encoding is no encoding (mutation gate: "" was removable)
     serve(monkeypatch, lambda r: httpx.Response(200, content=b'[{"a": 1}]', headers={
         "content-encoding": " "}))

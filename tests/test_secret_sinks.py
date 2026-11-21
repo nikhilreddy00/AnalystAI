@@ -42,10 +42,35 @@ def test_a_log_line_quoting_a_connection_string_is_redacted_traceback_too():
 def test_the_runs_error_message_is_redacted():
     from orchestrator.graph import _fail
     from orchestrator.state import AnalysisSession
-    get_connector(_sql_config())
-    session = AnalysisSession(session_id="s", user_id="u")
+    session = AnalysisSession(session_id="s", user_id="u", connector_config=_sql_config())
     _fail(session, "ingestion", IngestionError("x", f"Couldn't open: dsn has {CANARY}"))
     assert CANARY not in session.error_message
+
+
+def test_one_users_credential_never_masks_another_users_text():
+    """Automated security review: with one process-wide mask, a value another tenant typed would
+    come back masked in this user's message, telling them it is someone's password. User-facing
+    text is masked with its own config's credentials only; the logs (the operator's) with all."""
+    from connectors.base import redact, without_secrets
+    from orchestrator.graph import _fail
+    from orchestrator.state import AnalysisSession
+    get_connector(_sql_config())   # tenant A's password, registered
+    theirs = ConnectorConfig(type=ConnectorType.SQL,
+                             connection_string="postgresql://b:B-own-pw-77@db.invalid/x")
+    said = f"value {CANARY} not found"
+    assert without_secrets(said, theirs) == said
+    session = AnalysisSession(session_id="s", user_id="b", connector_config=theirs)
+    _fail(session, "ingestion", IngestionError("x", said))
+    assert CANARY in session.error_message
+    assert CANARY not in redact(said)   # the operator's log still masks it
+
+
+def test_the_registry_is_bounded():
+    import connectors.base as base
+    base.register_secrets(*(f"bulk-secret-{i:06d}" for i in range(base._MAX_SECRETS + 500)))
+    base.register_secrets("x" * (base._MAX_SECRET_CHARS + 1))
+    assert len(base._SECRETS[0]) == base._MAX_SECRETS
+    assert "x" * (base._MAX_SECRET_CHARS + 1) not in base._SECRETS[0]
 
 
 def test_a_report_holding_a_credential_anywhere_is_redacted():
