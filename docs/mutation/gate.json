@@ -936,10 +936,6 @@
   "equivalents": [],
   "hash": "ba99cfff9391a54a"
  },
- "guardrails.py::_unquoted": {
-  "equivalents": [],
-  "hash": "5fffc562fbd008fd"
- },
  "guardrails.py::check_sql_readonly": {
   "equivalents": [],
   "hash": "fbc6ab9e4f0d10b1"
