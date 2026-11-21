@@ -400,8 +400,7 @@
     "old": "order = (\" ORDER BY \" + \", \".join(map(quote, key[\"constrained_columns\"]))",
     "reason": "SQL keywords are case-insensitive in every dialect"
    }
-  ],
-  "hash": "06c64d073a941de5"
+  ]
  },
  "connectors/sql_connector.py::SQLConnector.engine": {
   "equivalents": [],
@@ -462,11 +461,14 @@
     "reason": "SQLAlchemy's MySQL/MariaDB PyMySQL dialect passes every connect argument by keyword (create_connect_args returns an empty list), so cargs is always empty"
    }
   ],
-  "hash": "a6dd2e0ea481d1a6"
+  "hash": "eee1ead093d5ed73"
  },
  "connectors/sql_connector.py::_query_timeout": {
   "equivalents": [],
   "hash": "f114ffccfc4578dc"
+ },
+ "connectors/sql_connector.py::_session_error": {
+  "equivalents": []
  },
  "connectors/sql_connector.py::_sql_of": {
   "equivalents": [],
@@ -478,7 +480,7 @@
  },
  "connectors/sql_connector.py::_tls": {
   "equivalents": [],
-  "hash": "5787eb39227e1625"
+  "hash": "be14e87304125f98"
  },
  "connectors/sql_connector.py::_unlisted_tables": {
   "equivalents": [
@@ -488,8 +490,7 @@
     "old": "out.append(f\"{t.this.sql(d.sqlglot).split('(')[0]}()\")",
     "reason": "only the refusal's wording: a function's name is printed the same (upper case) in every dialect"
    }
-  ],
-  "hash": "35b13dae2ab24baf"
+  ]
  },
  "connectors/sql_connector.py::dialect_of": {
   "equivalents": [],
@@ -503,12 +504,11 @@
     "old": "conn.exec_driver_sql(statement.format(ms=int(timeout_s * 1000)))",
     "reason": "15,015 ms against 15,000: a statement timeout 15 ms longer, which no test can tell from the real one (the slow-query test allows seconds)"
    }
-  ],
-  "hash": "c361c0a2c6906ecd"
+  ]
  },
  "connectors/sql_connector.py::safe_url": {
   "equivalents": [],
-  "hash": "261e681bddd501e6"
+  "hash": "05e67e301dee44dc"
  },
  "connectors/sql_connector.py::sql_dialect": {
   "equivalents": [],

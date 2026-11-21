@@ -87,20 +87,29 @@ def _query_timeout(dbapi_conn, seconds: int) -> None:
 # owning a user schema or object (ownership is CONTROL and leaves no permission row; 5.8b audit).
 # Schema ids 5..16383 are users' schemas (1-4 dbo, guest, INFORMATION_SCHEMA, sys; 16384+ the
 # fixed roles'). `CAN_WRITE` marks it for the read-only plant test.
+# What a read-only login may hold: an allow list of permissions, as the parse guard's functions
+# (5.8b audit pass 2: the deny list here missed db_securityadmin, which grants itself INSERT,
+# after pass 1 found it missing ownership, IMPERSONATE and EXECUTE). fn_my_permissions is the
+# login's effective set: its roles, public and the server roles included.
+_MSSQL_READ_DB = ("'CONNECT', 'SELECT', 'REFERENCES', 'VIEW DEFINITION', 'SHOWPLAN', "
+                  "'VIEW DATABASE STATE', 'VIEW DATABASE PERFORMANCE STATE', "
+                  "'VIEW ANY COLUMN ENCRYPTION KEY DEFINITION', "
+                  "'VIEW ANY COLUMN MASTER KEY DEFINITION', 'VIEW CHANGE TRACKING'")
+_MSSQL_READ_SERVER = ("'CONNECT', 'CONNECT SQL', 'VIEW ANY DATABASE', 'VIEW SERVER STATE', "
+                      "'VIEW SERVER PERFORMANCE STATE', 'VIEW ANY DEFINITION', "
+                      "'CONNECT ANY DATABASE'")
 _MSSQL_CANT_WRITE = (
-    "IF IS_SRVROLEMEMBER('sysadmin') = 1 OR HAS_PERMS_BY_NAME(NULL, NULL, 'CONTROL SERVER') = 1 "
-    "OR USER_NAME() = 'dbo' OR IS_ROLEMEMBER('db_owner') = 1 "
-    "OR IS_ROLEMEMBER('db_datawriter') = 1 OR IS_ROLEMEMBER('db_ddladmin') = 1 "
-    "OR EXISTS (SELECT 1 FROM fn_my_permissions(NULL, 'DATABASE') WHERE permission_name IN "
-    "('INSERT', 'UPDATE', 'DELETE', 'ALTER', 'CONTROL', 'CREATE TABLE', 'ALTER ANY SCHEMA', "
-    "'EXECUTE', 'IMPERSONATE')) "
+    "IF EXISTS (SELECT 1 FROM fn_my_permissions(NULL, 'DATABASE') "
+    f"WHERE permission_name NOT IN ({_MSSQL_READ_DB})) "
+    "OR EXISTS (SELECT 1 FROM fn_my_permissions(NULL, 'SERVER') "
+    f"WHERE permission_name NOT IN ({_MSSQL_READ_SERVER})) "
+    # a grant on one table, schema or login isn't in the database's or server's effective set
     "OR EXISTS (SELECT 1 FROM sys.database_permissions p WHERE p.state IN ('G', 'W') "
-    "AND p.permission_name IN ('INSERT', 'UPDATE', 'DELETE', 'ALTER', 'CONTROL', "
-    "'TAKE OWNERSHIP', 'EXECUTE', 'IMPERSONATE') AND (p.grantee_principal_id = "
+    f"AND p.permission_name NOT IN ({_MSSQL_READ_DB}) AND (p.grantee_principal_id = "
     "DATABASE_PRINCIPAL_ID() OR IS_MEMBER(USER_NAME(p.grantee_principal_id)) = 1)) "
     "OR EXISTS (SELECT 1 FROM sys.server_permissions p WHERE p.state IN ('G', 'W') "
-    "AND p.permission_name IN ('IMPERSONATE', 'IMPERSONATE ANY LOGIN') "
-    "AND p.grantee_principal_id = SUSER_ID()) "
+    f"AND p.permission_name NOT IN ({_MSSQL_READ_SERVER}) "
+    "AND (p.grantee_principal_id = SUSER_ID() OR IS_SRVROLEMEMBER(SUSER_NAME(p.grantee_principal_id)) = 1)) "
     "OR EXISTS (SELECT 1 FROM sys.schemas s WHERE s.schema_id BETWEEN 5 AND 16383 "
     "AND (s.principal_id = DATABASE_PRINCIPAL_ID() OR IS_MEMBER(USER_NAME(s.principal_id)) = 1)) "
     "OR EXISTS (SELECT 1 FROM sys.objects o WHERE o.principal_id IS NOT NULL "
@@ -260,9 +269,13 @@ def safe_url(conn_str: str) -> tuple[URL, Dialect]:
     if extra := sorted(k for k in url.query if k.lower() not in d.query_keys):
         raise IngestionError("connection string options", "These connection string options aren't "
                       f"allowed: {', '.join(extra)}. Allowed: {', '.join(sorted(d.query_keys)) or 'none'}.")
-    if d.one_database and not url.database:   # else every database on the server is listed
-        raise IngestionError("no database", "The connection string must name the database: "
-                             f"{engine}://user:password@host:port/<database>.")
+    # one_database: else every database on the server is listed. ODBC: SQLAlchemy reads a string
+    # with no database as a DSN named by the host, and one with no user as Windows sign-in with
+    # this server's own credentials (5.8b audit pass 2)
+    if (d.one_database or d.driver == "pyodbc") and not url.database or \
+            d.driver == "pyodbc" and not url.username:
+        raise IngestionError("no database", "The connection string must name the user and the "
+                             f"database: {engine}://user:password@host:port/<database>.")
     from api.config import settings
     url = url.set(drivername=f"{engine}+{d.driver}" if d.driver else engine,
                   # one spelling for every reader after the allowlist (5.8b audit: SSL_MODE passed

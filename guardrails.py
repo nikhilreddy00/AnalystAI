@@ -176,7 +176,7 @@ def _invisible(text: str) -> bool:
     """A format, separator or control character: sqlglot glues it into a name, a server may read
     it as a space (5.8b audit pass 2: `x​EXEC(...)` was one alias to the guard, two
     statements to SQL Server)."""
-    return any(unicodedata.category(c)[0] in "CZ" for c in text if not c.isascii())
+    return any(unicodedata.category(c)[0] in "CZ" for c in text if c not in " \t\r\n")
 
 
 _TSQL_NAME_LIKE = frozenset("OPEN CLOSE PRINT SAVE RETURN BREAK CONTINUE".split())

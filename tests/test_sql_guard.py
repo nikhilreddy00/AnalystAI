@@ -340,7 +340,7 @@ def test_a_lock_or_admin_function_is_a_final_refusal(sql, dialect):
 def test_a_zero_width_space_never_splits_a_statement():
     """Audit pass 2 (security, proven on SQL Server): sqlglot glued `x​EXEC` into one alias;
     the server read U+200B as a space and ran the EXEC. Every dialect, every invisible kind."""
-    for ch in "​  　\u0085﻿᠎":
+    for ch in "​  　\u0085﻿᠎\x00\x0b\x0c\x1c\x1f\x7f":
         for dialect in ("tsql", "postgres", "mysql", None):
             sql = f"SELECT TOP 1 a FROM keyed x{ch}EXEC('WAITFOR DELAY ''0:0:4''')"
             reason = g.check_sql_readonly(sql, dialect)

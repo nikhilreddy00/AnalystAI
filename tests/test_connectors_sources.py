@@ -900,8 +900,16 @@ def test_a_mysql_string_must_name_its_database():
     with pytest.raises(IngestionError) as err:
         _sql("mysql+pymysql://u:p@h:3306/")._engine()
     assert str(err.value) == "ingestion: no database"
-    assert err.value.user_message == ("The connection string must name the database: "
+    assert err.value.user_message == ("The connection string must name the user and the database: "
                                       "mysql://user:password@host:port/<database>.")
+
+
+@pytest.mark.parametrize("cs", ["mssql://u:p@db.example:1433", "mssql://db.example:1433/acme"])
+def test_a_sql_server_string_names_its_user_and_database(cs):
+    """Audit pass 2 (security): SQLAlchemy's ODBC builder reads no database as `dsn=<host>` and
+    no user as Trusted_Connection=Yes (this server's own Windows credentials)."""
+    with pytest.raises(IngestionError, match="no database"):
+        _sql(cs)._engine()
 
 
 def test_a_database_that_cant_be_reached_is_a_session_error_not_a_crash(tmp_path):
@@ -1245,6 +1253,15 @@ def test_in_production_a_pinned_mysql_without_a_port_dials_3306(monkeypatch):
     ("GRANT IMPERSONATE ON USER::aai_writer TO aai_reader",
      "REVOKE IMPERSONATE ON USER::aai_writer FROM aai_reader"),
     ("GRANT EXECUTE TO aai_reader", "REVOKE EXECUTE FROM aai_reader"),
+    # audit pass 2 (security, proven: it granted itself INSERT and wrote; test analyst): the
+    # deny list missed these, the allow list refuses anything not a read
+    ("ALTER ROLE db_securityadmin ADD MEMBER aai_reader",
+     "ALTER ROLE db_securityadmin DROP MEMBER aai_reader"),
+    ("ALTER ROLE db_ddladmin ADD MEMBER aai_reader", "ALTER ROLE db_ddladmin DROP MEMBER aai_reader"),
+    ("GRANT ALTER ANY ROLE TO aai_reader", "REVOKE ALTER ANY ROLE FROM aai_reader"),
+    ("GRANT CREATE SCHEMA TO aai_reader", "REVOKE CREATE SCHEMA FROM aai_reader"),
+    ("ALTER AUTHORIZATION ON OBJECT::dbo.cw_t TO aai_reader",
+     "ALTER AUTHORIZATION ON OBJECT::dbo.cw_t TO SCHEMA OWNER"),
 ])
 async def test_every_way_a_sql_server_login_can_write_is_refused(tmp_path, grant, revoke):
     """5.8b audit (security review, test analyst): the can-write check was proven for
