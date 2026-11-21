@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 LEDGER = ROOT / "docs" / "retro-ledger.md"
 COLUMNS = ["id", "class", "domain(s)", "finding", "fix", "enforced-by", "recurrences"]
 SUMMARY = ["class", "rows", "unenforced", "recurrences"]
-UNENFORCED = 77   # the ratchet: prose-only rows; it only goes down
+UNENFORCED = 76   # the ratchet: prose-only rows; it only goes down
 
 
 def _tables() -> list[list[list[str]]]:

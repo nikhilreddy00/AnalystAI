@@ -1,0 +1,467 @@
+{
+ "meta": {
+  "suite": "e2e",
+  "report": "e2e-20261121T194617Z",
+  "k": 1,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "41b653f",
+  "started_at": "20261121T194617Z",
+  "only": "e2e-99",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 1,
+  "runs": 1,
+  "pass_rate": 1.0,
+  "case_majority_pass_rate": 1.0,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "hard_rules_na": 2,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 0,
+  "runs_with_prose_rewritten": 0,
+  "runs_with_pii_guard_hit": 0,
+  "cost_per_question_usd": 0.0229,
+  "latency_p50_s": 17.99,
+  "latency_p95_s": 17.99,
+  "by_domain": {
+   "retail": {
+    "cases": 1,
+    "k_min": 1,
+    "k_max": 1,
+    "cases_passed_all_runs": 1,
+    "pass_rate": 1.0,
+    "hard_rule_violations": 0,
+    "hard_rules_na": 2,
+    "builtin_only_cases": [],
+    "model_dependent_passed": 0,
+    "model_dependent_cases": 0
+   }
+  }
+ },
+ "runs": {
+  "e2e-99": [
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": true,
+      "detail": "want \u22480.4 [(1.0, None), (100.0, None)] in answer; saw [0.6, 0.4]"
+     },
+     {
+      "kind": "number_in_answer",
+      "ok": true,
+      "detail": "want \u22480.6 [(1.0, None), (100.0, None)] in answer; saw [0.6, 0.4]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "charts_lint_clean",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "charts_have_rationale",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     },
+     {
+      "rule": "pii_exits",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     }
+    ],
+    "error": null,
+    "answer": "mean(conversion_rate) by group: 'control' leads at 0.6000; 'treatment' is lowest at 0.4000.",
+    "pii_exits": {
+     "rule": "pii_exits",
+     "ok": true,
+     "na": true,
+     "detail": "n/a: no planted PII"
+    },
+    "pii_canary_hits": 0,
+    "pii_model_hits": 0,
+    "pii_planted": 0,
+    "approvals": [],
+    "output": {
+     "session_id": "5c67694e-9eeb-4943-b608-a54fa55236ca",
+     "user_id": "default",
+     "conversation_history": [
+      {
+       "role": "user",
+       "content": "What is the conversion rate of the treatment group versus control?",
+       "timestamp": "2026-11-21T19:46:35.126748Z"
+      },
+      {
+       "role": "assistant",
+       "content": "mean(conversion_rate) by group: 'control' leads at 0.6000; 'treatment' is lowest at 0.4000.",
+       "timestamp": "2026-11-21T19:46:35.169456Z"
+      }
+     ],
+     "connector_config": {
+      "type": "sql",
+      "file_path": null,
+      "connection_string": "***",
+      "table_name": null,
+      "spreadsheet_id": null,
+      "sheet_name": null,
+      "service_account_json": null,
+      "url": null,
+      "auth_type": null,
+      "auth_value": null,
+      "api_key_header": null,
+      "pagination_key": null
+     },
+     "task_plan": {
+      "raw_query": "What is the conversion rate of the treatment group versus control?",
+      "target_metrics": [
+       "conversion_rate"
+      ],
+      "timeframe": null,
+      "segments": [
+       "group"
+      ],
+      "analysis_types": [
+       "eda",
+       "segmentation"
+      ],
+      "output_format": "both",
+      "resume_from": null,
+      "clarification_needed": false,
+      "clarification_question": null,
+      "question_intent": "segment_compare",
+      "targeted_params": {
+       "target_columns": [],
+       "metric_column": "conversion_rate",
+       "date_column": null,
+       "segment_column": "group",
+       "segment_value": null,
+       "group_by": "group",
+       "variant_column": null,
+       "n": null,
+       "order": null,
+       "frequency": null,
+       "test_type": null,
+       "aggregation": "mean",
+       "chart_type": null,
+       "kpi": null,
+       "period_start": null,
+       "period_end": null,
+       "compare": null
+      }
+     },
+     "data_contract": {
+      "source_type": "sql",
+      "row_count": 2,
+      "column_count": 4,
+      "columns": [
+       {
+        "name": "group",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "control",
+         "treatment"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "visitors",
+        "dtype": "int64",
+        "nullable": false,
+        "sample_values": [
+         1000,
+         1000
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "conversions",
+        "dtype": "int64",
+        "nullable": false,
+        "sample_values": [
+         600,
+         400
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "conversion_rate",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         0.6,
+         0.4
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       }
+      ],
+      "sample_rows": [
+       {
+        "group": "control",
+        "visitors": 1000,
+        "conversions": 600,
+        "conversion_rate": 0.6
+       },
+       {
+        "group": "treatment",
+        "visitors": 1000,
+        "conversions": 400,
+        "conversion_rate": 0.4
+       }
+      ],
+      "date_columns": [],
+      "id_columns": [],
+      "metric_columns": [
+       "visitors",
+       "conversions",
+       "conversion_rate"
+      ],
+      "schema_summary": "2 rows \u00d7 4 columns. Metrics: visitors, conversions, conversion_rate. Categories: group.",
+      "source_query": {
+       "id": "sql:query",
+       "kind": "query",
+       "claim": "2 row(s) from one read-only query",
+       "code": "SELECT\n  `group`,\n  COUNT(*) AS visitors,\n  SUM(converted) AS conversions,\n  ROUND(SUM(converted) / COUNT(*), 4) AS conversion_rate\nFROM analystai_eval.e2e_simpson_1\nGROUP BY `group`",
+       "result_excerpt": "[{\"group\": \"control\", \"visitors\": 1000, \"conversions\": \"600\", \"conversion_rate\": \"0.6000\"}, {\"group\": \"treatment\", \"visitors\": 1000, \"conversions\": \"400\", \"conversion_rate\": \"0.4000\"}]",
+       "row_count": 2,
+       "confidence": "medium",
+       "confidence_reason": "no semantic layer: metric meaning was inferred from names",
+       "assumptions": []
+      },
+      "source_evidence": {
+       "id": "source:data",
+       "kind": "source",
+       "claim": "Loaded 2 rows \u00d7 4 columns from the database.",
+       "code": "database connector load()",
+       "result_excerpt": "{\"roles\": {\"category\": [\"group\"], \"metric\": [\"visitors\", \"conversions\", \"conversion_rate\"]}, \"personal_data\": {}, \"fingerprint\": \"b29f6529f5cf625a\"}",
+       "row_count": 2,
+       "confidence": "high",
+       "confidence_reason": "Read as-is: no layout guessing was needed.",
+       "assumptions": []
+      },
+      "fingerprint": "b29f6529f5cf625a37559f88feadfb48a2052468530d84795388ffee1071122f",
+      "pii_columns": [],
+      "phi": false,
+      "deidentification": [],
+      "deidentified": false,
+      "domain": null,
+      "roles": {},
+      "domain_confidence": null
+     },
+     "cleaning_audit": {
+      "decisions": [],
+      "rows_before": 2,
+      "rows_after": 2,
+      "columns_coerced": [],
+      "duplicates_removed": 0,
+      "outliers_flagged": [],
+      "high_null_columns": [],
+      "summary": "Final dataset: 2 rows (started with 2).",
+      "anomaly_report": {
+       "flags": [],
+       "methodology_note": "",
+       "eligible_columns": [],
+       "skipped_columns": {
+        "group": "binary column (only 2 values)",
+        "visitors": "constant or unsupported",
+        "conversions": "binary column (only 2 values)",
+        "conversion_rate": "binary column (only 2 values)"
+       }
+      },
+      "skipped_columns": [],
+      "date_ranges": {},
+      "grain": null,
+      "partial_months": {},
+      "main_currency": null,
+      "spell_story": [],
+      "window_span": {}
+     },
+     "analysis_findings": null,
+     "chart_configs": [],
+     "insight_report": null,
+     "targeted_response": {
+      "intent": "segment_compare",
+      "answer_text": "mean(conversion_rate) by group: 'control' leads at 0.6000; 'treatment' is lowest at 0.4000.",
+      "chart_configs": [
+       {
+        "id": "ea91f9db-60c1-4b54-980c-10f4c405de12",
+        "chart_type": "BarChart",
+        "title": "Average Conversion Rate by Group",
+        "data": [
+         {
+          "group": "control",
+          "conversion_rate": 0.6,
+          "conversion_rate__n": 1
+         },
+         {
+          "group": "treatment",
+          "conversion_rate": 0.4,
+          "conversion_rate__n": 1
+         }
+        ],
+        "x_key": "group",
+        "y_keys": [
+         "conversion_rate"
+        ],
+        "colors": [],
+        "x_label": "Group",
+        "y_label": "Average Conversion Rate",
+        "show_legend": false,
+        "show_grid": true,
+        "source_finding": "group_bars",
+        "value_format": "number",
+        "layout_hint": "half_width",
+        "rationale": {
+         "rule": "targeted:segment_compare\u2192bars",
+         "reason": "Compares mean conversion_rate across group.",
+         "x": "group",
+         "y": "conversion_rate",
+         "split": null,
+         "aggregation": "mean",
+         "n_rows": 2,
+         "evidence_ids": [],
+         "code": "df.groupby('group')['conversion_rate'].mean()",
+         "confidence": null
+        },
+        "placement": "summary",
+        "lint_warnings": [],
+        "error_key": null,
+        "split_key": null,
+        "reference_lines": []
+       }
+      ],
+      "table_data": [],
+      "table_columns": [],
+      "suggestions": [],
+      "unanswerable_reason": null,
+      "generated_at": "2026-11-21T19:46:35.169358Z"
+     },
+     "expert_review": null,
+     "narrative": {
+      "column_display_names": {
+       "group": "Group",
+       "visitors": "Visitors",
+       "conversions": "Conversions",
+       "conversion_rate": "Conversion Rate"
+      },
+      "entity_singular": "experiment group",
+      "entity_plural": "experiment groups"
+     },
+     "iteration": 1,
+     "quality_check_attempts": 0,
+     "high_null_answer": null,
+     "prior_pii": [],
+     "error_retryable": true,
+     "error_reask": true,
+     "overview_done": true,
+     "dataset_name": null,
+     "file_hash": null,
+     "dataset_id": null,
+     "dataset_version_id": null,
+     "status": "completed",
+     "cleaned_data_path": "/Users/uvnikhil/Projects/AnalystAI/session_data/5c67694e-9eeb-4943-b608-a54fa55236ca/cleaned_data.parquet",
+     "error_message": null,
+     "created_at": "2026-11-21T19:46:19.064278Z",
+     "updated_at": "2026-11-21T19:46:35.169458Z"
+    },
+    "domain": "retail",
+    "latency_s": 17.99,
+    "cost_usd": 0.02289,
+    "llm_calls": 5,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "",
+      "stop_reason": "tool_use",
+      "tool_calls": [
+       {
+        "id": "toolu_0159oft7bYjqTj35MBkNH2BP",
+        "name": "run_sql",
+        "input": {
+         "sql": "SELECT `group`, COUNT(*) AS visitors, SUM(converted) AS conversions, SUM(converted) / COUNT(*) AS conversion_rate FROM analystai_eval.e2e_simpson_1 GROUP BY `group`"
+        }
+       }
+      ]
+     },
+     {
+      "text": "{\"sql\": \"SELECT\\n  `group`,\\n  COUNT(*) AS visitors,\\n  SUM(converted) AS conversions,\\n  ROUND(SUM(converted) / COUNT(*), 4) AS conversion_rate\\nFROM analystai_eval.e2e_simpson_1\\nGROUP BY `group`\", \"metrics_used\": []}",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "[\n  \"Which group has the higher conversion_rate, and how large is the absolute difference between the two groups?\",\n  \"Is the difference in conversion_rate between the two groups statistically significant given their respective visitors and conversions counts?\",\n  \"Which group drove more total conversions in absolute terms, and does that ranking hold when normalized by visitors?\",\n  \"Are there any anomalies where a group with fewer visitors somehow achieved a disproportionately high conversion_rate relative to its conversions count?\",\n  \"If we were to scale the lower-performing group's visitors to match the higher-performing group, how many additional conversions could we expect based on the observed conversion_rate gap?\"\n]",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "{\n  \"column_display_names\": {\n    \"group\": \"Group\",\n    \"visitors\": \"Visitors\",\n    \"conversions\": \"Conversions\",\n    \"conversion_rate\": \"Conversion Rate\"\n  },\n  \"entity_singular\": \"experiment group\",\n  \"entity_plural\": \"experiment groups\"\n}",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "{\n  \"raw_query\": \"What is the conversion rate of the treatment group versus control?\",\n  \"target_metrics\": [\"conversion_rate\"],\n  \"timeframe\": null,\n  \"segments\": [\"group\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": \"conversion_rate\",\n    \"date_column\": null,\n    \"segment_column\": \"group\",\n    \"segment_value\": null,\n    \"group_by\": \"group\",\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"mean\",\n    \"chart_type\": null\n  }\n}",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ]
+ }
+}
