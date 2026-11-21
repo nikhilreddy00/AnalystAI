@@ -1670,6 +1670,10 @@ def test_in_production_a_dual_stack_host_is_reached_at_its_ipv4_address(monkeypa
         (0, 0, 0, "", ("2606:4700::6810:84e5", 0, 0, 0)), (0, 0, 0, "", ("104.16.132.229", 0))]
         if h == "db.example" else [(0, 0, 0, "", ("10.9.9.9", 0))])
     assert sc._checked_address(sc.make_url("postgresql://u:p@db.example/x")) == "104.16.132.229"
+    monkeypatch.setattr(socket, "getaddrinfo", lambda h, *a, **k: [
+        (0, 0, 0, "", ("2606:4700::6810:84e5", 0, 0, 0))]
+        if h == "db.example" else [(0, 0, 0, "", ("10.9.9.9", 0))])
+    assert sc._checked_address(sc.make_url("postgresql://u:p@db.example/x")) == "2606:4700::6810:84e5"
 
 
 def test_the_ca_file_is_rebuilt_when_it_goes_and_a_bad_bundle_is_said(monkeypatch, tmp_path):
@@ -1796,6 +1800,32 @@ def test_a_leading_zero_is_never_a_whole_number():
     assert exact_whole_numbers(pd.Series(["0123456789012345678", None], dtype=object)) is None
     assert exact_whole_numbers(pd.Series(["123456789012345678", None], dtype=object)).tolist()[0] \
         == 123456789012345678
+    assert exact_whole_numbers(pd.Series([str(2**63 - 1)], dtype=object)).dtype == "Int64"
+    assert exact_whole_numbers(pd.Series([str(2**63)], dtype=object)).tolist() == [str(2**63)]
+
+
+def test_an_offset_reads_as_minutes_east_of_utc():
+    from connectors.base import _minutes
+    assert [_minutes(o) for o in ("+05:30", "-0530", "+05", "-05", "Z")] == [330, -330, 300, -300, 0]
+
+
+def test_a_sql_server_host_that_doesnt_answer_is_said_with_its_port():
+    from sqlalchemy import create_engine
+
+    from connectors.sql_connector import _session_error
+    said = Exception("[HYT00] [Microsoft][ODBC Driver 18 for SQL Server]Login timeout expired")
+    for url, where in (("mssql+pyodbc://u:p@db.example/x", "db.example:1433"),
+                       ("mssql+pyodbc://u:p@db.example:14330/x", "db.example:14330")):
+        assert f"can't reach {where} " in _session_error(said, create_engine(url)).user_message
+
+
+def test_a_query_that_cant_run_as_written_is_the_sql_guards_refusal():
+    from agents.errors import GuardrailViolation
+    from connectors.sql_connector import _cant_run_as_written
+    with pytest.raises(GuardrailViolation) as err:
+        _cant_run_as_written()
+    assert err.value.agent == "sql"
+    assert str(err.value) == "sql: the query has characters that can't be run exactly as written"
 
 
 def test_a_postgres_day_is_utcs_whatever_the_servers_zone(tmp_path):

@@ -157,8 +157,9 @@ def _secret_key(key: str) -> bool:
     `region_code=revenue` and `Shakespeare` for `author=` (three reviewers); a whole-key read
     missed X-Amz-Security-Token (automated review). `code` only as the whole key (OAuth's)."""
     words = re.findall(r"[A-Z]?[a-z0-9]+|[A-Z]+(?![a-z])", key)
-    whole = re.sub(r"[-_]", "", key.lower())   # APIkey splits as AP + Ikey (automated review)
-    return whole in _CREDENTIAL_KEYS or (bool(words) and words[-1].lower() in _CREDENTIAL_WORDS)
+    # APIkey splits as AP + Ikey (automated review): read whole too (a key with a separator in it
+    # ends in its credential word: api_key, access-token)
+    return key.lower() in _CREDENTIAL_KEYS or (bool(words) and words[-1].lower() in _CREDENTIAL_WORDS)
 
 
 _CREDENTIAL_KEYS = frozenset("code apikey apitoken accesstoken authtoken clientsecret".split())
@@ -346,10 +347,10 @@ async def capped_body(response: httpx.Response, cap: int) -> bytes:
                     raise BodyTooLarge
                 body += out
                 if len(body) > cap:
-                    break
+                    raise BodyTooLarge
                 # a member ended: the next one (gzip may be several, each read whole; the first
                 # reader returned only the first: test analyst), or junk, which is refused
-                chunk = decoder.unused_data if decoder.eof else b""
+                chunk = decoder.unused_data   # b"" until the member's end
                 if chunk:
                     members += 1
                     if members > _MAX_GZIP_MEMBERS:   # millions of empty members: seconds of CPU
@@ -358,7 +359,7 @@ async def capped_body(response: httpx.Response, cap: int) -> bytes:
             if len(body) > cap:
                 raise BodyTooLarge   # each caller says it in its own words (the link's, the API's)
         if decoder is not None and raw:
-            body += decoder.flush(cap + 1 - len(body))
+            body += decoder.flush()   # all input was taken (no tail): at most a match's bytes
             if len(body) > cap:
                 raise BodyTooLarge
             if not decoder.eof:   # cut short: never half a file read as the whole one

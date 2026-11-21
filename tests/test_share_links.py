@@ -644,6 +644,48 @@ async def test_every_gzip_member_is_read_and_a_cut_or_corrupt_body_is_said():
         await capped_body(_Answer(gzip.compress(a) + b"trailing junk", "gzip"), 10**6)
 
 
+async def test_the_body_reader_holds_its_boundaries(monkeypatch):
+    """Mutation gate: each limit at its edge (a cap-sized body reads, a byte more is refused, the
+    member count is the documented one) and a mislabelled or corrupt body is never read."""
+    import gzip
+    import os
+    import zlib
+
+    import connectors.base as base
+    from connectors.base import BodyTooLarge, capped_body
+    cap, full = 1000, b"x" * 1000
+    for encoding, pack in (("identity", bytes), ("gzip", gzip.compress)):
+        assert await capped_body(_Answer(pack(full), encoding), cap) == full
+        with pytest.raises(BodyTooLarge):
+            await capped_body(_Answer(pack(full + b"y"), encoding), cap)
+    with pytest.raises(BodyTooLarge):   # a member ending at the cap, a byte more in the next
+        await capped_body(_Answer(gzip.compress(full) + gzip.compress(b"y"), "gzip"), cap)
+    noise = gzip.compress(os.urandom(50_000)) * 3   # 150,000 decoded, more sent, in 3 chunks
+    assert len(noise) > 150_010
+    with pytest.raises(BodyTooLarge):
+        await capped_body(_Answer(noise, "gzip"), 150_010)
+    monkeypatch.setattr(base, "_MAX_GZIP_MEMBERS", 3)
+    assert await capped_body(_Answer(gzip.compress(b"a") * 3, "gzip"), cap) == b"aaa"
+    with pytest.raises(ValueError, match="too many pieces"):
+        await capped_body(_Answer(gzip.compress(b"a") * 4, "gzip"), cap)
+    headerless = zlib.compressobj(9, zlib.DEFLATED, -zlib.MAX_WBITS)
+    raw_deflate = headerless.compress(b"id\n1\n") + headerless.flush()
+    with pytest.raises(ValueError, match="couldn't be unpacked"):   # gzip's label is believed
+        await capped_body(_Answer(raw_deflate, "gzip"), cap)
+    with pytest.raises(ValueError, match="couldn't be unpacked"):   # once as raw, then said
+        await capped_body(_Answer(b"\xff\xff not deflate at all", "deflate"), cap)
+
+
+def test_a_text_files_own_name_decides_its_reader():
+    from connectors.link import _suffix
+    answer = httpx.Response(200)
+    assert _suffix(b"[Date],[Sales]\n", answer, "h", "sales.2024.TSV") == ".tsv"
+    assert _suffix(b'"one value"', answer, "h", "x.Json") == ".json"
+    assert _suffix(b"[1, 2]", answer, "h", "x.csv") == ".csv"
+    assert _suffix(b"[1, 2]", answer, "h", "") == ".json"   # no name: its first character
+    assert _suffix(b"a,b\n", answer, "h", "data.csv.gz") == ".csv"
+
+
 async def test_a_body_in_millions_of_gzip_pieces_is_refused_cheaply():
     """Audit pass 2: 2.5M empty members cost 6 s of CPU a fetch."""
     import gzip
@@ -679,7 +721,7 @@ async def test_the_body_reader_never_holds_more_than_its_cap_unpacking():
     import tracemalloc
 
     from connectors.base import BodyTooLarge, capped_body
-    bomb, cap = _gzip_bomb(), 50 * 2**20
+    bomb, cap = _gzip_bomb(), 2**20   # under a 64 KB chunk's 64 MB: a chunk unpacked whole shows
     tracemalloc.start()   # the reader is pure Python: tracemalloc sees all it holds
     with pytest.raises(BodyTooLarge):
         await capped_body(_Answer(bomb, "gzip"), cap)

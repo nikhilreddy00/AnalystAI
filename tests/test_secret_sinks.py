@@ -253,3 +253,13 @@ def test_a_short_value_never_masks_text_everywhere():
     from connectors.base import redact, register_secrets
     register_secrets("abc", "12345")
     assert redact("abc 12345 abcdef") == "abc 12345 abcdef"
+    register_secrets("sixchr")   # six is enough
+    assert redact("pw sixchr") == "pw ***"
+
+
+def test_a_credential_form_or_a_long_value_is_cut_inside_a_word_a_short_one_only_whole():
+    from connectors.base import _cut
+    assert _cut("xpw:abcx", "pw:abc") == "x***x"            # user:password, short
+    assert _cut("xa@bcdex", "a@bcde") == "x***x"            # an address's part, short
+    assert _cut("xabcdefghijklx", "abcdefghijkl") == "x***x"   # twelve characters
+    assert _cut("xabcdefghijkx abcdefghijk", "abcdefghijk") == "xabcdefghijkx ***"   # eleven

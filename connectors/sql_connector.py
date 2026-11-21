@@ -41,8 +41,8 @@ from sqlglot import exp
 from sqlglot.optimizer.scope import traverse_scope
 
 from agents.errors import AgentError, GuardrailViolation, IngestionError
-from connectors.base import (_FLOAT_EXACT, DataConnector, exact_whole_numbers, normalize_frame,
-                             resolved, truncation_note)
+from connectors.base import (_FLOAT_EXACT, DataConnector, _cut, exact_whole_numbers,
+                             normalize_frame, resolved, truncation_note)
 from guardrails import check_sql_readonly
 
 logger = logging.getLogger(__name__)
@@ -198,8 +198,8 @@ def _tls_context_for(mode: str, extra_ca_bundle: str | None) -> ssl.SSLContext:
         except (OSError, ssl.SSLError) as exc:   # this server's setting, not the user's database
             raise IngestionError("ca bundle", "This server's EXTRA_CA_BUNDLE can't be read "
                                  f"({type(exc).__name__}); ask the administrator.") from exc
-    ctx.check_hostname = mode.upper() == "VERIFY_IDENTITY"
-    if mode.upper() == "REQUIRED":
+    ctx.check_hostname = mode == "VERIFY_IDENTITY"   # _tls passes it upper case
+    if mode == "REQUIRED":
         ctx.verify_mode = ssl.CERT_NONE
     return ctx
 
@@ -663,7 +663,7 @@ def _session_error(exc: SQLAlchemyError, engine) -> IngestionError:
         said = f"can't reach {engine.url.host}:{engine.url.port or 1433} (no answer within " \
                f"{CONNECT_TIMEOUT_S} s): check the host, the port and that the server allows it"
     if engine.url.password:
-        said = said.replace(engine.url.password, "***")
+        said = _cut(said, engine.url.password)   # the one rule: a short one only as a word
     return IngestionError("session setup", f"Couldn't open a read-only session on the database: "
                           f"{said}")
 
