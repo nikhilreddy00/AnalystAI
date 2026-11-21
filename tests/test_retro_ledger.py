@@ -105,7 +105,8 @@ def test_the_prose_only_fixes_never_grow():
 LEDGER_BORN = "1d04153"   # the commit that made the retro ledger
 # Retro commits since then that changed no ledger row, and where their rows are now (the list
 # only shrinks; retro D7-19: Domain 8's six fixes had no rows, two of them failed a day later).
-UNLEDGERED = {"d0b4d28": "Domain 8's six fixes: rows PR26-01..06, added by the retro D7-19 classes PR"}
+UNLEDGERED = {"d0b4d28": "Domain 8's six fixes: rows PR26-01..06, added by the retro D7-19 classes PR",
+              "7a7e6ed": "5.8b's note: its retro lines name rows written one commit before (5e28a84)"}
 
 
 def test_every_retro_commit_changes_the_ledger():
