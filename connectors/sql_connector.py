@@ -150,7 +150,11 @@ _PINNED = "_analystai_checked_address"   # production: the address the socket go
 def _ca_file() -> str:
     """The CAs a verified Postgres session trusts, as one file (libpq takes a path)."""
     from api.config import settings
-    return _ca_file_for(settings.extra_ca_bundle)
+    path = _ca_file_for(settings.extra_ca_bundle)
+    if not Path(path).is_file():   # a temp cleaner took it: every verified session failed until
+        _ca_file_for.cache_clear()   # a restart (silent-failure hunter)
+        path = _ca_file_for(settings.extra_ca_bundle)
+    return path
 
 
 @functools.cache
@@ -162,6 +166,12 @@ def _ca_file_for(extra_ca_bundle: str | None) -> str:
     except OSError as exc:   # this server's setting, not the user's database
         raise IngestionError("ca bundle", "This server's EXTRA_CA_BUNDLE can't be read "
                              f"({type(exc).__name__}); ask the administrator.") from exc
+    if extra_ca_bundle:   # alone: next to certifi's, OpenSSL skips what isn't a certificate, so a
+        try:              # wrong file left the operator's CA out without a word (silent-failure
+            ssl.create_default_context(cafile=extra_ca_bundle)   # hunter)
+        except ssl.SSLError as exc:
+            raise IngestionError("ca bundle", "This server's EXTRA_CA_BUNDLE holds no PEM "
+                                 "certificate; ask the administrator.") from exc
     with tempfile.NamedTemporaryFile("wb", suffix=".pem", prefix="analystai-ca-",
                                      delete=False) as f:
         f.write(b"\n".join(pems))
@@ -556,6 +566,15 @@ class QueryResult:
         df.columns = self.columns
         return normalize_frame(df)
 
+    def blanked_dates(self) -> dict[str, int]:
+        """Per date column, the values `frame` reads as blank: a zero or partial date the driver
+        could only give as text."""
+        out = {}
+        for i, (name, kind) in enumerate(zip(self.columns, self.kinds or ())):
+            if kind == "date" and (n := sum(isinstance(row[i], str) for row in self.rows)):
+                out[name] = n
+        return out
+
 
 def _hms(t: datetime.timedelta) -> str:
     """A MySQL TIME as its text: it may be negative or past 24 h (-25:00:01), and keeps its
@@ -635,7 +654,7 @@ def _session_error(exc: SQLAlchemyError, engine) -> IngestionError:
     lacks) as the database's problem, never the query's: no paid retry. The driver's first line,
     the password cut out."""
     said = str(getattr(exc, "orig", None) or exc).strip().splitlines()[0][:300]
-    if "Login timeout expired" in said or "HYT00" in said:
+    if "Login timeout expired" in said:   # never HYT00 alone: a query timeout shares it
         # ODBC's words for a host that doesn't answer (none listening, or no such host): the
         # cause said as the user can act on it (5.8b hardening: the connection matrix)
         said = f"can't reach {engine.url.host}:{engine.url.port or 1433} (no answer within " \
@@ -772,7 +791,10 @@ class SQLConnector(DataConnector):
         load = select(literal_column("*")).select_from(listed).order_by(*listed.c) \
             .limit(LOAD_MAX_ROWS + 1).suffix_with("OPTION (MAXDOP 1)", dialect="mssql")
         res = await asyncio.to_thread(run_readonly, engine, _sql_of(load, engine), LOAD_MAX_ROWS)
-        if res.truncated:
+        notes = [f"{n:,} value{'s' * (n > 1)} in `{col}` {'are' if n > 1 else 'is'} a zero or "
+                 "partial date (like 0000-00-00), which has no calendar day: read as blank"
+                 for col, n in res.blanked_dates().items()]   # never blanked without a word
+        if res.truncated:   # (silent-failure hunter)
             try:
                 count = await asyncio.to_thread(run_readonly, engine, _sql_of(
                     select(func.count()).select_from(listed), engine), 1)
@@ -781,9 +803,11 @@ class SQLConnector(DataConnector):
             # stand, and "the source has more" still holds (5.8b audit)
             except (SQLAlchemyError, IngestionError):
                 total = None
-            self.read_info = {"notes": [truncation_note(
+            notes.insert(0, truncation_note(
                 len(res.rows), total, f"a named table loads at most {LOAD_MAX_ROWS:,} rows; "
-                "connect without a table to have questions answered in the database")]}
+                "connect without a table to have questions answered in the database"))
+        if notes:
+            self.read_info = {"notes": notes}
         return res.frame()
 
     async def test_connection(self) -> tuple[bool, str]:

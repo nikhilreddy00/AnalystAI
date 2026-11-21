@@ -1475,35 +1475,43 @@ def test_a_safety_test_names_the_reason_it_expects():
 # BIT(1) as bytes: the oracle's tables are written from CSVs, so they never held these types.
 # Two rows per table: edge values, then NULLs (a NULL turns an int column to float in pandas).
 _ID, _BIG = 123456789012345678, "12345678901234567890123"
+_P53 = 2**53 + 1   # the first whole number a float can't hold: the plain-column fast path's edge
 _CATALOG = {
     "postgresql": (
         "CREATE TABLE tcat (k int, n0 numeric(19,0), n38 numeric(38,0), n2 numeric(12,2), "
-        "r real, b boolean, tm time, u uuid, j jsonb, by bytea, ts timestamp(6))",
+        "r real, b boolean, tm time, u uuid, j jsonb, by bytea, ts timestamp(6), bi bigint, "
+        "tz timestamptz)",
         f"INSERT INTO tcat VALUES (1, {_ID}, {_BIG}, 10.50, 0.1, true, '13:45:00', "
-        "'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', '{\"k\": 1}', '\\x0102', '2024-03-10 23:30:00'), "
-        f"(2, {_ID + 1}, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL), "
-        "(3, NULL, 1, 1.25, 2.5, false, '00:00:01', NULL, NULL, NULL, NULL)",
-        {"u": ["a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11", None, None], "j": ['{"k": 1}', None, None]}),
+        "'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', '{\"k\": 1}', '\\x0102', '2024-03-10 23:30:00', "
+        f"{_P53}, '2024-03-10 23:30:00+05'), "
+        f"(2, {_ID + 1}, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL), "
+        "(3, NULL, 1, 1.25, 2.5, false, '00:00:01', NULL, NULL, NULL, NULL, 1, NULL)",
+        # an instant, in UTC: as the CSV Postgres exports of it reads ('2024-03-10 18:30:00+00')
+        {"u": ["a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11", None, None], "j": ['{"k": 1}', None, None],
+         "tz": [pd.Timestamp("2024-03-10 18:30:00", tz="UTC"), None, None]}),
     "mysql": (
         "CREATE TABLE tcat (k int, n0 decimal(19,0), n38 decimal(38,0), n2 decimal(12,2), "
-        "r float, b bit(1), tm time, u char(36), j json, by_ blob, ts datetime(6), dt date)",
+        "r float, b bit(1), tm time, u char(36), j json, by_ blob, ts datetime(6), dt date, "
+        "bi bigint, bt bit(8))",
         f"INSERT INTO tcat VALUES (1, {_ID}, {_BIG}, 10.50, 0.1, b'1', '13:45:00', "
         "'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', '{\"k\": 1}', x'0102', '2024-03-10 23:30:00', "
-        "'2024-03-10'), "
-        f"(2, {_ID + 1}, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '0000-00-00'), "
-        "(3, NULL, 1, 1.25, 2.5, b'0', '-25:00:01', NULL, NULL, NULL, NULL, '2024-03-00')",
+        f"'2024-03-10', {_P53}, b'101'), "
+        f"(2, {_ID + 1}, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '0000-00-00', "
+        "NULL, NULL), "
+        "(3, NULL, 1, 1.25, 2.5, b'0', '-25:00:01', NULL, NULL, NULL, NULL, '2024-03-00', 1, b'0')",
         {"u": ["a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11", None, None], "j": ['{"k": 1}', None, None],
-         "tm": ["13:45:00", None, "-25:00:01"],
+         "tm": ["13:45:00", None, "-25:00:01"], "bt": [5, None, 0],   # BIT(8) is a number
          # a zero date and a partial one are blanks, and the column stays a date column
          "dt": [pd.Timestamp("2024-03-10"), None, None]}),
     "mssql": (
         "CREATE TABLE tcat (k int, n0 numeric(19,0), n38 numeric(38,0), n2 decimal(12,2), "
         "r real, b bit, tm time(0), u uniqueidentifier, j nvarchar(40), by_ varbinary(4), "
-        "ts datetime2(6))",
+        "ts datetime2(6), bi bigint)",
         f"INSERT INTO tcat VALUES (1, {_ID}, {_BIG}, 10.50, 0.1, 1, '13:45:00', "
-        "'A0EEBC99-9C0B-4EF8-BB6D-6BB9BD380A11', N'{\"k\": 1}', 0x0102, '2024-03-10 23:30:00'), "
-        f"(2, {_ID + 1}, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL), "
-        "(3, NULL, 1, 1.25, 2.5, 0, '00:00:01', NULL, NULL, NULL, NULL)",
+        "'A0EEBC99-9C0B-4EF8-BB6D-6BB9BD380A11', N'{\"k\": 1}', 0x0102, '2024-03-10 23:30:00', "
+        f"{_P53}), "
+        f"(2, {_ID + 1}, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL), "
+        "(3, NULL, 1, 1.25, 2.5, 0, '00:00:01', NULL, NULL, NULL, NULL, 1)",
         {"u": ["A0EEBC99-9C0B-4EF8-BB6D-6BB9BD380A11", None, None], "j": ['{"k": 1}', None, None]}),
 }
 _CATALOG["mariadb"] = (_CATALOG["mysql"][0].replace("j json", "j longtext"), *_CATALOG["mysql"][1:])
@@ -1512,7 +1520,8 @@ _CATALOG["mariadb"] = (_CATALOG["mysql"][0].replace("j json", "j longtext"), *_C
 # TIME as the text a CSV holds, bytes as hex, and the timestamp as the CSV of it reads
 _EXPECTED = {"n0": [_ID, _ID + 1, None], "n38": [_BIG, None, "1"], "n2": [10.5, None, 1.25],
              "r": [0.1, None, 2.5], "b": [True, None, False], "tm": ["13:45:00", None, "00:00:01"],
-             "by": ["0x0102", None, None], "ts": [pd.Timestamp("2024-03-10 23:30:00"), None, None]}
+             "by": ["0x0102", None, None], "ts": [pd.Timestamp("2024-03-10 23:30:00"), None, None],
+             "bi": [_P53, None, 1]}
 
 
 def _cells(s: pd.Series) -> list:
@@ -1534,6 +1543,9 @@ async def test_each_engines_own_types_read_as_their_values(tmp_path, name):
     try:
         conn = _sql(url, "tcat")
         loaded = (await conn.load()).sort_values("k", ignore_index=True)
+        if name in ("mysql", "mariadb"):   # the zero and the partial date: blanked, and said
+            notes = conn.read_info.get("notes", [])
+            assert any("2 values" in n and "zero or partial date" in n for n in notes), notes
         asked = (await conn.query("SELECT * FROM tcat ORDER BY k")).frame()
         for frame in (loaded, asked):
             frame.columns = [c.rstrip("_") for c in frame.columns]
@@ -1541,6 +1553,8 @@ async def test_each_engines_own_types_read_as_their_values(tmp_path, name):
                 if col in frame.columns:
                     assert _cells(frame[col]) == want, (name, col, frame[col].tolist())
             assert frame["n0"].nunique() == 2   # two ids stay two
+            # money is a float column (a Decimal == float compare hid object dtype: test analyst)
+            assert frame["n2"].dtype == "float64" and frame["bi"].dtype == "Int64", frame.dtypes
     finally:
         with _admin(tmp_path, name).begin() as c:
             c.execute(text("DROP TABLE tcat"))
@@ -1655,6 +1669,29 @@ def test_in_production_a_dual_stack_host_is_reached_at_its_ipv4_address(monkeypa
     assert sc._checked_address(sc.make_url("postgresql://u:p@db.example/x")) == "104.16.132.229"
 
 
+def test_the_ca_file_is_rebuilt_when_it_goes_and_a_bad_bundle_is_said(monkeypatch, tmp_path):
+    """Silent-failure hunter, test analyst: the cached temp file, once a cleaner took it, failed
+    every verified session until a restart; a bundle that isn't PEM was libpq's opaque word."""
+    import os
+
+    from api.config import settings
+    from connectors.sql_connector import _ca_file, _ca_file_for
+    monkeypatch.setattr(settings, "extra_ca_bundle", None)
+    _ca_file_for.cache_clear()
+    os.unlink(_ca_file())
+    assert os.path.isfile(_ca_file())
+    junk = tmp_path / "junk.pem"
+    junk.write_text("not a certificate")
+    monkeypatch.setattr(settings, "extra_ca_bundle", str(junk))
+    with pytest.raises(IngestionError) as err:
+        _ca_file()
+    assert "holds no PEM certificate" in err.value.user_message
+    monkeypatch.setattr(settings, "extra_ca_bundle", str(tmp_path / "missing.pem"))
+    with pytest.raises(IngestionError) as err:
+        _ca_file()
+    assert "EXTRA_CA_BUNDLE can't be read" in err.value.user_message
+
+
 @pytest.mark.parametrize("mode", ["verify-ca", "verify-full"])
 def test_a_verified_postgres_session_trusts_the_image_cas(mode, monkeypatch):
     """Senior audit: libpq takes a CA file and the user can't name one (allowlist), so verify-full
@@ -1739,6 +1776,19 @@ def test_a_plain_result_skips_the_per_cell_work():
     started = time.monotonic()
     QueryResult(["a", "b", "c", "d"] * 1, rows, False).frame()
     assert time.monotonic() - started < 1.5
+
+
+@pytest.mark.parametrize("values", [["2024-03-10 18:30:00+00", "2024-03-11 01:00:00+00"],
+                                    ["2024-03-10 23:30:00+05", "2024-03-11 01:00:00+00"]])
+def test_a_postgres_export_of_instants_reads_as_instants(values):
+    """Postgres writes a timestamptz with an hours-only offset: its CSV export stayed text while
+    the same column read from the database was an instant (5.8b hardening, the type catalog)."""
+    from connectors.base import normalize_frame
+    from connectors.csv_connector import _read_bytes
+    csv = "k,tz\n1," + values[0] + "\n2,\n3," + values[1] + "\n"
+    df = normalize_frame(_read_bytes(csv.encode(), ".csv")[0])
+    assert _cells(df["tz"]) == [pd.Timestamp("2024-03-10 18:30:00", tz="UTC"), None,
+                                pd.Timestamp("2024-03-11 01:00:00", tz="UTC")]
 
 
 def test_a_file_keeps_long_ids_exact_with_a_blank():

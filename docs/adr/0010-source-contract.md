@@ -38,6 +38,10 @@ actually read-only (`run_readonly` set nothing for any other engine) and any SQL
   The parse guard refuses MySQL executable comments and optimizer hints (`/*!`, `/*M!`, `/*+`) in the raw
   text, because sqlglot reads them as comments while MySQL runs them; the MySQL session clears
   `ANSI_QUOTES` and `NO_BACKSLASH_ESCAPES` so the server reads quotes as the guard does.
+  5.8b hardening: the server runs the guard's token-level canonical text, never the raw one; a
+  question streams to its row cap (a server-side cursor on Postgres, unbuffered on MySQL); and a
+  Postgres session runs in UTC (`SET LOCAL TIME ZONE 'UTC'`), so `now()`, `date_trunc` and a
+  `timestamptz` read the same day whatever the database's default zone, as on the other engines.
 - **Live vs import** (user, 2026-11-19): databases are queried live (a question → read-only SQL; a named
   table → a snapshot load, capped and disclosed). SaaS sources (5.8c) are imported by dlt into a local
   DuckDB copy refreshed on demand: no API rate limits per question, and the same numbers every run.

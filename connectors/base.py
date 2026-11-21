@@ -28,18 +28,21 @@ from orchestrator.state import ConnectorConfig, ConnectorType, DataContract
 # Date-shaped text: ISO (2025-01, 2025-01-31, 2025-01-31 10:00, … -0500), US (1/31/2025),
 # European (31.01.2025), either with a time (31/01/2025 14:30), "Jan 31, 2025".
 _DATE_TEXT_RE = re.compile(
-    r"^(\d{4}-\d{1,2}(-\d{1,2})?([ T][\d:.]+( ?(Z|[+-]\d{2}:?\d{2}))?)?|(\d{1,2}/\d{1,2}/\d{2,4}|\d{1,2}\.\d{1,2}\.\d{4})( \d{1,2}:\d{2}(:\d{2})?)?"
+    r"^(\d{4}-\d{1,2}(-\d{1,2})?([ T][\d:.]+( ?(Z|[+-]\d{2}(:?\d{2})?))?)?|(\d{1,2}/\d{1,2}/\d{2,4}|\d{1,2}\.\d{1,2}\.\d{4})( \d{1,2}:\d{2}(:\d{2})?)?"
     r"|[A-Za-z]{3,9} \d{1,2}, \d{4})$")
 _FIRST_PART_RE = re.compile(r"^(\d{1,2})[/.]\d{1,2}[/.]\d{2,4}")
-_OFFSET_RE = re.compile(r" ?(Z|[+-]\d{2}:?\d{2})$")
+# an offset of hours alone is Postgres's own writing of a timestamptz ('… 18:30:00+00', '-08'):
+# a CSV export of one stayed text while the same column read from the database was an instant
+# (5.8b hardening: the type catalog's timestamptz)
+_OFFSET_RE = re.compile(r" ?(Z|[+-]\d{2}(?::?\d{2})?)$")
 
 
 def _minutes(offset: str) -> int:
-    """'-0500' / '+01:00' / 'Z' as minutes east of UTC."""
+    """'-0500' / '+01:00' / '+05' / 'Z' as minutes east of UTC."""
     if offset in ("Z", "z"):
         return 0
     digits = offset[1:].replace(":", "")
-    return (1 if offset[0] == "+" else -1) * (int(digits[:2]) * 60 + int(digits[2:]))
+    return (1 if offset[0] == "+" else -1) * (int(digits[:2]) * 60 + int(digits[2:] or 0))
 
 
 def _looks_like_dates(s: pd.Series, share: float = 1.0) -> bool:
