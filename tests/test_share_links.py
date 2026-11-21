@@ -242,10 +242,18 @@ def test_a_wide_table_behind_a_preamble_never_reads_wide():
     from connectors.csv_connector import _read_bytes
     content = (b"Sales report\nGenerated 2026-11-20\n" + b"a," * 10_001 + b"\n"
                + b"1," * 10_001 + b"\n")
-    try:
-        assert _read_bytes(content, ".csv")[0].shape[1] < 10_000
-    except IngestionError:
-        pass   # refused is fine too
+    with pytest.raises(IngestionError, match="too many columns"):   # pinned (test analyst)
+        _read_bytes(content, ".csv")
+
+
+def test_a_header_split_by_quoted_newlines_is_still_counted():
+    """Audit pass 2 (test analyst): the cheap per-line gate can't see a header whose quoted
+    fields hold newlines; only the exact header read does, and nothing tested it."""
+    from connectors.csv_connector import _read_bytes, _readable_size
+    content = b'"a\nb",' * 10_001 + b"\n" + b"1," * 10_001 + b"\n"
+    _readable_size(content, ".csv")   # the cheap gate passes it
+    with pytest.raises(IngestionError, match="too many columns"):
+        _read_bytes(content, ".csv")
 
 
 def test_an_ordinary_workbook_still_reads():
@@ -309,7 +317,14 @@ NOT_PUBLIC = ("The link to files.example didn't give a file ({}): it may not be 
     (_ok(b" \r\n\t<!DOCTYPE HTML>\n<body>x</body>", **{"content-type": "application/octet-stream"}),
      "a web page came back, not a file"),
     (_ok(b"\n<HTML><body>x</body></HTML>"), "a web page came back, not a file"),
-], ids=["status", "html-type", "doctype", "html-tag"])
+    # audit pass 2 (code review): the type's case, a page starting <head> or <!--, a BOM
+    (_ok(CSV, **{"content-type": "Text/HTML"}), "a web page came back, not a file"),
+    (_ok(b"<!-- sign in -->\n<p>x</p>"), "a web page came back, not a file"),
+    (_ok(b"\xef\xbb\xbf<head><title>x</title></head>"), "a web page came back, not a file"),
+    # audit pass 2 (silent-failure hunter): an empty Location looped to 'redirected 5 times'
+    (httpx.Response(302, headers={"location": ""}), "it redirected nowhere"),
+], ids=["status", "html-type", "doctype", "html-tag", "type-case", "comment", "bom-head",
+        "empty-location"])
 async def test_a_link_that_gives_no_file_is_refused_in_these_words(monkeypatch, answer, why):
     err = await _refused(monkeypatch, lambda r: answer)
     assert str(err) == "ingestion: link not public"
@@ -371,13 +386,6 @@ async def test_a_relative_redirect_is_followed_from_where_it_was_said(monkeypatc
     assert await download("https://files.example/a/start") == (CSV, ".csv", "files.example.link")
     assert [(r.method, str(r.url)) for r in wire.requests] == [
         ("GET", "https://files.example/a/start"), ("GET", "https://files.example/b/q.csv")]
-
-
-async def test_a_redirect_without_a_location_goes_nowhere_new(monkeypatch):
-    """No Location: the same URL again (never a guessed one), until the hop limit."""
-    err = await _refused(monkeypatch, _chain(
-        ("https://files.example/q.csv", httpx.Response(302)), ("https://", _ok())))
-    assert str(err) == "ingestion: link redirects"
 
 
 async def test_the_cap_is_exactly_max_bytes_counted_across_chunks(monkeypatch):

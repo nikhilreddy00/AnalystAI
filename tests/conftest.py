@@ -18,8 +18,11 @@ def _mssql_logins(c, text, name: str) -> None:
             continue
         login = make_url(url)
         user, pw = login.username, (login.password or "").replace("'", "''")
-        c.execute(text(f"IF SUSER_ID('{user}') IS NULL CREATE LOGIN [{user}] WITH PASSWORD = "
-                       f"'{pw}', CHECK_POLICY = OFF"))
+        # a login is the server's, and every xdist worker of a fresh CI service gets here at once:
+        # the one that loses the race to create it carries on (test analyst, audit pass 2)
+        c.execute(text(f"BEGIN TRY IF SUSER_ID('{user}') IS NULL CREATE LOGIN [{user}] WITH "
+                       f"PASSWORD = '{pw}', CHECK_POLICY = OFF END TRY BEGIN CATCH "
+                       "IF ERROR_NUMBER() NOT IN (15025, 15023) THROW; END CATCH"))
         c.execute(text(f"USE [{name}]; IF USER_ID('{user}') IS NULL CREATE USER [{user}] FOR LOGIN "
                        f"[{user}]; ALTER ROLE db_datareader ADD MEMBER [{user}]; "
                        f"ALTER ROLE {role} ADD MEMBER [{user}]; USE master"))

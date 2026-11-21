@@ -95,7 +95,10 @@ async def download(link: str) -> tuple[bytes, str, str]:
                                          "https link (every redirect too).")
                 async with client.stream("GET", url) as response:
                     if response.is_redirect:
-                        url = urljoin(url, response.headers.get("location", ""))
+                        if not (location := response.headers.get("location", "").strip()):
+                            # it joined back to the same URL six times (silent-failure hunter)
+                            raise _not_public(host, "it redirected nowhere")
+                        url = urljoin(url, location)
                         continue
                     _ok(response.status_code, host)
                     content = await _capped(response, host)
@@ -159,8 +162,8 @@ def _suffix(content: bytes, response: httpx.Response, host: str) -> str:
     for magic, suffix in _MAGIC:
         if content.startswith(magic):
             return suffix
-    head = content[:512].lstrip().lower()
-    if "text/html" in response.headers.get("content-type", "") or \
-            head.startswith((b"<!doctype html", b"<html")):
+    head = content[:512].lstrip(b"\xef\xbb\xbf \t\r\n").lower()
+    if "text/html" in response.headers.get("content-type", "").lower() or \
+            head.startswith((b"<!doctype html", b"<html", b"<head", b"<!--")):
         raise _not_public(host, "a web page came back, not a file")
     return ".json" if content.lstrip(b"\xef\xbb\xbf \t\r\n")[:1] in (b"[", b"{") else ".csv"

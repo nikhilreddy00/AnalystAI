@@ -99,7 +99,7 @@ _MSSQL_READ_SERVER = ("'CONNECT', 'CONNECT SQL', 'VIEW ANY DATABASE', 'VIEW SERV
                       "'VIEW SERVER PERFORMANCE STATE', 'VIEW ANY DEFINITION', "
                       "'CONNECT ANY DATABASE'")
 _MSSQL_CANT_WRITE = (
-    "IF EXISTS (SELECT 1 FROM fn_my_permissions(NULL, 'DATABASE') "
+    "IF EXISTS (SELECT 1 FROM fn_my_permissions(NULL, 'DATABASE') "  # noqa: S608 (constants only)
     f"WHERE permission_name NOT IN ({_MSSQL_READ_DB})) "
     "OR EXISTS (SELECT 1 FROM fn_my_permissions(NULL, 'SERVER') "
     f"WHERE permission_name NOT IN ({_MSSQL_READ_SERVER})) "
@@ -266,6 +266,11 @@ def safe_url(conn_str: str) -> tuple[URL, Dialect]:
                       f"'{url.drivername}' isn't a supported database. Use {SUPPORTED} "
                       "(SQLite for local development).")
     # keys compare as the driver reads them: ODBC's without case (TrustServerCertificate)
+    if repeated := sorted(k for k, v in url.query.items() if not isinstance(v, str)):
+        # SQLAlchemy gives a repeated key as a tuple, which no reader expects (code review:
+        # ssl_mode twice crashed _tls)
+        raise IngestionError("connection string options", "Each connection string option may "
+                             f"appear once: {', '.join(repeated)}.")
     if extra := sorted(k for k in url.query if k.lower() not in d.query_keys):
         raise IngestionError("connection string options", "These connection string options aren't "
                       f"allowed: {', '.join(extra)}. Allowed: {', '.join(sorted(d.query_keys)) or 'none'}.")

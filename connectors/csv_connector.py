@@ -154,7 +154,7 @@ def _read_text_table(content: bytes, suffix: str) -> tuple[pd.DataFrame, dict]:
                             index_col=False).shape[1]
     except (pd.errors.ParserError, pd.errors.EmptyDataError):
         width = 0   # the full read says what's wrong
-    if width >= _MAX_COLUMNS:
+    if width > _MAX_COLUMNS:   # as the message says (code review: exactly 10,000 was refused)
         raise IngestionError("too many columns", f"The file has more than {_MAX_COLUMNS:,} "
                              "columns, past what can be read.")
     try:

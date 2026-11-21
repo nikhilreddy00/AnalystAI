@@ -904,6 +904,12 @@ def test_a_mysql_string_must_name_its_database():
                                       "mysql://user:password@host:port/<database>.")
 
 
+def test_a_repeated_option_is_said_not_a_crash():
+    with pytest.raises(IngestionError, match="connection string options") as err:
+        _sql("mysql://u:p@h/x?ssl_mode=REQUIRED&ssl_mode=VERIFY_CA")._engine()
+    assert err.value.user_message == "Each connection string option may appear once: ssl_mode."
+
+
 @pytest.mark.parametrize("cs", ["mssql://u:p@db.example:1433", "mssql://db.example:1433/acme"])
 def test_a_sql_server_string_names_its_user_and_database(cs):
     """Audit pass 2 (security): SQLAlchemy's ODBC builder reads no database as `dsn=<host>` and

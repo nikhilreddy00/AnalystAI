@@ -262,7 +262,8 @@ def public_client(timeout: float = 30) -> httpx.AsyncClient:
     not followed (a caller that follows them gets each hop checked at its connection anyway),
     proxies from the environment are ignored (they would carry the request past the check), and
     responses come uncompressed (a gzip body can expand far past any byte cap)."""
-    transport = httpx.AsyncHTTPTransport()   # its pool (and retries: 0, the default) is replaced
+    # its pool (and retries: 0, the default) is replaced; verify: else it loads the CAs again
+    transport = httpx.AsyncHTTPTransport(verify=_tls_context())
     # httpx 0.28 has no network_backend option: its pool is replaced by one on the checked
     # network (tests/test_public_http.py pins that this still holds)
     transport._pool = httpcore.AsyncConnectionPool(  # noqa: SLF001
