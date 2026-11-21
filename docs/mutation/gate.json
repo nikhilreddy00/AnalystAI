@@ -392,7 +392,32 @@
   "equivalents": []
  },
  "connectors/link.py::_name": {
-  "equivalents": []
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "last = urlparse(link).path.rstrip(\"/\").rsplit(\"/\", )[-1]",
+    "old": "last = urlparse(link).path.rstrip(\"/\").rsplit(\"/\", 1)[-1]",
+    "reason": "rsplit's last element is the final segment whatever the maxsplit"
+   },
+   {
+    "n": 1,
+    "new": "last = urlparse(link).path.rstrip(\"/\").rsplit(\"/\", 2)[-1]",
+    "old": "last = urlparse(link).path.rstrip(\"/\").rsplit(\"/\", 1)[-1]",
+    "reason": "rsplit's last element is the final segment whatever the maxsplit"
+   },
+   {
+    "n": 1,
+    "new": "for quoted, plain in _FILENAME.findall(response.headers.get(\"CONTENT-DISPOSITION\", \"\")):",
+    "old": "for quoted, plain in _FILENAME.findall(response.headers.get(\"content-disposition\", \"\")):",
+    "reason": "httpx header lookup ignores case"
+   },
+   {
+    "n": 1,
+    "new": "for quoted, plain in _FILENAME.findall(response.headers.get(\"content-disposition\", \"XXXX\")):",
+    "old": "for quoted, plain in _FILENAME.findall(response.headers.get(\"content-disposition\", \"\")):",
+    "reason": "_FILENAME needs the text 'filename', so a default of XXXX matches nothing, as the empty one does"
+   }
+  ]
  },
  "connectors/link.py::_not_public": {
   "equivalents": [],
@@ -402,16 +427,62 @@
   "equivalents": []
  },
  "connectors/link.py::_suffix": {
-  "equivalents": []
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "if \"text/html\" in response.headers.get(\"CONTENT-TYPE\", \"\").lower() or \\",
+    "old": "if \"text/html\" in response.headers.get(\"content-type\", \"\").lower() or \\",
+    "reason": "httpx header lookup ignores case"
+   },
+   {
+    "n": 1,
+    "new": "if \"text/html\" in response.headers.get(\"content-type\", \"XXXX\").lower() or \\",
+    "old": "if \"text/html\" in response.headers.get(\"content-type\", \"\").lower() or \\",
+    "reason": "'xxxx' never contains 'text/html', as the empty default doesn't"
+   }
+  ]
  },
  "connectors/link.py::_with_query": {
-  "equivalents": []
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "return url._replace(query=urlencode(query, safe=\"!\"), fragment=None).geturl()",
+    "old": "return url._replace(query=urlencode(query, safe=\"!\"), fragment=\"\").geturl()",
+    "reason": "urlunsplit adds '#fragment' only when the fragment is truthy; '' and None are both falsy (Python 3.11, geturl() checked equal)"
+   },
+   {
+    "n": 1,
+    "new": "return url._replace(query=urlencode(query, safe=\"XX!XX\"), fragment=\"\").geturl()",
+    "old": "return url._replace(query=urlencode(query, safe=\"!\"), fragment=\"\").geturl()",
+    "reason": "X is an unreserved letter quote never escapes, so marking it safe changes nothing"
+   }
+  ]
  },
  "connectors/link.py::direct_url": {
-  "equivalents": []
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "host = (url.hostname or \"XXXX\").lower()",
+    "old": "host = (url.hostname or \"\").lower()",
+    "reason": "'xxxx' matches no provider branch (Google, Dropbox, SharePoint/OneDrive), so the link comes back unchanged as with ''"
+   }
+  ]
  },
  "connectors/link.py::download": {
-  "equivalents": []
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "async with client.stream(\"get\", url) as response:",
+    "old": "async with client.stream(\"GET\", url) as response:",
+    "reason": "httpx.Request upper-cases the method (Request('get', ...).method == 'GET')"
+   },
+   {
+    "n": 1,
+    "new": "if not (location := response.headers.get(\"LOCATION\", \"\").strip()):",
+    "old": "if not (location := response.headers.get(\"location\", \"\").strip()):",
+    "reason": "httpx header lookup ignores case"
+   }
+  ]
  },
  "connectors/sql_connector.py::QueryResult.frame": {
   "equivalents": [],
