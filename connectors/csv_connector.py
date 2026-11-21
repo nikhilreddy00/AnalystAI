@@ -20,7 +20,7 @@ import chardet
 import pandas as pd
 
 from agents.errors import IngestionError
-from connectors.base import DataConnector, normalize_frame
+from connectors.base import DataConnector, exact_whole_numbers, normalize_frame
 
 # Path traversal guard: only files inside <repo>/uploads/ may be loaded.
 # Resolved once at import time so symlink games can't bypass the check at request time.
@@ -170,8 +170,10 @@ def _read_text_table(content: bytes, suffix: str) -> tuple[pd.DataFrame, dict]:
     info = {"format": suffix.lstrip("."), "encoding": encoding, "delimiter": sep,
             "decimal": decimal, "header_line": header + 1, "notes": []}
     # Codes written with a leading zero (ZIP 02134, account 00731) are text: read as numbers they
-    # lose the zero for good. Only when the file has one, re-read those columns as text.
-    if re.search(rf"(?:^|{re.escape(sep)})\s*\"?0\d", text, re.M):
+    # lose the zero for good; and long whole numbers (ids past 2**53) a blank turns into rounded
+    # floats. Only when the file has either, re-read the columns as text.
+    long_digits = re.search(r"\d{16,}", text) is not None
+    if long_digits or re.search(rf"(?:^|{re.escape(sep)})\s*\"?0\d", text, re.M):
         try:
             as_text = pd.read_csv(io.StringIO(text), sep=sep, skiprows=header, index_col=False,
                                   dtype=str, low_memory=False)
@@ -193,6 +195,10 @@ def _read_text_table(content: bytes, suffix: str) -> tuple[pd.DataFrame, dict]:
             df[col] = as_text[col].str.strip()
         if zeros:
             info["notes"].append(f"Kept as text (leading zeros): {', '.join(map(str, zeros[:5]))}.")
+        for col in df.columns if long_digits else ():
+            if col not in zeros and not pd.api.types.is_integer_dtype(df[col]) and \
+                    (exact := exact_whole_numbers(as_text[col])) is not None:
+                df[col] = exact
     if header:
         info["notes"].append(f"Skipped {header} line{'s' * (header != 1)} above the header "
                              "(a report title).")

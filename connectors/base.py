@@ -285,6 +285,29 @@ def truncation_note(kept: int, total: int | None, limit: str) -> str:
     return f"{TRUNCATED}{kept:,}{of} rows were loaded ({limit}{more})."
 
 
+_FLOAT_EXACT = 2**53   # past it a float64 can't hold every whole number: two ids would become one
+
+
+def exact_whole_numbers(values: pd.Series) -> pd.Series | None:
+    """A column of whole numbers that a float would round (ids, order numbers past 2**53), as
+    exact Int64, or as its digits past int64; None when it isn't one (a float holds it, or a
+    value isn't a whole number). One rule for the file reader (an id column with a blank reads as
+    float64) and the databases (NUMERIC(19,0)) (5.8b hardening: two ids read as one)."""
+    present = values.dropna()
+    if present.empty:
+        return None
+    digits = present.map(lambda v: str(v).strip())
+    if not digits.str.fullmatch(r"[-+]?\d+").all():
+        return None
+    whole = digits.map(int)
+    if whole.map(abs).max() <= _FLOAT_EXACT:
+        return None
+    if whole.map(lambda v: -2**63 <= v < 2**63).all():
+        exact = [whole[i] if i in whole.index else pd.NA for i in values.index]   # no NaN: it
+        return pd.Series(pd.array(exact, dtype="Int64"), index=values.index)    # goes via float
+    return digits.reindex(values.index).astype(object).where(values.notna(), None)
+
+
 def normalize_frame(df: pd.DataFrame) -> pd.DataFrame:
     """The one load rule after any source's read (ADR-0010), so a table reads the same from each:
     '' is a blank; a text column whose values are all dates becomes datetimes (5.8a: dates read

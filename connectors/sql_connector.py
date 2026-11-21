@@ -14,14 +14,19 @@ An engine without a row in DIALECTS gets none of this, so it is refused (fail cl
 from __future__ import annotations
 
 import asyncio
+import datetime
+import decimal
+import json
 import logging
-import re
+import math
 import socket
 import ssl
+import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field, replace
 
 import certifi
+import numpy as np
 import pandas as pd
 import sqlglot
 from sqlalchemy import column, create_engine, event, func, inspect, literal_column, select, text
@@ -33,7 +38,8 @@ from sqlglot import exp
 from sqlglot.optimizer.scope import traverse_scope
 
 from agents.errors import AgentError, GuardrailViolation, IngestionError
-from connectors.base import DataConnector, normalize_frame, resolved, truncation_note
+from connectors.base import (DataConnector, exact_whole_numbers, normalize_frame, resolved,
+                             truncation_note)
 from guardrails import check_sql_readonly
 
 logger = logging.getLogger(__name__)
@@ -43,10 +49,24 @@ LOAD_MAX_ROWS = 50_000   # a named table is loaded whole up to this; past it, th
 TIMEOUT_S = 15
 CONNECT_TIMEOUT_S = 10
 _SCHEMA_CHARS = 12_000   # table descriptions in the SQL agent's prompt; past it, names only
-_TYPE_CODE, _INTERNAL_SIZE, _MYSQL_TINY = 1, 3, 1   # cursor.description fields; FIELD_TYPE.TINY
+_TYPE_CODE, _INTERNAL_SIZE, _PRECISION = 1, 3, 4   # cursor.description fields
+_MYSQL_TINY, _MYSQL_BIT = 1, 16                     # PyMySQL FIELD_TYPE codes
 _MYSQL_DATES = frozenset({7, 10, 12, 14})   # FIELD_TYPE TIMESTAMP, DATE, DATETIME, NEWDATE
-# MySQL's zero date, as PyMySQL returns what it can't convert: DATE, DATETIME, DATETIME(fsp)
-_ZERO_DATE = re.compile(r"0000-00-00( 00:00:00(\.0+)?)?")
+
+
+def _mysql_kind(col: tuple) -> str | None:
+    """What a MySQL/MariaDB column is beyond its Python value: TINYINT(1) and BIT(1) are yes/no
+    (PyMySQL gives 0/1 and b'\\x01'), a wider BIT a number, a date type a date (a zero or partial
+    date, '2024-03-00', comes back as the string it can't convert)."""
+    code, size = col[_TYPE_CODE], col[_INTERNAL_SIZE]
+    if code in (_MYSQL_TINY, _MYSQL_BIT) and size == 1:
+        return "bool"
+    return "bits" if code == _MYSQL_BIT else "date" if code in _MYSQL_DATES else None
+
+
+def _mssql_kind(col: tuple) -> str | None:
+    """REAL: pyodbc hands back the float32 widened (0.1 → 0.10000000149011612)."""
+    return "float32" if col[_TYPE_CODE] is float and col[_PRECISION] == 24 else None
 
 
 @dataclass(frozen=True)
@@ -68,8 +88,9 @@ class Dialect:
     # every CTE may refer to itself (T-SQL has no RECURSIVE keyword); elsewhere, a CTE's own name
     # inside its body is the real table (5.8a: WITH pg_shadow AS (SELECT * FROM pg_shadow))
     recursive_ctes: bool = False
-    yes_no: Callable[[tuple], bool] | None = None   # a cursor column the engine types as a yes/no
-    dates: Callable[[tuple], bool] | None = None    # one it types as a date (may hold zero dates)
+    # what a cursor column is beyond its Python value ("bool", "bits", "date", "float32"), read
+    # from cursor.description; the value's own type says the rest (QueryResult.frame)
+    kind: Callable[[tuple], str | None] = lambda col: None
     # the statement timeout where the engine has no statement for it: (DB-API connection, s)
     driver_timeout: Callable[[object, int], None] | None = None
     # production: the URL connecting to the checked address, the name kept for TLS
@@ -179,8 +200,7 @@ _MYSQL = Dialect(
     one_database=True,
     # a DB-API description is (name, type_code, display_size, internal_size, …): PyMySQL's
     # TINY type (1) of width 1 is BOOL / TINYINT(1); the same on MariaDB (5.8b, checked)
-    yes_no=lambda col: col[_TYPE_CODE] == _MYSQL_TINY and col[_INTERNAL_SIZE] == 1,
-    dates=lambda col: col[_TYPE_CODE] in _MYSQL_DATES)
+    kind=_mysql_kind)
 
 
 DIALECTS: dict[str, Dialect] = {
@@ -191,8 +211,10 @@ DIALECTS: dict[str, Dialect] = {
                               "target_session_attrs"}),
         # the server reads quotes as the parse guard does: with standard_conforming_strings off a
         # backslash escapes a quote, and a string sqlglot ends reads on (5.8b security review)
+        # and a timestamptz arrives in UTC, as MySQL's session is: else in the server's own zone,
+        # and a day depends on where the server runs (5.8b hardening)
         begin=("SET TRANSACTION READ ONLY", "SET LOCAL statement_timeout = {ms}",
-               "SET LOCAL standard_conforming_strings = on"),
+               "SET LOCAL standard_conforming_strings = on", "SET LOCAL TIME ZONE 'UTC'"),
         system_schemas=frozenset({"information_schema", "pg_catalog", "pg_toast"}),
         connect_args={"connect_timeout": CONNECT_TIMEOUT_S},
         # libpq connects to hostaddr and verifies TLS against host
@@ -214,7 +236,7 @@ DIALECTS: dict[str, Dialect] = {
         # no LOCK_TIMEOUT: the driver's query timeout already ends a lock wait (5.8b audit: the
         # two raced at the same limit)
         begin=(_MSSQL_CANT_WRITE, "SET XACT_ABORT ON", "SET QUOTED_IDENTIFIER ON"),
-        driver_timeout=_query_timeout, recursive_ctes=True,
+        driver_timeout=_query_timeout, recursive_ctes=True, kind=_mssql_kind,
         system_schemas=frozenset({"sys", "information_schema", "guest", "db_owner",
                                   "db_accessadmin", "db_securityadmin", "db_ddladmin",
                                   "db_backupoperator", "db_datareader", "db_datawriter",
@@ -408,25 +430,65 @@ class QueryResult:
     columns: list[str]
     rows: list[tuple]
     truncated: bool          # more than max_rows existed; only the first max_rows are here
-    yes_no: frozenset[int] = frozenset()   # positions the database types as a yes/no (TINYINT(1))
-    dates: frozenset[int] = frozenset()    # positions it types as a date
+    kinds: tuple[str | None, ...] = ()   # per position, the dialect row's `kind` of the column
 
     def frame(self) -> pd.DataFrame:
         """The one place a database result becomes a frame (ADR-0010), a table load and a
-        question's result alike: what a CSV of the same table gives. NUMERIC/DECIMAL → float
-        (coerce_float), a yes/no type holding only 0/1 → True/False (a TINYINT(1) may hold 2: then
-        it stays a number), a date column's zero date (legacy MySQL, any precision) → blank; then
-        the load rule every source ends in (normalize_frame: DATE objects become datetimes
-        there). Columns by position: a join can return two `id` columns."""
-        df = pd.DataFrame.from_records(self.rows, columns=self.columns, coerce_float=True)
-        for i in range(df.shape[1]):
-            s = df.iloc[:, i]
-            if i in self.yes_no and s.dropna().isin((0, 1)).all():
-                df.isetitem(i, s.map({1: True, 0: False}))
-            elif i in self.dates:
-                df.isetitem(i, s.mask(s.map(lambda v: isinstance(v, str)
-                                            and _ZERO_DATE.fullmatch(v) is not None)))
+        question's result alike: each column as a CSV export of the same table reads, by the type
+        the driver declares (its value's Python type, and the row's `kind` where that isn't
+        enough), never by what the values look like (5.8b hardening: NUMERIC(19,0) ids rounded
+        to one float, BIT(1) as bytes, REAL as 0.10000000149011612). Then the load rule every
+        source ends in (normalize_frame). Columns by position: a join can return two `id`s."""
+        kinds = self.kinds or (None,) * len(self.columns)
+        cells = list(zip(*self.rows)) if self.rows else [()] * len(self.columns)
+        df = pd.DataFrame({i: _as_exported(pd.Series(list(v), dtype=object), k)
+                           for i, (v, k) in enumerate(zip(cells, kinds))})
+        df.columns = self.columns
         return normalize_frame(df)
+
+
+def _hms(t: datetime.timedelta) -> str:
+    """A MySQL TIME as its text: it may be negative or past 24 h (-25:00:01)."""
+    seconds = int(abs(t).total_seconds())
+    return f"{'-' * (t < datetime.timedelta(0))}{seconds // 3600:02d}:{seconds // 60 % 60:02d}:{seconds % 60:02d}"
+
+
+def _as_exported(s: pd.Series, kind: str | None) -> pd.Series:
+    """One column's driver values as the CSV of them reads: whole numbers exact, decimals with a
+    point as floats, a yes/no as True/False, bytes as hex, TIME / UUID / JSON as their text, a
+    tz-aware time as ISO text (normalize_frame's one date rule decides its zone, as for a CSV's)."""
+    def one(v):
+        if v is None or (isinstance(v, float) and math.isnan(v)):
+            return None
+        if kind == "date" and isinstance(v, str):   # a zero or partial date ('2024-03-00') the
+            return None                             # driver couldn't convert
+        if kind == "float32":
+            return float(str(np.float32(v)))   # its shortest text: 0.1, never 0.10000000149…
+        if isinstance(v, (bytes, bytearray)):
+            return int.from_bytes(v, "big") if kind in ("bool", "bits") else "0x" + bytes(v).hex()
+        if isinstance(v, (uuid.UUID, datetime.time)):
+            return str(v)
+        if isinstance(v, datetime.timedelta):
+            return _hms(v)
+        if isinstance(v, (dict, list)):
+            return json.dumps(v)
+        if isinstance(v, datetime.datetime) and v.tzinfo is not None:
+            return v.isoformat()
+        return v
+    # object until the end: Series.map re-infers, and ints with a None become float64
+    cells = [one(v) for v in s]
+    present = [v for v in cells if v is not None]
+    if kind == "bool" and all(v in (0, 1) for v in present):   # a TINYINT(1) holding 2 stays
+        flags = [None if v is None else bool(v) for v in cells]   # a number; bool as a CSV reads
+        return pd.Series(flags, dtype=object if len(present) < len(cells) else bool)   # it
+    if present and all(isinstance(v, decimal.Decimal) for v in present):
+        if all(v.as_tuple().exponent >= 0 for v in present):   # written without a point
+            cells = [None if v is None else int(v) for v in cells]
+        else:
+            return pd.Series([None if v is None else float(v) for v in cells], dtype="float64")
+    if (exact := exact_whole_numbers(pd.Series(cells, dtype=object))) is not None:
+        return exact
+    return pd.Series(cells)   # pandas infers the rest from the values, as from a CSV's
 
 
 def _session_error(exc: SQLAlchemyError, engine) -> IngestionError:
@@ -463,12 +525,9 @@ def run_readonly(engine, sql: str, max_rows: int = MAX_ROWS,
     with conn:
         try:
             result = conn.execute(text(sql))
-            described = list(enumerate(result.cursor.description or ()))
-            yes_no = frozenset(i for i, c in described if d.yes_no and d.yes_no(c))
-            dates = frozenset(i for i, c in described if d.dates and d.dates(c))
+            kinds = tuple(d.kind(c) for c in result.cursor.description or ())
             rows = [tuple(r) for r in result.fetchmany(max_rows + 1)]
-            return QueryResult(list(result.keys()), rows[:max_rows], len(rows) > max_rows,
-                               yes_no, dates)
+            return QueryResult(list(result.keys()), rows[:max_rows], len(rows) > max_rows, kinds)
         finally:
             conn.rollback()
             for statement in d.end:

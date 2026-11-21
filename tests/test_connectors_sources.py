@@ -385,7 +385,7 @@ def test_a_question_result_takes_the_same_load_rule_as_a_table_load():
     from connectors.sql_connector import QueryResult
     df = QueryResult(["day", "note", "flag", "level"],
                      [("2026-01-05", "", 1, 2), ("2026-02-01", "x", 0, 0)], False,
-                     frozenset({2, 3})).frame()
+                     (None, None, "bool", "bool")).frame()
     assert str(df["day"].dtype).startswith("datetime64") and df["note"].isna().tolist() == [True, False]
     assert df["flag"].tolist() == [True, False] and df["level"].tolist() == [2, 0]
 
@@ -766,7 +766,9 @@ def test_any_result_shape_becomes_a_frame_without_losing_a_column(names, data):
     from connectors.sql_connector import QueryResult
     rows = [tuple(data.draw(_FRAME_CELLS) for _ in names)
             for _ in range(data.draw(st.integers(0, 3)))]
-    df = QueryResult(list(names), rows, False, frozenset({0}), frozenset({len(names) - 1})).frame()
+    kinds = tuple("bool" if i == 0 else "date" if i == len(names) - 1 else None
+                  for i in range(len(names)))
+    df = QueryResult(list(names), rows, False, kinds).frame()
     assert list(df.columns) == names and len(df) == len(rows)
     assert list(normalize_frame(df).columns) == names
 
@@ -1444,3 +1446,88 @@ def test_a_safety_test_names_the_reason_it_expects():
     for f in ("test_connectors_sources.py", "test_sql_guard.py"):
         source = (here / f).read_text()
         assert not re.search(r"except Exception:\s*\n\s*pass", source), f
+
+
+# ── 5.8b hardening: each engine's own types, read as the truth (a catalog, not our datasets) ──
+# The 5.8b gates passed while a NUMERIC(19,0) id read as a float (two ids became one) and MySQL's
+# BIT(1) as bytes: the oracle's tables are written from CSVs, so they never held these types.
+# Two rows per table: edge values, then NULLs (a NULL turns an int column to float in pandas).
+_ID, _BIG = 123456789012345678, "12345678901234567890123"
+_CATALOG = {
+    "postgresql": (
+        "CREATE TABLE tcat (k int, n0 numeric(19,0), n38 numeric(38,0), n2 numeric(12,2), "
+        "r real, b boolean, tm time, u uuid, j jsonb, by bytea, ts timestamp(6))",
+        f"INSERT INTO tcat VALUES (1, {_ID}, {_BIG}, 10.50, 0.1, true, '13:45:00', "
+        "'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', '{\"k\": 1}', '\\x0102', '2024-03-10 23:30:00'), "
+        f"(2, {_ID + 1}, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL), "
+        "(3, NULL, 1, 1.25, 2.5, false, '00:00:01', NULL, NULL, NULL, NULL)",
+        {"u": ["a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11", None, None], "j": ['{"k": 1}', None, None]}),
+    "mysql": (
+        "CREATE TABLE tcat (k int, n0 decimal(19,0), n38 decimal(38,0), n2 decimal(12,2), "
+        "r float, b bit(1), tm time, u char(36), j json, by_ blob, ts datetime(6), dt date)",
+        f"INSERT INTO tcat VALUES (1, {_ID}, {_BIG}, 10.50, 0.1, b'1', '13:45:00', "
+        "'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', '{\"k\": 1}', x'0102', '2024-03-10 23:30:00', "
+        "'2024-03-10'), "
+        f"(2, {_ID + 1}, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '0000-00-00'), "
+        "(3, NULL, 1, 1.25, 2.5, b'0', '-25:00:01', NULL, NULL, NULL, NULL, '2024-03-00')",
+        {"u": ["a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11", None, None], "j": ['{"k": 1}', None, None],
+         "tm": ["13:45:00", None, "-25:00:01"],
+         # a zero date and a partial one are blanks, and the column stays a date column
+         "dt": [pd.Timestamp("2024-03-10"), None, None]}),
+    "mssql": (
+        "CREATE TABLE tcat (k int, n0 numeric(19,0), n38 numeric(38,0), n2 decimal(12,2), "
+        "r real, b bit, tm time(0), u uniqueidentifier, j nvarchar(40), by_ varbinary(4), "
+        "ts datetime2(6))",
+        f"INSERT INTO tcat VALUES (1, {_ID}, {_BIG}, 10.50, 0.1, 1, '13:45:00', "
+        "'A0EEBC99-9C0B-4EF8-BB6D-6BB9BD380A11', N'{\"k\": 1}', 0x0102, '2024-03-10 23:30:00'), "
+        f"(2, {_ID + 1}, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL), "
+        "(3, NULL, 1, 1.25, 2.5, 0, '00:00:01', NULL, NULL, NULL, NULL)",
+        {"u": ["A0EEBC99-9C0B-4EF8-BB6D-6BB9BD380A11", None, None], "j": ['{"k": 1}', None, None]}),
+}
+_CATALOG["mariadb"] = (_CATALOG["mysql"][0].replace("j json", "j longtext"), *_CATALOG["mysql"][1:])
+# what every engine's table must read as: exact ids (one NULL: still exact), a 23-digit number as
+# its digits, money as a float, REAL's 0.1 as 0.1 (pyodbc widens float32), a yes/no as one,
+# TIME as the text a CSV holds, bytes as hex, and the timestamp as the CSV of it reads
+_EXPECTED = {"n0": [_ID, _ID + 1, None], "n38": [_BIG, None, "1"], "n2": [10.5, None, 1.25],
+             "r": [0.1, None, 2.5], "b": [True, None, False], "tm": ["13:45:00", None, "00:00:01"],
+             "by": ["0x0102", None, None], "ts": [pd.Timestamp("2024-03-10 23:30:00"), None, None]}
+
+
+def _cells(s: pd.Series) -> list:
+    return [None if pd.isna(v) else v for v in s.tolist()]
+
+
+@pytest.mark.parametrize("name", ["postgresql", "mysql", "mariadb", "mssql"])
+async def test_each_engines_own_types_read_as_their_values(tmp_path, name):
+    """Load and question alike (one rule, `QueryResult.frame`), against the values themselves."""
+    from sqlalchemy import text
+    ddl, rows, own = _CATALOG[name]
+    url = _each_dialect(tmp_path, name)
+    with _admin(tmp_path, name).begin() as c:
+        if name in ("mysql", "mariadb"):
+            c.execute(text("SET SESSION sql_mode = ''"))   # zero dates, as old schemas hold them
+        c.execute(text("DROP TABLE IF EXISTS tcat"))
+        c.execute(text(ddl))
+        c.execute(text(rows))
+    try:
+        conn = _sql(url, "tcat")
+        loaded = (await conn.load()).sort_values("k", ignore_index=True)
+        asked = (await conn.query("SELECT * FROM tcat ORDER BY k")).frame()
+        for frame in (loaded, asked):
+            frame.columns = [c.rstrip("_") for c in frame.columns]
+            for col, want in {**_EXPECTED, **own}.items():
+                if col in frame.columns:
+                    assert _cells(frame[col]) == want, (name, col, frame[col].tolist())
+            assert frame["n0"].nunique() == 2   # two ids stay two
+    finally:
+        with _admin(tmp_path, name).begin() as c:
+            c.execute(text("DROP TABLE tcat"))
+
+
+def test_a_file_keeps_long_ids_exact_with_a_blank():
+    """The same bug in the file reader: an id column with one blank read as float64."""
+    from connectors.csv_connector import _read_bytes
+    df = _read_bytes(f"id,x\n{_ID},1\n,2\n{_ID + 1},3\n{_BIG},4\n".encode(), ".csv")[0]
+    assert _cells(df["id"]) == [str(_ID), None, str(_ID + 1), _BIG]   # past int64: its digits
+    df = _read_bytes(f"id,x\n{_ID},1\n,2\n{_ID + 1},3\n".encode(), ".csv")[0]
+    assert _cells(df["id"]) == [_ID, None, _ID + 1] and df["id"].nunique() == 2
