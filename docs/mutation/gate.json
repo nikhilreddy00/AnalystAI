@@ -270,6 +270,18 @@
   "equivalents": [],
   "hash": "03ad5a55975922f5"
  },
+ "connectors/base.py::_CheckedNetwork.__init__": {
+  "equivalents": [],
+  "hash": "812d812fd8a8495e"
+ },
+ "connectors/base.py::_CheckedNetwork.connect_tcp": {
+  "equivalents": [],
+  "hash": "64762fd8b63479ff"
+ },
+ "connectors/base.py::_inside": {
+  "equivalents": [],
+  "hash": "117eebf467133fa3"
+ },
  "connectors/base.py::as_times": {
   "equivalents": [
    {
@@ -298,6 +310,23 @@
    }
   ]
  },
+ "connectors/base.py::capped_body": {
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "encoding = response.headers.get(\"CONTENT-ENCODING\", \"identity\").strip().lower()",
+    "old": "encoding = response.headers.get(\"content-encoding\", \"identity\").strip().lower()",
+    "reason": "httpx headers are case-insensitive: either spelling reads the same header"
+   },
+   {
+    "n": 1,
+    "new": "encoding = response.headers.get(\"content-encoding\", \"IDENTITY\").strip().lower()",
+    "old": "encoding = response.headers.get(\"content-encoding\", \"identity\").strip().lower()",
+    "reason": "the default is lower-cased on the same line before it is compared"
+   }
+  ],
+  "hash": "22dd705723db8370"
+ },
  "connectors/base.py::normalize_frame": {
   "equivalents": [
    {
@@ -309,9 +338,42 @@
   ],
   "hash": "457cb9c5401fbfb6"
  },
+ "connectors/base.py::public_addresses": {
+  "equivalents": [],
+  "hash": "a5433d34ab7e0e8c"
+ },
+ "connectors/base.py::public_client": {
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "transport = httpx.AsyncHTTPTransport(verify=None)",
+    "old": "transport = httpx.AsyncHTTPTransport(verify=_tls_context())",
+    "reason": "verify configures only the transport's own pool, which the next statement replaces with one built on _tls_context(); passing it saves loading the CA bundle a second time, a cost, not a behaviour"
+   },
+   {
+    "n": 1,
+    "new": "return httpx.AsyncClient(transport=transport, timeout=timeout, trust_env=False, headers={\"Accept-Encoding\": \"identity\"})",
+    "old": "return httpx.AsyncClient(transport=transport, timeout=timeout, follow_redirects=False,",
+    "reason": "follow_redirects is False by default in httpx (0.28); it is spelled out so a reader sees it, and tests/test_share_links.py proves each hop is the caller's"
+   },
+   {
+    "n": 1,
+    "new": "trust_env=False, headers={\"accept-encoding\": \"identity\"})",
+    "old": "trust_env=False, headers={\"Accept-Encoding\": \"identity\"})",
+    "reason": "HTTP header names are case-insensitive; httpx sends either spelling as the same header"
+   },
+   {
+    "n": 1,
+    "new": "trust_env=False, headers={\"ACCEPT-ENCODING\": \"identity\"})",
+    "old": "trust_env=False, headers={\"Accept-Encoding\": \"identity\"})",
+    "reason": "HTTP header names are case-insensitive; httpx sends either spelling as the same header"
+   }
+  ],
+  "hash": "a408801d47bf0b15"
+ },
  "connectors/base.py::resolved": {
   "equivalents": [],
-  "hash": "87ffbda1cc1e8277"
+  "hash": "8875898e7eabba9b"
  },
  "connectors/base.py::sources_table": {
   "equivalents": [
@@ -322,11 +384,114 @@
     "reason": "sqlite is DIALECTS' last row, so leaving the loop after its row is the same as continuing; a row added after it goes through the README test"
    }
   ],
-  "hash": "a8fd23d5257fbc61"
+  "hash": "0f921ef4ebf9aaf9"
  },
  "connectors/base.py::without_secrets": {
   "equivalents": [],
   "hash": "7aca801387338cc3"
+ },
+ "connectors/link.py::_capped": {
+  "equivalents": [],
+  "hash": "c581ad2ed9273674"
+ },
+ "connectors/link.py::_name": {
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "last = urlparse(link).path.rstrip(\"/\").rsplit(\"/\", )[-1]",
+    "old": "last = urlparse(link).path.rstrip(\"/\").rsplit(\"/\", 1)[-1]",
+    "reason": "rsplit's last element is the final segment whatever the maxsplit"
+   },
+   {
+    "n": 1,
+    "new": "last = urlparse(link).path.rstrip(\"/\").rsplit(\"/\", 2)[-1]",
+    "old": "last = urlparse(link).path.rstrip(\"/\").rsplit(\"/\", 1)[-1]",
+    "reason": "rsplit's last element is the final segment whatever the maxsplit"
+   },
+   {
+    "n": 1,
+    "new": "for quoted, plain in _FILENAME.findall(response.headers.get(\"CONTENT-DISPOSITION\", \"\")):",
+    "old": "for quoted, plain in _FILENAME.findall(response.headers.get(\"content-disposition\", \"\")):",
+    "reason": "httpx header lookup ignores case"
+   },
+   {
+    "n": 1,
+    "new": "for quoted, plain in _FILENAME.findall(response.headers.get(\"content-disposition\", \"XXXX\")):",
+    "old": "for quoted, plain in _FILENAME.findall(response.headers.get(\"content-disposition\", \"\")):",
+    "reason": "_FILENAME needs the text 'filename', so a default of XXXX matches nothing, as the empty one does"
+   }
+  ],
+  "hash": "9eb3714da4c8a64b"
+ },
+ "connectors/link.py::_not_public": {
+  "equivalents": [],
+  "hash": "e8c9b6c73cebaeb8"
+ },
+ "connectors/link.py::_ok": {
+  "equivalents": [],
+  "hash": "3dd03d366a5e57a7"
+ },
+ "connectors/link.py::_suffix": {
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "if \"text/html\" in response.headers.get(\"CONTENT-TYPE\", \"\").lower() or \\",
+    "old": "if \"text/html\" in response.headers.get(\"content-type\", \"\").lower() or \\",
+    "reason": "httpx header lookup ignores case"
+   },
+   {
+    "n": 1,
+    "new": "if \"text/html\" in response.headers.get(\"content-type\", \"XXXX\").lower() or \\",
+    "old": "if \"text/html\" in response.headers.get(\"content-type\", \"\").lower() or \\",
+    "reason": "'xxxx' never contains 'text/html', as the empty default doesn't"
+   }
+  ],
+  "hash": "21ff0980627673b2"
+ },
+ "connectors/link.py::_with_query": {
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "return url._replace(query=urlencode(query, safe=\"!\"), fragment=None).geturl()",
+    "old": "return url._replace(query=urlencode(query, safe=\"!\"), fragment=\"\").geturl()",
+    "reason": "urlunsplit adds '#fragment' only when the fragment is truthy; '' and None are both falsy (Python 3.11, geturl() checked equal)"
+   },
+   {
+    "n": 1,
+    "new": "return url._replace(query=urlencode(query, safe=\"XX!XX\"), fragment=\"\").geturl()",
+    "old": "return url._replace(query=urlencode(query, safe=\"!\"), fragment=\"\").geturl()",
+    "reason": "X is an unreserved letter quote never escapes, so marking it safe changes nothing"
+   }
+  ],
+  "hash": "8b65edb2fba4b6eb"
+ },
+ "connectors/link.py::direct_url": {
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "host = (url.hostname or \"XXXX\").lower()",
+    "old": "host = (url.hostname or \"\").lower()",
+    "reason": "'xxxx' matches no provider branch (Google, Dropbox, SharePoint/OneDrive), so the link comes back unchanged as with ''"
+   }
+  ],
+  "hash": "3fd4785f537d7d04"
+ },
+ "connectors/link.py::download": {
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "async with client.stream(\"get\", url) as response:",
+    "old": "async with client.stream(\"GET\", url) as response:",
+    "reason": "httpx.Request upper-cases the method (Request('get', ...).method == 'GET')"
+   },
+   {
+    "n": 1,
+    "new": "if not (location := response.headers.get(\"LOCATION\", \"\").strip()):",
+    "old": "if not (location := response.headers.get(\"location\", \"\").strip()):",
+    "reason": "httpx header lookup ignores case"
+   }
+  ],
+  "hash": "f8b325973ca5c6b0"
  },
  "connectors/sql_connector.py::QueryResult.frame": {
   "equivalents": [],
@@ -334,10 +499,16 @@
  },
  "connectors/sql_connector.py::SQLConnector._engine": {
   "equivalents": [],
-  "hash": "3b6ede79ba2d9575"
+  "hash": "68c392d4f4b5b149"
  },
  "connectors/sql_connector.py::SQLConnector._read": {
   "equivalents": [
+   {
+    "n": 1,
+    "new": "select(func.count()).select_from(listed), engine), 2)",
+    "old": "select(func.count()).select_from(listed), engine), 1)",
+    "reason": "the row cap of a COUNT(*): it returns exactly one row, so a cap of 1 or 2 reads the same row"
+   },
    {
     "n": 1,
     "new": "f\"SELECT COUNT(*) FROM {qualified}\", )  # noqa: S608",
@@ -357,7 +528,7 @@
     "reason": "SQL keywords are case-insensitive in every dialect"
    }
   ],
-  "hash": "4ec2dba4cba3167c"
+  "hash": "ac51b6363f47f0de"
  },
  "connectors/sql_connector.py::SQLConnector.engine": {
   "equivalents": [],
@@ -365,15 +536,34 @@
  },
  "connectors/sql_connector.py::SQLConnector.query": {
   "equivalents": [],
-  "hash": "a6ff5e91735f540f"
+  "hash": "901894c6514a92a1"
  },
  "connectors/sql_connector.py::SQLConnector.schema_context": {
   "equivalents": [],
   "hash": "555e358a61d46829"
  },
  "connectors/sql_connector.py::SQLConnector.test_connection": {
-  "equivalents": [],
-  "hash": "8ff8877fd9241813"
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "await asyncio.to_thread(run_readonly, engine, \"select 1\", 1)",
+    "old": "await asyncio.to_thread(run_readonly, engine, \"SELECT 1\", 1)",
+    "reason": "SQL keywords are case-insensitive on every engine"
+   },
+   {
+    "n": 1,
+    "new": "await asyncio.to_thread(run_readonly, engine, \"SELECT 1\", 2)",
+    "old": "await asyncio.to_thread(run_readonly, engine, \"SELECT 1\", 1)",
+    "reason": "SELECT 1 returns one row: a cap of 1, 2 or the default never truncates it, and the probe reads no row"
+   },
+   {
+    "n": 1,
+    "new": "await asyncio.to_thread(run_readonly, engine, \"SELECT 1\", )",
+    "old": "await asyncio.to_thread(run_readonly, engine, \"SELECT 1\", 1)",
+    "reason": "SELECT 1 returns one row: a cap of 1, 2 or the default never truncates it, and the probe reads no row"
+   }
+  ],
+  "hash": "3d386f639f338bc2"
  },
  "connectors/sql_connector.py::_assert_single_select": {
   "equivalents": [],
@@ -390,9 +580,36 @@
   ],
   "hash": "9c4b934289052559"
  },
+ "connectors/sql_connector.py::_connect_pinned": {
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "conn = dialect.loaded_dbapi.connect(**cparams, defer_connect=True)",
+    "old": "conn = dialect.loaded_dbapi.connect(*cargs, **cparams, defer_connect=True)",
+    "reason": "SQLAlchemy's MySQL/MariaDB PyMySQL dialect passes every connect argument by keyword (create_connect_args returns an empty list), so cargs is always empty"
+   }
+  ],
+  "hash": "eee1ead093d5ed73"
+ },
+ "connectors/sql_connector.py::_query_timeout": {
+  "equivalents": [],
+  "hash": "f114ffccfc4578dc"
+ },
+ "connectors/sql_connector.py::_session_error": {
+  "equivalents": [],
+  "hash": "1e920e2e8f7437ad"
+ },
+ "connectors/sql_connector.py::_sql_of": {
+  "equivalents": [],
+  "hash": "6dfa7df41436afec"
+ },
  "connectors/sql_connector.py::_tables": {
   "equivalents": [],
-  "hash": "95c0422dc73d9ae1"
+  "hash": "97d8c2ff818a2f0c"
+ },
+ "connectors/sql_connector.py::_tls": {
+  "equivalents": [],
+  "hash": "be14e87304125f98"
  },
  "connectors/sql_connector.py::_unlisted_tables": {
   "equivalents": [
@@ -403,11 +620,11 @@
     "reason": "only the refusal's wording: a function's name is printed the same (upper case) in every dialect"
    }
   ],
-  "hash": "a17a8344a7f011d5"
+  "hash": "b378df676822aaf1"
  },
  "connectors/sql_connector.py::dialect_of": {
   "equivalents": [],
-  "hash": "494d35c0c15d41b4"
+  "hash": "ba73423685489512"
  },
  "connectors/sql_connector.py::run_readonly": {
   "equivalents": [
@@ -418,11 +635,11 @@
     "reason": "15,015 ms against 15,000: a statement timeout 15 ms longer, which no test can tell from the real one (the slow-query test allows seconds)"
    }
   ],
-  "hash": "386be338eed64b2a"
+  "hash": "bf1bd85597b43763"
  },
  "connectors/sql_connector.py::safe_url": {
   "equivalents": [],
-  "hash": "c5c991b122699bea"
+  "hash": "be36049bf0f32a57"
  },
  "connectors/sql_connector.py::sql_dialect": {
   "equivalents": [],
@@ -673,6 +890,38 @@
   "equivalents": [],
   "hash": "157a12e6f433673e"
  },
+ "guardrails.py::_function_refused": {
+  "equivalents": [],
+  "hash": "4c0343ef48ec5592"
+ },
+ "guardrails.py::_invisible": {
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "return any(unicodedata.category(c)[0] in \"XXCZXX\" for c in text if c not in \" \\t\\r\\n\")",
+    "old": "return any(unicodedata.category(c)[0] in \"CZ\" for c in text if c not in \" \\t\\r\\n\")",
+    "reason": "a Unicode category's first letter is one of C, L, M, N, P, S, Z: never X"
+   },
+   {
+    "n": 1,
+    "new": "return any(unicodedata.category(c)[0] in \"CZ\" for c in text if c not in \"XX \\t\\r\\nXX\")",
+    "old": "return any(unicodedata.category(c)[0] in \"CZ\" for c in text if c not in \" \\t\\r\\n\")",
+    "reason": "X is a letter (category Lu), which the test never counts, so skipping it changes nothing"
+   }
+  ],
+  "hash": "ca9253e56ced648f"
+ },
+ "guardrails.py::_invisible_outside_quotes": {
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "return _invisible(\"XXXX\".join(c for i, c in enumerate(sql) if i not in quoted))",
+    "old": "return _invisible(\"\".join(c for i, c in enumerate(sql) if i not in quoted))",
+    "reason": "the joiner adds only the letter X, which _invisible never counts (category Lu)"
+   }
+  ],
+  "hash": "1abc2e5210b80fb2"
+ },
  "guardrails.py::_is_sql_text": {
   "equivalents": [
    {
@@ -694,9 +943,13 @@
   "equivalents": [],
   "hash": "b23596f7da759259"
  },
+ "guardrails.py::_tsql_batch_word": {
+  "equivalents": [],
+  "hash": "ba99cfff9391a54a"
+ },
  "guardrails.py::check_sql_readonly": {
   "equivalents": [],
-  "hash": "10765bbff88ac960"
+  "hash": "3a6f2d2dcb374261"
  },
  "guardrails.py::is_pii_column": {
   "equivalents": [],

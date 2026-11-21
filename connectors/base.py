@@ -7,11 +7,17 @@ Adding a new source (Notion, Airtable, etc.) = add one subclass, zero agent chan
 from __future__ import annotations
 
 import datetime
+import functools
 import ipaddress
 import re
 import socket
+import ssl
 from abc import ABC, abstractmethod
 
+import anyio.to_thread
+import certifi
+import httpcore
+import httpx
 import pandas as pd
 
 from orchestrator.state import ConnectorConfig, ConnectorType, DataContract
@@ -125,9 +131,40 @@ def without_secrets(message: str, config: ConnectorConfig) -> str:
     return message
 
 
+_NAT64 = ipaddress.ip_network("64:ff9b::/96")
+_NAT64_LOCAL = ipaddress.ip_network("64:ff9b:1::/48")
+_TRANSLATED = ipaddress.ip_network("::ffff:0:0:0/96")
+_COMPATIBLE = ipaddress.ip_network("::/96")
+_UNREADABLE = ipaddress.ip_address("0.0.0.0")   # noqa: S104 - a refused address, never bound
+
+
+def _inside(ip) -> list:
+    """The address(es) a connection to `ip` reaches: an IPv6 address carrying an IPv4 one (mapped,
+    translated, compatible, NAT64, 6to4, both ends of Teredo) is the IPv4 address (5.8b: NAT64 to
+    the cloud metadata address read `is_global`). A local-use NAT64 prefix embeds it at a
+    length we can't know: 0.0.0.0, which every check refuses."""
+    if ip.version == 4:
+        return [ip]
+    low = ipaddress.IPv4Address(int(ip) & 0xFFFFFFFF)
+    if ip.ipv4_mapped:
+        return [ip.ipv4_mapped]
+    if ip.teredo:
+        return list(ip.teredo)
+    if ip.sixtofour:
+        return [ip.sixtofour]
+    if ip in _NAT64 or ip in _TRANSLATED or (ip in _COMPATIBLE and int(ip) > 1):
+        return [low]
+    if ip in _NAT64_LOCAL:
+        return [_UNREADABLE]
+    return [ip]
+
+
 def resolved(host: str) -> list:
-    """The addresses `host` resolves to (ipaddress objects); ValueError if it doesn't resolve.
-    The one lookup behind every host check (the API's SSRF guard, a database's host)."""
+    """The addresses `host` resolves to (ipaddress objects), each as the address it reaches
+    (`_inside`); ValueError if it doesn't resolve. The one lookup behind every host check (a
+    database's host, the API's and a share link's downloads); callers connect to these, never
+    to the name again (DNS rebinding). ponytail: on a NAT64-only network an embedded IPv4 address
+    is reached through the gateway; connecting to it directly there fails (keep both forms then)."""
     try:
         infos = socket.getaddrinfo(host, None)
     except socket.gaierror as exc:
@@ -138,8 +175,101 @@ def resolved(host: str) -> list:
             ip = ipaddress.ip_address(info[4][0])
         except ValueError:
             continue
-        out.append(getattr(ip, "ipv4_mapped", None) or ip)   # ::ffff:127.0.0.1 is 127.0.0.1
+        out += [a for a in _inside(ip) if a not in out]
     return out
+
+
+class RefusedHost(ValueError):
+    """A fetch to a host that isn't on the public internet. The message names the host only."""
+
+
+class HostNotFound(RefusedHost):
+    """A host name that doesn't resolve: a typo, not a private address (5.8b audit)."""
+
+
+FETCH_DEADLINE_S = 120   # a user URL's whole fetch, every page or hop (httpx's timeout is per read)
+
+
+class BodyTooLarge(ValueError):
+    """A response past the reader's byte cap."""
+
+
+async def capped_body(response: httpx.Response, cap: int) -> bytes:
+    """A response's body as sent, at most `cap` bytes, counted as it arrives (a size the server
+    states can't be trusted). Asked for identity, a server may still compress, and a compressed
+    chunk expands past any cap in one decode (5.8b audit: zstd), so a Content-Encoding other than
+    identity is refused (ValueError) and the raw bytes are counted."""
+    encoding = response.headers.get("content-encoding", "identity").strip().lower()
+    if encoding not in ("", "identity"):
+        raise ValueError(f"it compressed its answer ({encoding}) though asked not to")
+    body = bytearray()
+    async for chunk in response.aiter_raw():
+        body += chunk
+        if len(body) > cap:
+            raise BodyTooLarge   # each caller says it in its own words (the link's, the API's)
+    return bytes(body)
+
+
+def public_addresses(host: str) -> list:
+    """`host`'s addresses if every one is a public internet address (`is_global` after
+    unwrapping: no loopback, private/LAN, link-local or metadata, CGNAT, unique-local or
+    reserved), else RefusedHost. Unlike a database's host (a company's own LAN is allowed), a
+    URL the server fetches for a user is never inside any network the server sits in."""
+    try:
+        ips = resolved(host)
+    except ValueError:
+        raise HostNotFound(f"The host '{host}' wasn't found.") from None
+    if not ips or not all(ip.is_global for ip in ips):
+        raise RefusedHost(f"The host '{host}' isn't on the public internet, so it can't be "
+                          "fetched from this server.")
+    return ips
+
+
+_NETWORK = httpcore.AnyIOBackend   # the real sockets under the check (tests swap in a fake)
+
+
+class _CheckedNetwork(httpcore.AsyncNetworkBackend):
+    """Where every connection the guarded client makes starts (a retry and each redirect hop
+    too): the URL's host is looked up once, checked, and the socket goes to a checked address;
+    TLS still verifies the certificate against the host name (httpcore's server_hostname)."""
+
+    def __init__(self) -> None:
+        self._inner = _NETWORK()
+
+    async def connect_tcp(self, host, port, timeout=None, local_address=None,
+                          socket_options=None):
+        ips = await anyio.to_thread.run_sync(public_addresses, host)
+        failed: Exception   # set by each failed try: ips is never empty here
+        for ip in ips:   # every address, in order: no happy-eyeballs in httpcore
+            try:
+                return await self._inner.connect_tcp(str(ip), port, timeout, local_address,
+                                                     socket_options)
+            except (httpcore.ConnectError, httpcore.ConnectTimeout) as exc:
+                failed = exc
+        raise failed
+    # no unix sockets (the base class refuses them) and no sleep: the client never retries
+
+
+@functools.cache
+def _tls_context() -> ssl.SSLContext:
+    """certifi's CAs, loaded once (a context is read-only once built; 5.8b review: every fetch
+    loaded the bundle twice)."""
+    return ssl.create_default_context(cafile=certifi.where())
+
+
+def public_client(timeout: float = 30) -> httpx.AsyncClient:
+    """THE client for any URL a user gives (the REST API source, a share link). Redirects are
+    not followed (a caller that follows them gets each hop checked at its connection anyway),
+    proxies from the environment are ignored (they would carry the request past the check), and
+    responses come uncompressed (a gzip body can expand far past any byte cap)."""
+    # its pool (and retries: 0, the default) is replaced; verify: else it loads the CAs again
+    transport = httpx.AsyncHTTPTransport(verify=_tls_context())
+    # httpx 0.28 has no network_backend option: its pool is replaced by one on the checked
+    # network (tests/test_public_http.py pins that this still holds)
+    transport._pool = httpcore.AsyncConnectionPool(  # noqa: SLF001
+        ssl_context=_tls_context(), network_backend=_CheckedNetwork())
+    return httpx.AsyncClient(transport=transport, timeout=timeout, follow_redirects=False,
+                             trust_env=False, headers={"Accept-Encoding": "identity"})
 
 
 # A capped load names its cap: the source evidence carries this note and the report's alerts find
@@ -210,19 +340,30 @@ def sources_table() -> str:
     from connectors import api_connector as api
     from connectors import sql_connector as sql
     from connectors.csv_connector import MAX_UPLOAD_MB, UPLOAD_SUFFIXES
-    names = {"postgresql": "PostgreSQL", "mysql": "MySQL"}
+    from connectors import link
+    # what a user brings beyond the string (SQL Server has no read-only session: ADR-0010) and
+    # how hosted servers take TLS
+    needs = {"postgresql": " (hosted: `?sslmode=require`)",
+             "mysql": " (hosted, e.g. PlanetScale, RDS: `?ssl_mode=VERIFY_IDENTITY`)",
+             "mariadb": " (hosted: `?ssl_mode=VERIFY_IDENTITY`)",
+             "mssql": "; a read-only login (db_datareader only): a login that can write is refused"}
     rows = [("File upload", f"{', '.join(sorted(UPLOAD_SUFFIXES))} in the UI",
-             f"{MAX_UPLOAD_MB} MB per file; old .xls: save as .xlsx first")]
-    for key in sql.DIALECTS:
+             f"{MAX_UPLOAD_MB} MB per file; old .xls: save as .xlsx first"),
+            ("Share link", "a public Google Sheets, Google Drive or Dropbox link, or any https "
+             "CSV/xlsx URL, pasted under the upload; OneDrive/SharePoint 'Anyone' links too "
+             "(tested on mocked links only)",
+             f"copied once as a dataset version (paste again to refresh); {MAX_UPLOAD_MB} MB, "
+             f"{link.MAX_HOPS} redirects, public hosts only")]
+    for key, d in sql.DIALECTS.items():
         if key == "sqlite":
             rows.append(("SQLite", "`sqlite:///path.db`",
                          "development only; refused when `APP_ENV=production`"))
             continue
-        name = names[key]   # a new dialect names itself here
-        rows += [(f"{name}, ask questions", f"`{key}://user:password@host:port/database`, no table "
-                  "name: the SQL agent writes one read-only query per question and aggregates in "
-                  "the database", f"{sql.MAX_ROWS:,} result rows, {sql.TIMEOUT_S} s per query"),
-                 (f"{name}, one table", "the same + a table name",
+        rows += [(f"{d.title}, ask questions", f"`{key}://user:password@host:port/database`"
+                  f"{needs[key]}, no table name: the SQL agent writes one read-only query "
+                  "per question and aggregates in the database",
+                  f"{sql.MAX_ROWS:,} result rows, {sql.TIMEOUT_S} s per query"),
+                 (f"{d.title}, one table", "the same + a table name",
                   f"first {sql.LOAD_MAX_ROWS:,} rows, {sql.TIMEOUT_S} s, read-only")]
     rows += [("Google Sheets", "Spreadsheet ID + sheet name + service-account JSON",
               "read as the sheet's CSV export"),

@@ -1,3 +1,6 @@
 # One line per accepted finding: <commit>:<file>:<rule>:<line> (gitleaks' fingerprint).
 # A made-up password the Playwright spec checks never reaches the page (Phase 5.8a); not a secret.
 224bdbd21350b0a0408ec08de855a21c107f6fe2:frontend/e2e/mysql_connect.spec.ts:generic-api-key:7
+# CI's SQL Server container password, a throwaway that only ever opened a container living for one
+# CI run (Phase 5.8b); made per run from github.run_id since, never a literal again.
+bfae6c40974aab8d32f300db454f67cc15d893bc:.github/workflows/ci.yml:generic-api-key:70

@@ -12,6 +12,7 @@ import asyncio
 import io
 import json
 import re
+import zipfile
 from collections import Counter
 from pathlib import Path
 
@@ -145,6 +146,17 @@ def _read_text_table(content: bytes, suffix: str) -> tuple[pd.DataFrame, dict]:
     sep, header, decimal = _layout(text)
     if suffix == ".tsv" and sep != "\t" and "\t" in text[:4096]:
         sep = "\t"
+    # the header the read below will take (its delimiter, past its preamble, quotes honoured),
+    # read alone first: millions of columns would exhaust memory in the full read (5.8b; a data
+    # row wider than the header is a ParserError there)
+    try:
+        width = pd.read_csv(io.StringIO(text), sep=sep, skiprows=header, nrows=0,
+                            index_col=False).shape[1]
+    except (pd.errors.ParserError, pd.errors.EmptyDataError):
+        width = 0   # the full read says what's wrong
+    if width > _MAX_COLUMNS:   # as the message says (code review: exactly 10,000 was refused)
+        raise IngestionError("too many columns", f"The file has more than {_MAX_COLUMNS:,} "
+                             "columns, past what can be read.")
     try:
         # index_col=False: a trailing delimiter must not turn the first column into the index.
         df = pd.read_csv(io.StringIO(text), sep=sep, skiprows=header, decimal=decimal,
@@ -201,9 +213,51 @@ def _read_text_table(content: bytes, suffix: str) -> tuple[pd.DataFrame, dict]:
     return df, info
 
 
+# What a file may expand to when read (5.8b: uploads and share links): a workbook is a zip that
+# openpyxl unpacks whole, so a 50 MB upload could declare gigabytes; a CSV header could name
+# millions of columns. zipfile never unpacks a part past its declared size, so the declared
+# sizes are a real bound.
+# Unpacked: 20 times the upload cap (sheet XML packs 5 to 10 times: a real 50 MB workbook fits;
+# 5.8b review: 150 MB refused 20-30 MB workbooks); a bomb packs a thousand times
+_MAX_UNPACKED, _MAX_PARTS, _MAX_COLUMNS = 20 * MAX_UPLOAD_MB * 2**20, 10_000, 10_000
+_MAX_RATIO, _RATIO_FROM = 200, 10 * 2**20   # a part over 10 MB packed more than 200 times
+
+
+def _readable_size(content: bytes, suffix: str) -> None:
+    if suffix == ".xlsx":
+        try:
+            parts = zipfile.ZipFile(io.BytesIO(content)).infolist()
+        # a broken file's every way of failing to open (5.8b audit: a part's version raised
+        # NotImplementedError past the check: a 500 for the user's file)
+        except (zipfile.BadZipFile, NotImplementedError, ValueError, OSError, EOFError) as exc:
+            raise IngestionError(f"excel: {type(exc).__name__}", _NOT_A_TABLE) from exc
+        # the total sized to real workbooks, and the packing of each large part and of the whole
+        # to real XML's (5-10x; a bomb packs ~1000x: 5.8b security review of the raised total;
+        # the whole too: a bomb spread over parts under 10 MB each, automated review of the push)
+        unpacked, packed = (sum(p.file_size for p in parts), sum(p.compress_size for p in parts))
+        if unpacked > _MAX_UNPACKED or any(
+                p.file_size > _RATIO_FROM and p.file_size > _MAX_RATIO * max(p.compress_size, 1)
+                for p in parts) or (unpacked > _RATIO_FROM and unpacked > _MAX_RATIO * max(packed, 1)):
+            raise IngestionError("workbook too large", "The workbook unpacks to more than "
+                                 f"{_MAX_UNPACKED // 2**20} MB, past what can be read.")
+        if len(parts) > _MAX_PARTS or any(p.filename.startswith("/") or ".." in p.filename
+                                          for p in parts):
+            raise IngestionError("workbook parts", "The workbook's parts aren't an Excel "
+                                 "workbook's. Save it again from Excel and upload that.")
+    elif suffix in (".csv", ".tsv"):
+        # a cheap first gate before the layout's sniffing (security review): the lines it samples
+        # (any line ending), each under the cap per delimiter; the exact check is the header's
+        # width as the reader takes it (_read_text_table)
+        lines = content[:4 * 2**20].splitlines()[:_SAMPLE_LINES]
+        if any(line.count(d) >= _MAX_COLUMNS for line in lines for d in (b",", b";", b"\t", b"|")):
+            raise IngestionError("too many columns", f"The file has more than {_MAX_COLUMNS:,} "
+                                 "columns, past what can be read.")
+
+
 def _read_bytes(content: bytes, suffix: str) -> tuple[pd.DataFrame, dict]:
     """The one reader behind every upload: (frame, how it was read). Unreadable input raises
     IngestionError with a message for the user; nothing loads silently wrong."""
+    _readable_size(content, suffix)
     if suffix in (".xlsx", ".xls"):
         if suffix == ".xls":
             raise IngestionError("xls needs xlrd", XLS_REFUSAL)
@@ -227,6 +281,7 @@ def _read_bytes(content: bytes, suffix: str) -> tuple[pd.DataFrame, dict]:
             raise IngestionError(f"parquet: {type(exc).__name__}", _NOT_A_TABLE) from exc
         info = {"format": "parquet", "notes": []}
     elif suffix in (".json", ".jsonl"):
+        content = content.removeprefix(b"\xef\xbb\xbf")   # a byte-order mark (Windows tools write one)
         try:
             # dtype=False: values keep the type they were written with ("02134" stays text).
             # precise_float: the fast parser reads 2.76 as 2.7600000000000002 (5.8a source oracle)

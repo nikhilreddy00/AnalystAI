@@ -1,0 +1,28 @@
+id: e2e-104
+domain: retail
+source: link
+dataset:
+  name: simpson
+  seed: 1
+question: What is the conversion rate of the treatment group versus control?
+overview_done: true
+checks:
+- kind: number_in_answer
+  truth_key: pooled_conversion.treatment
+  rel_tol: 0.02
+  scales:
+  - 1
+  - 100
+- kind: number_in_answer
+  truth_key: pooled_conversion.control
+  rel_tol: 0.02
+  scales:
+  - 1
+  - 100
+hard_rules:
+- charts_lint_clean
+- charts_have_rationale
+- non_empty_or_error
+label_note: 'Phase 5.8b: e2e-18 from a public Google Sheet share link of the same table
+  (TEST_LINK_URL, never committed: a link is a capability), downloaded through the real export
+  redirect chain by the guarded client and kept as an upload of the same bytes.'

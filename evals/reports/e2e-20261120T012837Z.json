@@ -115,7 +115,7 @@
      "connector_config": {
       "type": "sql",
       "file_path": null,
-      "connection_string": "mysql+pymysql://analyst:analyst@127.0.0.1:33069/analystai_eval",
+      "connection_string": "mysql+pymysql://analyst:***@127.0.0.1:33069/analystai_eval",
       "table_name": "e2e_loss_run_1",
       "spreadsheet_id": null,
       "sheet_name": null,

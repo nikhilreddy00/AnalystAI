@@ -41,6 +41,9 @@ class Settings(BaseSettings):
     # included. 0 keeps everything forever.
     retention_days: int = 0
     worker_concurrency: int = 4            # runs one worker executes at once
+    # 5.8b: CAs a database's TLS is checked against besides certifi's: the operator's file (the
+    # Docker image fetches AWS RDS's, which signs RDS servers with its own CA), never a user's
+    extra_ca_bundle: str | None = None
 
     @field_validator("supabase_url")
     @classmethod

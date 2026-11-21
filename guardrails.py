@@ -10,6 +10,7 @@ import datetime
 import math
 import numbers
 import re
+import unicodedata
 from typing import Any, Iterable
 
 import sqlglot
@@ -57,16 +58,55 @@ def code_column_refs(code: str) -> set[str]:
 # ── SQL ────────────────────────────────────────────────────────────────────────
 
 
-# Functions with side effects, or that read the server's files / reach other servers. The read-only
-# transaction stops writes; these also leak data, sleep, lock or kill sessions, so the parse rejects
-# them first. Prefix entries end with "_" or are listed in _SQL_DENY_PREFIXES.
-_SQL_DENY_FUNCS = {"nextval", "setval", "set_config", "query_to_xml", "query_to_xml_and_xmlschema",
-                   "cursor_to_xml", "pg_notify", "txid_current", "pg_current_xact_id",
-                   "ts_stat", "ts_rewrite",   # run a query given as text (audit 2)
-                   # MySQL (5.8a): sleep, burn CPU, take locks, read the server's files, wait
-                   "sleep", "benchmark", "get_lock", "release_lock", "release_all_locks",
-                   "is_free_lock", "is_used_lock", "load_file", "master_pos_wait",
-                   "source_pos_wait", "wait_for_executed_gtid_set"}
+# THE functions a model query may call (5.8b: an allow list; 5.8a's deny list drew five security
+# review rounds, each finding one more name, and never saw a name sqlglot types, like
+# NEXT VALUE FOR or UUID()). Typed sqlglot nodes by class, including the ones sqlglot builds from
+# plain syntax (AND, ::, CURRENT_DATE, WITHIN GROUP) or from another dialect's spelling (MySQL
+# DATE_FORMAT → TimeToStr + TsOrDsToTimestamp, T-SQL STRING_AGG → GroupConcat); then, per dialect,
+# the analyst functions sqlglot doesn't know. The families: aggregates, math, string, date,
+# conditional, window, cast (tests/test_sql_guard.py ANALYST_FUNCTIONS, one call each). Never on
+# it: anything that reads files or URLs, waits, locks, takes a sequence value, is random, or says
+# who or where the session is (a test keeps those out). A name sqlglot renames on an upgrade fails
+# at import (getattr), not silently.
+_SQL_FUNCS = frozenset(getattr(exp, name) for name in """
+    And Or Xor Exists Case If Coalesce Nullif Greatest Least Cast TryCast Convert Collate Array
+    Count Sum Avg Min Max Stddev StddevPop StddevSamp Variance VariancePop Corr CovarPop CovarSamp
+    RegrSlope RegrIntercept RegrR2
+    ArrayAgg GroupConcat LogicalAnd LogicalOr Mode PercentileCont PercentileDisc ApproxDistinct
+    RowNumber Rank DenseRank Ntile Lag Lead FirstValue LastValue NthValue PercentRank CumeDist
+    Abs Ceil Floor Round Trunc Sign Sqrt Pow Exp Ln Log WidthBucket
+    Lower Upper Trim Substring Length Concat ConcatWs Replace Left Right Pad StrPosition SplitPart
+    Initcap RegexpLike RegexpILike RegexpReplace RegexpExtract Reverse Repeat
+    Date CurrentDate CurrentTimestamp CurrentTime Extract TimestampTrunc DateTrunc DateAdd DateSub
+    DateDiff TimestampDiff Year Quarter Month Week Day DayOfWeek DayOfMonth DayOfYear LastDay
+    TimeToStr StrToDate StrToTime TimeStrToTime TsOrDsToDate TsOrDsToTimestamp UnixToTime
+    TimeToUnix DateFromParts JSONExtract JSONExtractScalar ExplodingGenerateSeries
+    """.split())
+_SQL_NAMES = {   # per dialect: the analyst functions sqlglot reads as unknown names
+    "postgres": frozenset("""age make_date to_char to_date to_number date_part
+        pg_typeof""".split()),
+    "mysql": frozenset("""now curdate makedate json_unquote unix_timestamp from_unixtime truncate
+        dayname monthname""".split()),
+    "tsql": frozenset("""choose patindex stdevp str switchoffset todatetimeoffset var varp
+        square datename count_big eomonth sysdatetime getdate""".split()),
+    "sqlite": frozenset("""julianday datetime time printf total unixepoch strftime""".split()),
+}
+_ALLOWED_HINTS = frozenset({"NOLOCK", "READUNCOMMITTED"})   # T-SQL: the rest take or hold locks
+FUNCTION_REFUSED = "function not allowed: "
+RESERVED_NAME = "a T-SQL reserved word used as a name must be [bracketed]: "
+# The refusals the SQL agent gives the model one retry on: an analyst function off the list, a
+# column named like a keyword. Decided here, by meaning, never by the caller (5.8b audit pass 2:
+# moving to the allow list made lock and admin functions retryable).
+SOFT_REFUSALS = (FUNCTION_REFUSED, RESERVED_NAME)
+# Off the list AND never an analyst's: final, and traced as a read-only refusal. This only sorts
+# hard from soft; what may run is the allow list's alone.
+_HARD_FUNCS = frozenset(getattr(exp, name) for name in """NextValueFor Uuid Rand Randn ReadCSV
+    ReadParquet CurrentUser CurrentSchema CurrentDatabase SessionUser CurrentRole""".split())
+_HARD_NAMES = re.compile(r"(pg_|xp_|sp_|fn_|sys|dbms_|lo_|get_lock|release_lock|is_free_lock|"
+                         r"is_used_lock|sleep|benchmark|dblink|nextval|setval|currval|load_file|"
+                         r"connection_id|last_insert_id|found_rows|load_|read_|write_|"
+                         r"open(rowset|query|datasource|xml)|current_|session_|user$|version$|"
+                         r"database$|schema$|uuid|rand|newid)")
 # /*! … */ and /*M! … */ are MySQL / MariaDB executable comments and /*+ … */ optimizer hints
 # (MAX_EXECUTION_TIME overrides the session timeout): the server runs what sqlglot reads as a
 # comment. Refused anywhere in the raw text, on every dialect, quotes included: any scanner of
@@ -89,12 +129,80 @@ def _is_sql_text(text: str, dialect: str | None) -> bool:
         return isinstance(sqlglot.parse_one(text, read=dialect), exp.Query)
     except sqlglot.errors.SqlglotError:
         return False
-_SQL_DENY_PREFIXES = ("lo_", "dblink", "pg_read", "pg_ls_", "pg_stat_file", "pg_sleep",
-                      "pg_advisory", "pg_terminate", "pg_cancel", "pg_reload", "pg_rotate",
-                      "pg_file", "pg_logical", "pg_replication", "pg_create", "pg_drop",
-                      "pg_promote", "pg_switch", "pg_backup", "pg_import",
-                      # other sessions' queries and the server's state (5.8a audit 2)
-                      "pg_stat_get", "pg_show")
+
+
+def _function_refused(node: exp.Func, dialect: str | None) -> str | None:
+    """Why the parse guard refuses this call, or None: off the allow list, or a function
+    qualified by a schema or `::` (a user-defined one may be named like a builtin: dbo.round)."""
+    anonymous = isinstance(node, exp.Anonymous)
+    name = node.name.lower() if anonymous else node.sql_name().lower()
+    if isinstance(node.parent, (exp.Dot, exp.ScopeResolution)) and node is node.parent.expression:
+        return f"a schema-qualified function is not allowed: {name}"
+    # the class (security review, audit 2): a function given a query as text runs it past every
+    # table rule (ts_stat, ts_rewrite); ponytail: a text built by concatenation isn't seen, the
+    # database role is the boundary (ADR-0010 layer 4). Before the list: it is a hard refusal
+    if anonymous and any(_is_sql_text(s.name, dialect) for s in node.find_all(exp.Literal, exp.RawString)
+                         if isinstance(s, exp.RawString) or s.is_string):   # RawString: $q$ … $q$
+        return f"function given a SQL statement as text: {name}"
+    if node.name.lower() in _SQL_NAMES.get(dialect, ()) if anonymous else type(node) in _SQL_FUNCS:
+        return None
+    if type(node) in _HARD_FUNCS or _HARD_NAMES.match(name):
+        return f"a lock, admin, session or random function is not allowed: {name}"
+    return f"{FUNCTION_REFUSED}{name}"
+
+
+# SQL Server runs a batch: a statement may follow another with no ';', and sqlglot reads
+# `FROM sales EXEC('…')` as a table aliased EXEC while the server runs the EXEC (5.8b security
+# review). These words are reserved there: never a name unless [bracketed] or "quoted", never in a
+# read (FETCH is: OFFSET … FETCH NEXT; OPENJSON and the like are one word of their own).
+_TSQL_BATCH_WORDS = frozenset("""EXEC EXECUTE RAISERROR KILL CHECKPOINT RECONFIGURE TRUNCATE
+    WAITFOR DECLARE THROW DBCC USE BEGIN COMMIT ROLLBACK SAVE INSERT UPDATE DELETE MERGE DROP
+    CREATE ALTER GRANT REVOKE DENY SET PRINT GOTO BACKUP RESTORE SHUTDOWN OPEN CLOSE DEALLOCATE
+    BULK IF WHILE RETURN BREAK CONTINUE READTEXT WRITETEXT UPDATETEXT SETUSER REVERT""".split())
+_QUOTED = frozenset({sqlglot.TokenType.STRING, sqlglot.TokenType.NATIONAL_STRING,
+                     sqlglot.TokenType.IDENTIFIER})
+
+
+def _invisible(text: str) -> bool:
+    """A format, separator or control character: sqlglot glues it into a name, a server may read
+    it as a space (5.8b audit pass 2: `x​EXEC(...)` was one alias to the guard, two
+    statements to SQL Server)."""
+    return any(unicodedata.category(c)[0] in "CZ" for c in text if c not in " \t\r\n")
+
+
+def _invisible_outside_quotes(sql: str, dialect: str | None) -> bool:
+    """`_invisible` over every character no string or quoted name holds, comments included: a
+    comment isn't a token, and a server may end one where sqlglot doesn't (automated review of
+    the push: U+2028 in a `--` comment). A text the tokenizer can't read is checked whole."""
+    try:
+        spans = [(t.start, t.end) for t in sqlglot.tokenize(sql, read=dialect)
+                 if t.token_type in _QUOTED]
+    except sqlglot.errors.SqlglotError:
+        return _invisible(sql)
+    quoted = set().union(*(range(a, b + 1) for a, b in spans))
+    return _invisible("".join(c for i, c in enumerate(sql) if i not in quoted))
+
+
+_TSQL_NAME_LIKE = frozenset("OPEN CLOSE PRINT SAVE RETURN BREAK CONTINUE".split())
+
+
+def _tsql_batch_word(sql: str) -> str | None:
+    """Why a T-SQL statement keyword outside a string or a quoted name is refused, else None. A
+    word after `.` is a column (`p.close`), not a statement; a bare one that is a usual column
+    name (OPEN, CLOSE) gets a retry asking for [brackets] (5.8b audit pass 2: stock tables)."""
+    try:
+        tokens = sqlglot.tokenize(sql, read="tsql")
+    except sqlglot.errors.SqlglotError:
+        return None
+    for before, token in zip([None, *tokens], tokens):
+        word = token.text.upper()
+        if token.token_type in _QUOTED or word not in _TSQL_BATCH_WORDS or (
+                before is not None and before.token_type == sqlglot.TokenType.DOT):
+            continue
+        if word in _TSQL_NAME_LIKE:
+            return f"{RESERVED_NAME}{word}"
+        return f"a T-SQL statement keyword outside a string or [name] is not allowed: {word}"
+    return None
 
 
 def _system_schemas(dialect: str | None) -> frozenset[str]:
@@ -113,6 +221,10 @@ def check_sql_readonly(sql: str, dialect: str | None) -> str | None:
     transaction (connectors/sql_connector.py)."""
     if _EXECUTABLE_COMMENT.search(sql):
         return "executable comments and optimizer hints (/*! */, /*+ */) are not allowed"
+    if _invisible_outside_quotes(sql, dialect):
+        return "an invisible or unusual space character outside a string or quoted name is not allowed"
+    if dialect == "tsql" and (why := _tsql_batch_word(sql)):
+        return why
     try:
         statements = [s for s in sqlglot.parse(sql, read=dialect) if s is not None]
     except sqlglot.errors.ParseError as exc:
@@ -125,6 +237,9 @@ def check_sql_readonly(sql: str, dialect: str | None) -> str | None:
     writes = (exp.Insert, exp.Update, exp.Delete, exp.Drop, exp.Create, exp.Alter, exp.Merge,
               exp.Command)
     system = _system_schemas(dialect)
+    # a function refusal is the one the SQL agent retries: it never hides a write, a catalog or a
+    # lock anywhere in the query (5.8b audit), so it is said only when the walk finds nothing hard
+    soft = hard_function = None
     for node in stmt.walk():
         if isinstance(node, writes):
             return f"write/DDL inside query: {node.key.upper()}"
@@ -132,20 +247,19 @@ def check_sql_readonly(sql: str, dialect: str | None) -> str | None:
             return "SELECT ... INTO creates a table"
         if isinstance(node, exp.Select) and node.args.get("locks"):
             return "row locks (FOR UPDATE/SHARE) are not allowed"
-        if isinstance(node, exp.Anonymous):   # every denied name parses as one (the corpora)
-            name = node.name.lower()
-            if name in _SQL_DENY_FUNCS or name.startswith(_SQL_DENY_PREFIXES) or \
-                    "_to_xml" in name:   # table_to_xml('pg_authid', …) reads a table by name
-                return f"function not allowed: {name}"
-            # the class (security review, audit 2): a function given a query as text runs it
-            # past every table rule (ts_stat, ts_rewrite, the next one); ponytail: a text built
-            # by concatenation isn't seen, the database role is the boundary (ADR-0010 layer 4)
-            if any(_is_sql_text(s.name, dialect) for s in node.find_all(exp.Literal, exp.RawString)
-                   if isinstance(s, exp.RawString) or s.is_string):   # RawString: $q$ … $q$
-                return f"function given a SQL statement as text: {name}"
+        if isinstance(node, exp.Func) and (why := _function_refused(node, dialect)):
+            # any hard one wins over a soft one wherever it is (audit pass 2); a write, catalog
+            # or lock is said first
+            if why.startswith(SOFT_REFUSALS):
+                soft = soft or why
+            else:
+                hard_function = hard_function or why
+        if isinstance(node, exp.WithTableHint) and (
+                held := [h.sql() for h in node.expressions if h.sql().upper() not in _ALLOWED_HINTS]):
+            return f"table hints that take locks are not allowed: {', '.join(held)}"
         if isinstance(node, exp.Table) and node.db.lower() in system:
             return f"the database's own tables are not readable: {node.db}"
-    return None
+    return hard_function or soft
 
 
 # Fan-out and metric checks read a semantic layer (semantic_layer.SemanticLayer); typed loosely to

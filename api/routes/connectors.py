@@ -14,9 +14,11 @@ from agents.errors import AgentError, IngestionError
 from connectors.csv_connector import (MAX_UPLOAD_MB, UPLOAD_SUFFIXES, XLS_REFUSAL, _read_bytes,
                                       check_upload_owner, user_upload_dir)
 from api.auth import get_current_user, UserProfile
-from pydantic import BaseModel
+from api.rate_limit import limiter
+from pydantic import BaseModel, Field
 
 from connectors.base import get_connector, without_secrets
+from connectors.link import TooLarge, download
 from guardrails import mask_pii
 from orchestrator.state import ConnectorConfig, ConnectorType
 
@@ -74,7 +76,6 @@ async def upload_csv(
     chunk_size = 1024 * 1024     # 1 MB per read
     chunks: list[bytes] = []
     total = 0
-    hasher = hashlib.sha256()
     while True:
         chunk = await file.read(chunk_size)
         if not chunk:
@@ -82,10 +83,44 @@ async def upload_csv(
         total += len(chunk)
         if total > max_size:
             raise HTTPException(status_code=413, detail=f"File too large (max {MAX_UPLOAD_MB} MB)")
-        hasher.update(chunk)
         chunks.append(chunk)
-    content = b"".join(chunks)
-    file_hash = hasher.hexdigest()
+    return await _register(request, current_user, b"".join(chunks), safe_name, suffix,
+                           dataset_id)
+
+
+class LinkRequest(BaseModel):
+    url: str = Field(max_length=4096)   # a link is a new dataset; a new version: upload, or re-paste
+
+
+@router.post("/link")
+@limiter.limit("10/minute")   # each holds up to 50 MB for up to 120 s (code review, audit pass 2)
+async def link_file(
+    request: Request,
+    body: LinkRequest,
+    current_user: UserProfile = Depends(get_current_user)
+) -> dict:
+    """A public share link (Google Sheets/Drive, OneDrive/SharePoint, Dropbox, any https CSV or
+    xlsx) as a version of a dataset (5.8b, ADR-0010): downloaded once through the guarded
+    client, then exactly an upload of the same bytes. The link isn't kept (it is a credential);
+    pasting it again makes a new version when the file changed."""
+    try:
+        content, suffix, name = await download(body.url)
+    except TooLarge as exc:
+        raise HTTPException(status_code=413, detail=exc.user_message) from None
+    except IngestionError as exc:   # every message names at most the host: never the link
+        raise HTTPException(status_code=400, detail=exc.user_message) from None
+    return await _register(request, current_user, content, name, suffix, None)
+
+
+async def _register(request: Request, current_user: UserProfile, content: bytes, filename: str,
+                    suffix: str, dataset_id: str | None) -> dict:
+    """THE path a file's bytes take to a dataset version, an upload's or a link's: read as
+    ingestion will read them (refused now if they aren't a table), hashed, stored, versioned."""
+    file_hash = hashlib.sha256(content).hexdigest()
+    # a name only ever names the dataset (the file is stored as <uuid><suffix>): its base name,
+    # whoever wrote it (the browser's, or a link server's Content-Disposition, '\' included)
+    safe_name = Path(filename.replace("\\", "/")).name
+    filename = safe_name
     try:   # the same reader ingestion uses: a file that isn't a table is refused now, not later
         df, _ = await asyncio.to_thread(_read_bytes, content, suffix)
     except IngestionError as exc:
@@ -110,7 +145,7 @@ async def upload_csv(
     ds, version, status = placed
     return {
         "status": status,   # existing | new_version | new_dataset
-        "filename": file.filename,
+        "filename": filename,
         "dataset": ds.public(),
         "dataset_id": ds.id,
         "dataset_version_id": version.id,

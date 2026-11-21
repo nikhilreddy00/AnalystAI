@@ -41,6 +41,8 @@ dependencies = [
     "langgraph-checkpoint-postgres>=3.2.0",
     "greenlet>=3.5.0",
     "pymysql>=1.1.1",
+    "pyodbc>=5.2",   # SQL Server (5.8b): needs Microsoft's ODBC Driver 18 on the host
+    "certifi>=2024.2",   # MySQL/MariaDB TLS: the CA store, never a user's file path
 ]
 
 [project.optional-dependencies]
@@ -77,6 +79,7 @@ dev = [
     "import-linter==2.16",
     "mutmut==3.8.1",
     "pytest-xdist>=3.8.0",
+    "zstandard==0.25.0",   # the compressed-body test's codec (was only langsmith's)
 ]
 
 [tool.mutmut]
@@ -93,7 +96,9 @@ source_paths = ["domain_pack/", "agents/utils.py", "agents/targeted_analysis_age
                 # Domain 7: the one time rule and cleaning's fallback through it
                 "connectors/base.py", "agents/data_cleaning.py",
                 # 5.8a: the dialect table and the connection-string guard
-                "connectors/sql_connector.py"]
+                "connectors/sql_connector.py",
+                # 5.8b: the share-link download
+                "connectors/link.py"]
 # never evals/reference_kpis.py: the oracle is checked against the generators, not the product
 also_copy = ["agents/", "api/", "connectors/", "domain_packs/", "evals/", "llm/", "memory/",
              "orchestrator/", "prompts/", "sandbox/", "scripts/", "semantic_layers/", "worker/",

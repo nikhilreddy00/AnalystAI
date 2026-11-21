@@ -5,41 +5,59 @@ Handles paginated responses automatically using a configurable pagination key.
 
 from __future__ import annotations
 
+import asyncio
+import json
 from typing import Any
 from urllib.parse import urlparse
 
 import httpx
 import pandas as pd
 
-from connectors.base import DataConnector, resolved, truncation_note
+from agents.errors import IngestionError
+from connectors.base import (FETCH_DEADLINE_S, BodyTooLarge, DataConnector, capped_body,
+                             public_client, truncation_note)
 
 MAX_PAGES = 20          # safety cap to prevent infinite pagination loops
 PAGE_SIZE = 1000
 MAX_RECORDS = 100_000   # hard ceiling across all pages to prevent OOM
+MAX_LOAD_BYTES = 50 * 2**20   # every page's body together, as the upload cap
 
 
-def _assert_public_url(url: str) -> None:
-    """Block SSRF: reject URLs whose host resolves to a private/loopback/link-local
-    address. Also rejects non-http(s) schemes and unresolved hostnames."""
+def _http_url(url: str) -> None:
+    """An http(s) URL with a host; which hosts may be fetched is the guarded client's rule
+    (`public_client`, checked at each connection: 5.8b moved it there, the check here was
+    followed by a second lookup)."""
     parsed = urlparse(url)
     if parsed.scheme not in ("http", "https"):
         raise ValueError(f"Only http(s) URLs are allowed (got scheme '{parsed.scheme}').")
-    host = parsed.hostname
-    if not host:
+    if not parsed.hostname:
         raise ValueError("URL is missing a hostname.")
-    for ip in resolved(host):
-        addr = str(ip)
-        if (
-            ip.is_private
-            or ip.is_loopback
-            or ip.is_link_local
-            or ip.is_multicast
-            or ip.is_reserved
-            or ip.is_unspecified
-        ):
-            raise ValueError(
-                f"Refusing to fetch URL: '{host}' resolves to non-public address {addr}."
-            )
+
+
+def _status(response: httpx.Response) -> None:
+    """Any answer but a success as a message without the URL (httpx's own quotes it, and a URL
+    can carry a key). A redirect isn't followed (5.8b audit: it read as 'reachable', then its
+    empty body as JSON)."""
+    if response.is_redirect:
+        raise ValueError(f"The API redirected (HTTP {response.status_code}): use the URL it "
+                         "redirects to.")
+    if not response.is_success:
+        raise ValueError(f"The API answered HTTP {response.status_code} "
+                         f"({response.reason_phrase}).")
+
+
+async def _page(client: httpx.AsyncClient, url: str, headers: dict, budget: int) -> tuple[Any, int]:
+    """One page's JSON and its size, the body read up to what the load has left of
+    MAX_LOAD_BYTES as it arrives (5.8b audit: the whole answer was read before any cap; then each
+    page had its own, 20 of them a gigabyte)."""
+    async with client.stream("GET", url, headers=headers) as response:
+        _status(response)
+        try:
+            body = await capped_body(response, budget)
+        except BodyTooLarge:
+            raise ValueError("The API's answers are larger than "
+                             f"{MAX_LOAD_BYTES // 2**20} MB in all.") from None
+    return json.loads(body), len(body)
 
 
 _RECORD_KEYS = ("data", "results", "items", "records")
@@ -88,23 +106,60 @@ class APIConnector(DataConnector):
         url = self.config.url
         if not url:
             raise ValueError("url is required for API connector")
-        _assert_public_url(url)
+        _http_url(url)
 
         headers = self._build_headers()
-        records: list[dict[str, Any]] = []
 
-        # follow_redirects=False — redirects could point at internal IPs and
-        # bypass the SSRF check we just performed.
-        async with httpx.AsyncClient(timeout=30, follow_redirects=False) as client:
+        # Redirects aren't followed; a next-page URL from the body is a new connection, checked
+        # by the client like the first. One deadline for every page (5.8b review: the timeout is
+        # per read, so a trickling server held a worker without end)
+        # the run's errors are typed here, at the source's one boundary, so the user reads them
+        # (5.8b audit pass 2: an untyped one became "the data-loading step stopped unexpectedly")
+        try:
+            records, next_url = await self._pages(url, headers)
+        except TimeoutError:
+            raise IngestionError("api slow", f"The API didn't finish within {FETCH_DEADLINE_S} s."
+                                 ) from None
+        except ValueError as exc:   # ours (a status, a refused host, a cap) or a page not JSON
+            said = str(exc) if not isinstance(exc, json.JSONDecodeError) else \
+                "The API's answer isn't JSON."
+            raise IngestionError("api", said) from None
+        except (httpx.HTTPError, httpx.InvalidURL) as exc:   # the class, never the URL
+            raise IngestionError("api unreachable", "The API couldn't be reached "
+                                 f"({type(exc).__name__}).") from None
+
+        if not records:
+            return pd.DataFrame()
+
+        if next_url or len(records) > MAX_RECORDS:   # stopped at a cap, not at the last page
+            records = records[:MAX_RECORDS]
+            self.read_info = {"notes": [truncation_note(
+                len(records), None,
+                f"an API load stops at {MAX_PAGES} pages or {MAX_RECORDS:,} records")]}
+
+        return pd.json_normalize(records)
+
+    async def _pages(self, url: str, headers: dict) -> tuple[list, str | None]:
+        """The records of every page up to the caps, and the next page's URL if a cap stopped
+        it."""
+        records: list[dict[str, Any]] = []
+        origin = urlparse(url)[:2]   # scheme and host: the credential goes nowhere else
+        budget = MAX_LOAD_BYTES
+        async with asyncio.timeout(FETCH_DEADLINE_S), public_client(timeout=30) as client:
             page = 1
             next_url: str | None = url
 
             while next_url and page <= MAX_PAGES and len(records) < MAX_RECORDS:
-                # Re-validate every URL we touch (including next-page URLs from the response body)
-                _assert_public_url(next_url)
-                response = await client.get(next_url, headers=headers)
-                response.raise_for_status()
-                data = response.json()
+                _http_url(next_url)
+                if urlparse(next_url)[:2] != origin:
+                    # a next page elsewhere, or on plain http, would be sent the API's key (5.8b
+                    # audit pass 2): not followed, and said
+                    self.read_info = {"notes": [
+                        "A next page on another host (or not https) wasn't followed: the "
+                        "API's key is only sent to the address you gave."]}
+                    return records, None
+                data, used = await _page(client, next_url, headers, budget)
+                budget -= used
 
                 records.extend(_records(data) or [])
                 if not isinstance(data, dict):   # a bare list (or a scalar) has no next page
@@ -122,27 +177,21 @@ class APIConnector(DataConnector):
                     )
 
                 page += 1
-
-        if not records:
-            return pd.DataFrame()
-
-        if next_url or len(records) > MAX_RECORDS:   # stopped at a cap, not at the last page
-            records = records[:MAX_RECORDS]
-            self.read_info = {"notes": [truncation_note(
-                len(records), None,
-                f"an API load stops at {MAX_PAGES} pages or {MAX_RECORDS:,} records")]}
-
-        return pd.json_normalize(records)
+        return records, next_url
 
     async def test_connection(self) -> tuple[bool, str]:
         url = self.config.url
         if not url:
             return False, "url not provided"
         try:
-            _assert_public_url(url)
-            async with httpx.AsyncClient(timeout=10, follow_redirects=False) as client:
-                response = await client.get(url, headers=self._build_headers())
-                response.raise_for_status()
+            _http_url(url)
+            async with asyncio.timeout(FETCH_DEADLINE_S), public_client(timeout=10) as client, \
+                    client.stream("GET", url, headers=self._build_headers()) as response:
+                _status(response)   # the status is the answer: no body is read
             return True, f"API reachable (HTTP {response.status_code})"
-        except Exception as e:
+        except TimeoutError:
+            return False, f"The API didn't answer within {FETCH_DEADLINE_S} s."
+        except ValueError as e:   # ours: the URL, the host refused, an error status
             return False, str(e)
+        except (httpx.HTTPError, httpx.InvalidURL) as e:   # its class names it, never the URL
+            return False, f"The API couldn't be reached ({type(e).__name__})."

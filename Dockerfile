@@ -2,6 +2,20 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
+# SQL Server sources (5.8b): pyodbc needs Microsoft's ODBC Driver 18 (Microsoft's EULA, accepted
+# here; ~20 MB). The rest of the app runs without it.
+# Microsoft's own repo package carries the repo and its current signing keys.
+RUN apt-get update -q && apt-get install -yq --no-install-recommends curl ca-certificates \
+    && . /etc/os-release \
+    && curl -fsSL -o /tmp/ms.deb "https://packages.microsoft.com/config/debian/${VERSION_ID}/packages-microsoft-prod.deb" \
+    && dpkg -i /tmp/ms.deb && rm /tmp/ms.deb \
+    && apt-get update -q && ACCEPT_EULA=Y apt-get install -yq --no-install-recommends msodbcsql18 unixodbc \
+    && mkdir -p /etc/analystai \
+    && curl -fsSL -o /etc/analystai/rds-global-bundle.pem https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem \
+    && apt-get purge -yq curl && apt-get autoremove -yq && rm -rf /var/lib/apt/lists/*
+# AWS RDS signs its MySQL/MariaDB/Postgres servers with its own CAs (ssl_mode=VERIFY_IDENTITY)
+ENV EXTRA_CA_BUNDLE=/etc/analystai/rds-global-bundle.pem
+
 # Install uv (pinned for reproducibility)
 RUN pip install uv==0.5.21
 

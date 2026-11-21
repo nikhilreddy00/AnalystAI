@@ -82,7 +82,20 @@ async function sniffColumnCount(file: File): Promise<number | null> {
 }
 
 import type { DataSource, UploadResponse } from "@/types";
-import { uploadFile as apiUpload } from "@/lib/api";
+import { importLink, uploadFile as apiUpload } from "@/lib/api";
+
+function hostOf(url?: string): string {
+  try { return url ? new URL(url).host : ""; } catch { return ""; }
+}
+
+/** The connection string with the Password field's value as its password, URL-encoded (Phase
+ * 5.8b: the password is typed in a field that hides it, and '@' or ':' in it need no encoding by
+ * hand). A string without a user part is sent as typed. */
+export function withPassword(connection: string, password: string): string {
+  if (!password) return connection;
+  return connection.replace(/^([a-z][\w+.-]*:\/\/)([^:@/]+)(:[^@/]*)?@/i,
+                            (_, scheme, user) => `${scheme}${user}:${encodeURIComponent(password)}@`);
+}
 
 interface ConnectorSetupProps {
   /** The data a new analysis is about; `upload` says how an upload was filed (Phase 5.6b). */
@@ -96,9 +109,27 @@ export default function ConnectorSetup({ onConnectorReady }: ConnectorSetupProps
   const [uploading, setUploading] = useState(false);
   const [testing, setTesting] = useState(false);
   const [preview, setPreview] = useState<FilePreview | null>(null);
+  const [password, setPassword] = useState("");
+  const [link, setLink] = useState("");
 
   const update = (key: string, value: string) =>
     setConfig((prev) => ({ ...prev, [key]: value }));
+
+  async function handleLink(e: React.FormEvent) {
+    e.preventDefault();
+    if (!link.trim()) return;
+    setUploading(true);
+    setStatus(null);
+    try {
+      const data = await importLink(link.trim());
+      setStatus({ ok: true, message: `✓ ${data.filename} imported` });
+      onConnectorReady({ dataset_version_id: data.dataset_version_id, dataset_name: data.dataset_name }, data);
+    } catch (err: unknown) {
+      setStatus({ ok: false, message: err instanceof Error ? err.message : "The link couldn't be imported" });
+    } finally {
+      setUploading(false);
+    }
+  }
 
   async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -137,17 +168,28 @@ export default function ConnectorSetup({ onConnectorReady }: ConnectorSetupProps
     setStatus(null);
     try {
       const body: ConnectorConfig = { type, ...config } as ConnectorConfig;
+      if (type === "sql" && body.connection_string) {
+        const withIt = withPassword(body.connection_string, password);
+        if (password && withIt === body.connection_string) {
+          // never dropped without a word (5.8b review): a password needs a user to go with
+          setStatus({ ok: false, message: "Add the user to the connection string (user@host) so the password can go with it." });
+          return;
+        }
+        body.connection_string = withIt;
+      }
 
       const res = await fetch(`${API_URL}/connectors/test`, {
         method: "POST",
         headers: await getAuthHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify(body),
       });
-      const data = await res.json();
+      // a 5xx from a proxy isn't JSON: said, never "Unexpected token" (5.8b audit pass 2)
+      const data = await res.json().catch(() => ({ success: false, message: `The server answered ${res.status}.` }));
       setStatus({ ok: data.success, message: data.message });
       if (data.success) onConnectorReady({
         connector_config: body as unknown as Record<string, unknown>,
-        dataset_name: body.table_name || body.spreadsheet_id || body.url || (body.type === "sql" ? "Database" : ""),
+        // an API's host, never its URL: a query may carry its key, and the name is shown and stored
+        dataset_name: body.table_name || body.spreadsheet_id || hostOf(body.url) || (body.type === "sql" ? "Database" : ""),
       });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Connection test failed";
@@ -167,7 +209,7 @@ export default function ConnectorSetup({ onConnectorReady }: ConnectorSetupProps
               key={key}
               type="button"
               aria-pressed={active}
-              onClick={() => { setType(key); setConfig({}); setStatus(null); if (key !== "csv") setPreview(null); }}
+              onClick={() => { setType(key); setConfig({}); setPassword(""); setStatus(null); if (key !== "csv") setPreview(null); }}
               className={`flex items-center justify-center gap-1.5 rounded px-2 py-1.5 text-xs font-medium ${
                 active ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
               }`}
@@ -237,16 +279,43 @@ export default function ConnectorSetup({ onConnectorReady }: ConnectorSetupProps
               </button>
             </div>
           )}
+          <form onSubmit={handleLink} className="flex gap-2">
+            <div className="flex-1">
+              <label htmlFor="share-link" className="block text-xs text-muted-foreground mb-1.5">
+                Or a share link
+              </label>
+              <input
+                id="share-link"
+                type="url"
+                value={link}
+                onChange={(e) => setLink(e.target.value)}
+                placeholder="Google Sheets, Drive, OneDrive, SharePoint, Dropbox or any https CSV / Excel link"
+                className="w-full rounded-md bg-background border border-input text-foreground text-xs px-3 py-2 placeholder:text-muted-foreground focus:outline-none focus:border-ring"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={uploading || !link.trim()}
+              className="self-end rounded-md bg-primary px-3 py-2 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            >
+              Import
+            </button>
+          </form>
+          <p className="text-[11px] text-muted-foreground">
+            Shared as &lsquo;Anyone with the link&rsquo;. The file is copied once (max 50 MB); paste the link again for a newer copy.
+          </p>
         </div>
       )}
 
       {/* SQL */}
       {type === "sql" && (
         <div className="space-y-2.5">
-          <Field label="Connection string" placeholder="postgresql://user:pass@host:5432/db or mysql://user:pass@host:3306/db" onChange={(v) => update("connection_string", v)} />
+          <Field label="Connection string" placeholder="postgresql://user@host:5432/db, mysql://, mariadb:// or mssql://" onChange={(v) => update("connection_string", v)} />
+          <Field label="Password" type="password" placeholder="Kept out of the string above; sent with it" onChange={setPassword} />
           <p className="text-xs text-muted-foreground">
-            PostgreSQL (including Supabase and Neon) or MySQL. Connect with a read-only user: every
-            query also runs read-only and timed.
+            PostgreSQL (including Supabase and Neon), MySQL, MariaDB or SQL Server. Connect with a
+            read-only user: every query also runs read-only and timed (SQL Server refuses a login
+            that can write). Hosted MySQL: add ?ssl_mode=VERIFY_IDENTITY.
           </p>
           <Field label="Table name (optional)" placeholder="Leave blank to ask questions across the whole database" onChange={(v) => update("table_name", v)} />
         </div>
@@ -288,7 +357,7 @@ export default function ConnectorSetup({ onConnectorReady }: ConnectorSetupProps
                 <option value="basic">Basic auth</option>
               </select>
             </div>
-            <Field label="Auth value" placeholder="token or user:pass" onChange={(v) => update("auth_value", v)} />
+            <Field label="Auth value" type="password" placeholder="token or user:pass" onChange={(v) => update("auth_value", v)} />
           </div>
           {config.auth_type === "api_key" && (
             <Field label="API key header (optional)" placeholder="X-API-Key" onChange={(v) => update("api_key_header", v)} />
@@ -322,14 +391,17 @@ export default function ConnectorSetup({ onConnectorReady }: ConnectorSetupProps
   );
 }
 
-function Field({ label, placeholder, onChange }: { label: string; placeholder: string; onChange: (v: string) => void }) {
+function Field({ label, placeholder, onChange, type = "text" }: {
+  label: string; placeholder: string; onChange: (v: string) => void; type?: "text" | "password";
+}) {
   const id = useId();
   return (
     <div>
       <label htmlFor={id} className="block text-xs text-muted-foreground mb-1.5">{label}</label>
       <input
         id={id}
-        type="text"
+        type={type}
+        autoComplete={type === "password" ? "off" : undefined}
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
         className="w-full rounded-md bg-background border border-input text-foreground text-xs px-3 py-2 placeholder:text-muted-foreground focus:outline-none focus:border-ring transition-all"

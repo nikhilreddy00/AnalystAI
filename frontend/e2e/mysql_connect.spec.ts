@@ -31,9 +31,9 @@ for (const answer of [
       await route.fulfill({ json: answer });
     });
     await page.goto("/chat");
-    await expect(page.getByText("a PostgreSQL or MySQL database")).toBeVisible();
+    await expect(page.getByText("a PostgreSQL, MySQL, MariaDB or SQL Server")).toBeVisible();
     await page.getByRole("button", { name: "SQL Database" }).click();
-    await expect(page.getByText("PostgreSQL (including Supabase and Neon) or MySQL")).toBeVisible();
+    await expect(page.getByText("PostgreSQL (including Supabase and Neon), MySQL, MariaDB or SQL Server")).toBeVisible();
     await page.getByLabel("Connection string").fill(URL);
     await page.getByLabel("Table name (optional)").fill("order_lines");
     await page.getByRole("button", { name: "Test and connect" }).click();
@@ -44,3 +44,74 @@ for (const answer of [
     await expect(page.locator("body")).not.toContainText(PASSWORD);
   });
 }
+
+// Phase 5.8b: the password has a field of its own that hides it; the form puts it into the
+// string URL-encoded (an '@' or ':' in it needs no hand-encoding), and the page never shows it.
+test("the password field hides the password and sends it encoded in the string", async ({ page }) => {
+  const pw = "p@ss:w0rd/5_8b";
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await login(page);
+  const sent: Record<string, unknown>[] = [];
+  await page.route("**/connectors/test", async (route) => {
+    sent.push(route.request().postDataJSON());
+    await route.fulfill({ json: { success: true, message: "Connection successful" } });
+  });
+  await page.goto("/chat");
+  await page.getByRole("button", { name: "SQL Database" }).click();
+  await page.getByLabel("Connection string").fill("mssql://reader@db.example.com:1433/acme");
+  const field = page.getByLabel("Password", { exact: true });
+  await expect(field).toHaveAttribute("type", "password");
+  await field.fill(pw);
+  await page.getByRole("button", { name: "Test and connect" }).click();
+  await expect.poll(() => sent.length).toBe(1);
+  expect(sent).toEqual([expect.objectContaining({
+    connection_string: `mssql://reader:${encodeURIComponent(pw)}@db.example.com:1433/acme` })]);
+  await expect(page.locator("body")).not.toContainText(pw);
+  await expect(page.locator("body")).not.toContainText(encodeURIComponent(pw));
+});
+
+// 5.8b review: a password with no user to go with was dropped without a word; and a password
+// typed on the SQL tab stayed in the form's state, hidden, after switching tabs and back.
+test("a password is never dropped silently nor kept across tabs", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await login(page);
+  const sent: Record<string, unknown>[] = [];
+  await page.route("**/connectors/test", async (route) => {
+    sent.push(route.request().postDataJSON());
+    await route.fulfill({ json: { success: false, message: "Login failed" } });
+  });
+  await page.goto("/chat");
+  await page.getByRole("button", { name: "SQL Database" }).click();
+  await page.getByLabel("Connection string").fill("postgresql://db.example.com:5432/acme");
+  await page.getByLabel("Password", { exact: true }).fill("s3cret");
+  await page.getByRole("button", { name: "Test and connect" }).click();
+  await expect(page.getByRole("status")).toContainText("Add the user to the connection string");
+  expect(sent).toEqual([]);
+  await page.getByRole("button", { name: "REST API" }).click();
+  await page.getByRole("button", { name: "SQL Database" }).click();
+  await page.getByLabel("Connection string").fill("postgresql://bob@db.example.com:5432/acme");
+  await page.getByRole("button", { name: "Test and connect" }).click();
+  await expect.poll(() => sent.length).toBe(1);
+  expect(sent[0]).toEqual(expect.objectContaining({
+    connection_string: "postgresql://bob@db.example.com:5432/acme" }));
+});
+
+// Audit pass 2 (test analyst): a string that already holds a password gets the field's instead;
+// a server answer that isn't JSON (a proxy's 502 page) is said, never "Unexpected token".
+test("the field's password replaces the string's, and a non-JSON answer is said", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await login(page);
+  const sent: Record<string, unknown>[] = [];
+  await page.route("**/connectors/test", async (route) => {
+    sent.push(route.request().postDataJSON());
+    await route.fulfill({ status: 502, contentType: "text/html", body: "<html>Bad gateway</html>" });
+  });
+  await page.goto("/chat");
+  await page.getByRole("button", { name: "SQL Database" }).click();
+  await page.getByLabel("Connection string").fill("mysql://bob:old@db.example.com:3306/acme");
+  await page.getByLabel("Password", { exact: true }).fill("n:ew");
+  await page.getByRole("button", { name: "Test and connect" }).click();
+  await expect(page.getByRole("status")).toContainText("The server answered 502.");
+  expect(sent).toEqual([expect.objectContaining({
+    connection_string: "mysql://bob:n%3Aew@db.example.com:3306/acme" })]);
+});

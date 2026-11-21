@@ -87,11 +87,16 @@ worker/__main__.py         — `python -m worker`: claims runs from the Postgres
 connectors/
   base.py                  — DataConnector ABC (load = normalize_frame(_read()), the one load rule
                              every source ends in), get_connector() factory, without_secrets(),
-                             resolved() (the host lookup), sources_table() (README's source list)
+                             resolved() (the host lookup, embedded IPv4 unwrapped), sources_table()
+                             (README's source list), public_client() (THE http client for a user's URL:
+                             each connection to a checked public address), capped_body()
+  link.py                  — share links (5.8b): direct_url() (Sheets/Drive/OneDrive/Dropbox → the
+                             file), download() (≤ 5 https hops, capped, deadline, kind by its bytes)
   csv_connector.py         — one reader (_read_bytes): encoding, delimiter, title rows, decimal comma,
                              TOTAL footer, largest Excel sheet; lossless (dates parsed only if all parse);
-                             UPLOAD_SUFFIXES, MAX_UPLOAD_MB
-  sql_connector.py         — SQLAlchemy; DIALECTS (postgres/psycopg, mysql/pymysql, sqlite dev): an
+                             UPLOAD_SUFFIXES, MAX_UPLOAD_MB; _readable_size (zip bomb, header width)
+  sql_connector.py         — SQLAlchemy; DIALECTS (postgres/psycopg, mysql + mariadb/pymysql,
+                             mssql/pyodbc with a read-only-login check, sqlite dev): an
                              engine without a row is refused (ADR-0010); safe_url() = the connection
                              string allowlist + production host check; query() = parse guard → READ
                              ONLY txn (always rolled back) → statement timeout → 10k-row cap;
@@ -119,7 +124,8 @@ api/
                              POST /runs/{id}/cancel, /runs/{id}/retry
   routes/dashboard.py      — GET/POST/DELETE pinned charts; POST /chart-feedback (user's chart-type
                              switch: owner only, swap_options re-checked, saved, label-only trace)
-  routes/connectors.py     — POST /connectors/test, /connectors/upload (→ dataset version)
+  routes/connectors.py     — POST /connectors/test, /connectors/upload, /connectors/link (each
+                             file → dataset version through one _register)
   routes/sessions.py       — threads: list (columns + run status), PATCH, DELETE (tombstone),
                              /thread (reports as delivered), /export.md
   routes/datasets.py       — datasets: list, page, rename, delete (cascade), version split

@@ -16,10 +16,11 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
-from agents.errors import AgentError, GuardrailViolation, LLMOutputError
+from agents.errors import AgentError, GuardrailViolation, IngestionError, LLMOutputError
 from agents.utils import strip_markdown_fences
 from connectors.sql_connector import MAX_ROWS, QueryResult, SQLConnector, sql_dialect
 from guardrails import (
+    SOFT_REFUSALS,
     UNTRUSTED_NOTE,
     check_sql_readonly,
     delimit_untrusted,
@@ -225,6 +226,8 @@ async def run_tool(name: str, args: dict, layer, connector: SQLConnector) -> tup
             res = await connector.query(str(args.get("sql", "")), max_rows=_PREVIEW_ROWS)
         except GuardrailViolation as exc:
             return f"blocked: {str(exc).split(': ', 1)[-1]}", True
+        except IngestionError:   # the session itself won't open (a login that can write, the
+            raise                # database down): no query fixes it, so no paid round (5.8b audit)
         except Exception as exc:   # a database error is feedback for the model, not a crash
             return f"database error: {_db_error(exc)}", True
         return _preview(res), False
@@ -348,11 +351,16 @@ async def run_sql_agent(question: str, connector: SQLConnector, layer, llm: LLMC
             raise GuardrailViolation("sql", "model refused a write request", str(out["refusal"]))
         sql = str(out["sql"]).strip().rstrip(";").strip()
         metrics = [str(m) for m in out.get("metrics_used") or []]
+        problem = None
         if reason := check_sql_readonly(sql, dialect=dialect):
-            trace_verdict("sql", PROMPT_VERSION, "readonly")
-            raise GuardrailViolation("sql", reason, f"Blocked unsafe SQL: {reason}.")
+            # guardrails decides which refusals are soft (an analyst function off the list, a
+            # keyword-named column): the model tries again; anything else never gets a second try
+            if not reason.startswith(SOFT_REFUSALS):
+                trace_verdict("sql", PROMPT_VERSION, "readonly")
+                raise GuardrailViolation("sql", reason, f"Blocked unsafe SQL: {reason}.")
+            problem = ("function", reason)
 
-        problem = _review(sql, metrics, layer, dialect)
+        problem = problem or _review(sql, metrics, layer, dialect)
         if problem is None:
             try:
                 res = await connector.query(sql)

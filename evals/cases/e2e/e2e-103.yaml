@@ -1,0 +1,29 @@
+id: e2e-103
+domain: retail
+source: mssql
+sql_question: true
+dataset:
+  name: simpson
+  seed: 1
+question: What is the conversion rate of the treatment group versus control?
+overview_done: true
+checks:
+- kind: number_in_answer
+  truth_key: pooled_conversion.treatment
+  rel_tol: 0.02
+  scales:
+  - 1
+  - 100
+- kind: number_in_answer
+  truth_key: pooled_conversion.control
+  rel_tol: 0.02
+  scales:
+  - 1
+  - 100
+hard_rules:
+- charts_lint_clean
+- charts_have_rationale
+- non_empty_or_error
+label_note: 'Phase 5.8b: e2e-99 answered by the SQL agent in a SQL Server database (no table
+  named): T-SQL from the model (no LIMIT, no DATE literal), the function allow list on tsql, the
+  table rule (dbo, APPLY, #temp), the read-only login.'
