@@ -41,6 +41,11 @@ def _for(sql: str, name: str) -> str:
             return exp.table_(f"{node.db}_{node.name}", alias=node.alias or None)
         if isinstance(node, exp.Reference):   # a foreign key names the other table: not needed
             return None
+        if isinstance(node, exp.DataType) and node.this == exp.DataType.Type.DECIMAL \
+                and not node.expressions and name != "postgresql":
+            # a bare NUMERIC is exact at any scale in Postgres; sqlglot writes DECIMAL, which is
+            # DECIMAL(10,0) / (18,0) elsewhere: the server itself would round 70968.30 to 70968
+            return exp.DataType.build("DECIMAL(38, 10)")
         if isinstance(node, exp.Filter) and isinstance(node.this, exp.AggFunc):
             agg, cond = node.this.copy(), node.expression.this
             inner = agg.this.expressions[0] if isinstance(agg.this, exp.Distinct) else agg.this
@@ -123,3 +128,51 @@ async def test_every_golden_question_gets_postgres_answer_on_each_engine(tmp_pat
     assert wrong == {}, "\n".join(f"{k}: {v}" for k, v in wrong.items())
     # the exceptions are exactly sqlglot's, named: one still passing is no longer one
     assert len([c for c in CASES if (c["id"], name) not in SQLGLOT_CANT]) >= 47
+
+
+@pytest.fixture(scope="module")
+def model_answers(answers):
+    """The SQL the model wrote in stored eval runs (the shapes it really writes), with
+    Postgres's raw answer, for each one that runs on the seed (E2E ones read other tables)."""
+    from sqlalchemy import create_engine, text
+    from sqlalchemy.exc import SQLAlchemyError
+
+    from tests.test_sql_guard import _stored_sql
+    engine, out = create_engine(os.environ["TEST_PG_URL"]), {}
+    for sql in sorted(_stored_sql()):
+        try:
+            with engine.connect() as c:
+                out[sql] = [tuple(r) for r in c.execute(text(sql))]
+        except SQLAlchemyError:
+            continue
+    return out
+
+
+@pytest.mark.parametrize("name", ENGINES)
+async def test_the_models_stored_queries_get_postgres_answer_on_each_engine(tmp_path, name,
+                                                                          model_answers):
+    """A translated query the engine refuses is sqlglot's limit, counted (the model writes the
+    engine's own SQL); one that runs and answers differently is a failure, always."""
+    from sqlalchemy.exc import DBAPIError
+
+    from agents.errors import GuardrailViolation
+    url = _seed(tmp_path, name)
+    conn = _sql(url, None)
+    assert len(model_answers) >= 50, "the corpus shrank: the check would mean little"
+    wrong, refused = {}, []
+    for sql, want in model_answers.items():
+        try:
+            mine = _for(sql, name)
+            got = _rows(await conn.query(mine))
+        except (sqlglot.errors.SqlglotError, DBAPIError) as exc:   # the translation's limits
+            refused.append(f"{type(exc).__name__}: {str(exc)[:100]}")
+            continue
+        except GuardrailViolation as exc:   # the guard refusing a read the model wrote: ours
+            wrong[sql[:120]] = f"refused: {exc}"
+            continue
+        ok, why = result_matches(got, want, "order by" in sql.lower())
+        if not ok:
+            wrong[mine[:120]] = why
+    assert wrong == {}, "\n".join(f"{k} → {v}" for k, v in wrong.items())
+    ran = len(model_answers) - len(refused)
+    assert ran >= 0.85 * len(model_answers), f"only {ran} of {len(model_answers)} ran: {refused}"
