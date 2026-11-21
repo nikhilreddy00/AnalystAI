@@ -87,12 +87,15 @@ def _seed(tmp_path, name: str) -> str:
 
 @pytest.fixture(scope="module")
 def answers(tmp_path_factory):
-    """Postgres's answer to each golden question: the reference."""
-    import asyncio
-    tmp = tmp_path_factory.mktemp("pg")
-    url = _seed(tmp, "postgresql")
-    conn = _sql(url, None)
-    return {c["id"]: _rows(asyncio.run(conn.query(c["golden_sql"]))) for c in CASES}
+    """Postgres's answer to each golden question, read by the driver alone: the reference must
+    not share the product's reading (a plant in `QueryResult.frame` passed while both sides went
+    through it)."""
+    from sqlalchemy import create_engine, text
+    _seed(tmp_path_factory.mktemp("pg"), "postgresql")
+    engine = create_engine(os.environ["TEST_PG_URL"])
+    with engine.connect() as c:
+        return {case["id"]: [tuple(r) for r in c.execute(text(case["golden_sql"]))]
+                for case in CASES}
 
 
 def _rows(result) -> list[tuple]:
