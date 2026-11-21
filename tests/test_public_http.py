@@ -228,6 +228,10 @@ async def test_an_api_page_past_the_cap_or_compressed_is_refused(monkeypatch):
     with pytest.raises(IngestionError) as err:
         await conn.load()
     assert "compressed its answer" in err.value.user_message
+    # an empty Content-Encoding is no encoding (mutation gate: "" was removable)
+    serve(monkeypatch, lambda r: httpx.Response(200, content=b'[{"a": 1}]', headers={
+        "content-encoding": " "}))
+    assert list((await conn.load())["a"]) == [1]
 
 
 async def test_the_api_cap_is_for_every_page_together(monkeypatch):

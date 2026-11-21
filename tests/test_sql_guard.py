@@ -345,6 +345,8 @@ def test_a_zero_width_space_never_splits_a_statement():
             sql = f"SELECT TOP 1 a FROM keyed x{ch}EXEC('WAITFOR DELAY ''0:0:4''')"
             reason = g.check_sql_readonly(sql, dialect)
             assert reason and not reason.startswith(g.SOFT_REFUSALS), (repr(ch), dialect, reason)
+    assert g.check_sql_readonly("SELECT a FROM t x​EXEC('1')", "tsql") == (
+        "an invisible or unusual space character outside a string or quoted name is not allowed")
     # in a string or a quoted name it's data
     assert g.check_sql_readonly("SELECT 'a​b' AS [x​y] FROM t", "tsql") is None
     assert g.check_sql_readonly("SELECT nom_été FROM t", "tsql") is None   # a letter is a letter

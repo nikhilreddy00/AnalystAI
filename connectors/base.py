@@ -206,7 +206,7 @@ async def capped_body(response: httpx.Response, cap: int) -> bytes:
     async for chunk in response.aiter_raw():
         body += chunk
         if len(body) > cap:
-            raise BodyTooLarge(f"the answer is larger than {cap:,} bytes")
+            raise BodyTooLarge   # each caller says it in its own words (the link's, the API's)
     return bytes(body)
 
 

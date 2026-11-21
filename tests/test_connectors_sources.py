@@ -866,6 +866,8 @@ async def test_a_function_read_as_a_table_is_named_in_the_refusal(tmp_path):
      ["APPLY sys.dm_exec_sql_text"]),
     ("SELECT * FROM mine OUTER APPLY f(mine.a) q", "tsql", ["APPLY F"]),
     ("SELECT * FROM #mine", "tsql", ["#mine"]), ("SELECT * FROM ##mine", "tsql", ["#mine"]),
+    # every unlisted name is said, past a temp table too (mutation gate: `break` there passed)
+    ("SELECT * FROM #mine, theirs", "tsql", ["#mine", "theirs"]),
     ("SELECT * FROM OPENDATASOURCE('x', 'y').db.dbo.mine", "tsql", ["dbo.mine()"]),
     ("SELECT * FROM master..mine", "tsql", ["master.mine"]),
     ("SELECT * FROM other.dbo.mine", "tsql", ["other.dbo.mine"]),
@@ -921,8 +923,17 @@ def test_in_production_a_pinned_sql_server_url_opens_a_real_session(tmp_path, mo
 
 def test_a_repeated_option_is_said_not_a_crash():
     with pytest.raises(IngestionError, match="connection string options") as err:
-        _sql("mysql://u:p@h/x?ssl_mode=REQUIRED&ssl_mode=VERIFY_CA")._engine()
-    assert err.value.user_message == "Each connection string option may appear once: ssl_mode."
+        _sql("mysql://u:p@h/x?ssl_mode=REQUIRED&ssl_mode=VERIFY_CA&charset=a&charset=b")._engine()
+    assert err.value.user_message == \
+        "Each connection string option may appear once: charset, ssl_mode."
+
+
+def test_a_session_error_says_the_drivers_first_300_characters():
+    from sqlalchemy import create_engine
+
+    from connectors.sql_connector import _session_error
+    err = _session_error(Exception("x" * 400 + "\nsecond line"), create_engine("sqlite://"))
+    assert err.user_message == "Couldn't open a read-only session on the database: " + "x" * 300
 
 
 @pytest.mark.parametrize("cs", ["mssql://u:p@db.example:1433", "mssql://db.example:1433/acme"])

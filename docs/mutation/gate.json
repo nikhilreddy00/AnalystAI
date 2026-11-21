@@ -310,6 +310,9 @@
    }
   ]
  },
+ "connectors/base.py::capped_body": {
+  "equivalents": []
+ },
  "connectors/base.py::normalize_frame": {
   "equivalents": [
    {
@@ -323,7 +326,7 @@
  },
  "connectors/base.py::public_addresses": {
   "equivalents": [],
-  "hash": "08fddcd234c8b2ce"
+  "hash": "a5433d34ab7e0e8c"
  },
  "connectors/base.py::public_client": {
   "equivalents": []
@@ -408,7 +411,7 @@
  },
  "connectors/sql_connector.py::SQLConnector.query": {
   "equivalents": [],
-  "hash": "a6ff5e91735f540f"
+  "hash": "901894c6514a92a1"
  },
  "connectors/sql_connector.py::SQLConnector.schema_context": {
   "equivalents": [],
@@ -504,11 +507,11 @@
     "old": "conn.exec_driver_sql(statement.format(ms=int(timeout_s * 1000)))",
     "reason": "15,015 ms against 15,000: a statement timeout 15 ms longer, which no test can tell from the real one (the slow-query test allows seconds)"
    }
-  ]
+  ],
+  "hash": "bf1bd85597b43763"
  },
  "connectors/sql_connector.py::safe_url": {
-  "equivalents": [],
-  "hash": "05e67e301dee44dc"
+  "equivalents": []
  },
  "connectors/sql_connector.py::sql_dialect": {
   "equivalents": [],
@@ -761,7 +764,10 @@
  },
  "guardrails.py::_function_refused": {
   "equivalents": [],
-  "hash": "232bb4caf8cdd8cf"
+  "hash": "4c0343ef48ec5592"
+ },
+ "guardrails.py::_invisible": {
+  "equivalents": []
  },
  "guardrails.py::_is_sql_text": {
   "equivalents": [
@@ -785,11 +791,15 @@
   "hash": "b23596f7da759259"
  },
  "guardrails.py::_tsql_batch_word": {
-  "equivalents": []
+  "equivalents": [],
+  "hash": "ba99cfff9391a54a"
+ },
+ "guardrails.py::_unquoted": {
+  "equivalents": [],
+  "hash": "5fffc562fbd008fd"
  },
  "guardrails.py::check_sql_readonly": {
-  "equivalents": [],
-  "hash": "b1247a986b1c088e"
+  "equivalents": []
  },
  "guardrails.py::is_pii_column": {
   "equivalents": [],
