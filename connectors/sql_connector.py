@@ -528,6 +528,11 @@ def _session_error(exc: SQLAlchemyError, engine) -> IngestionError:
     lacks) as the database's problem, never the query's: no paid retry. The driver's first line,
     the password cut out."""
     said = str(getattr(exc, "orig", None) or exc).strip().splitlines()[0][:300]
+    if "Login timeout expired" in said or "HYT00" in said:
+        # ODBC's words for a host that doesn't answer (none listening, or no such host): the
+        # cause said as the user can act on it (5.8b hardening: the connection matrix)
+        said = f"can't reach {engine.url.host}:{engine.url.port or 1433} (no answer within " \
+               f"{CONNECT_TIMEOUT_S} s): check the host, the port and that the server allows it"
     if engine.url.password:
         said = said.replace(engine.url.password, "***")
     return IngestionError("session setup", f"Couldn't open a read-only session on the database: "

@@ -228,17 +228,34 @@ def test_an_ordinary_file_is_never_refused_as_too_wide(content, shape):
     assert _read_bytes(content, ".csv")[0].shape == shape
 
 
-def test_a_hostile_wide_line_is_refused_fast_without_a_cheap_gate():
+def test_a_hostile_wide_line_is_refused_fast_and_small_at_the_upload_size():
+    """At the full 50 MB: the time and the peak memory of refusing a 25M-field header (the
+    sampler and a pandas header read each built every field before the count; automated
+    security review of the hardening push)."""
     import time
+    import tracemalloc
 
     from agents.errors import IngestionError
-    from connectors.csv_connector import _read_bytes
+    from connectors.csv_connector import MAX_UPLOAD_MB, _read_bytes
+    hostile = b"," * (MAX_UPLOAD_MB * 2**20 - 10) + b"\n1\n"
+    tracemalloc.start()
     started = time.monotonic()
     with pytest.raises(IngestionError):
-        _read_bytes(b"," * 5_000_000 + b"\n1\n", ".csv")
+        _read_bytes(hostile, ".csv")
+    took = time.monotonic() - started
+    peak = tracemalloc.get_traced_memory()[1]
+    tracemalloc.stop()
+    assert took < 10 and peak < 12 * len(hostile), (took, peak / 2**20)
     with pytest.raises(IngestionError, match="too many columns"):
         _read_bytes(b",".join(b"c%d" % i for i in range(20_000)) + b"\n1\n", ".csv")
-    assert time.monotonic() - started < 5
+
+
+def test_the_header_count_honours_quotes_and_stops_at_the_cap():
+    from connectors.csv_connector import _MAX_COLUMNS, _header_fields
+    assert _header_fields('title\na,"b,c",d\n1,2,3\n', ",", 1) == 3
+    assert _header_fields('"x\ny",b\n1,2\n', ",", 0) == 2           # a newline inside quotes
+    assert _header_fields('a,"say ""hi"", ok",c\n', ",", 0) == 3     # an escaped quote
+    assert _header_fields("," * (_MAX_COLUMNS * 5), ",", 0) == _MAX_COLUMNS + 1
 
 
 def test_a_workbook_zip_can_t_open_is_not_a_table_never_a_crash():

@@ -18,12 +18,21 @@ MSSQL_IMAGE=mcr.microsoft.com/mssql/server:2022-CU28-ubuntu-22.04
 case "${1:-}" in
 up)
   mkdir -p "$DIR"
-  if [ ! -d "$DIR/pg" ]; then initdb -D "$DIR/pg" -U postgres --auth=trust >/dev/null; fi
-  if ! pg_ctl -D "$DIR/pg" status >/dev/null 2>&1; then
-    pg_ctl -D "$DIR/pg" -o "-p $PG_PORT -c unix_socket_directories='' -c listen_addresses=localhost" \
+  # 5.8b hardening: a password, checked, as CI's Postgres is (the first cluster trusted every
+  # login, so a wrong password connected and that path was never tried here); its cluster stops
+  if [ -d "$DIR/pg" ] && pg_ctl -D "$DIR/pg" status >/dev/null 2>&1; then
+    pg_ctl -D "$DIR/pg" -w stop >/dev/null
+  fi
+  [ -f "$DIR/pg.pw" ] || openssl rand -hex 12 > "$DIR/pg.pw"
+  PGPW=$(cat "$DIR/pg.pw")
+  if [ ! -d "$DIR/pgpw" ]; then
+    initdb -D "$DIR/pgpw" -U postgres --auth=scram-sha-256 --pwfile="$DIR/pg.pw" >/dev/null
+  fi
+  if ! pg_ctl -D "$DIR/pgpw" status >/dev/null 2>&1; then
+    pg_ctl -D "$DIR/pgpw" -o "-p $PG_PORT -c unix_socket_directories='' -c listen_addresses=localhost" \
       -l "$DIR/pg.log" -w start >/dev/null
   fi
-  createdb -h localhost -p "$PG_PORT" -U postgres analystai_eval 2>/dev/null || true
+  PGPASSWORD="$PGPW" createdb -h localhost -p "$PG_PORT" -U postgres analystai_eval 2>/dev/null || true
   if [ ! -d "$DIR/mysql" ]; then
     mysqld --initialize-insecure --datadir="$DIR/mysql" --user="$(whoami)" 2>/dev/null
   fi
@@ -38,7 +47,7 @@ up)
     CREATE USER IF NOT EXISTS 'analyst'@'127.0.0.1' IDENTIFIED BY '$PW';
     ALTER USER 'analyst'@'127.0.0.1' IDENTIFIED BY '$PW';
     GRANT ALL ON *.* TO 'analyst'@'127.0.0.1';"   # tests create a database per worker
-  echo "export TEST_PG_URL=postgresql+psycopg://postgres@localhost:$PG_PORT/analystai_eval"
+  echo "export TEST_PG_URL=postgresql+psycopg://postgres:$PGPW@localhost:$PG_PORT/analystai_eval"
   echo "export TEST_MYSQL_URL=mysql+pymysql://analyst:$PW@127.0.0.1:$MY_PORT/analystai_eval"
   # 5.8b: MariaDB and SQL Server in colima (SQL Server under Rosetta); tests/conftest.py creates
   # the databases and the SQL Server reader/writer logins from these URLs
@@ -69,6 +78,7 @@ down)
   docker stop aai-mariadb aai-mssql >/dev/null 2>&1 || true
   colima stop >/dev/null 2>&1 || true
   mysqladmin --socket="$SOCK" -uroot shutdown 2>/dev/null || true
+  pg_ctl -D "$DIR/pgpw" stop >/dev/null 2>&1 || true
   pg_ctl -D "$DIR/pg" stop >/dev/null 2>&1 || true
   echo "stopped"
   ;;

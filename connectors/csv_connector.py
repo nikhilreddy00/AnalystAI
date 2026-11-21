@@ -67,6 +67,7 @@ _MEASURE_HEADER_RE = re.compile(r"(?:^|[^a-z])(?:qty|quantity|units?|amount|coun
                                 r"score|weight|hours|days|minutes|sales|revenue)(?:$|[^a-z])", re.I)
 _CODE_HEADER_RE = re.compile(r"(?:^|[^a-z])(?:code|id|no|nr|ref|key)$", re.I)   # unit_code "007"
 _SAMPLE_LINES = 200
+_SAMPLE_LINE_CHARS = 1_000_000   # 10,000 columns of 100 characters
 
 
 def _decode(content: bytes) -> tuple[str, str]:
@@ -107,7 +108,10 @@ def _layout(text: str) -> tuple[str, int, str]:
     header is the first row unless it is narrower than 3/4 of the table: then report titles sit
     above it ("Acme, Inc." splits into 2 fields of 8). A decimal comma is assumed when the delimiter isn't a
     comma and unambiguous comma-decimals ("129,90", "1.249,00") outnumber dot-decimals."""
-    sample = "\n".join(text.splitlines()[:_SAMPLE_LINES])
+    # each sampled line cut at a width no real table reaches: csv.reader builds every field of a
+    # row, five times (one per delimiter), so a 50 MB line was 25M strings before any check
+    # (automated security review of the hardening push)
+    sample = "\n".join(line[:_SAMPLE_LINE_CHARS] for line in text.splitlines()[:_SAMPLE_LINES])
     best: tuple = (False, 0.0, 0)
     sep, rows = ",", []
     for d in _DELIMITERS:
@@ -139,6 +143,30 @@ def _layout(text: str) -> tuple[str, int, str]:
     return sep, line, "," if sep != "," and eu > us else "."
 
 
+_LINE_END = re.compile(r"\r\n|\n|\r")
+
+
+def _header_fields(text: str, sep: str, skip: int) -> int:
+    """How many fields the header row has, counted past `skip` lines with quotes honoured (a
+    quoted field may hold the delimiter or a newline), stopping one past the cap: no field is
+    built, so a 50 MB header costs a scan, never its millions of strings."""
+    pos = 0
+    for _ in range(skip):
+        if not (end := _LINE_END.search(text, pos)):
+            return 0
+        pos = end.end()
+    fields = 1
+    token = re.compile(rf'"(?:[^"]|"")*"?|{re.escape(sep)}|\r\n|\n|\r|[^"{re.escape(sep)}\r\n]+')
+    for match in token.finditer(text, pos):
+        if match.group() == sep:
+            fields += 1
+            if fields > _MAX_COLUMNS:
+                break
+        elif match.group() in ("\r\n", "\n", "\r"):
+            break
+    return fields
+
+
 def _read_text_table(content: bytes, suffix: str) -> tuple[pd.DataFrame, dict]:
     text, encoding = _decode(content)
     if sum(ch < " " and ch not in "\t\r\n" for ch in text[:4096]) > 40:   # control bytes: not text
@@ -147,14 +175,9 @@ def _read_text_table(content: bytes, suffix: str) -> tuple[pd.DataFrame, dict]:
     if suffix == ".tsv" and sep != "\t" and "\t" in text[:4096]:
         sep = "\t"
     # the header the read below will take (its delimiter, past its preamble, quotes honoured),
-    # read alone first: millions of columns would exhaust memory in the full read (5.8b; a data
-    # row wider than the header is a ParserError there)
-    try:
-        width = pd.read_csv(io.StringIO(text), sep=sep, skiprows=header, nrows=0,
-                            index_col=False).shape[1]
-    except (pd.errors.ParserError, pd.errors.EmptyDataError):
-        width = 0   # the full read says what's wrong
-    if width > _MAX_COLUMNS:   # as the message says (code review: exactly 10,000 was refused)
+    # counted first, stopping at the cap: millions of columns would exhaust memory in the full
+    # read (5.8b), and a header read with pandas built them all before the count (hardening)
+    if _header_fields(text, sep, header) > _MAX_COLUMNS:   # as the message says
         raise IngestionError("too many columns", f"The file has more than {_MAX_COLUMNS:,} "
                              "columns, past what can be read.")
     try:
