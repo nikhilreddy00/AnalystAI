@@ -311,7 +311,20 @@
   ]
  },
  "connectors/base.py::capped_body": {
-  "equivalents": []
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "encoding = response.headers.get(\"CONTENT-ENCODING\", \"identity\").strip().lower()",
+    "old": "encoding = response.headers.get(\"content-encoding\", \"identity\").strip().lower()",
+    "reason": "httpx headers are case-insensitive: either spelling reads the same header"
+   },
+   {
+    "n": 1,
+    "new": "encoding = response.headers.get(\"content-encoding\", \"IDENTITY\").strip().lower()",
+    "old": "encoding = response.headers.get(\"content-encoding\", \"identity\").strip().lower()",
+    "reason": "the default is lower-cased on the same line before it is compared"
+   }
+  ]
  },
  "connectors/base.py::normalize_frame": {
   "equivalents": [
@@ -329,7 +342,32 @@
   "hash": "a5433d34ab7e0e8c"
  },
  "connectors/base.py::public_client": {
-  "equivalents": []
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "transport = httpx.AsyncHTTPTransport(verify=None)",
+    "old": "transport = httpx.AsyncHTTPTransport(verify=_tls_context())",
+    "reason": "verify configures only the transport's own pool, which the next statement replaces with one built on _tls_context(); passing it saves loading the CA bundle a second time, a cost, not a behaviour"
+   },
+   {
+    "n": 1,
+    "new": "return httpx.AsyncClient(transport=transport, timeout=timeout, trust_env=False, headers={\"Accept-Encoding\": \"identity\"})",
+    "old": "return httpx.AsyncClient(transport=transport, timeout=timeout, follow_redirects=False,",
+    "reason": "follow_redirects is False by default in httpx (0.28); it is spelled out so a reader sees it, and tests/test_share_links.py proves each hop is the caller's"
+   },
+   {
+    "n": 1,
+    "new": "trust_env=False, headers={\"accept-encoding\": \"identity\"})",
+    "old": "trust_env=False, headers={\"Accept-Encoding\": \"identity\"})",
+    "reason": "HTTP header names are case-insensitive; httpx sends either spelling as the same header"
+   },
+   {
+    "n": 1,
+    "new": "trust_env=False, headers={\"ACCEPT-ENCODING\": \"identity\"})",
+    "old": "trust_env=False, headers={\"Accept-Encoding\": \"identity\"})",
+    "reason": "HTTP header names are case-insensitive; httpx sends either spelling as the same header"
+   }
+  ]
  },
  "connectors/base.py::resolved": {
   "equivalents": [],
@@ -385,6 +423,12 @@
  },
  "connectors/sql_connector.py::SQLConnector._read": {
   "equivalents": [
+   {
+    "n": 1,
+    "new": "select(func.count()).select_from(listed), engine), 2)",
+    "old": "select(func.count()).select_from(listed), engine), 1)",
+    "reason": "the row cap of a COUNT(*): it returns exactly one row, so a cap of 1 or 2 reads the same row"
+   },
    {
     "n": 1,
     "new": "f\"SELECT COUNT(*) FROM {qualified}\", )  # noqa: S608",
@@ -767,7 +811,20 @@
   "hash": "4c0343ef48ec5592"
  },
  "guardrails.py::_invisible": {
-  "equivalents": []
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "return any(unicodedata.category(c)[0] in \"XXCZXX\" for c in text if c not in \" \\t\\r\\n\")",
+    "old": "return any(unicodedata.category(c)[0] in \"CZ\" for c in text if c not in \" \\t\\r\\n\")",
+    "reason": "a Unicode category's first letter is one of C, L, M, N, P, S, Z: never X"
+   },
+   {
+    "n": 1,
+    "new": "return any(unicodedata.category(c)[0] in \"CZ\" for c in text if c not in \"XX \\t\\r\\nXX\")",
+    "old": "return any(unicodedata.category(c)[0] in \"CZ\" for c in text if c not in \" \\t\\r\\n\")",
+    "reason": "X is a letter (category Lu), which the test never counts, so skipping it changes nothing"
+   }
+  ]
  },
  "guardrails.py::_is_sql_text": {
   "equivalents": [
