@@ -146,9 +146,10 @@ def _layout(text: str) -> tuple[str, int, str]:
 _LINE_END = re.compile(r"\r\n|\n|\r")
 
 
-# unrolled ("normal* (special normal*)*"): no backtracking state per character (hardening audit:
-# the alternation form held 1.3 GB on a 10 MB unclosed quote)
-_QUOTED_FIELD = re.compile(r'"[^"]*(?:""[^"]*)*"')
+# unrolled and possessive (*+, Python 3.11): no backtracking state kept per character or per
+# repetition (hardening audit: the alternation form held 1.3 GB on a 10 MB unclosed quote; the
+# automated review: a long run of "" escapes grew the plain unrolled form's state)
+_QUOTED_FIELD = re.compile(r'"[^"]*+(?:""[^"]*+)*+"')
 
 
 def _record_fields(text: str, sep: str, pos: int) -> tuple[int, int]:
@@ -201,7 +202,8 @@ def _widest_record(text: str, sep: str) -> int:
     if '"' not in text:
         wide = any(m.group().count(sep) >= _MAX_COLUMNS for m in long_line.finditer(text))
         return _MAX_COLUMNS + 1 if wide else 0
-    quote_free_lines = re.compile(r'(?:[^"\r\n]*(?:\r\n|\n|\r))+')
+    quote_free_lines = re.compile(r'(?:[^"\r\n]*+(?:\r\n|\n|\r))++')   # possessive: no state
+    # kept per line (automated review: millions of short lines then a quote)
     pos = 0
     while pos < len(text):
         if (run := quote_free_lines.match(text, pos)) is not None and run.end() > pos:
@@ -384,8 +386,11 @@ def _read_bytes(content: bytes, suffix: str) -> tuple[pd.DataFrame, dict]:
     # layout off): said as too wide, never junk text. Counted as records, quotes honoured: a raw
     # count refused a one-column file with a long quoted cell (hardening audit). latin-1: every
     # byte one character, so the ASCII delimiters and quotes are where they are in the file
+    # the first 4 MB: a table behind a title shows there, and four full scans of a large quoted
+    # one-column file cost seconds each (automated review)
+    head = content[:4 * 2**20].decode("latin-1")
     if df.shape[1] == 1 and suffix in (".csv", ".tsv") and any(
-            _widest_record(content.decode("latin-1"), d) > _MAX_COLUMNS for d in (",", ";", "\t", "|")):
+            _widest_record(head, d) > _MAX_COLUMNS for d in (",", ";", "\t", "|")):
         raise IngestionError("too many columns", f"The file has more than {_MAX_COLUMNS:,} "
                              "columns, past what can be read.")
     if df.empty:

@@ -598,9 +598,53 @@ async def test_a_gzipped_answer_is_read_with_its_size_counted_unpacked(client, m
 
 
 @functools.cache
-def _gzip_bomb() -> bytes:   # 1 GB of zeros packs to ~1 MB
+def _gzip_bomb() -> bytes:
+    """1 GB of zeros as gzip (~1 MB), built a megabyte at a time: never the 1 GB itself in a
+    worker (test analyst: 12.6 s and 1 GB of RSS per xdist worker)."""
+    import zlib
+    packer, block = zlib.compressobj(9, zlib.DEFLATED, 16 + zlib.MAX_WBITS), b"0" * 2**20
+    return b"".join([*(packer.compress(block) for _ in range(1024)), packer.flush()])
+
+
+class _Answer:
+    """A response whose body comes in chunks, for capped_body alone."""
+
+    def __init__(self, body: bytes, encoding: str):
+        self.headers, self.body = {"content-encoding": encoding}, body
+
+    async def aiter_raw(self):
+        for i in range(0, len(self.body), 65536):
+            yield self.body[i:i + 65536]
+
+
+async def test_every_gzip_member_is_read_and_a_cut_or_corrupt_body_is_said():
+    """Test analyst and silent-failure hunter: the first reader returned only the first gzip
+    member of several (rows missing, no word), and half a truncated stream as the file."""
     import gzip
-    return gzip.compress(b"0" * (1024 * 2**20), compresslevel=9)
+    import zlib
+
+    from connectors.base import capped_body
+    a, b = b"id,v\n1,2\n", b"3,4\n"
+    assert await capped_body(_Answer(gzip.compress(a) + gzip.compress(b), "gzip"), 10**6) == a + b
+    assert await capped_body(_Answer(gzip.compress(a), "x-gzip"), 10**6) == a
+    headerless = zlib.compressobj(9, zlib.DEFLATED, -zlib.MAX_WBITS)
+    raw_deflate = headerless.compress(a) + headerless.flush()
+    assert await capped_body(_Answer(raw_deflate, "deflate"), 10**6) == a   # as httpx read it
+    with pytest.raises(ValueError, match="ended before it was complete"):
+        await capped_body(_Answer(gzip.compress(a)[:-12], "gzip"), 10**6)
+    with pytest.raises(ValueError, match="couldn't be unpacked"):
+        await capped_body(_Answer(b"\x1f\x8bjunk-not-gzip", "gzip"), 10**6)
+    with pytest.raises(ValueError, match="couldn't be unpacked"):
+        await capped_body(_Answer(gzip.compress(a) + b"trailing junk", "gzip"), 10**6)
+
+
+async def test_the_raw_bytes_are_capped_even_when_the_decoder_holds_them_back():
+    import gzip
+
+    from connectors.base import BodyTooLarge, capped_body
+    tail = gzip.compress(b"x") * 4000   # tiny members past a small cap
+    with pytest.raises(BodyTooLarge):
+        await capped_body(_Answer(tail, "gzip"), 10_000)
 
 
 async def test_a_gzip_bomb_is_refused_as_too_large_never_unpacked(client, monkeypatch):
@@ -618,16 +662,9 @@ async def test_the_body_reader_never_holds_more_than_its_cap_unpacking():
 
     from connectors.base import BodyTooLarge, capped_body
     bomb, cap = _gzip_bomb(), 50 * 2**20
-
-    class Answer:
-        headers = {"content-encoding": "gzip"}
-
-        async def aiter_raw(self):
-            for i in range(0, len(bomb), 65536):
-                yield bomb[i:i + 65536]
-    tracemalloc.start()
+    tracemalloc.start()   # the reader is pure Python: tracemalloc sees all it holds
     with pytest.raises(BodyTooLarge):
-        await capped_body(Answer(), cap)
+        await capped_body(_Answer(bomb, "gzip"), cap)
     peak = tracemalloc.get_traced_memory()[1]
     tracemalloc.stop()
     assert peak < 3 * cap, peak / 2**20

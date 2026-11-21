@@ -117,25 +117,33 @@ def as_times(s: pd.Series) -> pd.Series:
 
 
 def _config_secrets(config: ConnectorConfig) -> list[str]:
-    """Every piece of a config that is a credential, the strongest first: its password raw and
-    decoded, the API key, a service account, the connection string whole and its user-info part
-    (between :// and the last @ before the path, so a malformed string is covered), then a key
-    in the API URL's query."""
+    """Every piece of a config that is a credential, the strongest first: the connection string
+    whole and its user-info part raw and decoded, the bare password, the API key, a service
+    account, a key in the API URL's query (named a key: `country_code=` is a country). Which of
+    them mask text is `_masks`' rule."""
     from urllib.parse import parse_qsl, unquote, urlparse
     conn = config.connection_string or ""
-    secrets = [config.auth_value or "", config.service_account_json or ""]
+    secrets = []
     if (m := re.match(r"^[^:/]+://(.*)@[^@/]*(/|$)", conn)) is not None:
         userinfo = m.group(1)
         password = userinfo.split(":", 1)[1] if ":" in userinfo else ""
-        secrets = [password, unquote(password), *secrets, conn, userinfo]
+        secrets = [conn, userinfo, unquote(userinfo), password, unquote(password)]
     else:
         secrets.append(conn)
+    secrets += [config.auth_value or "", config.service_account_json or ""]
     if config.url:
-        secrets += [v for k, v in parse_qsl(urlparse(config.url).query) if _SECRET_KEY.search(k)]
+        try:
+            query = parse_qsl(urlparse(config.url).query)
+        except ValueError:   # a malformed URL ('[::1'): no credential to read, never a crash in
+            query = []       # the error handler that called this (code review)
+        secrets += [v for k, v in query if _SECRET_KEY.fullmatch(k)]
     return [s for s in dict.fromkeys(secrets) if s]
 
 
-_SECRET_KEY = re.compile(r"key|token|sig|secret|auth|pass|pwd|code", re.IGNORECASE)
+# a query key that names a credential, whole (`api_key`, `X-Amz-Signature`, `access_token`)
+_SECRET_KEY = re.compile(r"(?:x[-_]amz[-_])?(?:api[-_]?key|apikey|key|token|access[-_]?token|"
+                         r"sig|signature|secret|client[-_]secret|password|pwd|auth|code)",
+                         re.IGNORECASE)
 # Every credential this process has been handed, masked where text reaches an operator: the log
 # filter and the eval reports (Airflow's SecretsMasker). 5.8a and 5.8b masked per sink, and each
 # new sink leaked (logs, three report writers, a query's key: P58-06). Registered where any
@@ -156,7 +164,7 @@ _SECRETS: tuple[tuple[str, ...], tuple[str, ...]] = ((), ())   # (newest last, l
 def register_secrets(*values: str) -> None:
     global _SECRETS
     new = [v for v in dict.fromkeys(values)
-           if v and 6 <= len(v) <= _MAX_SECRET_CHARS][:_PER_REGISTRATION]
+           if _masks(v) and len(v) <= _MAX_SECRET_CHARS][:_PER_REGISTRATION]
     known = _SECRETS[0]
     if not new or known[-len(new):] == tuple(new):   # nothing, or already the newest
         return
@@ -174,12 +182,22 @@ def redact(text: str) -> str:
     return text
 
 
+def _masks(value: str) -> bool:
+    """Whether a credential masks text where it appears: a credential form (`user:password`, a
+    connection string) from 6 characters, a bare value (a password, an API key) from 12. A
+    shorter bare value is a word as often as a secret: the password 'postgres' masked
+    'postgresql' in every log, 'analysis' turned "the analysis step" into "the *** step"
+    (hardening audit, three reviewers)."""
+    return len(value) >= 12 or (len(value) >= 6 and (":" in value or "@" in value))
+
+
 def without_secrets(message: str, config: ConnectorConfig) -> str:
-    """`message` with this config's credentials cut out, short ones too (≥ 3 characters): a
-    driver's error can quote its URL. Never another config's: see `_SECRETS`."""
-    secrets = _config_secrets(config)
-    register_secrets(*secrets)   # and remembered for the logs
-    for s in sorted((s for s in secrets if len(s) >= 3), key=len, reverse=True):
+    """`message` with this config's credentials cut out: a driver's error can quote its URL or
+    echo the password. Never another config's (see `_SECRETS`), and it registers nothing: a
+    value typed into the connect form never masks the operator's logs (security review: a
+    'password' of 'GuardrailViolation' hid it everywhere); `get_connector` registers real use."""
+    secrets = [s for s in _config_secrets(config) if _masks(s)]
+    for s in sorted(secrets, key=len, reverse=True):
         message = message.replace(s, "***")
     return message
 
@@ -265,22 +283,40 @@ async def capped_body(response: httpx.Response, cap: int) -> bytes:
     else:
         raise ValueError(f"it compressed its answer as {encoding}, which isn't read here")
     body, raw = bytearray(), 0
+    raw_deflate_tried = False
     try:
         async for chunk in response.aiter_raw():
-            raw += len(chunk)   # the sent bytes too: past a gzip member's end zlib keeps the rest
-            if raw > cap:       # unread (unused_data), uncounted (automated security review)
+            raw += len(chunk)   # the sent bytes too, whatever the decoder holds back
+            if raw > cap:
                 raise BodyTooLarge
-            if decoder is not None:
-                chunk = decoder.decompress(chunk, cap + 1 - len(body))
+            if decoder is None:
+                body += chunk
+            while decoder is not None and chunk:
+                try:
+                    out = decoder.decompress(chunk, cap + 1 - len(body))
+                except zlib.error:   # deflate sent without its zlib header, as some servers do
+                    if encoding != "deflate" or body or raw_deflate_tried:
+                        raise
+                    raw_deflate_tried, decoder = True, zlib.decompressobj(-zlib.MAX_WBITS)
+                    continue
                 if decoder.unconsumed_tail:   # more would come out than the cap has left
                     raise BodyTooLarge
-            body += chunk
+                body += out
+                if len(body) > cap:
+                    break
+                # a member ended: the next one (gzip may be several, each read whole; the first
+                # reader returned only the first: test analyst), or junk, which is refused
+                chunk = decoder.unused_data if decoder.eof else b""
+                if chunk:
+                    decoder = zlib.decompressobj(_ZLIB_AUTO)
             if len(body) > cap:
                 raise BodyTooLarge   # each caller says it in its own words (the link's, the API's)
-        if decoder is not None:
+        if decoder is not None and raw:
             body += decoder.flush(cap + 1 - len(body))
             if len(body) > cap:
                 raise BodyTooLarge
+            if not decoder.eof:   # cut short: never half a file read as the whole one
+                raise ValueError(f"its {encoding} answer ended before it was complete")
     except zlib.error:
         raise ValueError(f"its {encoding} answer couldn't be unpacked") from None
     return bytes(body)

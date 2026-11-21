@@ -74,13 +74,48 @@ def test_the_registry_is_bounded_and_a_flood_never_unmasks_a_connector_in_use():
     base.register_secrets("x" * (base._MAX_SECRET_CHARS + 1))
     assert "x" * (base._MAX_SECRET_CHARS + 1) not in base._SECRETS[0]
     victim = _sql_config()
-    for i in range(0, base._MAX_SECRETS + 800, 8):
-        base.register_secrets(*(f"flood-{j:06d}" for j in range(i, i + 8)))
+    flood = [f"flood-value-{j:06d}" for j in range(base._MAX_SECRETS + 800)]
+    for i in range(0, len(flood), 8):
+        base.register_secrets(*flood[i:i + 8])
         if i % 1024 == 0:
             get_connector(victim)   # the victim's run goes on using its connector
-    get_connector(victim)
+    # checked right after the flood, with no use in between: the refresh alone kept it (the first
+    # draft re-registered the victim just before asserting: vacuous, test analyst)
     assert len(base._SECRETS[0]) == base._MAX_SECRETS
     assert CANARY not in base.redact(f"pw {CANARY}")
+    assert flood[0] not in base._SECRETS[0]   # what nobody used again aged out
+
+
+def test_ordinary_words_are_never_masked_in_the_logs():
+    """Silent-failure hunter, test analyst: the password 'postgres' masked 'postgresql' in every
+    log; `region_code=revenue&author=…` registered 'revenue' (a key matched as a substring)."""
+    from connectors.base import redact
+    get_connector(ConnectorConfig(type=ConnectorType.SQL,
+                                  connection_string="postgresql://postgres:postgres@db/x"))
+    get_connector(ConnectorConfig(type=ConnectorType.API,
+                                  url="https://api.example/v1?region_code=revenue-europe&author=Shakespeare-W"))
+    said = "postgresql dialect; revenue-europe by Shakespeare-W"
+    assert redact(said) == said
+    assert redact("connect postgresql://postgres:postgres@db/x") == "connect ***"
+
+
+def test_a_configs_own_credentials_are_registered_strongest_first():
+    """At most 8 a registration: the password must not be the one dropped (test analyst)."""
+    from connectors.base import redact
+    keys = "&".join(f"token{i}=" for i in range(6))
+    get_connector(ConnectorConfig(
+        type=ConnectorType.API, auth_value="api-key-strong-0123456789",
+        url=f"https://api.example/v1?api_key=qk-{CANARY}&{keys}"))
+    assert redact("api-key-strong-0123456789") == "***"
+
+
+def test_a_malformed_url_never_breaks_the_error_handler():
+    """`urlparse('https://[::1/x')` raises: in get_connector, without_secrets and _fail it was a
+    500 or a crashed failure node (code review)."""
+    from connectors.base import without_secrets
+    config = ConnectorConfig(type=ConnectorType.API, url="https://[::1/x", auth_value="k" * 20)
+    get_connector(config)
+    assert without_secrets("k" * 20 + " failed", config) == "*** failed"
 
 
 def test_a_report_holding_a_credential_anywhere_is_redacted():
