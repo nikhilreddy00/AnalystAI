@@ -256,6 +256,36 @@ def test_the_header_count_honours_quotes_and_stops_at_the_cap():
     assert _header_fields('"x\ny",b\n1,2\n', ",", 0) == 2           # a newline inside quotes
     assert _header_fields('a,"say ""hi"", ok",c\n', ",", 0) == 3     # an escaped quote
     assert _header_fields("," * (_MAX_COLUMNS * 5), ",", 0) == _MAX_COLUMNS + 1
+    # a quote mid-field is a character, as pandas reads it: never a quoted span hiding commas
+    assert _header_fields('a"b,' + "," * (_MAX_COLUMNS * 5), ",", 0) == _MAX_COLUMNS + 1
+    assert _header_fields('a"b,c\n', ",", 0) == 2
+    assert _header_fields('"never closed,a,b\n1,2', ",", 0) == 1   # one field to the end
+
+
+def test_a_wide_data_row_under_a_narrow_header_is_refused_fast_and_small():
+    """pandas tokenizes every field of a row wider than its header, then drops the extras
+    (2.5 s a MB): one 50 MB line of commas under `a,b` held a worker for minutes."""
+    import time
+    import tracemalloc
+
+    from agents.errors import IngestionError
+    from connectors.csv_connector import MAX_UPLOAD_MB, _read_bytes
+    hostile = b"a,b\n1,2\n" + b"," * (MAX_UPLOAD_MB * 2**20 - 20) + b"\n"
+    tracemalloc.start()
+    started = time.monotonic()
+    with pytest.raises(IngestionError, match="too many columns"):
+        _read_bytes(hostile, ".csv")
+    took, peak = time.monotonic() - started, tracemalloc.get_traced_memory()[1]
+    tracemalloc.stop()
+    assert took < 10 and peak < 12 * len(hostile), (took, peak / 2**20)
+
+
+def test_a_header_hiding_its_width_behind_a_mid_field_quote_is_refused():
+    """Automated review: `a"b,,,,…` counted as one field, then pandas built every one."""
+    from agents.errors import IngestionError
+    from connectors.csv_connector import _read_bytes
+    with pytest.raises(IngestionError, match="too many columns"):
+        _read_bytes(b'a"b,' + b"c," * 20_000 + b"\n1\n", ".csv")
 
 
 def test_a_workbook_zip_can_t_open_is_not_a_table_never_a_crash():

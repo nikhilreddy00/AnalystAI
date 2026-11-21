@@ -115,20 +115,55 @@ def as_times(s: pd.Series) -> pd.Series:
     return parsed.where(dated | text.str.contains(HAS_YEAR_RE, regex=True).fillna(False))
 
 
-def without_secrets(message: str, config: ConnectorConfig) -> str:
-    """`message` with the config's credentials cut out: a driver's error can quote its URL. The
-    connection string whole, its user-info part (everything between :// and the last @ before
-    the path, so a malformed string is covered too) and its decoded password, and the API key."""
-    from urllib.parse import unquote
+def _config_secrets(config: ConnectorConfig) -> set[str]:
+    """Every piece of a config that is a credential: the connection string whole, its user-info
+    part (between :// and the last @ before the path, so a malformed string is covered) and its
+    password raw and decoded, the API key, a service account, and a key in the API URL's query."""
+    from urllib.parse import parse_qsl, unquote, urlparse
     conn = config.connection_string or ""
     secrets = {conn, config.auth_value or "", config.service_account_json or ""}
     if (m := re.match(r"^[^:/]+://(.*)@[^@/]*(/|$)", conn)) is not None:
         userinfo = m.group(1)
         password = userinfo.split(":", 1)[1] if ":" in userinfo else ""
         secrets |= {userinfo, password, unquote(password)}
+    if config.url:
+        secrets |= {v for k, v in parse_qsl(urlparse(config.url).query) if _SECRET_KEY.search(k)}
+    return {s for s in secrets if s}
+
+
+_SECRET_KEY = re.compile(r"key|token|sig|secret|auth|pass|pwd|code", re.IGNORECASE)
+# Every credential this process has been handed, masked wherever text leaves it: one registry and
+# one redactor (Airflow's SecretsMasker; the run's PII values work the same way). 5.8a and 5.8b
+# masked per sink, and each new sink leaked (logs, three report writers, a query's key: P58-06).
+# Registered where any connector is built (`get_connector`); a frozenset swapped, never mutated,
+# so a log line on another thread reads it while a run registers. Six characters at least: a
+# short value would mask its letters everywhere.
+_SECRETS: frozenset[str] = frozenset()
+
+
+def register_secrets(*values: str) -> None:
+    global _SECRETS
+    if new := {v for v in values if v and len(v) >= 6} - _SECRETS:
+        _SECRETS = _SECRETS | new
+
+
+def redact(text: str) -> str:
+    """`text` with every registered credential as ***, longest first (a password inside its
+    connection string goes with the string)."""
+    for secret in sorted(_SECRETS, key=len, reverse=True):
+        if secret in text:
+            text = text.replace(secret, "***")
+    return text
+
+
+def without_secrets(message: str, config: ConnectorConfig) -> str:
+    """`message` with the config's credentials cut out: a driver's error can quote its URL. Its
+    short ones too (≥ 3 characters), which the process-wide registry leaves alone."""
+    secrets = _config_secrets(config)
+    register_secrets(*secrets)
     for s in sorted((s for s in secrets if len(s) >= 3), key=len, reverse=True):
         message = message.replace(s, "***")
-    return message
+    return redact(message)
 
 
 _NAT64 = ipaddress.ip_network("64:ff9b::/96")
@@ -413,4 +448,5 @@ def get_connector(config: ConnectorConfig) -> DataConnector:
     cls = mapping.get(config.type)
     if not cls:
         raise ValueError(f"Unsupported connector type: {config.type}")
+    register_secrets(*_config_secrets(config))   # every source's credentials, before any use
     return cls(config)

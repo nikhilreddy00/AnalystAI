@@ -146,25 +146,55 @@ def _layout(text: str) -> tuple[str, int, str]:
 _LINE_END = re.compile(r"\r\n|\n|\r")
 
 
+_QUOTED_FIELD = re.compile(r'"(?:[^"]|"")*"')
+
+
+def _record_fields(text: str, sep: str, pos: int) -> tuple[int, int]:
+    """(how many fields the record at `pos` has, where the next record starts), field by field
+    as pandas reads them, stopping one past the cap: no field is built, so a 50 MB row costs a
+    scan, never its millions of strings. A quote opens a quoted field only at the field's start
+    (mid-field it is a character: `a"b,c` is two fields), and a quoted field, which may hold the
+    delimiter or a newline, ends at its closing quote; an unclosed one is one field to the end,
+    as pandas reads it (automated reviews of the hardening: a free-floating quote token let
+    `a"b,…` count as one field while pandas built millions)."""
+    rest = re.compile(rf"[^{re.escape(sep)}\r\n]*")
+    fields = 1
+    while fields <= _MAX_COLUMNS:
+        if text.startswith('"', pos):
+            if not (m := _QUOTED_FIELD.match(text, pos)):
+                return fields, len(text)
+            pos = m.end()
+        pos = rest.match(text, pos).end()
+        if not text.startswith(sep, pos):
+            end = _LINE_END.match(text, pos)
+            return fields, end.end() if end else len(text)
+        fields, pos = fields + 1, pos + len(sep)
+    return fields, len(text)
+
+
 def _header_fields(text: str, sep: str, skip: int) -> int:
-    """How many fields the header row has, counted past `skip` lines with quotes honoured (a
-    quoted field may hold the delimiter or a newline), stopping one past the cap: no field is
-    built, so a 50 MB header costs a scan, never its millions of strings."""
+    """How many fields the header row has, past `skip` lines (see `_record_fields`)."""
     pos = 0
     for _ in range(skip):
         if not (end := _LINE_END.search(text, pos)):
             return 0
         pos = end.end()
-    fields = 1
-    token = re.compile(rf'"(?:[^"]|"")*"?|{re.escape(sep)}|\r\n|\n|\r|[^"{re.escape(sep)}\r\n]+')
-    for match in token.finditer(text, pos):
-        if match.group() == sep:
-            fields += 1
-            if fields > _MAX_COLUMNS:
-                break
-        elif match.group() in ("\r\n", "\n", "\r"):
-            break
-    return fields
+    return _record_fields(text, sep, pos)[0]
+
+
+def _widest_record(text: str, sep: str) -> int:
+    """The most fields any record has, stopping past the cap; only scanned when a raw line holds
+    the cap's worth of delimiters (a cheap count first). pandas tokenizes every field of a row
+    wider than its header and then drops the extra ones: 2.5 s a MB, so one 50 MB line of commas
+    under a two-column header held a worker for minutes (found in the hardening's own probe; the
+    deleted cheap gate had refused it, along with narrow files holding a long quoted cell)."""
+    if max((line.count(sep) for line in text.splitlines()), default=0) < _MAX_COLUMNS:
+        return 0
+    widest, pos = 0, 0
+    while pos < len(text) and widest <= _MAX_COLUMNS:
+        fields, pos = _record_fields(text, sep, pos)
+        widest = max(widest, fields)
+    return widest
 
 
 def _read_text_table(content: bytes, suffix: str) -> tuple[pd.DataFrame, dict]:
@@ -177,7 +207,7 @@ def _read_text_table(content: bytes, suffix: str) -> tuple[pd.DataFrame, dict]:
     # the header the read below will take (its delimiter, past its preamble, quotes honoured),
     # counted first, stopping at the cap: millions of columns would exhaust memory in the full
     # read (5.8b), and a header read with pandas built them all before the count (hardening)
-    if _header_fields(text, sep, header) > _MAX_COLUMNS:   # as the message says
+    if _header_fields(text, sep, header) > _MAX_COLUMNS or _widest_record(text, sep) > _MAX_COLUMNS:
         raise IngestionError("too many columns", f"The file has more than {_MAX_COLUMNS:,} "
                              "columns, past what can be read.")
     try:

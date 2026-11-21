@@ -137,7 +137,8 @@ def _fail(session: AnalysisSession, stage: str, exc: Exception) -> None:
     """Route a node failure to error_node. Typed errors carry their own user message."""
     logger.error("%s failed", stage, exc_info=exc)   # the log is scrubbed (api/logging_scrub.py)
     # An exception's text can quote cell values: the user (and run_events) get its type only.
-    session.error_message = (
+    from connectors.base import redact   # a typed error can quote a driver's text, and its URL
+    session.error_message = redact(
         exc.user_message if isinstance(exc, AgentError)
         else f"The {_STEP.get(stage, 'analysis')} step stopped unexpectedly. Try again; if it "
              "keeps failing, ask a different question."

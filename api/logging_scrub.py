@@ -14,9 +14,12 @@ _ADDR = re.compile(r"\[?[0-9a-fA-F.:]+\]?:\d{1,5}")   # uvicorn's "203.0.113.5:5
 
 
 def scrub(text: str) -> str:
+    """PII and credentials alike: a driver's error can quote its connection string (5.8b
+    hardening: the scrub knew personal values, not passwords)."""
+    from connectors.base import redact
     from guardrails import mask_pii
     from llm.client import pseudonymize
-    return mask_pii(pseudonymize(text)[0])
+    return mask_pii(pseudonymize(redact(text))[0])
 
 
 class ScrubFilter(logging.Filter):
