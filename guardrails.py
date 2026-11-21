@@ -163,20 +163,24 @@ _QUOTED = frozenset({sqlglot.TokenType.STRING, sqlglot.TokenType.NATIONAL_STRING
                      sqlglot.TokenType.IDENTIFIER})
 
 
-def _unquoted(sql: str, dialect: str | None) -> list[str]:
-    """The text of every token outside a string or a quoted name ([] when the tokenizer can't
-    read it: that text is the parse's to refuse)."""
-    try:
-        return [t.text for t in sqlglot.tokenize(sql, read=dialect) if t.token_type not in _QUOTED]
-    except sqlglot.errors.SqlglotError:
-        return []
-
-
 def _invisible(text: str) -> bool:
     """A format, separator or control character: sqlglot glues it into a name, a server may read
     it as a space (5.8b audit pass 2: `x​EXEC(...)` was one alias to the guard, two
     statements to SQL Server)."""
     return any(unicodedata.category(c)[0] in "CZ" for c in text if c not in " \t\r\n")
+
+
+def _invisible_outside_quotes(sql: str, dialect: str | None) -> bool:
+    """`_invisible` over every character no string or quoted name holds, comments included: a
+    comment isn't a token, and a server may end one where sqlglot doesn't (automated review of
+    the push: U+2028 in a `--` comment). A text the tokenizer can't read is checked whole."""
+    try:
+        spans = [(t.start, t.end) for t in sqlglot.tokenize(sql, read=dialect)
+                 if t.token_type in _QUOTED]
+    except sqlglot.errors.SqlglotError:
+        return _invisible(sql)
+    quoted = set().union(*(range(a, b + 1) for a, b in spans))
+    return _invisible("".join(c for i, c in enumerate(sql) if i not in quoted))
 
 
 _TSQL_NAME_LIKE = frozenset("OPEN CLOSE PRINT SAVE RETURN BREAK CONTINUE".split())
@@ -217,7 +221,7 @@ def check_sql_readonly(sql: str, dialect: str | None) -> str | None:
     transaction (connectors/sql_connector.py)."""
     if _EXECUTABLE_COMMENT.search(sql):
         return "executable comments and optimizer hints (/*! */, /*+ */) are not allowed"
-    if any(_invisible(w) for w in _unquoted(sql, dialect)):
+    if _invisible_outside_quotes(sql, dialect):
         return "an invisible or unusual space character outside a string or quoted name is not allowed"
     if dialect == "tsql" and (why := _tsql_batch_word(sql)):
         return why

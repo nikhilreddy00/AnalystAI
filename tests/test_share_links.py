@@ -227,13 +227,16 @@ def test_a_workbook_zip_can_t_open_is_not_a_table_never_a_crash():
     (_declared(_zip({"xl/worksheets/sheet1.xml": b"0" * 1000}), size=2**31), "unpacks"),
     # under the total but packed a thousand times: a bomb's ratio, not XML's
     (_zip({"xl/worksheets/sheet1.xml": b"0" * (64 * 2**20)}), "unpacks"),
+    # the same bomb spread over parts under 10 MB each: the whole archive's ratio
+    (_zip({f"xl/worksheets/sheet{i}.xml": b"0" * (8 * 2**20) for i in range(8)}), "unpacks"),
     (_zip({f"x{i}.xml": b"" for i in range(10_001)}), "parts"),
     (_zip({"../../etc/cron.d/x": b"a"}), "parts"),
     (b"a," * 10_001 + b"\n1\n", "columns"),
     # the reader's own header: '\r' line endings, quoted names
     (b"a;" * 10_001 + b"\r" + b"1;" * 10_001 + b"\r", "columns"),
     (b'"a,b",' * 10_001 + b"\n" + b"1," * 10_001 + b"\n", "columns"),
-], ids=["zip-bomb", "zip-ratio", "zip-parts", "zip-path", "csv-header", "csv-cr", "csv-quoted"])
+], ids=["zip-bomb", "zip-ratio", "zip-spread", "zip-parts", "zip-path", "csv-header", "csv-cr",
+        "csv-quoted"])
 def test_a_file_that_would_blow_up_when_read_is_refused_before_it_is(content, why):
     """Uploads and links share the one reader: a workbook is a zip whose parts openpyxl unpacks
     whole (a 50 MB upload can declare gigabytes), and a CSV header can name millions of

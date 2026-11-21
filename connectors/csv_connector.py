@@ -231,11 +231,13 @@ def _readable_size(content: bytes, suffix: str) -> None:
         # NotImplementedError past the check: a 500 for the user's file)
         except (zipfile.BadZipFile, NotImplementedError, ValueError, OSError, EOFError) as exc:
             raise IngestionError(f"excel: {type(exc).__name__}", _NOT_A_TABLE) from exc
-        # the total sized to real workbooks, and each large part's packing to real XML's (5-10x;
-        # a bomb packs ~1000x: 5.8b security review of the raised total)
-        if sum(p.file_size for p in parts) > _MAX_UNPACKED or any(
+        # the total sized to real workbooks, and the packing of each large part and of the whole
+        # to real XML's (5-10x; a bomb packs ~1000x: 5.8b security review of the raised total;
+        # the whole too: a bomb spread over parts under 10 MB each, automated review of the push)
+        unpacked, packed = (sum(p.file_size for p in parts), sum(p.compress_size for p in parts))
+        if unpacked > _MAX_UNPACKED or any(
                 p.file_size > _RATIO_FROM and p.file_size > _MAX_RATIO * max(p.compress_size, 1)
-                for p in parts):
+                for p in parts) or (unpacked > _RATIO_FROM and unpacked > _MAX_RATIO * max(packed, 1)):
             raise IngestionError("workbook too large", "The workbook unpacks to more than "
                                  f"{_MAX_UNPACKED // 2**20} MB, past what can be read.")
         if len(parts) > _MAX_PARTS or any(p.filename.startswith("/") or ".." in p.filename
