@@ -919,7 +919,8 @@
     "old": "return _invisible(\"\".join(c for i, c in enumerate(sql) if i not in quoted))",
     "reason": "the joiner adds only the letter X, which _invisible never counts (category Lu)"
    }
-  ]
+  ],
+  "hash": "1abc2e5210b80fb2"
  },
  "guardrails.py::_is_sql_text": {
   "equivalents": [
