@@ -618,7 +618,8 @@
     "old": "out.append(f\"{t.this.sql(d.sqlglot).split('(')[0]}()\")",
     "reason": "only the refusal's wording: a function's name is printed the same (upper case) in every dialect"
    }
-  ]
+  ],
+  "hash": "b378df676822aaf1"
  },
  "connectors/sql_connector.py::dialect_of": {
   "equivalents": [],
@@ -636,7 +637,8 @@
   "hash": "bf1bd85597b43763"
  },
  "connectors/sql_connector.py::safe_url": {
-  "equivalents": []
+  "equivalents": [],
+  "hash": "be36049bf0f32a57"
  },
  "connectors/sql_connector.py::sql_dialect": {
   "equivalents": [],

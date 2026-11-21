@@ -942,6 +942,11 @@ def test_a_session_error_says_the_drivers_first_300_characters():
     wrapped = OperationalError("SELECT 1", {}, Exception("Access denied for user 'u'"))
     assert _session_error(wrapped, create_engine("sqlite://")).user_message == \
         "Couldn't open a read-only session on the database: Access denied for user 'u'"
+    # the password cut out, said as ***
+    echoed = OperationalError("x", {}, Exception("bad login s3cr3t-pw for u"))
+    engine = create_engine("mysql+pymysql://u:s3cr3t-pw@h/x")
+    assert _session_error(echoed, engine).user_message == \
+        "Couldn't open a read-only session on the database: bad login *** for u"
 
 
 @pytest.mark.parametrize("cs", ["mssql://u:p@db.example:1433", "mssql://db.example:1433/acme"])
