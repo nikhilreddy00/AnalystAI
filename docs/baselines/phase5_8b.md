@@ -66,6 +66,11 @@ Plan: `~/.claude/plans/pasted-content-id-2968-phase-merry-mochi.md`. It checks o
 - all-domain answer probe: done (built-in answers byte-equal per pack from every new source; golden on all 8 domains
   unchanged)
 - playwright specs: done (`mysql_connect.spec.ts` password field, `share_link.spec.ts`)
+- full suite (`scripts/suite.py`): 4561 passed, 1 failed (the note's commit named "retro" with the ledger rows one
+  commit before: paired in `UNLEDGERED`, green after), 5 xfailed (pinned open bugs)
+- mutation gate: every changed gated function recorded clean; 51 survivors closed (29 killed by a planted-and-caught
+  test, 21 named equivalents, 1 unread message removed); `--check main` passes
+- golden 64/64 unchanged; `domain_diff.py main` identical on every dataset
 
 ## Spend: $0.469 of $2.50 (ask $2.20, stop $2.35)
 E2E e2e-100..104 $0.121; live check $0.348. No audit fix needed a paid rerun: none touched a prompt or
