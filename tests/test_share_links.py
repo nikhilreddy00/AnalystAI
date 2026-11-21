@@ -333,8 +333,10 @@ NOT_PUBLIC = ("The link to files.example didn't give a file ({}): it may not be 
     (_ok(b"\xef\xbb\xbf<head><title>x</title></head>"), "a web page came back, not a file"),
     # audit pass 2 (silent-failure hunter): an empty Location looped to 'redirected 5 times'
     (httpx.Response(302, headers={"location": ""}), "it redirected nowhere"),
+    # a 3xx with no Location at all is a redirect status too (httpx's is_redirect)
+    (httpx.Response(302), "it redirected nowhere"),
 ], ids=["status", "html-type", "doctype", "html-tag", "type-case", "comment", "bom-head",
-        "empty-location"])
+        "empty-location", "no-location"])
 async def test_a_link_that_gives_no_file_is_refused_in_these_words(monkeypatch, answer, why):
     err = await _refused(monkeypatch, lambda r: answer)
     assert str(err) == "ingestion: link not public"
@@ -549,6 +551,53 @@ async def test_a_malformed_link_is_a_400_not_a_server_error(client, monkeypatch,
     serve(monkeypatch, lambda r: _ok(CSV))
     r = await _link(client, link)
     assert r.status_code == 400 and "\x00" not in r.text
+
+
+async def test_a_malformed_link_is_refused_in_these_words(monkeypatch):
+    err = await _refused(monkeypatch, lambda r: _ok(), link="https://[::1/x.csv?sig=SIGSECRET")
+    assert str(err) == "ingestion: link invalid"
+    assert err.user_message == "That isn't a valid https link."
+
+
+@pytest.mark.parametrize(("why", "code"), [
+    ("busy", "link host trouble"), ("compressed", "link encoding"),
+    ("missing", "link host not found"), ("slow", "link slow")])
+async def test_each_refusal_carries_its_own_code(monkeypatch, why, code):
+    """The words are pinned through the route above; the code is what the logs and traces read."""
+    import asyncio
+    import socket
+
+    import connectors.link as link
+    import tests.fake_network as fake
+    import gzip
+    answer = {"busy": lambda: httpx.Response(503),   # built per request, as the route tests do
+              "compressed": lambda: httpx.Response(200, content=gzip.compress(CSV), headers={
+                  "content-encoding": "gzip"})}.get(why, _ok)
+    serve(monkeypatch, lambda r: answer())
+
+    def missing(*a, **k):
+        raise socket.gaierror("nodename nor servname provided")
+    if why == "missing":   # after serve: its DNS table is the getaddrinfo this replaces
+        monkeypatch.setattr(socket, "getaddrinfo", missing)
+    if why == "slow":
+        monkeypatch.setattr(link, "DEADLINE_S", 0.05)
+
+        async def stall(self, max_bytes, timeout=None):
+            await asyncio.sleep(1)
+        monkeypatch.setattr(fake._Stream, "read", stall)
+    with pytest.raises(IngestionError) as err:
+        await link.download("https://files.example/q.csv?sig=SIGSECRET")
+    assert str(err.value) == f"ingestion: {code}"
+
+
+@pytest.mark.parametrize(("body", "suffix"), [
+    (b"X<!--a,b\n1,2\n", ".csv"),   # a page's prefix after a letter is a CSV header
+    (b"X{a},b\n1,2\n", ".csv"),     # as is a brace after a letter: not JSON
+])
+async def test_only_a_bom_and_whitespace_are_skipped_before_the_sniff(monkeypatch, body, suffix):
+    from connectors.link import download
+    serve(monkeypatch, lambda r: _ok(body))
+    assert (await download("https://files.example/q.csv"))[1] == suffix
 
 
 async def test_a_redirect_to_a_malformed_location_is_a_400(client, monkeypatch):
