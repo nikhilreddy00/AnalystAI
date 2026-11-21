@@ -490,7 +490,13 @@ def _unlisted_tables(sql: str, d: Dialect, listed) -> list[str]:
         if t.this.args.get("temporary") or t.this.args.get("global_"):
             out.append(f"#{t.name}")
             continue
-        name = ".".join(p for p in (t.catalog, t.db, t.name) if p)
+        if t.catalog:   # another database on the server (`sales..t`: database sales, default
+            # schema): joining the parts without the empty one made it `sales.t`, a listed schema
+            # of this database, and the other database's table was read (hardening security
+            # review, proven on SQL Server). A name's parts are compared as parts, never joined
+            out.append(f"{t.catalog}.{t.db}.{t.name}")
+            continue
+        name = ".".join(p for p in (t.db, t.name) if p)
         cte_ref = id(t) not in real and name == t.name and t.name.lower() in ctes
         if not cte_ref and name.lower() not in known:
             out.append(name)

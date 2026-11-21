@@ -873,7 +873,7 @@ async def test_a_function_read_as_a_table_is_named_in_the_refusal(tmp_path):
     # every unlisted name is said, past a temp table too (mutation gate: `break` there passed)
     ("SELECT * FROM #mine, theirs", "tsql", ["#mine", "theirs"]),
     ("SELECT * FROM OPENDATASOURCE('x', 'y').db.dbo.mine", "tsql", ["dbo.mine()"]),
-    ("SELECT * FROM master..mine", "tsql", ["master.mine"]),
+    ("SELECT * FROM master..mine", "tsql", ["master..mine"]),   # another database, as written
     ("SELECT * FROM other.dbo.mine", "tsql", ["other.dbo.mine"]),
     ("SELECT * FROM mine CROSS APPLY (SELECT TOP 1 a FROM mine) q", "tsql", []),
     ("SELECT * FROM [dbo].[mine]", "tsql", []),
@@ -1584,6 +1584,33 @@ async def test_the_canonical_query_answers_exactly_as_the_models_own_text(tmp_pa
         raw = [tuple(r) for r in c.execute(text(q))]
     assert raw == [(-3, 0)]   # the database's own reading of the model's text
     assert (await _sql(url, None).query(q)).rows == raw
+
+
+async def test_a_sql_server_question_never_reads_another_database_through_db_dot_dot(tmp_path):
+    """Hardening security review, proven: `xdb..t` (database xdb, default schema) was joined to
+    `xdb.t`, a listed schema of this database, and the other database's row came back."""
+    import os
+
+    from sqlalchemy import create_engine, text
+    from sqlalchemy.engine import make_url
+
+    from agents.errors import GuardrailViolation
+    url = _each_dialect(tmp_path, "mssql")
+    reader = make_url(os.environ["TEST_MSSQL_READER_URL"]).username
+    admin = create_engine(os.environ["TEST_MSSQL_URL"], isolation_level="AUTOCOMMIT")
+    with admin.connect() as c:
+        c.execute(text("IF DB_ID('xdb_5_8b') IS NULL CREATE DATABASE xdb_5_8b"))
+        c.execute(text(f"USE xdb_5_8b; IF OBJECT_ID('dbo.t') IS NULL BEGIN CREATE TABLE dbo.t "
+                       f"(s NVARCHAR(20)); INSERT INTO dbo.t VALUES ('OTHER_DB_SECRET') END; "
+                       f"IF USER_ID('{reader}') IS NULL CREATE USER [{reader}] FOR LOGIN [{reader}]; "
+                       f"ALTER ROLE db_datareader ADD MEMBER [{reader}]; USE master"))
+    with _admin(tmp_path, "mssql").begin() as c:   # a schema of the same name in this database
+        c.execute(text("IF SCHEMA_ID('xdb_5_8b') IS NULL EXEC('CREATE SCHEMA xdb_5_8b')"))
+        c.execute(text("IF OBJECT_ID('xdb_5_8b.t') IS NULL CREATE TABLE xdb_5_8b.t (s NVARCHAR(20))"))
+    conn = _sql(url, None)
+    with pytest.raises(GuardrailViolation, match="only the connected database's tables"):
+        await conn.query("SELECT * FROM xdb_5_8b..t")
+    assert (await conn.query("SELECT * FROM xdb_5_8b.t")).rows == []   # its own schema: allowed
 
 
 def test_a_sql_server_named_instance_is_said_not_a_host_not_found():
