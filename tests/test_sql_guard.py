@@ -354,6 +354,12 @@ def test_a_zero_width_space_never_splits_a_statement():
             "an invisible or unusual space character outside a string or quoted name is not "
             "allowed"), dialect
         assert g.check_sql_readonly("SELECT a FROM t /* \u0085 */", dialect), dialect
+    # a string's span to its closing quote, and not one character past it (mutation gate)
+    invisible = "an invisible or unusual space character outside a string or quoted name is not allowed"
+    assert g.check_sql_readonly("SELECT 'a​' FROM t", "tsql") is None
+    assert g.check_sql_readonly("SELECT 'a'​ FROM t", "tsql") == invisible
+    # a text the tokenizer can't read is checked whole (an unclosed string), never a crash
+    assert g.check_sql_readonly("SELECT 'abc​", "tsql") == invisible
     # in a string or a quoted name it's data
     assert g.check_sql_readonly("SELECT 'a​b' AS [x​y] FROM t", "tsql") is None
     assert g.check_sql_readonly("SELECT nom_été FROM t", "tsql") is None   # a letter is a letter

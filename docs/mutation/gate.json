@@ -911,6 +911,16 @@
   ],
   "hash": "ca9253e56ced648f"
  },
+ "guardrails.py::_invisible_outside_quotes": {
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "return _invisible(\"XXXX\".join(c for i, c in enumerate(sql) if i not in quoted))",
+    "old": "return _invisible(\"\".join(c for i, c in enumerate(sql) if i not in quoted))",
+    "reason": "the joiner adds only the letter X, which _invisible never counts (category Lu)"
+   }
+  ]
+ },
  "guardrails.py::_is_sql_text": {
   "equivalents": [
    {
@@ -938,7 +948,7 @@
  },
  "guardrails.py::check_sql_readonly": {
   "equivalents": [],
-  "hash": "fbc6ab9e4f0d10b1"
+  "hash": "3a6f2d2dcb374261"
  },
  "guardrails.py::is_pii_column": {
   "equivalents": [],
