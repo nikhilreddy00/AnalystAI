@@ -1,6 +1,9 @@
 # Phase 5.8b — MariaDB, SQL Server, share links (+ the 5.8a carry-overs) (2026-11-20)
 
-Wall clock: 2.8 h (first commit 2026-11-20 16:42 → merge pending; 2.8 h to the audit's last fix at 19:31)
+Wall clock: 7.1 h (first commit 2026-11-20 16:42 → merge 2026-11-20 23:45, PR #29, 2ddb3fc). Inside the 8 h
+budget; the breaker (4 h before the paid step) never tripped. After the audit's last fix (19:31): the mutation
+gates (~2 h, 51 survivors), the full suite, and two CI rounds (a status row over its cap, gitleaks on CI's
+SQL Server password).
 Plan mode before it: ~1.4 h (a background research agent, a code-map agent, a red-team, the user's five decisions in
 two rounds). Sized at ~12.5 h (the red-team's 12–15 h); the breaker (4.0 h before the paid step) never came near:
 the paid E2E ran at 1.4 h.
