@@ -212,9 +212,31 @@ def test_a_report_never_holds_a_credential():
     quoted = without_credentials(json.dumps({"cs": 'mysql://u:p"w0rd@db/x'}))
     assert "w0rd" not in quoted and json.loads(quoted) == {"cs": "mysql://u:***@db/x"}
     assert "mssql://reader:***@db:1433/x" in text and json.loads(text)   # still the report
+    assert without_credentials("https://api.example/v1?page=2&api_key=K3Y&sig=S1G") == \
+        "https://api.example/v1?page=2&api_key=***&sig=***"
     leaked = subprocess.run(["git", "grep", "-lE", r'://[^:/@" ]+:[^@/" *]+@', "--",
                              "evals/reports/*"], capture_output=True, text=True, check=False)
     assert leaked.stdout == ""
+
+
+def test_every_report_writer_masks_both_files(tmp_path, monkeypatch):
+    """Audit pass 2 (silent-failure hunter, test analyst): only main()'s JSON was masked; its
+    .md (an error's first 120 characters) and the rescore/judge writers weren't."""
+    import json
+
+    import evals.run as run
+    from evals.run import write_report
+    monkeypatch.setattr(run, "to_markdown", lambda r: json.dumps(r))   # the .md as raw as can be
+    report = {"meta": {"report": "r"}, "summary": {}, "runs": {"c": [{
+        "error": "connect mysql://u:S3CRET@db/x failed",
+        "output": {"connector_config": {"url": "https://api.example/x?api_key=K3Y"}}}]}}
+    write_report(tmp_path, "r", report)
+    for f in ("r.json", "r.md"):
+        text = (tmp_path / f).read_text()
+        assert "S3CRET" not in text and "K3Y" not in text, f
+    import inspect
+    source = inspect.getsource(run)   # one writer: no other code writes a report's .md
+    assert source.count('.md").write_text') == 1
 
 
 def test_every_case_is_well_formed():

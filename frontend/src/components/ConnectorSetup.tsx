@@ -84,6 +84,10 @@ async function sniffColumnCount(file: File): Promise<number | null> {
 import type { DataSource, UploadResponse } from "@/types";
 import { importLink, uploadFile as apiUpload } from "@/lib/api";
 
+function hostOf(url?: string): string {
+  try { return url ? new URL(url).host : ""; } catch { return ""; }
+}
+
 /** The connection string with the Password field's value as its password, URL-encoded (Phase
  * 5.8b: the password is typed in a field that hides it, and '@' or ':' in it need no encoding by
  * hand). A string without a user part is sent as typed. */
@@ -179,11 +183,13 @@ export default function ConnectorSetup({ onConnectorReady }: ConnectorSetupProps
         headers: await getAuthHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify(body),
       });
-      const data = await res.json();
+      // a 5xx from a proxy isn't JSON: said, never "Unexpected token" (5.8b audit pass 2)
+      const data = await res.json().catch(() => ({ success: false, message: `The server answered ${res.status}.` }));
       setStatus({ ok: data.success, message: data.message });
       if (data.success) onConnectorReady({
         connector_config: body as unknown as Record<string, unknown>,
-        dataset_name: body.table_name || body.spreadsheet_id || body.url || (body.type === "sql" ? "Database" : ""),
+        // an API's host, never its URL: a query may carry its key, and the name is shown and stored
+        dataset_name: body.table_name || body.spreadsheet_id || hostOf(body.url) || (body.type === "sql" ? "Database" : ""),
       });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Connection test failed";

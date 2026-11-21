@@ -229,11 +229,26 @@ _URL_PASSWORD = re.compile(r"(://[^:/@\s\"]+:)(?:[^\s\"\\]|\\.)*@(?=[^@/?\s\"]*(
 _SECRET_KEYS = re.compile(r'("(?:auth_value|service_account_json)": )"(?:[^"\\]|\\.)+"')
 
 
+_QUERY_SECRET = re.compile(r"([?&](?:api_?key|key|token|access_token|sig|signature|auth|"
+                           r"password|pwd)=)[^&\s\"'#]+", re.IGNORECASE)
+
+
 def without_credentials(report_text: str) -> str:
     """A report as it may be committed (the repo is public): a run's stored session carries its
-    connector config, so any URL's password, the API's auth value and a service-account key are
-    masked (5.8b, recurrence of P58-06: 5.8a covered messages, traces and SSE, never reports)."""
-    return _SECRET_KEYS.sub(r'\1"***"', _URL_PASSWORD.sub(r"\1***@", report_text))
+    connector config, so any URL's password or key in its query, the API's auth value and a
+    service-account key are masked (5.8b, recurrence of P58-06: 5.8a covered messages, traces
+    and SSE, never reports)."""
+    text = _URL_PASSWORD.sub(r"\1***@", report_text)
+    return _SECRET_KEYS.sub(r'\1"***"', _QUERY_SECRET.sub(r"\1***", text))
+
+
+def write_report(directory: Path, name: str, report: dict) -> Path:
+    """THE way a report reaches disk: its JSON and its Markdown, both masked (audit pass 2: the
+    .md and the rescore/judge writers weren't)."""
+    out = directory / f"{name}.json"
+    out.write_text(without_credentials(json.dumps(report, indent=1, default=str)))
+    (directory / f"{name}.md").write_text(without_credentials(to_markdown(report)))
+    return out
 
 
 # A database source: the scratch database's URL that writes the table, and the one the connector
@@ -1531,10 +1546,7 @@ def rescore(path: Path) -> Path:
     report["summary"] = summarize(report["runs"])
     report["meta"]["rescored_from"] = report["meta"]["report"]
     report["meta"]["report"] = name = f"{report['meta']['report']}-rescored"
-    out = path.parent / f"{name}.json"
-    out.write_text(json.dumps(report, indent=1, default=str))
-    (path.parent / f"{name}.md").write_text(to_markdown(report))
-    return out
+    return write_report(path.parent, name, report)
 
 
 async def judge(path: Path, max_usd: float, first_only: bool = False) -> Path:
@@ -1577,9 +1589,7 @@ async def judge(path: Path, max_usd: float, first_only: bool = False) -> Path:
     report["meta"]["judged"] = {"prompt_version": PROMPT_VERSION, "cost_usd": round(spent[0], 4)}
     name = report["meta"]["report"] + ("" if report["meta"]["report"].endswith("-judged") else "-judged")
     report["meta"]["report"] = name
-    out = path.parent / f"{name}.json"
-    out.write_text(json.dumps(report, indent=1, default=str))
-    (path.parent / f"{name}.md").write_text(to_markdown(report))
+    out = write_report(path.parent, name, report)
     print(json.dumps({k: v for k, v in report["summary"].items() if "judge" in k}, indent=1))
     return out
 
@@ -2111,8 +2121,7 @@ async def main() -> None:
 
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    (out / f"{name}.json").write_text(without_credentials(json.dumps(report, indent=1, default=str)))
-    (out / f"{name}.md").write_text(to_markdown(report))
+    write_report(out, name, report)
     print(json.dumps(report["summary"], indent=1))
     if "compare" in report:
         print(json.dumps(report["compare"], indent=1))

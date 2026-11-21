@@ -904,6 +904,21 @@ def test_a_mysql_string_must_name_its_database():
                                       "mysql://user:password@host:port/<database>.")
 
 
+def test_in_production_a_pinned_sql_server_url_opens_a_real_session(tmp_path, monkeypatch):
+    """Audit pass 2 (test analyst): the pin's shape was tested, never that ODBC takes the IP as
+    the server with HostNameInCertificate beside it."""
+    from sqlalchemy.engine import make_url
+
+    import connectors.sql_connector as sc
+    from api.config import settings
+    url = make_url(_each_dialect(tmp_path, "mssql")).set(host="localhost")
+    monkeypatch.setattr(settings, "app_env", "production")
+    monkeypatch.setattr(sc, "_checked_address", lambda u: "127.0.0.1")
+    engine = _engine_for(url.render_as_string(hide_password=False))
+    assert engine.url.host == "127.0.0.1"
+    assert sc.run_readonly(engine, "SELECT 1").rows == [(1,)]
+
+
 def test_a_repeated_option_is_said_not_a_crash():
     with pytest.raises(IngestionError, match="connection string options") as err:
         _sql("mysql://u:p@h/x?ssl_mode=REQUIRED&ssl_mode=VERIFY_CA")._engine()

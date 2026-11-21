@@ -14,6 +14,7 @@ from agents.errors import AgentError, IngestionError
 from connectors.csv_connector import (MAX_UPLOAD_MB, UPLOAD_SUFFIXES, XLS_REFUSAL, _read_bytes,
                                       check_upload_owner, user_upload_dir)
 from api.auth import get_current_user, UserProfile
+from api.rate_limit import limiter
 from pydantic import BaseModel, Field
 
 from connectors.base import get_connector, without_secrets
@@ -88,11 +89,11 @@ async def upload_csv(
 
 
 class LinkRequest(BaseModel):
-    url: str = Field(max_length=4096)
-    dataset_id: str | None = Field(default=None, max_length=64)
+    url: str = Field(max_length=4096)   # a link is a new dataset; a new version: upload, or re-paste
 
 
 @router.post("/link")
+@limiter.limit("10/minute")   # each holds up to 50 MB for up to 120 s (code review, audit pass 2)
 async def link_file(
     request: Request,
     body: LinkRequest,
@@ -108,7 +109,7 @@ async def link_file(
         raise HTTPException(status_code=413, detail=exc.user_message) from None
     except IngestionError as exc:   # every message names at most the host: never the link
         raise HTTPException(status_code=400, detail=exc.user_message) from None
-    return await _register(request, current_user, content, name, suffix, body.dataset_id)
+    return await _register(request, current_user, content, name, suffix, None)
 
 
 async def _register(request: Request, current_user: UserProfile, content: bytes, filename: str,

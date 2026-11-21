@@ -95,3 +95,23 @@ test("a password is never dropped silently nor kept across tabs", async ({ page 
   expect(sent[0]).toEqual(expect.objectContaining({
     connection_string: "postgresql://bob@db.example.com:5432/acme" }));
 });
+
+// Audit pass 2 (test analyst): a string that already holds a password gets the field's instead;
+// a server answer that isn't JSON (a proxy's 502 page) is said, never "Unexpected token".
+test("the field's password replaces the string's, and a non-JSON answer is said", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await login(page);
+  const sent: Record<string, unknown>[] = [];
+  await page.route("**/connectors/test", async (route) => {
+    sent.push(route.request().postDataJSON());
+    await route.fulfill({ status: 502, contentType: "text/html", body: "<html>Bad gateway</html>" });
+  });
+  await page.goto("/chat");
+  await page.getByRole("button", { name: "SQL Database" }).click();
+  await page.getByLabel("Connection string").fill("mysql://bob:old@db.example.com:3306/acme");
+  await page.getByLabel("Password", { exact: true }).fill("n:ew");
+  await page.getByRole("button", { name: "Test and connect" }).click();
+  await expect(page.getByRole("status")).toContainText("The server answered 502.");
+  expect(sent).toEqual([expect.objectContaining({
+    connection_string: "mysql://bob:n%3Aew@db.example.com:3306/acme" })]);
+});

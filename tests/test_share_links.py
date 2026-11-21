@@ -41,9 +41,19 @@ def _chain(*hops):
 
 @pytest.fixture
 async def client():
+    from api.rate_limit import limiter
     from orchestrator.runner import in_memory_deps
+    limiter.reset()
     async with _client(in_memory_deps()) as c:
         yield c
+
+
+async def test_a_user_imports_at_most_ten_links_a_minute(client, monkeypatch):
+    """Audit pass 2 (code review): each link holds up to 50 MB for up to 120 s; the route had
+    no limit, the session and dataset routes do."""
+    serve(monkeypatch, _chain(("https://files.example/", _ok())))
+    codes = [(await _link(client, "https://files.example/q.csv")).status_code for _ in range(11)]
+    assert codes[:10] == [200] * 10 and codes[10] == 429
 
 
 async def _link(client, url: str, **extra):

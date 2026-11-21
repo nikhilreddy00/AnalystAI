@@ -79,6 +79,7 @@ dev = [
     "import-linter==2.16",
     "mutmut==3.8.1",
     "pytest-xdist>=3.8.0",
+    "zstandard==0.25.0",   # the compressed-body test's codec (was only langsmith's)
 ]
 
 [tool.mutmut]
