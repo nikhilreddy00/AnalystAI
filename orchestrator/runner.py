@@ -14,6 +14,7 @@ Each (re)start seeds this run's PII guard, as api/routes/chat.py did when runs l
 from __future__ import annotations
 
 import asyncio
+import contextvars
 import hashlib
 import io
 import logging
@@ -32,6 +33,7 @@ from llm.client import get_client, pii_values, run_meter
 from memory.run_store import (CANCELLED, HEARTBEAT_S, InMemoryRunStore, Run, RunStore,
                               cancel_events)
 from agents.errors import AgentError
+from connectors.base import credential_scope
 from memory.session_data import read_cleaned_parquet
 from orchestrator.graph import RunEnv, build_graph, run_env
 from orchestrator.state import AnalysisSession
@@ -325,7 +327,10 @@ async def _fail(store, run: Run, message: str, retryable: bool = True, reask: bo
 
 async def supervise(run: Run, deps: Deps, heartbeat_s: float = HEARTBEAT_S) -> str:
     """Run one claimed run with a heartbeat that keeps its lease and notices a cancel."""
-    job = asyncio.create_task(execute(run, deps))
+    # its own credential registry: one run's never masks another tenant's logs (connectors.base)
+    context = contextvars.copy_context()
+    context.run(credential_scope)
+    job = asyncio.create_task(execute(run, deps), context=context)
     why = None
     try:
         while not job.done():

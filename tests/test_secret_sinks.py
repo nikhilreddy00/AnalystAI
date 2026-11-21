@@ -70,9 +70,9 @@ def test_the_registry_is_bounded_and_a_flood_never_unmasks_a_connector_in_use():
     credentials. At most 8 from one registration; using a connector registers it again (newest)."""
     import connectors.base as base
     base.register_secrets(*(f"one-call-{i:06d}" for i in range(100)))
-    assert sum(v.startswith("one-call-") for v in base._SECRETS[0]) == 8
+    assert sum(v.startswith("one-call-") for v in base._registry().secrets[0]) == 8
     base.register_secrets("x" * (base._MAX_SECRET_CHARS + 1))
-    assert "x" * (base._MAX_SECRET_CHARS + 1) not in base._SECRETS[0]
+    assert "x" * (base._MAX_SECRET_CHARS + 1) not in base._registry().secrets[0]
     victim = _sql_config()
     flood = [f"flood-value-{j:06d}" for j in range(base._MAX_SECRETS + 800)]
     for i in range(0, len(flood), 8):
@@ -81,9 +81,31 @@ def test_the_registry_is_bounded_and_a_flood_never_unmasks_a_connector_in_use():
             get_connector(victim)   # the victim's run goes on using its connector
     # checked right after the flood, with no use in between: the refresh alone kept it (the first
     # draft re-registered the victim just before asserting: vacuous, test analyst)
-    assert len(base._SECRETS[0]) == base._MAX_SECRETS
+    assert len(base._registry().secrets[0]) == base._MAX_SECRETS
     assert CANARY not in base.redact(f"pw {CANARY}")
-    assert flood[0] not in base._SECRETS[0]   # what nobody used again aged out
+    assert flood[0] not in base._registry().secrets[0]   # what nobody used again aged out
+
+
+async def test_one_runs_credentials_never_reach_another_runs_logs():
+    """Automated review: with one registry per process, any user could register chosen words
+    (typed as a password) and mask them in every tenant's logs. A run's registry is its own;
+    what its child tasks and threads register is in it."""
+    import asyncio
+
+    from connectors.base import credential_scope, redact, register_secrets
+    seen: dict[str, str] = {}
+
+    async def run(name: str, word: str) -> None:
+        credential_scope()   # what the worker does for each run
+        await asyncio.to_thread(register_secrets, word)   # registered off the loop, as get_connector
+        await asyncio.sleep(0)
+        seen[name] = redact("audit: user-7f3a GuardrailViolation and " + word)
+
+    await asyncio.gather(asyncio.create_task(run("a", "GuardrailViolation")),
+                         asyncio.create_task(run("b", "Canary-b-only-77")))
+    assert seen["a"] == "audit: user-7f3a *** and ***"
+    assert seen["b"] == "audit: user-7f3a GuardrailViolation and ***"
+    assert redact("GuardrailViolation") == "GuardrailViolation"   # nor the process's
 
 
 def test_ordinary_words_are_never_masked_in_the_logs():
@@ -101,7 +123,8 @@ def test_ordinary_words_are_never_masked_in_the_logs():
 
 def test_a_query_key_is_a_credential_by_its_last_word():
     from connectors.base import _secret_key
-    assert all(map(_secret_key, ["api_key", "apikey", "X-Amz-Security-Token", "X-Amz-Signature",
+    assert all(map(_secret_key, ["APIkey", "APItoken", "api_key", "apikey", "X-Amz-Security-Token",
+                                 "X-Amz-Signature",
                                  "sessionToken", "private_token", "auth", "code", "client_secret"]))
     assert not any(map(_secret_key, ["region_code", "country_code", "author", "keyword",
                                      "passenger", "tokens_used", "page", "q"]))

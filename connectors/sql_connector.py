@@ -668,9 +668,13 @@ def run_readonly(engine, sql: str, max_rows: int = MAX_ROWS,
         raise _session_error(exc, engine) from exc
     with conn:
         try:
-            result = conn.execute(text(sql))
+            # streamed (a server-side cursor on Postgres, unbuffered on MySQL; pyodbc fetches as
+            # read): psycopg and PyMySQL otherwise hold the whole result before fetchmany caps it
+            # (security review: 587 MB to return 10 rows of 3M)
+            result = conn.execution_options(stream_results=True).execute(text(sql))
             kinds = tuple(d.kind(c) for c in result.cursor.description or ())
             rows = [tuple(r) for r in result.fetchmany(max_rows + 1)]
+            result.close()   # before the rollback: an unbuffered MySQL result must be let go
             return QueryResult(list(result.keys()), rows[:max_rows], len(rows) > max_rows, kinds)
         finally:
             conn.rollback()

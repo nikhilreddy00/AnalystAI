@@ -162,11 +162,30 @@ def test_a_write_through_run_readonly_fails_on_every_dialect(tmp_path, name, wri
         c.execute(text("DROP TABLE IF EXISTS ro_new"))
         c.execute(text("CREATE TABLE ro_t (a INTEGER)"))
         c.execute(text("INSERT INTO ro_t VALUES (1)"))
-    with pytest.raises(SQLAlchemyError, match=_READ_ONLY_ERROR[name]):
+    # Postgres reads a question through a server-side cursor (5.8b hardening: streamed), and a
+    # cursor holds only a query: the write is refused there first, by name, before the read-only
+    # transaction; that layer is proven alone by the FOR UPDATE case below
+    reason = rf"CURSOR FOR {write.split()[0]}" if name == "postgresql" else _READ_ONLY_ERROR[name]
+    with pytest.raises(SQLAlchemyError, match=reason):
         run_readonly(engine, write)
     with _admin(tmp_path, name).connect() as c:
         assert c.execute(text("SELECT a FROM ro_t")).fetchall() == [(1,)]
     assert "ro_new" not in inspect(engine).get_table_names()
+
+
+def test_postgres_read_only_transaction_refuses_a_query_that_locks(tmp_path):
+    """A query a cursor takes that still writes (row locks): the read-only transaction's own
+    refusal, the layer the cursor now stands in front of."""
+    from sqlalchemy import text
+    from sqlalchemy.exc import SQLAlchemyError
+
+    from connectors.sql_connector import run_readonly
+    engine = _engine_for(_each_dialect(tmp_path, "postgresql"))
+    with _admin(tmp_path, "postgresql").begin() as c:
+        c.execute(text("DROP TABLE IF EXISTS ro_t"))
+        c.execute(text("CREATE TABLE ro_t (a INTEGER)"))
+    with pytest.raises(SQLAlchemyError, match="read-only transaction"):
+        run_readonly(engine, "SELECT a FROM ro_t FOR UPDATE")
 
 
 # what makes each row read-only, removed by the plant below: the read-only transaction (SQLite's
@@ -1675,6 +1694,40 @@ async def test_numbers_codes_and_intervals_read_as_the_database_wrote_them(tmp_p
             c.execute(text("CREATE TABLE tm6 (t TIME(6))"))
             c.execute(text("INSERT INTO tm6 VALUES ('13:45:00.123456')"))
         assert (await conn.query("SELECT t FROM tm6")).frame()["t"].tolist() == ["13:45:00.123456"]
+
+
+_BIG_RESULT = {
+    "postgresql": "SELECT g, repeat('x', 100) AS s FROM generate_series(1, 3000000) g",
+    "mysql": "WITH RECURSIVE r(g) AS (SELECT 1 UNION ALL SELECT g+1 FROM r WHERE g < 1000) "
+             "SELECT a.g, REPEAT('x', 100) AS s FROM r a CROSS JOIN r b CROSS JOIN r c LIMIT 3000000",
+    "mssql": "SELECT TOP 3000000 ROW_NUMBER() OVER (ORDER BY (SELECT 1)) AS g, REPLICATE('x', 100) "
+             "AS s FROM sys.all_objects a CROSS JOIN sys.all_objects b CROSS JOIN sys.all_objects c",
+}
+_BIG_RESULT["mariadb"] = _BIG_RESULT["mysql"]
+
+
+@pytest.mark.parametrize("name", ["postgresql", "mysql", "mariadb", "mssql"])
+def test_a_question_holds_its_row_cap_never_the_whole_result(tmp_path, name):
+    """psycopg and PyMySQL buffered every row before fetchmany capped them (security review:
+    587 MB on Postgres, 659 MB on MySQL to return 10 of 3M rows). Measured as the process."""
+    import subprocess
+    import sys
+    from pathlib import Path
+    url = _each_dialect(tmp_path, name)
+    code = f"""
+import resource
+from connectors.sql_connector import SQLConnector, run_readonly
+from orchestrator.state import ConnectorConfig, ConnectorType
+engine = SQLConnector(ConnectorConfig(type=ConnectorType.SQL, connection_string={url!r}))._engine()
+before = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+r = run_readonly(engine, {_BIG_RESULT[name]!r}, 10)
+print(len(r.rows), r.truncated, resource.getrusage(resource.RUSAGE_SELF).ru_maxrss - before)
+"""
+    out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, timeout=300,
+                         cwd=str(Path(__file__).resolve().parents[1]))
+    rows, truncated, grew = out.stdout.split() or (out.stderr[-500:], "", "")
+    grew_mb = int(grew) / (2**20 if sys.platform == "darwin" else 2**10)
+    assert (rows, truncated) == ("10", "True") and grew_mb < 100, (name, rows, grew_mb)
 
 
 def test_a_plain_result_skips_the_per_cell_work():

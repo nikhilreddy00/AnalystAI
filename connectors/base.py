@@ -14,6 +14,7 @@ import socket
 import ssl
 import zlib
 from abc import ABC, abstractmethod
+from contextvars import ContextVar, Token
 
 import anyio.to_thread
 import certifi
@@ -150,7 +151,11 @@ def _secret_key(key: str) -> bool:
     `region_code=revenue` and `Shakespeare` for `author=` (three reviewers); a whole-key read
     missed X-Amz-Security-Token (automated review). `code` only as the whole key (OAuth's)."""
     words = re.findall(r"[A-Z]?[a-z0-9]+|[A-Z]+(?![a-z])", key)
-    return key.lower() == "code" or (bool(words) and words[-1].lower() in _CREDENTIAL_WORDS)
+    whole = re.sub(r"[-_]", "", key.lower())   # APIkey splits as AP + Ikey (automated review)
+    return whole in _CREDENTIAL_KEYS or (bool(words) and words[-1].lower() in _CREDENTIAL_WORDS)
+
+
+_CREDENTIAL_KEYS = frozenset("code apikey apitoken accesstoken authtoken clientsecret".split())
 # Every credential this process has been handed, masked where text reaches an operator: the log
 # filter and the eval reports (Airflow's SecretsMasker). 5.8a and 5.8b masked per sink, and each
 # new sink leaked (logs, three report writers, a query's key: P58-06). Registered where any
@@ -163,27 +168,51 @@ def _secret_key(key: str) -> bool:
 # user's flood can't evict them: automated review). Matched by substring, longest first, from a
 # list kept sorted on change (a regex of 4,096 values was a 32 MB compile). Swapped, never
 # mutated, so a log line on another thread reads it while a run registers.
-# ponytail: process-wide; a per-run scope (contextvar) when one process serves many tenants.
+# One registry per run (the worker) and per request (the API), never one for the process where
+# one process serves many tenants: a shared one was a channel between them three times over (an
+# oracle on another tenant's password, a flood evicting their credentials, and any user masking
+# chosen words in every tenant's logs: automated reviews of the hardening). Child tasks and
+# to_thread copy the context, so they share their run's registry. Outside any scope (the CLI,
+# the evals, whose report writer runs after the run) the process's own.
 _MAX_SECRETS, _MAX_SECRET_CHARS, _PER_REGISTRATION = 4096, 8192, 8
-_SECRETS: tuple[tuple[str, ...], tuple[str, ...]] = ((), ())   # (newest last, longest first)
+
+
+class _Registry:
+    __slots__ = ("secrets",)
+
+    def __init__(self) -> None:
+        self.secrets: tuple[tuple[str, ...], tuple[str, ...]] = ((), ())   # newest last; longest first
+
+
+_PROCESS = _Registry()
+_SCOPE: ContextVar[_Registry | None] = ContextVar("credential_scope", default=None)
+
+
+def credential_scope() -> Token:
+    """A fresh registry for this context and what it starts (`_SCOPE.reset(token)` ends it)."""
+    return _SCOPE.set(_Registry())
+
+
+def _registry() -> _Registry:
+    return _SCOPE.get() or _PROCESS
 
 
 def register_secrets(*values: str) -> None:
-    global _SECRETS
+    registry = _registry()
     new = [v for v in dict.fromkeys(values)
            if v and 6 <= len(v) <= _MAX_SECRET_CHARS][:_PER_REGISTRATION]
-    known = _SECRETS[0]
+    known = registry.secrets[0]
     if not new or known[-len(new):] == tuple(new):   # nothing, or already the newest
         return
     fresh = set(new)
     kept = (*(v for v in known if v not in fresh), *new)[-_MAX_SECRETS:]
-    _SECRETS = (kept, tuple(sorted(kept, key=len, reverse=True)))
+    registry.secrets = (kept, tuple(sorted(kept, key=len, reverse=True)))
 
 
 def redact(text: str) -> str:
     """`text` with every registered credential as *** (operator sinks: logs, eval reports); a
     password inside its connection string goes with the string (longest first)."""
-    for secret in _SECRETS[1]:
+    for secret in _registry().secrets[1]:
         if secret in text:
             text = _cut(text, secret)
     return text
@@ -201,7 +230,7 @@ def _cut(text: str, secret: str) -> str:
 
 def without_secrets(message: str, config: ConnectorConfig) -> str:
     """`message` with this config's credentials cut out: a driver's error can quote its URL or
-    echo the password. Never another config's (see `_SECRETS`), and it registers nothing: a
+    echo the password. Never another config's (see `_Registry`), and it registers nothing: a
     value typed into the connect form never masks the operator's logs (security review: a
     'password' of 'GuardrailViolation' hid it everywhere); `get_connector` registers real use."""
     for s in sorted((s for s in _config_secrets(config) if len(s) >= 3), key=len, reverse=True):

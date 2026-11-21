@@ -9,6 +9,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from api.config import settings
+from connectors.base import _SCOPE as _credential_scope, credential_scope
 from api.logging_scrub import install as _scrub_logs
 from api.rate_limit import limiter
 
@@ -76,6 +77,23 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+class _CredentialScope:
+    """Each request its own credential registry (connectors.base): what one user's connector
+    registers never masks another tenant's log lines. Pure ASGI: the route and every task or
+    thread it starts run in this context."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        token = credential_scope()
+        try:
+            await self.app(scope, receive, send)
+        finally:
+            _credential_scope.reset(token)
+
+
+app.add_middleware(_CredentialScope)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
