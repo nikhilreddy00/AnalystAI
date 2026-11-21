@@ -416,32 +416,40 @@ def sql_dialect(engine) -> str:
 _PLAIN_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 
 
+_QUOTE = {"tsql": ("[", "]"), "mysql": ("`", "`")}   # else the standard "…"
+_PLAIN_SPACE = frozenset(" \t\r\n")
+
+
 def _canonical(sql: str, dialect: str) -> str:
-    """The query as the guard read it, written back by sqlglot (no comments): what the database
-    runs, never the model's own text. Every way past the guard so far was text the guard and the
-    server read differently (a statement word as an alias, U+200B, a comment): the server now
-    gets only what the guard parsed (5.8b hardening; Superset's executor does the same). The
-    written form must read back the same, or it isn't run."""
-    def quote_unplain(node):
-        # a name that isn't plain ASCII is quoted, so the server reads it as the one name the
-        # guard read (`x<U+200B>EXEC` was one alias to sqlglot, `x` then EXEC to SQL Server);
-        # Postgres folds an unquoted name's ASCII letters to lower case: so does this
-        if isinstance(node, exp.Identifier) and not node.quoted and \
-                not _PLAIN_NAME.fullmatch(node.name):
-            name = re.sub(r"[A-Z]+", lambda m: m.group().lower(), node.name) \
-                if dialect == "postgres" else node.name
-            return exp.Identifier(this=name, quoted=True)
-        return node
+    """The query as the guard's tokenizer read it: what the database runs, never the model's
+    own text. Every way past the guard was text the guard and the server split differently (a
+    statement word read as an alias, U+200B inside a name, a comment): here every token is sent
+    exactly as written, the text between tokens becomes plain spaces (comments gone), and a
+    name that isn't plain ASCII is quoted, so the server sees the guard's tokens and nothing
+    else (5.8b hardening). Tokens, never a regenerated tree: sqlglot's writer rewrites functions
+    (T-SQL DATEDIFF on DATETIMEOFFSET got CASTs that dropped the offset: -3 hours became 2;
+    SYSDATETIME became GETDATE), so the meaning would change (hardening audit, both reviewers)."""
     try:
-        out = sqlglot.parse_one(sql, read=dialect).transform(quote_unplain).sql(
-            dialect=dialect, comments=False, unsupported_level=sqlglot.ErrorLevel.RAISE)
-        same = sqlglot.parse_one(out, read=dialect).sql(dialect=dialect, comments=False) == out
-    except sqlglot.errors.SqlglotError as exc:
-        same, out = False, str(exc).splitlines()[0]
-    if not same:
-        reason = "the query couldn't be read back exactly; write it more simply"
-        raise GuardrailViolation("sql", reason, f"Blocked unsafe SQL: {reason}.")
-    return out
+        tokens = sqlglot.tokenize(sql, read=dialect)
+    except sqlglot.errors.SqlglotError:
+        reason = "the query couldn't be read"   # the guard's parse refused it already
+        raise GuardrailViolation("sql", reason, f"Blocked unsafe SQL: {reason}.") from None
+    left, right = _QUOTE.get(dialect, ('"', '"'))
+    out, end = [], 0
+    for token in tokens:
+        gap = sql[end:token.start]
+        # whitespace stays (MySQL reads `COUNT (` as a user function); anything else between
+        # tokens was a comment, or a character the tokenizer skipped: one plain space
+        out.append("".join(c if c in _PLAIN_SPACE else " " for c in gap)
+                   if all(c.isspace() for c in gap) else " ")
+        text = sql[token.start:token.end + 1]
+        if token.token_type == sqlglot.TokenType.VAR and not _PLAIN_NAME.fullmatch(text):
+            name = re.sub(r"[A-Z]+", lambda m: m.group().lower(), text) \
+                if dialect == "postgres" else text   # Postgres folds an unquoted name's ASCII
+            text = f"{left}{name.replace(right, right * 2)}{right}"
+        out.append(text)
+        end = token.end + 1
+    return "".join(out).strip()
 
 
 def _assert_single_select(sql: str, dialect: str) -> str:

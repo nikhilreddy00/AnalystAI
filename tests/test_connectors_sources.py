@@ -1569,6 +1569,23 @@ async def test_without_its_pre_scans_the_guard_still_never_lets_a_second_stateme
     assert sent and all("[x​EXEC]" in s for s in sent), sent
 
 
+async def test_the_canonical_query_answers_exactly_as_the_models_own_text(tmp_path):
+    """Hardening audit (two reviewers, on SQL Server): the first canonical form was sqlglot's
+    regenerated tree, whose writer CASTs DATEDIFF's DATETIMEOFFSET arguments to DATETIME2
+    (-3 hours became 2) and turns SYSDATETIME into GETDATE. Tokens only: the same answer."""
+    from sqlalchemy import create_engine, text
+    url = _each_dialect(tmp_path, "mssql")
+    q = ("SELECT DATEDIFF(hour, CAST('2024-01-01T23:00:00-05:00' AS datetimeoffset), "
+         "CAST('2024-01-02T01:00:00+00:00' AS datetimeoffset)) AS h, "
+         "DATEDIFF(day, CAST('2024-01-01T23:00:00-05:00' AS datetimeoffset), "
+         "CAST('2024-01-02T01:00:00+00:00' AS datetimeoffset)) AS d")
+    import os
+    with create_engine(os.environ["TEST_MSSQL_URL"]).connect() as c:
+        raw = [tuple(r) for r in c.execute(text(q))]
+    assert raw == [(-3, 0)]   # the database's own reading of the model's text
+    assert (await _sql(url, None).query(q)).rows == raw
+
+
 def test_a_sql_server_named_instance_is_said_not_a_host_not_found():
     with pytest.raises(IngestionError, match="named instance") as err:
         _sql("mssql://u:p@db.example\\SQLEXPRESS/acme")._engine()
