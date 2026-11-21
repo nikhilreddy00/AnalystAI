@@ -146,7 +146,9 @@ def _layout(text: str) -> tuple[str, int, str]:
 _LINE_END = re.compile(r"\r\n|\n|\r")
 
 
-_QUOTED_FIELD = re.compile(r'"(?:[^"]|"")*"')
+# unrolled ("normal* (special normal*)*"): no backtracking state per character (hardening audit:
+# the alternation form held 1.3 GB on a 10 MB unclosed quote)
+_QUOTED_FIELD = re.compile(r'"[^"]*(?:""[^"]*)*"')
 
 
 def _record_fields(text: str, sep: str, pos: int) -> tuple[int, int]:
@@ -183,20 +185,35 @@ def _header_fields(text: str, sep: str, skip: int) -> int:
 
 
 def _widest_record(text: str, sep: str) -> int:
-    """The most fields any record has, stopping past the cap; only scanned when a raw line holds
-    the cap's worth of delimiters (a cheap count first). pandas tokenizes every field of a row
-    wider than its header and then drops the extra ones: 2.5 s a MB, so one 50 MB line of commas
-    under a two-column header held a worker for minutes (found in the hardening's own probe; the
-    deleted cheap gate had refused it, along with narrow files holding a long quoted cell)."""
-    # lines as pandas ends them: str.splitlines also splits at \x1c, \x0c, U+2028…, which pandas
-    # reads inside a row, so a wide row could hide its width from this count (automated review)
-    if max((line.count(sep) for line in _LINE_END.split(text)), default=0) < _MAX_COLUMNS:
+    """Past the cap if any record is (else 0): pandas tokenizes every field of a row wider than
+    its header and then drops the extra ones (2.5 s a MB: one 50 MB line of commas under a
+    two-column header held a worker for minutes). C-speed where it can be, exact where it must:
+    - fewer delimiters in the whole text than the cap: no record can be wide;
+    - no quote anywhere: a record is a line (as pandas ends one: never str.splitlines, which ends
+      lines at \\x1c and U+2028), and only a line at least the cap long can be wide: found by a
+      regex, never by splitting the file (550 MB for 46 MB of short lines: security review);
+    - quotes: a quoted newline joins short lines into one record (1.6 GB proven: test analyst),
+      so records holding a quote are counted field by field, quote-free lines skipped whole.
+    ponytail: a large file quoted throughout pays a Python step per field (~1 s a 10 MB)."""
+    if text.count(sep) < _MAX_COLUMNS:
         return 0
-    widest, pos = 0, 0
-    while pos < len(text) and widest <= _MAX_COLUMNS:
+    long_line = re.compile(rf"[^\r\n]{{{_MAX_COLUMNS},}}")
+    if '"' not in text:
+        wide = any(m.group().count(sep) >= _MAX_COLUMNS for m in long_line.finditer(text))
+        return _MAX_COLUMNS + 1 if wide else 0
+    quote_free_lines = re.compile(r'(?:[^"\r\n]*(?:\r\n|\n|\r))+')
+    pos = 0
+    while pos < len(text):
+        if (run := quote_free_lines.match(text, pos)) is not None and run.end() > pos:
+            if any(m.group().count(sep) >= _MAX_COLUMNS
+                   for m in long_line.finditer(text, pos, run.end())):
+                return _MAX_COLUMNS + 1
+            pos = run.end()
+            continue
         fields, pos = _record_fields(text, sep, pos)
-        widest = max(widest, fields)
-    return widest
+        if fields > _MAX_COLUMNS:
+            return fields
+    return 0
 
 
 def _read_text_table(content: bytes, suffix: str) -> tuple[pd.DataFrame, dict]:
@@ -363,12 +380,12 @@ def _read_bytes(content: bytes, suffix: str) -> tuple[pd.DataFrame, dict]:
     if df.shape[1] == 1 and any(d in str(df.columns[0]) for d in _DELIMITERS if d != " "):
         raise IngestionError("one column", "All the data landed in one column. Check the file's "
                              "delimiter and upload it again.")
-    # one column read, but a line holds a table past the cap (a report title above it threw the
-    # layout off): said as too wide, never junk text. Only when the read came back one column: a
-    # count of raw delimiters elsewhere refused narrow files with a long quoted cell (senior audit)
+    # one column read, but a record holds a table past the cap (a report title above it threw the
+    # layout off): said as too wide, never junk text. Counted as records, quotes honoured: a raw
+    # count refused a one-column file with a long quoted cell (hardening audit). latin-1: every
+    # byte one character, so the ASCII delimiters and quotes are where they are in the file
     if df.shape[1] == 1 and suffix in (".csv", ".tsv") and any(
-            line.count(d) >= _MAX_COLUMNS for line in content[:4 * 2**20].splitlines()[:_SAMPLE_LINES]
-            for d in (b",", b";", b"\t", b"|")):
+            _widest_record(content.decode("latin-1"), d) > _MAX_COLUMNS for d in (",", ";", "\t", "|")):
         raise IngestionError("too many columns", f"The file has more than {_MAX_COLUMNS:,} "
                              "columns, past what can be read.")
     if df.empty:

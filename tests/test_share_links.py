@@ -9,6 +9,7 @@ from __future__ import annotations
 import functools
 import io
 import logging
+from pathlib import Path
 from functools import cache
 
 import httpx
@@ -229,24 +230,46 @@ def test_an_ordinary_file_is_never_refused_as_too_wide(content, shape):
     assert _read_bytes(content, ".csv")[0].shape == shape
 
 
-def test_a_hostile_wide_line_is_refused_fast_and_small_at_the_upload_size():
-    """At the full 50 MB: the time and the peak memory of refusing a 25M-field header (the
-    sampler and a pandas header read each built every field before the count; automated
-    security review of the hardening push)."""
-    import time
-    import tracemalloc
+_HOSTILE = {   # each at the upload cap; built in the child process
+    "wide-header": "b',' * (MAX_UPLOAD_MB * 2**20 - 10) + b'\\n1\\n'",
+    "wide-row-under-narrow-header": "b'a,b\\n1,2\\n' + b',' * (MAX_UPLOAD_MB * 2**20 - 20) + b'\\n'",
+    # quoted newlines join short lines into one record (test analyst: 1.6 GB, read)
+    "quoted-newlines-join-a-wide-record":
+        "b'a,b\\n1,2\\n1' + (b',' * 9000 + b'\"\\n\"') * (MAX_UPLOAD_MB * 2**20 // 9003)",
+    # an unclosed quote: the regex held 1.3 GB on 10 MB (code review)
+    "unclosed-quote": "b'\"' + b'x' * (MAX_UPLOAD_MB * 2**20 - 10) + b'\\n1\\n'",
+}
 
+
+@pytest.mark.parametrize("shape", list(_HOSTILE))
+def test_a_hostile_file_is_refused_fast_and_small_measured_as_the_process(shape):
+    """The real peak of the process (tracemalloc can't see pandas' C tokenizer: test analyst),
+    in a fresh one: under 1 GB and 15 s at the 50 MB upload cap."""
+    import subprocess
+    import sys
+    code = f"""
+import resource, time
+from agents.errors import IngestionError
+from connectors.csv_connector import MAX_UPLOAD_MB, _read_bytes
+content = {_HOSTILE[shape]}
+started = time.monotonic()
+try:
+    _read_bytes(content, '.csv')
+    said = 'read'
+except IngestionError as e:
+    said = e.user_message
+print(round(time.monotonic() - started, 1), resource.getrusage(resource.RUSAGE_SELF).ru_maxrss, said)
+"""
+    out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, timeout=120,
+                         cwd=str(Path(__file__).resolve().parents[1]))
+    took, peak, said = out.stdout.strip().split(" ", 2)
+    peak_mb = int(peak) / (2**20 if sys.platform == "darwin" else 2**10)   # bytes vs KB
+    assert said != "read" and float(took) < 15 and peak_mb < 1024, (shape, took, peak_mb, said)
+
+
+def test_a_header_past_the_cap_is_said_as_too_wide():
     from agents.errors import IngestionError
-    from connectors.csv_connector import MAX_UPLOAD_MB, _read_bytes
-    hostile = b"," * (MAX_UPLOAD_MB * 2**20 - 10) + b"\n1\n"
-    tracemalloc.start()
-    started = time.monotonic()
-    with pytest.raises(IngestionError):
-        _read_bytes(hostile, ".csv")
-    took = time.monotonic() - started
-    peak = tracemalloc.get_traced_memory()[1]
-    tracemalloc.stop()
-    assert took < 10 and peak < 12 * len(hostile), (took, peak / 2**20)
+    from connectors.csv_connector import _read_bytes
     with pytest.raises(IngestionError, match="too many columns"):
         _read_bytes(b",".join(b"c%d" % i for i in range(20_000)) + b"\n1\n", ".csv")
 
@@ -263,22 +286,10 @@ def test_the_header_count_honours_quotes_and_stops_at_the_cap():
     assert _header_fields('"never closed,a,b\n1,2', ",", 0) == 1   # one field to the end
 
 
-def test_a_wide_data_row_under_a_narrow_header_is_refused_fast_and_small():
-    """pandas tokenizes every field of a row wider than its header, then drops the extras
-    (2.5 s a MB): one 50 MB line of commas under `a,b` held a worker for minutes."""
-    import time
-    import tracemalloc
-
-    from agents.errors import IngestionError
-    from connectors.csv_connector import MAX_UPLOAD_MB, _read_bytes
-    hostile = b"a,b\n1,2\n" + b"," * (MAX_UPLOAD_MB * 2**20 - 20) + b"\n"
-    tracemalloc.start()
-    started = time.monotonic()
-    with pytest.raises(IngestionError, match="too many columns"):
-        _read_bytes(hostile, ".csv")
-    took, peak = time.monotonic() - started, tracemalloc.get_traced_memory()[1]
-    tracemalloc.stop()
-    assert took < 10 and peak < 12 * len(hostile), (took, peak / 2**20)
+def test_a_one_column_file_with_a_long_quoted_cell_reads():
+    """The one-column refusal counted raw delimiters (silent-failure hunter)."""
+    from connectors.csv_connector import _read_bytes
+    assert _read_bytes(b'comment\n"' + b"," * 10_001 + b'"\n', ".csv")[0].shape == (1, 1)
 
 
 def test_a_wide_row_split_by_a_character_pandas_reads_inside_a_row_is_refused():
