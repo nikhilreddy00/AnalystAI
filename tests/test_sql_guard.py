@@ -325,7 +325,7 @@ def test_a_function_not_on_the_allow_list_is_refused(sql, dialect):
     assert reason and "not allowed" in reason, (sql, reason)
     # audit pass 2 (code review): only an analyst's own function gets the retry; a lock, admin,
     # session, file or random one is final, as the deny list had it
-    assert reason.startswith(g.SOFT_REFUSALS) == (sql == "SELECT my_fn(1)"), (sql, reason)
+    assert reason.soft == (sql == "SELECT my_fn(1)"), (sql, reason)
 
 
 @pytest.mark.parametrize(("sql", "dialect"), [
@@ -334,7 +334,44 @@ def test_a_function_not_on_the_allow_list_is_refused(sql, dialect):
     ("SELECT ts_rewrite('SELECT 1', 'x')", "postgres"), ("SELECT newid()", "tsql"),
 ])
 def test_a_lock_or_admin_function_is_a_final_refusal(sql, dialect):
-    assert not g.check_sql_readonly(sql, dialect).startswith(g.SOFT_REFUSALS)
+    assert not g.check_sql_readonly(sql, dialect).soft
+
+
+@pytest.mark.parametrize("dialect", ["mysql", "tsql", "postgres"])
+def test_every_function_the_vendor_documents_for_analysis_is_allowed(dialect):
+    """5.8b hardening: the allow list was built from our own corpus and refused HOUR (MySQL),
+    SYSUTCDATETIME (finally, by a `sys` prefix), ISNUMERIC, STUFF, unnest: a regression on what
+    5.8a's deny list allowed. The list is now the vendors' documented functions; each call one
+    of them, in a query, passes."""
+    calls = g.documented_calls(dialect)
+    assert len(calls) >= 95, "the documented list shrank"
+    refused = {c: r for c in calls if (r := g.check_sql_readonly(f"SELECT {c} FROM t", dialect))}
+    assert refused == {}
+
+
+@pytest.mark.parametrize(("sql", "dialect"), [
+    ("SELECT HOUR(ts), MINUTE(ts), WEEKDAY(ts) FROM t", "mysql"),
+    ("SELECT SUBSTRING_INDEX(email, '@', -1), ANY_VALUE(x), YEARWEEK(d) FROM t", "mysql"),
+    ("SELECT DATEADD(day, -30, SYSUTCDATETIME()), ISNUMERIC(s), STUFF(s, 1, 1, 'x') FROM t", "tsql"),
+    ("SELECT unnest(a), array_length(a, 1), clock_timestamp() FROM t", "postgres"),
+])
+def test_the_reviews_refused_functions_pass(sql, dialect):
+    assert g.check_sql_readonly(sql, dialect) is None
+
+
+def test_a_refused_function_is_named_as_the_query_writes_it():
+    """FORMAT(x, 2) was said as 'number_to_str': the retry pointed at a function never written."""
+    assert g.check_sql_readonly("SELECT my_thing(x) FROM t", "mysql") == "function not allowed: my_thing"
+    reason = g.check_sql_readonly("SELECT NEXT VALUE FOR s", "tsql")
+    assert reason and "next value for" in reason.lower() and not reason.soft
+
+
+@pytest.mark.parametrize("sql", ["SELECT close FROM t EXEC('x')",
+                                 "SELECT close FROM t UNION SELECT name FROM sys.objects"])
+def test_a_keyword_named_column_never_hides_a_hard_refusal(sql):
+    """The batch-word scan returned its first word: `close` (soft, a retry) hid EXEC and sys."""
+    reason = g.check_sql_readonly(sql, "tsql")
+    assert reason and not reason.soft, reason
 
 
 def test_a_zero_width_space_never_splits_a_statement():
@@ -344,7 +381,7 @@ def test_a_zero_width_space_never_splits_a_statement():
         for dialect in ("tsql", "postgres", "mysql", None):
             sql = f"SELECT TOP 1 a FROM keyed x{ch}EXEC('WAITFOR DELAY ''0:0:4''')"
             reason = g.check_sql_readonly(sql, dialect)
-            assert reason and not reason.startswith(g.SOFT_REFUSALS), (repr(ch), dialect, reason)
+            assert reason and not reason.soft, (repr(ch), dialect, reason)
     assert g.check_sql_readonly("SELECT a FROM t x​EXEC('1')", "tsql") == (
         "an invisible or unusual space character outside a string or quoted name is not allowed")
     # in a comment too: a comment isn't a token, and a server may end one where sqlglot doesn't
@@ -403,7 +440,7 @@ def test_a_hard_refusal_wins_over_a_function_refusal(sql, dialect, hard):
     ("SELECT my_fn(1)", "postgres", "function not allowed: my_fn"),        # unknown, as written
     ("SELECT My_Fn(1)", "postgres", "function not allowed: my_fn"),
     ("SELECT NEXT VALUE FOR dbo.seq", "tsql",
-     "a lock, admin, session or random function is not allowed: next_value_for"),
+     "a lock, admin, session or random function is not allowed: next value for dbo.seq"),
     ("SELECT my_fn(1)", None, "function not allowed: my_fn"),             # no dialect: no names
     ("SELECT my_fn(1)", "duckdb", "function not allowed: my_fn"),         # a dialect without names
     ("SELECT dbo.round(x) FROM t", "tsql", "a schema-qualified function is not allowed: round"),

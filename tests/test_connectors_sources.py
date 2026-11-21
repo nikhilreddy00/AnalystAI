@@ -1524,6 +1524,51 @@ async def test_each_engines_own_types_read_as_their_values(tmp_path, name):
             c.execute(text("DROP TABLE tcat"))
 
 
+async def test_the_database_runs_what_the_guard_read_never_the_raw_text(tmp_path, monkeypatch):
+    """Canonicalize, then execute (5.8b hardening): every bypass so far was text the guard and
+    the server read differently. The server gets sqlglot's writing of what the guard parsed: no
+    comment survives, and a name the guard read as a name reaches the server quoted as one."""
+    import connectors.sql_connector as sc
+    sent = []
+    real = sc.run_readonly
+    monkeypatch.setattr(sc, "run_readonly", lambda e, sql, *a, **k: sent.append(sql) or real(e, sql, *a, **k))
+    conn = _sql(_sqlite(tmp_path, pd.DataFrame({"a": [1, 2]})), None)
+    res = await conn.query("SELECT a /* keep? */ FROM t -- a trailing note")
+    assert res.rows == [(1,), (2,)] and sent == ["SELECT a FROM t"]
+
+
+async def test_without_its_pre_scans_the_guard_still_never_lets_a_second_statement_run(
+        tmp_path, monkeypatch):
+    """The U+200B batch (5.8b audit pass 2, proven on SQL Server: the WAITFOR ran) with the
+    pre-scans that refuse it switched off: the server gets sqlglot's writing of what the guard
+    read, an alias, so nothing waits. This is the class closed by construction, not one more scan."""
+    import time
+
+    import guardrails
+    from sqlalchemy import text
+    monkeypatch.setattr(guardrails, "_invisible_outside_quotes", lambda sql, d: False)
+    monkeypatch.setattr(guardrails, "_tsql_batch_word", lambda sql: None)
+    url = _each_dialect(tmp_path, "mssql")
+    with _admin(tmp_path, "mssql").begin() as c:
+        c.execute(text("DROP TABLE IF EXISTS keyed"))
+        c.execute(text("CREATE TABLE keyed (a INT)"))
+        c.execute(text("INSERT INTO keyed VALUES (1)"))
+    import connectors.sql_connector as sc
+    sent = []
+    real = sc.run_readonly
+    monkeypatch.setattr(sc, "run_readonly", lambda e, sql, *a, **k: sent.append(sql) or real(e, sql, *a, **k))
+    for attack in ("SELECT TOP 1 a FROM keyed x​EXEC('WAITFOR DELAY ''0:0:4''')",
+                   "SELECT TOP 1 a FROM keyed x​EXEC(sp_who)"):
+        started = time.monotonic()
+        try:
+            await _sql(url, None).query(attack)
+        except Exception:   # noqa: BLE001 - refused or a syntax error: either way nothing ran
+            pass
+        assert time.monotonic() - started < 3, "the second statement ran"
+    # what reached the server: the alias as one bracketed name, never a word the server splits
+    assert sent and all("[x​EXEC]" in s for s in sent), sent
+
+
 def test_a_file_keeps_long_ids_exact_with_a_blank():
     """The same bug in the file reader: an id column with one blank read as float64."""
     from connectors.csv_connector import _read_bytes

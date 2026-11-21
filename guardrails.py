@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import ast
 import datetime
+import functools
 import math
 import numbers
 import re
@@ -94,19 +95,137 @@ _SQL_NAMES = {   # per dialect: the analyst functions sqlglot reads as unknown n
 _ALLOWED_HINTS = frozenset({"NOLOCK", "READUNCOMMITTED"})   # T-SQL: the rest take or hold locks
 FUNCTION_REFUSED = "function not allowed: "
 RESERVED_NAME = "a T-SQL reserved word used as a name must be [bracketed]: "
-# The refusals the SQL agent gives the model one retry on: an analyst function off the list, a
-# column named like a keyword. Decided here, by meaning, never by the caller (5.8b audit pass 2:
-# moving to the allow list made lock and admin functions retryable).
-SOFT_REFUSALS = (FUNCTION_REFUSED, RESERVED_NAME)
+
+
+class Refusal(str):
+    """A guard refusal: its words, and whether the model may try again (`soft`: an analyst
+    function off the list, a column named like a keyword). Decided where the refusal is made,
+    by its meaning, never by a caller matching its words (5.8b hardening: two modules matched
+    message prefixes, and a lock function got the retry)."""
+
+    soft: bool
+
+    def __new__(cls, text: str, soft: bool = False):
+        refusal = super().__new__(cls, text)
+        refusal.soft = soft
+        return refusal
+
+
 # Off the list AND never an analyst's: final, and traced as a read-only refusal. This only sorts
-# hard from soft; what may run is the allow list's alone.
+# hard from soft; what may run is the allow list's alone. Exact names and the system prefixes:
+# 5.8b's `sys`/`current_` prefixes refused SYSUTCDATETIME and CURRENT_DATE finally.
 _HARD_FUNCS = frozenset(getattr(exp, name) for name in """NextValueFor Uuid Rand Randn ReadCSV
     ReadParquet CurrentUser CurrentSchema CurrentDatabase SessionUser CurrentRole""".split())
-_HARD_NAMES = re.compile(r"(pg_|xp_|sp_|fn_|sys|dbms_|lo_|get_lock|release_lock|is_free_lock|"
-                         r"is_used_lock|sleep|benchmark|dblink|nextval|setval|currval|load_file|"
-                         r"connection_id|last_insert_id|found_rows|load_|read_|write_|"
-                         r"open(rowset|query|datasource|xml)|current_|session_|user$|version$|"
-                         r"database$|schema$|uuid|rand|newid)")
+_HARD_PREFIXES = ("pg_", "xp_", "sp_", "fn_", "lo_", "dbms_", "dblink")
+_HARD_NAMES = frozenset("""sleep benchmark get_lock release_lock release_all_locks is_free_lock
+    is_used_lock load_file connection_id last_insert_id found_rows row_count user current_user
+    session_user system_user database schema version uuid uuid_short rand random newid
+    newsequentialid nextval setval currval lastval set_config current_setting current_database
+    current_schema current_role inet_server_addr txid_current gen_random_uuid user_name
+    suser_name suser_sname host_name app_name db_name db_id original_login is_member
+    is_srvrolemember has_perms_by_name openrowset openquery opendatasource openxml
+    sys_eval sys_exec load_extension readfile writefile""".split())
+
+
+# THE functions an analyst's query calls, per dialect, as the vendors document them (MySQL 8.4 /
+# MariaDB 11.4, SQL Server 2022, PostgreSQL 17 manuals: date and time, string, math, aggregate,
+# window, conversion, conditional, JSON reads). The allow list is what these parse to (sqlglot's
+# class, or the name it doesn't know): built from the manuals, never from what our own queries
+# happened to use (5.8b hardening: HOUR, SYSUTCDATETIME, ISNUMERIC, unnest were refused).
+_DOCUMENTED = {
+    "mysql": """YEAR(d) MONTH(d) DAY(d) DAYOFMONTH(d) DAYOFWEEK(d) DAYOFYEAR(d) WEEKDAY(d) WEEK(d)
+        WEEK(d, 3) WEEKOFYEAR(d) YEARWEEK(d) QUARTER(d) HOUR(d) MINUTE(d) SECOND(d)
+        MICROSECOND(d) DATE(d) TIME(d) TIMESTAMP(d) DATE_FORMAT(d, '%Y-%m') TIME_FORMAT(d, '%H')
+        STR_TO_DATE(s, '%Y-%m-%d') DATE_ADD(d, INTERVAL 1 DAY) DATE_SUB(d, INTERVAL 1 MONTH)
+        ADDDATE(d, 1) SUBDATE(d, 1) DATEDIFF(d, d) TIMEDIFF(d, d) TIMESTAMPDIFF(MONTH, d, d)
+        TIMESTAMPADD(DAY, 1, d) LAST_DAY(d) MAKEDATE(2024, 1) MONTHNAME(d) DAYNAME(d) NOW()
+        CURDATE() CURTIME() CURRENT_DATE() CURRENT_TIMESTAMP() UTC_DATE() UTC_TIMESTAMP()
+        UNIX_TIMESTAMP(d) FROM_UNIXTIME(n) EXTRACT(YEAR FROM d) CONVERT_TZ(d, '+00:00', '+01:00')
+        PERIOD_DIFF(202401, 202312) TO_DAYS(d) FROM_DAYS(n) SEC_TO_TIME(n) TIME_TO_SEC(d)
+        IF(c, 1, 0) IFNULL(a, 0) COALESCE(a, 0) NULLIF(a, 0) ISNULL(a) GREATEST(a, b) LEAST(a, b)
+        CONCAT(s, s) CONCAT_WS(',', s, s) SUBSTRING(s, 1, 2) SUBSTR(s, 1, 2) MID(s, 1, 2)
+        SUBSTRING_INDEX(s, '@', -1) LEFT(s, 2) RIGHT(s, 2) LPAD(s, 5, '0') RPAD(s, 5, ' ')
+        LOCATE('a', s) INSTR(s, 'a') POSITION('a' IN s) REPLACE(s, 'a', 'b') REVERSE(s)
+        REPEAT(s, 2) LOWER(s) LCASE(s) UPPER(s) UCASE(s) TRIM(s) LTRIM(s) RTRIM(s) LENGTH(s)
+        CHAR_LENGTH(s) CHARACTER_LENGTH(s) FORMAT(n, 2) ROUND(n, 2) TRUNCATE(n, 2) CEIL(n)
+        CEILING(n) FLOOR(n) ABS(n) MOD(n, 2) POW(n, 2) POWER(n, 2) SQRT(n) EXP(n) LN(n) LOG(n)
+        LOG10(n) LOG2(n) SIGN(n) COUNT(*) COUNT(DISTINCT a) SUM(n) AVG(n) MIN(n) MAX(n)
+        STD(n) STDDEV(n) STDDEV_POP(n) STDDEV_SAMP(n) VARIANCE(n) VAR_POP(n) VAR_SAMP(n)
+        GROUP_CONCAT(s SEPARATOR ',') ANY_VALUE(a) BIT_AND(n) BIT_OR(n) JSON_EXTRACT(j, '$.k')
+        JSON_UNQUOTE(j) JSON_VALUE(j, '$.k') JSON_LENGTH(j) JSON_CONTAINS(j, '1')
+        REGEXP_LIKE(s, 'a') REGEXP_REPLACE(s, 'a', 'b') REGEXP_SUBSTR(s, 'a') REGEXP_INSTR(s, 'a')
+        CAST(a AS CHAR) CONVERT(a, CHAR) CAST(a AS DECIMAL(10, 2)) BIN(n) HEX(n) CONV(n, 10, 2)
+        ROW_NUMBER() OVER () RANK() OVER () DENSE_RANK() OVER () NTILE(4) OVER ()
+        LAG(n) OVER () LEAD(n) OVER () FIRST_VALUE(n) OVER () LAST_VALUE(n) OVER ()
+        NTH_VALUE(n, 2) OVER () PERCENT_RANK() OVER () CUME_DIST() OVER ()""",
+    "tsql": """YEAR(d) MONTH(d) DAY(d) DATEPART(month, d) DATENAME(month, d) DATEADD(day, -30, d)
+        DATEDIFF(day, d, d) DATEDIFF_BIG(day, d, d) DATEFROMPARTS(2024, 1, 1)
+        DATETIMEFROMPARTS(2024, 1, 1, 0, 0, 0, 0) EOMONTH(d) DATETRUNC(month, d) GETDATE()
+        GETUTCDATE() SYSDATETIME() SYSUTCDATETIME() SYSDATETIMEOFFSET() CURRENT_TIMESTAMP
+        SWITCHOFFSET(d, '+00:00') TODATETIMEOFFSET(d, '+00:00') ISDATE(s) FORMAT(d, 'yyyy-MM')
+        CONVERT(VARCHAR(10), d, 120) CAST(a AS INT) TRY_CAST(a AS INT) TRY_CONVERT(INT, a)
+        PARSE(s AS DATE) TRY_PARSE(s AS DATE) IIF(c = 1, 1, 0) CHOOSE(2, 'a', 'b')
+        COALESCE(a, 0) NULLIF(a, 0) ISNULL(a, 0) ISNUMERIC(s) LEN(s) DATALENGTH(s) LEFT(s, 2)
+        RIGHT(s, 2) SUBSTRING(s, 1, 2) CHARINDEX('a', s) PATINDEX('%a%', s) REPLACE(s, 'a', 'b')
+        REPLICATE(s, 2) REVERSE(s) STUFF(s, 1, 1, 'x') LOWER(s) UPPER(s) LTRIM(s) RTRIM(s) TRIM(s)
+        CONCAT(s, s) CONCAT_WS(',', s, s) STRING_AGG(s, ',') STR(n) SPACE(2) TRANSLATE(s, 'a', 'b')
+        QUOTENAME(s) ROUND(n, 2) CEILING(n) FLOOR(n) ABS(n) POWER(n, 2) SQRT(n) SQUARE(n) EXP(n)
+        LOG(n) LOG10(n) SIGN(n) PI() GREATEST(a, b) LEAST(a, b) COUNT(*) COUNT(DISTINCT a)
+        COUNT_BIG(*) SUM(n) AVG(n) MIN(n) MAX(n) STDEV(n) STDEVP(n) VAR(n) VARP(n) GROUPING(a)
+        APPROX_COUNT_DISTINCT(a) JSON_VALUE(j, '$.k') JSON_QUERY(j, '$.k') ISJSON(j)
+        PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY n) OVER ()
+        PERCENTILE_DISC(0.5) WITHIN GROUP (ORDER BY n) OVER () ROW_NUMBER() OVER (ORDER BY a)
+        RANK() OVER (ORDER BY a) DENSE_RANK() OVER (ORDER BY a) NTILE(4) OVER (ORDER BY a)
+        LAG(n) OVER (ORDER BY a) LEAD(n) OVER (ORDER BY a) FIRST_VALUE(n) OVER (ORDER BY a)
+        LAST_VALUE(n) OVER (ORDER BY a) PERCENT_RANK() OVER (ORDER BY a)
+        CUME_DIST() OVER (ORDER BY a)""",
+    "postgres": """date_trunc('month', d) date_part('year', d) EXTRACT(YEAR FROM d) age(d, d)
+        age(d) make_date(2024, 1, 1) make_timestamp(2024, 1, 1, 0, 0, 0) to_char(d, 'YYYY-MM')
+        to_date(s, 'YYYY-MM-DD') to_timestamp(s, 'YYYY') to_number(s, '999') now()
+        clock_timestamp() statement_timestamp() CURRENT_DATE CURRENT_TIMESTAMP LOCALTIMESTAMP
+        justify_days(i) justify_hours(i) date_bin(i, d, d) isfinite(d) COALESCE(a, 0)
+        NULLIF(a, 0) GREATEST(a, b) LEAST(a, b) concat(s, s) concat_ws(',', s, s)
+        substring(s, 1, 2) substr(s, 1, 2) left(s, 2) right(s, 2) lpad(s, 5, '0')
+        rpad(s, 5, ' ') position('a' IN s) strpos(s, 'a') split_part(s, '@', 2)
+        replace(s, 'a', 'b') translate(s, 'a', 'b') reverse(s) repeat(s, 2) lower(s) upper(s)
+        initcap(s) trim(s) btrim(s) ltrim(s) rtrim(s) length(s) char_length(s)
+        regexp_replace(s, 'a', 'b') regexp_match(s, 'a') regexp_like(s, 'a') md5(s) format('%s', s)
+        round(n, 2) trunc(n) ceil(n) ceiling(n) floor(n) abs(n) mod(n, 2) div(n, 2) power(n, 2)
+        sqrt(n) cbrt(n) exp(n) ln(n) log(n) log10(n) sign(n) width_bucket(n, 0, 10, 5)
+        count(*) count(DISTINCT a) sum(n) avg(n) min(n) max(n) stddev(n) stddev_pop(n)
+        stddev_samp(n) variance(n) var_pop(n) var_samp(n) corr(n, n) covar_pop(n, n)
+        regr_slope(n, n) bool_and(c) bool_or(c) every(c) array_agg(a) string_agg(s, ',')
+        mode() WITHIN GROUP (ORDER BY a) percentile_cont(0.5) WITHIN GROUP (ORDER BY n)
+        percentile_disc(0.5) WITHIN GROUP (ORDER BY n) array_length(a, 1) cardinality(a)
+        unnest(a) array_to_string(a, ',') jsonb_extract_path_text(j, 'k')
+        json_extract_path_text(j, 'k') jsonb_array_length(j) to_json(a) row_number() OVER ()
+        rank() OVER () dense_rank() OVER () ntile(4) OVER () lag(n) OVER () lead(n) OVER ()
+        first_value(n) OVER () last_value(n) OVER () nth_value(n, 2) OVER () percent_rank() OVER ()
+        cume_dist() OVER () generate_series(1, 3) pg_typeof(a)""",
+}
+_DOCUMENTED_CALL = re.compile(r"[A-Za-z_0-9]+\((?:[^()]|\([^()]*\))*\)(?:\s+(?:OVER|WITHIN GROUP)"
+                              r"\s*\((?:[^()]|\([^()]*\))*\))*(?:\s+OVER\s*\([^()]*\))?"
+                              r"|CURRENT_DATE|CURRENT_TIMESTAMP|LOCALTIMESTAMP")
+
+
+def documented_calls(dialect: str | None) -> list[str]:
+    """The documented calls of a dialect, one per entry (MariaDB is written as MySQL)."""
+    return _DOCUMENTED_CALL.findall(_DOCUMENTED.get(dialect, ""))
+
+
+@functools.cache
+def _documented(dialect: str | None) -> tuple[frozenset[type], frozenset[str]]:
+    """What the dialect's documented calls parse to: sqlglot's classes, and the names it reads
+    as unknown functions."""
+    classes, names = set(), set()
+    for call in documented_calls(dialect):
+        query = f"SELECT {call} FROM t"   # noqa: S608 - parsed, never run; the calls are ours
+        for node in sqlglot.parse_one(query, read=dialect).find_all(exp.Func):
+            if isinstance(node, exp.Anonymous):
+                names.add(node.name.lower())
+            else:
+                classes.add(type(node))
+    return frozenset(classes), frozenset(names)
 # /*! … */ and /*M! … */ are MySQL / MariaDB executable comments and /*+ … */ optimizer hints
 # (MAX_EXECUTION_TIME overrides the session timeout): the server runs what sqlglot reads as a
 # comment. Refused anywhere in the raw text, on every dialect, quotes included: any scanner of
@@ -135,20 +254,25 @@ def _function_refused(node: exp.Func, dialect: str | None) -> str | None:
     """Why the parse guard refuses this call, or None: off the allow list, or a function
     qualified by a schema or `::` (a user-defined one may be named like a builtin: dbo.round)."""
     anonymous = isinstance(node, exp.Anonymous)
-    name = node.name.lower() if anonymous else node.sql_name().lower()
+    # as the query writes it (the dialect's own spelling), never sqlglot's class name: FORMAT was
+    # said as "number_to_str", a function the model never wrote (5.8b hardening)
+    name = node.name.lower() if anonymous else \
+        (node.sql(dialect).split("(")[0].strip() or node.sql_name()).lower()
     if isinstance(node.parent, (exp.Dot, exp.ScopeResolution)) and node is node.parent.expression:
-        return f"a schema-qualified function is not allowed: {name}"
+        return Refusal(f"a schema-qualified function is not allowed: {name}")
     # the class (security review, audit 2): a function given a query as text runs it past every
     # table rule (ts_stat, ts_rewrite); ponytail: a text built by concatenation isn't seen, the
     # database role is the boundary (ADR-0010 layer 4). Before the list: it is a hard refusal
     if anonymous and any(_is_sql_text(s.name, dialect) for s in node.find_all(exp.Literal, exp.RawString)
                          if isinstance(s, exp.RawString) or s.is_string):   # RawString: $q$ … $q$
-        return f"function given a SQL statement as text: {name}"
-    if node.name.lower() in _SQL_NAMES.get(dialect, ()) if anonymous else type(node) in _SQL_FUNCS:
+        return Refusal(f"function given a SQL statement as text: {name}")
+    classes, names = _documented(dialect)
+    if (node.name.lower() in _SQL_NAMES.get(dialect, ()) or node.name.lower() in names) \
+            if anonymous else (type(node) in _SQL_FUNCS or type(node) in classes):
         return None
-    if type(node) in _HARD_FUNCS or _HARD_NAMES.match(name):
-        return f"a lock, admin, session or random function is not allowed: {name}"
-    return f"{FUNCTION_REFUSED}{name}"
+    if type(node) in _HARD_FUNCS or name in _HARD_NAMES or name.startswith(_HARD_PREFIXES):
+        return Refusal(f"a lock, admin, session or random function is not allowed: {name}")
+    return Refusal(f"{FUNCTION_REFUSED}{name}", soft=True)
 
 
 # SQL Server runs a batch: a statement may follow another with no ';', and sqlglot reads
@@ -194,15 +318,17 @@ def _tsql_batch_word(sql: str) -> str | None:
         tokens = sqlglot.tokenize(sql, read="tsql")
     except sqlglot.errors.SqlglotError:
         return None
+    soft = None
     for before, token in zip([None, *tokens], tokens):
         word = token.text.upper()
         if token.token_type in _QUOTED or word not in _TSQL_BATCH_WORDS or (
                 before is not None and before.token_type == sqlglot.TokenType.DOT):
             continue
-        if word in _TSQL_NAME_LIKE:
-            return f"{RESERVED_NAME}{word}"
-        return f"a T-SQL statement keyword outside a string or [name] is not allowed: {word}"
-    return None
+        if word not in _TSQL_NAME_LIKE:   # every word read: a hard one anywhere wins (5.8b
+            return Refusal("a T-SQL statement keyword outside a string or [name] is not "   # review:
+                           f"allowed: {word}")                       # `close … EXEC` got the retry)
+        soft = soft or Refusal(f"{RESERVED_NAME}{word}", soft=True)
+    return soft
 
 
 def _system_schemas(dialect: str | None) -> frozenset[str]:
@@ -213,7 +339,14 @@ def _system_schemas(dialect: str | None) -> frozenset[str]:
         - {"information_schema"}
 
 
-def check_sql_readonly(sql: str, dialect: str | None) -> str | None:
+def check_sql_readonly(sql: str, dialect: str | None) -> Refusal | None:
+    """Why `sql` is refused (a `Refusal`: its words and whether the model may retry), or None.
+    See `_refusal` for the rules."""
+    reason = _refusal(sql, dialect)
+    return reason if reason is None or isinstance(reason, Refusal) else Refusal(reason)
+
+
+def _refusal(sql: str, dialect: str | None) -> str | None:
     """Exactly one statement, and it is a read (SELECT / UNION / CTE-select). Parsed, not
     prefix-matched, so `WITH x AS (DELETE ...)` and `SELECT 1; DROP ...` are both caught, as are
     `SELECT ... INTO new_table`, `FOR UPDATE` locks and side-effect functions (`nextval`,
@@ -223,12 +356,13 @@ def check_sql_readonly(sql: str, dialect: str | None) -> str | None:
         return "executable comments and optimizer hints (/*! */, /*+ */) are not allowed"
     if _invisible_outside_quotes(sql, dialect):
         return "an invisible or unusual space character outside a string or quoted name is not allowed"
-    if dialect == "tsql" and (why := _tsql_batch_word(sql)):
-        return why
+    # a column named like a keyword is soft: said only if nothing below is hard (5.8b review)
+    if (word := _tsql_batch_word(sql) if dialect == "tsql" else None) and not word.soft:
+        return word
     try:
         statements = [s for s in sqlglot.parse(sql, read=dialect) if s is not None]
     except sqlglot.errors.ParseError as exc:
-        return f"SQL does not parse: {str(exc).splitlines()[0]}"
+        return word or Refusal(f"SQL does not parse: {str(exc).splitlines()[0]}")
     if len(statements) != 1:
         return f"expected exactly one SQL statement, got {len(statements)}"
     stmt = statements[0]
@@ -250,7 +384,7 @@ def check_sql_readonly(sql: str, dialect: str | None) -> str | None:
         if isinstance(node, exp.Func) and (why := _function_refused(node, dialect)):
             # any hard one wins over a soft one wherever it is (audit pass 2); a write, catalog
             # or lock is said first
-            if why.startswith(SOFT_REFUSALS):
+            if why.soft:
                 soft = soft or why
             else:
                 hard_function = hard_function or why
@@ -259,7 +393,7 @@ def check_sql_readonly(sql: str, dialect: str | None) -> str | None:
             return f"table hints that take locks are not allowed: {', '.join(held)}"
         if isinstance(node, exp.Table) and node.db.lower() in system:
             return f"the database's own tables are not readable: {node.db}"
-    return hard_function or soft
+    return hard_function or word or soft
 
 
 # Fan-out and metric checks read a semantic layer (semantic_layer.SemanticLayer); typed loosely to

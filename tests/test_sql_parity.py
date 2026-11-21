@@ -18,7 +18,7 @@ from evals.scoring import result_matches
 from tests.test_connectors_sources import _admin, _each_dialect, _sql
 
 ROOT_DIR = Path(__file__).parent.parent
-ENGINES = ["mysql", "mariadb", "mssql"]
+ENGINES = ["postgresql", "mysql", "mariadb", "mssql"]   # Postgres too: the product's path vs raw
 WRITE = {"postgresql": "postgres", "mysql": "mysql", "mariadb": "mysql", "mssql": "tsql"}
 CASES = [c for c in (yaml.safe_load(p.read_text())
                      for p in sorted((ROOT_DIR / "evals/cases/sql").glob("*.yaml")))

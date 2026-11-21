@@ -19,6 +19,7 @@ import decimal
 import json
 import logging
 import math
+import re
 import socket
 import ssl
 import uuid
@@ -374,6 +375,37 @@ def sql_dialect(engine) -> str:
     return dialect_of(engine).sqlglot
 
 
+_PLAIN_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+
+
+def _canonical(sql: str, dialect: str) -> str:
+    """The query as the guard read it, written back by sqlglot (no comments): what the database
+    runs, never the model's own text. Every way past the guard so far was text the guard and the
+    server read differently (a statement word as an alias, U+200B, a comment): the server now
+    gets only what the guard parsed (5.8b hardening; Superset's executor does the same). The
+    written form must read back the same, or it isn't run."""
+    def quote_unplain(node):
+        # a name that isn't plain ASCII is quoted, so the server reads it as the one name the
+        # guard read (`x<U+200B>EXEC` was one alias to sqlglot, `x` then EXEC to SQL Server);
+        # Postgres folds an unquoted name's ASCII letters to lower case: so does this
+        if isinstance(node, exp.Identifier) and not node.quoted and \
+                not _PLAIN_NAME.fullmatch(node.name):
+            name = re.sub(r"[A-Z]+", lambda m: m.group().lower(), node.name) \
+                if dialect == "postgres" else node.name
+            return exp.Identifier(this=name, quoted=True)
+        return node
+    try:
+        out = sqlglot.parse_one(sql, read=dialect).transform(quote_unplain).sql(
+            dialect=dialect, comments=False, unsupported_level=sqlglot.ErrorLevel.RAISE)
+        same = sqlglot.parse_one(out, read=dialect).sql(dialect=dialect, comments=False) == out
+    except sqlglot.errors.SqlglotError as exc:
+        same, out = False, str(exc).splitlines()[0]
+    if not same:
+        reason = "the query couldn't be read back exactly; write it more simply"
+        raise GuardrailViolation("sql", reason, f"Blocked unsafe SQL: {reason}.")
+    return out
+
+
 def _assert_single_select(sql: str, dialect: str) -> str:
     """Reject anything that isn't a single read query (parsed, not prefix-matched)."""
     sql = sql.strip().rstrip(";").strip()
@@ -580,7 +612,8 @@ class SQLConnector(DataConnector):
         the tables this connection lists."""
         engine = await self.engine()
         d = dialect_of(engine)
-        sql = _assert_single_select(sql, d.sqlglot)
+        sql = _assert_single_select(_canonical(_assert_single_select(sql, d.sqlglot), d.sqlglot),
+                                    d.sqlglot)
         try:
             listed = await asyncio.to_thread(_tables, engine)
         except SQLAlchemyError as exc:   # the first connection a question makes: the database
