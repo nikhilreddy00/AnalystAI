@@ -291,6 +291,16 @@ def test_a_wide_row_split_by_a_character_pandas_reads_inside_a_row_is_refused():
         _read_bytes(b"a,b\n1,2\n" + row + b"\n", ".csv")
 
 
+async def test_a_csv_named_csv_whose_header_starts_with_a_bracket_is_a_csv(client, monkeypatch):
+    """Senior audit: `[Date],[Sales]` (SQL tools export headers so) went to the JSON reader by its
+    first byte and was refused; the file's own name says what it is."""
+    export = b"[Date],[Sales]\n2024-01-01,10\n2024-01-02,12\n"
+    serve(monkeypatch, _chain(("https://files.example/", _ok(export, **{
+        "content-disposition": 'attachment; filename="export.csv"'}))))
+    r = await _link(client, "https://files.example/q")
+    assert r.status_code == 200, r.text
+
+
 def test_a_header_hiding_its_width_behind_a_mid_field_quote_is_refused():
     """Automated review: `a"b,,,,…` counted as one field, then pandas built every one."""
     from agents.errors import IngestionError

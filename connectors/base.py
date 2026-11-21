@@ -116,20 +116,23 @@ def as_times(s: pd.Series) -> pd.Series:
     return parsed.where(dated | text.str.contains(HAS_YEAR_RE, regex=True).fillna(False))
 
 
-def _config_secrets(config: ConnectorConfig) -> set[str]:
-    """Every piece of a config that is a credential: the connection string whole, its user-info
-    part (between :// and the last @ before the path, so a malformed string is covered) and its
-    password raw and decoded, the API key, a service account, and a key in the API URL's query."""
+def _config_secrets(config: ConnectorConfig) -> list[str]:
+    """Every piece of a config that is a credential, the strongest first: its password raw and
+    decoded, the API key, a service account, the connection string whole and its user-info part
+    (between :// and the last @ before the path, so a malformed string is covered), then a key
+    in the API URL's query."""
     from urllib.parse import parse_qsl, unquote, urlparse
     conn = config.connection_string or ""
-    secrets = {conn, config.auth_value or "", config.service_account_json or ""}
+    secrets = [config.auth_value or "", config.service_account_json or ""]
     if (m := re.match(r"^[^:/]+://(.*)@[^@/]*(/|$)", conn)) is not None:
         userinfo = m.group(1)
         password = userinfo.split(":", 1)[1] if ":" in userinfo else ""
-        secrets |= {userinfo, password, unquote(password)}
+        secrets = [password, unquote(password), *secrets, conn, userinfo]
+    else:
+        secrets.append(conn)
     if config.url:
-        secrets |= {v for k, v in parse_qsl(urlparse(config.url).query) if _SECRET_KEY.search(k)}
-    return {s for s in secrets if s}
+        secrets += [v for k, v in parse_qsl(urlparse(config.url).query) if _SECRET_KEY.search(k)]
+    return [s for s in dict.fromkeys(secrets) if s]
 
 
 _SECRET_KEY = re.compile(r"key|token|sig|secret|auth|pass|pwd|code", re.IGNORECASE)
@@ -140,27 +143,35 @@ _SECRET_KEY = re.compile(r"key|token|sig|secret|auth|pass|pwd|code", re.IGNORECA
 # credentials only (`without_secrets`): one tenant's password masking another's text would tell
 # them it guessed right (automated security review of the hardening). Bounded: the newest 4,096
 # values of at most 8 KB, six characters at least (a short one would mask its letters
-# everywhere), matched by one pattern built when the registry changes. Swapped, never mutated, so
-# a log line on another thread reads it while a run registers.
-_MAX_SECRETS, _MAX_SECRET_CHARS = 4096, 8192
-_SECRETS: tuple[tuple[str, ...], re.Pattern | None] = ((), None)
+# everywhere), at most 8 from one registration (a config's credentials first), and registering
+# again makes a value newest, so the connectors in use stay masked while old ones age out (one
+# user's flood can't evict them: automated review). Matched by substring, longest first, from a
+# list kept sorted on change (a regex of 4,096 values was a 32 MB compile). Swapped, never
+# mutated, so a log line on another thread reads it while a run registers.
+# ponytail: process-wide; a per-run scope (contextvar) when one process serves many tenants.
+_MAX_SECRETS, _MAX_SECRET_CHARS, _PER_REGISTRATION = 4096, 8192, 8
+_SECRETS: tuple[tuple[str, ...], tuple[str, ...]] = ((), ())   # (newest last, longest first)
 
 
 def register_secrets(*values: str) -> None:
     global _SECRETS
-    known = _SECRETS[0]
     new = [v for v in dict.fromkeys(values)
-           if v and 6 <= len(v) <= _MAX_SECRET_CHARS and v not in known]
-    if new:
-        kept = (*known, *new)[-_MAX_SECRETS:]
-        by_length = sorted(kept, key=len, reverse=True)   # a password inside its string goes too
-        _SECRETS = (kept, re.compile("|".join(map(re.escape, by_length))))
+           if v and 6 <= len(v) <= _MAX_SECRET_CHARS][:_PER_REGISTRATION]
+    known = _SECRETS[0]
+    if not new or known[-len(new):] == tuple(new):   # nothing, or already the newest
+        return
+    fresh = set(new)
+    kept = (*(v for v in known if v not in fresh), *new)[-_MAX_SECRETS:]
+    _SECRETS = (kept, tuple(sorted(kept, key=len, reverse=True)))
 
 
 def redact(text: str) -> str:
-    """`text` with every registered credential as *** (operator sinks: logs, eval reports)."""
-    pattern = _SECRETS[1]
-    return pattern.sub("***", text) if pattern is not None else text
+    """`text` with every registered credential as *** (operator sinks: logs, eval reports); a
+    password inside its connection string goes with the string (longest first)."""
+    for secret in _SECRETS[1]:
+        if secret in text:
+            text = text.replace(secret, "***")
+    return text
 
 
 def without_secrets(message: str, config: ConnectorConfig) -> str:
@@ -253,9 +264,12 @@ async def capped_body(response: httpx.Response, cap: int) -> bytes:
         decoder = zlib.decompressobj(_ZLIB_AUTO)
     else:
         raise ValueError(f"it compressed its answer as {encoding}, which isn't read here")
-    body = bytearray()
+    body, raw = bytearray(), 0
     try:
         async for chunk in response.aiter_raw():
+            raw += len(chunk)   # the sent bytes too: past a gzip member's end zlib keeps the rest
+            if raw > cap:       # unread (unused_data), uncounted (automated security review)
+                raise BodyTooLarge
             if decoder is not None:
                 chunk = decoder.decompress(chunk, cap + 1 - len(body))
                 if decoder.unconsumed_tail:   # more would come out than the cap has left
@@ -426,17 +440,11 @@ def sources_table() -> str:
     from connectors import sql_connector as sql
     from connectors.csv_connector import MAX_UPLOAD_MB, UPLOAD_SUFFIXES
     from connectors import link
-    # what a user brings beyond the string (SQL Server has no read-only session: ADR-0010) and
-    # how hosted servers take TLS
-    needs = {"postgresql": " (hosted: `?sslmode=require`)",
-             "mysql": " (hosted, e.g. PlanetScale, RDS: `?ssl_mode=VERIFY_IDENTITY`)",
-             "mariadb": " (hosted: `?ssl_mode=VERIFY_IDENTITY`)",
-             "mssql": "; a read-only login (db_datareader only): a login that can write is refused"}
     rows = [("File upload", f"{', '.join(sorted(UPLOAD_SUFFIXES))} in the UI",
              f"{MAX_UPLOAD_MB} MB per file; old .xls: save as .xlsx first"),
             ("Share link", "a public Google Sheets, Google Drive or Dropbox link, or any https "
              "CSV/xlsx URL, pasted under the upload; OneDrive/SharePoint 'Anyone' links too "
-             "(tested on mocked links only)",
+             "(tested on mocked links only; a 1drv.ms short link is untested)",
              f"copied once as a dataset version (paste again to refresh); {MAX_UPLOAD_MB} MB, "
              f"{link.MAX_HOPS} redirects, public hosts only")]
     for key, d in sql.DIALECTS.items():
@@ -445,7 +453,7 @@ def sources_table() -> str:
                          "development only; refused when `APP_ENV=production`"))
             continue
         rows += [(f"{d.title}, ask questions", f"`{key}://user:password@host:port/database`"
-                  f"{needs[key]}, no table name: the SQL agent writes one read-only query "
+                  f"{d.needs}, no table name: the SQL agent writes one read-only query "
                   "per question and aggregates in the database",
                   f"{sql.MAX_ROWS:,} result rows, {sql.TIMEOUT_S} s per query"),
                  (f"{d.title}, one table", "the same + a table name",

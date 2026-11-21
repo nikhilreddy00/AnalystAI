@@ -16,6 +16,7 @@ from __future__ import annotations
 import asyncio
 import datetime
 import decimal
+import functools
 import json
 import logging
 import math
@@ -25,6 +26,7 @@ import ssl
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field, replace
+from pathlib import Path
 
 import certifi
 import numpy as np
@@ -92,6 +94,7 @@ class Dialect:
     # what a cursor column is beyond its Python value ("bool", "bits", "date", "float32"), read
     # from cursor.description; the value's own type says the rest (QueryResult.frame)
     kind: Callable[[tuple], str | None] = lambda col: None
+    needs: str = ""   # what a user brings beyond the string, in the README's source list
     # the statement timeout where the engine has no statement for it: (DB-API connection, s)
     driver_timeout: Callable[[object, int], None] | None = None
     # production: the URL connecting to the checked address, the name kept for TLS
@@ -142,6 +145,27 @@ _SSL_MODES = ("REQUIRED", "VERIFY_CA", "VERIFY_IDENTITY")   # the MySQL client's
 _PINNED = "_analystai_checked_address"   # production: the address the socket goes to (do_connect)
 
 
+def _ca_file() -> str:
+    """The CAs a verified Postgres session trusts, as one file (libpq takes a path)."""
+    from api.config import settings
+    return _ca_file_for(settings.extra_ca_bundle)
+
+
+@functools.cache
+def _ca_file_for(extra_ca_bundle: str | None) -> str:
+    import tempfile
+    try:
+        pems = [Path(certifi.where()).read_bytes(),
+                *([Path(extra_ca_bundle).read_bytes()] if extra_ca_bundle else [])]
+    except OSError as exc:   # this server's setting, not the user's database
+        raise IngestionError("ca bundle", "This server's EXTRA_CA_BUNDLE can't be read "
+                             f"({type(exc).__name__}); ask the administrator.") from exc
+    with tempfile.NamedTemporaryFile("wb", suffix=".pem", prefix="analystai-ca-",
+                                     delete=False) as f:
+        f.write(b"\n".join(pems))
+    return f.name
+
+
 def _tls(mode: str) -> ssl.SSLContext:
     """MySQL/MariaDB TLS: REQUIRED encrypts, VERIFY_CA also checks the certificate's chain,
     VERIFY_IDENTITY its name too. The CAs: certifi's and the operator's EXTRA_CA_BUNDLE (the
@@ -150,10 +174,15 @@ def _tls(mode: str) -> ssl.SSLContext:
     if mode.upper() not in _SSL_MODES:
         raise IngestionError("ssl_mode", "ssl_mode must be REQUIRED, VERIFY_CA or VERIFY_IDENTITY "
                              "(leave it out for no TLS).")
+    return _tls_context_for(mode.upper(), settings.extra_ca_bundle)
+
+
+@functools.cache   # one context per mode and bundle: the CAs were read again for every engine
+def _tls_context_for(mode: str, extra_ca_bundle: str | None) -> ssl.SSLContext:
     ctx = ssl.create_default_context(cafile=certifi.where())
-    if settings.extra_ca_bundle:
+    if extra_ca_bundle:
         try:
-            ctx.load_verify_locations(settings.extra_ca_bundle)
+            ctx.load_verify_locations(extra_ca_bundle)
         except (OSError, ssl.SSLError) as exc:   # this server's setting, not the user's database
             raise IngestionError("ca bundle", "This server's EXTRA_CA_BUNDLE can't be read "
                                  f"({type(exc).__name__}); ask the administrator.") from exc
@@ -183,7 +212,7 @@ def _connect_pinned(dialect, conn_rec, cargs, cparams):
 
 
 _MYSQL = Dialect(
-    title="MySQL",
+    title="MySQL", needs=" (hosted, e.g. PlanetScale, RDS: `?ssl_mode=VERIFY_IDENTITY`)",
     sqlglot="mysql", driver="pymysql", drivers=frozenset({"", "pymysql"}),
     # SESSION read only too: a DDL statement commits the open transaction implicitly and
     # would run outside it; max_execution_time covers SELECT, the only statement let through
@@ -206,7 +235,8 @@ _MYSQL = Dialect(
 
 DIALECTS: dict[str, Dialect] = {
     "postgresql": Dialect(
-        title="PostgreSQL",
+        title="PostgreSQL", needs=" (hosted: `?sslmode=require`, or `verify-full` to check its "
+                                  "certificate)",
         sqlglot="postgres", driver="psycopg", drivers=frozenset({"", "psycopg", "asyncpg"}),
         query_keys=frozenset({"sslmode", "channel_binding", "connect_timeout", "application_name",
                               "target_session_attrs"}),
@@ -224,11 +254,12 @@ DIALECTS: dict[str, Dialect] = {
     # MySQL's row but its timeout: max_statement_time is seconds and stops any statement (1969);
     # MariaDB has no max_execution_time (1193). Picked by the server (dialect_of), not the URL.
     "mariadb": replace(
-        _MYSQL, title="MariaDB",
+        _MYSQL, title="MariaDB", needs=" (hosted: `?ssl_mode=VERIFY_IDENTITY`)",
         begin=("SET SESSION TRANSACTION READ ONLY", "SET SESSION max_statement_time = {s}",
                "START TRANSACTION READ ONLY")),
     "mssql": Dialect(
-        title="SQL Server",
+        title="SQL Server", needs="; a read-only login (db_datareader only): a login that can "
+                                  "write is refused. Self-hosted and RDS; Azure SQL is untested",
         sqlglot="tsql", driver="pyodbc", drivers=frozenset({"", "pyodbc"}),
         # `driver`, `odbc_connect`, `dsn` and every other ODBC attribute are the user's way to a
         # different driver or connection: refused; the driver is set by code
@@ -304,6 +335,10 @@ def safe_url(conn_str: str) -> tuple[URL, Dialect]:
             d.driver == "pyodbc" and not url.username:
         raise IngestionError("no database", "The connection string must name the user and the "
                              f"database: {engine}://user:password@host:port/<database>.")
+    if "\\" in (url.host or ""):   # a SQL Server named instance: the driver would ask the
+        # browser service on another port, past the production host check (senior audit)
+        raise IngestionError("named instance", "Named instances (host\\INSTANCE) aren't "
+                             "supported: use the instance's port instead (host:port).")
     from api.config import settings
     url = url.set(drivername=f"{engine}+{d.driver}" if d.driver else engine,
                   # one spelling for every reader after the allowlist (5.8b audit: SSL_MODE passed
@@ -347,7 +382,10 @@ def _checked_address(url: URL) -> str:
                 ip in own_ips:
             raise IngestionError("host refused", f"The database host '{url.host}' isn't allowed "
                           "(it is this server itself, or a reserved address).")
-    return str(ips[0])
+    # an IPv4 address first: a dual-stack name whose database listens on IPv4 only failed in
+    # production and worked in development, where the driver tries each (senior audit).
+    # ponytail: one address, never a list; drivers that take several (libpq) are a later step
+    return str(next((ip for ip in ips if ip.version == 4), ips[0]))
 
 
 def _tables(engine) -> dict[str, tuple[str | None, str]]:
@@ -582,6 +620,10 @@ class SQLConnector(DataConnector):
         if (mode := url.query.get("ssl_mode")) is not None:   # MySQL's word; PyMySQL takes a context
             args["ssl"] = _tls(mode)
             url = url.difference_update_query(["ssl_mode"])
+        if url.query.get("sslmode") in ("verify-ca", "verify-full"):   # Postgres: libpq reads a
+            # file; the same CAs as MySQL's (certifi + EXTRA_CA_BUNDLE, the image ships RDS's),
+            # never a path from the user's string (senior audit: verify-full against RDS failed)
+            url = url.update_query_dict({"sslrootcert": _ca_file()})
         # NullPool: a connector lives for one request and builds an engine per call, so a pool
         # would leave idle connections open on the user's database (measured: 4 after 5 queries).
         engine = create_engine(url, poolclass=NullPool, connect_args=args)

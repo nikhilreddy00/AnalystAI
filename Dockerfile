@@ -13,7 +13,8 @@ RUN apt-get update -q && apt-get install -yq --no-install-recommends curl ca-cer
     && mkdir -p /etc/analystai \
     && curl -fsSL -o /etc/analystai/rds-global-bundle.pem https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem \
     && apt-get purge -yq curl && apt-get autoremove -yq && rm -rf /var/lib/apt/lists/*
-# AWS RDS signs its MySQL/MariaDB/Postgres servers with its own CAs (ssl_mode=VERIFY_IDENTITY)
+# AWS RDS signs its MySQL/MariaDB/Postgres servers with its own CAs (MySQL/MariaDB
+# ssl_mode=VERIFY_IDENTITY, Postgres sslmode=verify-full: both read this bundle)
 ENV EXTRA_CA_BUNDLE=/etc/analystai/rds-global-bundle.pem
 
 # Install uv (pinned for reproducibility)

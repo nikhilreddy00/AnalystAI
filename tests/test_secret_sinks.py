@@ -65,12 +65,22 @@ def test_one_users_credential_never_masks_another_users_text():
     assert CANARY not in redact(said)   # the operator's log still masks it
 
 
-def test_the_registry_is_bounded():
+def test_the_registry_is_bounded_and_a_flood_never_unmasks_a_connector_in_use():
+    """Automated review: unbounded growth, and one user's flood evicting another tenant's
+    credentials. At most 8 from one registration; using a connector registers it again (newest)."""
     import connectors.base as base
-    base.register_secrets(*(f"bulk-secret-{i:06d}" for i in range(base._MAX_SECRETS + 500)))
+    base.register_secrets(*(f"one-call-{i:06d}" for i in range(100)))
+    assert sum(v.startswith("one-call-") for v in base._SECRETS[0]) == 8
     base.register_secrets("x" * (base._MAX_SECRET_CHARS + 1))
-    assert len(base._SECRETS[0]) == base._MAX_SECRETS
     assert "x" * (base._MAX_SECRET_CHARS + 1) not in base._SECRETS[0]
+    victim = _sql_config()
+    for i in range(0, base._MAX_SECRETS + 800, 8):
+        base.register_secrets(*(f"flood-{j:06d}" for j in range(i, i + 8)))
+        if i % 1024 == 0:
+            get_connector(victim)   # the victim's run goes on using its connector
+    get_connector(victim)
+    assert len(base._SECRETS[0]) == base._MAX_SECRETS
+    assert CANARY not in base.redact(f"pw {CANARY}")
 
 
 def test_a_report_holding_a_credential_anywhere_is_redacted():

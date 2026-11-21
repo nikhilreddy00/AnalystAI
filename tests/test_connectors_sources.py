@@ -1569,6 +1569,44 @@ async def test_without_its_pre_scans_the_guard_still_never_lets_a_second_stateme
     assert sent and all("[x​EXEC]" in s for s in sent), sent
 
 
+def test_a_sql_server_named_instance_is_said_not_a_host_not_found():
+    with pytest.raises(IngestionError, match="named instance") as err:
+        _sql("mssql://u:p@db.example\\SQLEXPRESS/acme")._engine()
+    assert "host:port" in err.value.user_message
+
+
+def test_in_production_a_dual_stack_host_is_reached_at_its_ipv4_address(monkeypatch):
+    """Senior audit: the pin took the first address, often IPv6, where many databases listen on
+    IPv4 only: it failed in production and worked in development (the driver tries each)."""
+    import socket
+
+    import connectors.sql_connector as sc
+    from api.config import settings
+    monkeypatch.setattr(settings, "app_env", "production")
+    monkeypatch.setattr(socket, "getaddrinfo", lambda h, *a, **k: [
+        (0, 0, 0, "", ("2606:4700::6810:84e5", 0, 0, 0)), (0, 0, 0, "", ("104.16.132.229", 0))]
+        if h == "db.example" else [(0, 0, 0, "", ("10.9.9.9", 0))])
+    assert sc._checked_address(sc.make_url("postgresql://u:p@db.example/x")) == "104.16.132.229"
+
+
+@pytest.mark.parametrize("mode", ["verify-ca", "verify-full"])
+def test_a_verified_postgres_session_trusts_the_image_cas(mode, monkeypatch):
+    """Senior audit: libpq takes a CA file and the user can't name one (allowlist), so verify-full
+    against RDS failed: the code names certifi's and the operator's EXTRA_CA_BUNDLE."""
+    import certifi
+
+    from api.config import settings
+    from connectors.sql_connector import _ca_file_for
+    monkeypatch.setattr(settings, "extra_ca_bundle", certifi.where())
+    url = _sql(f"postgresql://u:p@db.example/x?sslmode={mode}")._engine().url
+    pem = open(url.query["sslrootcert"], "rb").read()
+    assert pem.count(b"BEGIN CERTIFICATE") >= 2 * open(certifi.where(), "rb").read().count(
+        b"BEGIN CERTIFICATE") and _ca_file_for.cache_info().currsize >= 1
+    assert "sslrootcert" not in _sql("postgresql://u:p@db.example/x?sslmode=require")._engine().url.query
+    with pytest.raises(IngestionError, match="connection string options"):   # never the user's
+        _sql("postgresql://u:p@db.example/x?sslmode=verify-full&sslrootcert=/etc/passwd")._engine()
+
+
 def test_a_file_keeps_long_ids_exact_with_a_blank():
     """The same bug in the file reader: an id column with one blank read as float64."""
     from connectors.csv_connector import _read_bytes
