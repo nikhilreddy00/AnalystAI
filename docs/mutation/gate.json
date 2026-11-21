@@ -596,7 +596,8 @@
   "hash": "f114ffccfc4578dc"
  },
  "connectors/sql_connector.py::_session_error": {
-  "equivalents": []
+  "equivalents": [],
+  "hash": "1e920e2e8f7437ad"
  },
  "connectors/sql_connector.py::_sql_of": {
   "equivalents": [],
