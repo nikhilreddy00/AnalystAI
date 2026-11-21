@@ -1651,6 +1651,40 @@ def test_a_verified_postgres_session_trusts_the_image_cas(mode, monkeypatch):
         _sql("postgresql://u:p@db.example/x?sslmode=verify-full&sslrootcert=/etc/passwd")._engine()
 
 
+@pytest.mark.parametrize("name", ["postgresql", "mysql", "mssql"])
+async def test_numbers_codes_and_intervals_read_as_the_database_wrote_them(tmp_path, name):
+    """Hardening audit: NUMERIC 'NaN' crashed the frame; a VARCHAR of long digits (an ICCID, its
+    leading zero) became an Int64; every interval became text (Postgres age(), ts2 - ts1)."""
+    from sqlalchemy import text
+    conn = _sql(_each_dialect(tmp_path, name), None)
+    code = (await conn.query("SELECT '00123456789012345678' AS iccid")).frame()
+    assert code["iccid"].tolist() == ["00123456789012345678"]
+    if name == "postgresql":
+        df = (await conn.query("SELECT x::numeric AS n FROM (VALUES ('10'), ('NaN'), "
+                               "('Infinity')) AS v(x)")).frame()
+        assert df["n"].tolist()[0] == 10.0 and pd.isna(df["n"].tolist()[1])
+        assert df["n"].tolist()[2] == float("inf")
+        span = (await conn.query("SELECT '1 day 2 hours'::interval AS i")).frame()
+        assert span["i"].tolist() == [pd.Timedelta(hours=26)]
+    if name == "mysql":
+        with _admin(tmp_path, name).begin() as c:
+            c.execute(text("DROP TABLE IF EXISTS tm6"))
+            c.execute(text("CREATE TABLE tm6 (t TIME(6))"))
+            c.execute(text("INSERT INTO tm6 VALUES ('13:45:00.123456')"))
+        assert (await conn.query("SELECT t FROM tm6")).frame()["t"].tolist() == ["13:45:00.123456"]
+
+
+def test_a_plain_result_skips_the_per_cell_work():
+    """A 50k-row load was 12 times slower: plain columns go straight to pandas."""
+    import time
+
+    from connectors.sql_connector import QueryResult
+    rows = [(i, f"name {i}", i * 1.5, i % 2 == 0) for i in range(50_000)] * 1
+    started = time.monotonic()
+    QueryResult(["a", "b", "c", "d"] * 1, rows, False).frame()
+    assert time.monotonic() - started < 1.5
+
+
 def test_a_file_keeps_long_ids_exact_with_a_blank():
     """The same bug in the file reader: an id column with one blank read as float64."""
     from connectors.csv_connector import _read_bytes

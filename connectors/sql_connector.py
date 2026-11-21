@@ -41,8 +41,8 @@ from sqlglot import exp
 from sqlglot.optimizer.scope import traverse_scope
 
 from agents.errors import AgentError, GuardrailViolation, IngestionError
-from connectors.base import (DataConnector, exact_whole_numbers, normalize_frame, resolved,
-                             truncation_note)
+from connectors.base import (_FLOAT_EXACT, DataConnector, exact_whole_numbers, normalize_frame,
+                             resolved, truncation_note)
 from guardrails import check_sql_readonly
 
 logger = logging.getLogger(__name__)
@@ -53,7 +53,7 @@ TIMEOUT_S = 15
 CONNECT_TIMEOUT_S = 10
 _SCHEMA_CHARS = 12_000   # table descriptions in the SQL agent's prompt; past it, names only
 _TYPE_CODE, _INTERNAL_SIZE, _PRECISION = 1, 3, 4   # cursor.description fields
-_MYSQL_TINY, _MYSQL_BIT = 1, 16                     # PyMySQL FIELD_TYPE codes
+_MYSQL_TINY, _MYSQL_BIT, _MYSQL_TIME = 1, 16, 11    # PyMySQL FIELD_TYPE codes
 _MYSQL_DATES = frozenset({7, 10, 12, 14})   # FIELD_TYPE TIMESTAMP, DATE, DATETIME, NEWDATE
 
 
@@ -64,6 +64,8 @@ def _mysql_kind(col: tuple) -> str | None:
     code, size = col[_TYPE_CODE], col[_INTERNAL_SIZE]
     if code in (_MYSQL_TINY, _MYSQL_BIT) and size == 1:
         return "bool"
+    if code == _MYSQL_TIME:   # a time of day as text, as a CSV holds it (PyMySQL: a timedelta)
+        return "time"
     return "bits" if code == _MYSQL_BIT else "date" if code in _MYSQL_DATES else None
 
 
@@ -435,21 +437,45 @@ def _canonical(sql: str, dialect: str) -> str:
         reason = "the query couldn't be read"   # the guard's parse refused it already
         raise GuardrailViolation("sql", reason, f"Blocked unsafe SQL: {reason}.") from None
     left, right = _QUOTE.get(dialect, ('"', '"'))
-    out, end = [], 0
+    out, kinds, end = [], [], 0
     for token in tokens:
         gap = sql[end:token.start]
         # whitespace stays (MySQL reads `COUNT (` as a user function); anything else between
         # tokens was a comment, or a character the tokenizer skipped: one plain space
         out.append("".join(c if c in _PLAIN_SPACE else " " for c in gap)
                    if all(c.isspace() for c in gap) else " ")
-        text = sql[token.start:token.end + 1]
-        if token.token_type == sqlglot.TokenType.VAR and not _PLAIN_NAME.fullmatch(text):
+        text, kind = sql[token.start:token.end + 1], token.token_type
+        if kind == sqlglot.TokenType.VAR and not _PLAIN_NAME.fullmatch(text):
             name = re.sub(r"[A-Z]+", lambda m: m.group().lower(), text) \
                 if dialect == "postgres" else text   # Postgres folds an unquoted name's ASCII
-            text = f"{left}{name.replace(right, right * 2)}{right}"
+            text, kind = f"{left}{name.replace(right, right * 2)}{right}", sqlglot.TokenType.IDENTIFIER
+        elif kind not in _AS_WRITTEN and kind.name[-6:] != "STRING":
+            # a keyword or an operator: plain ASCII, one space inside (`GROUP BY` may span a
+            # space the server doesn't take as one: automated review of the token form)
+            if not text.isascii():
+                _cant_run_as_written()
+            text = re.sub(r"\s+", " ", text)
         out.append(text)
+        kinds.append(kind)
         end = token.end + 1
-    return "".join(out).strip()
+    canonical = "".join(out).strip()
+    # what the server is sent reads back as the same tokens, or it isn't run
+    try:
+        again = [t.token_type for t in sqlglot.tokenize(canonical, read=dialect)]
+    except sqlglot.errors.SqlglotError:
+        again = None
+    if again != kinds:
+        _cant_run_as_written()
+    return canonical
+
+
+_AS_WRITTEN = frozenset({sqlglot.TokenType.IDENTIFIER, sqlglot.TokenType.NUMBER,
+                         sqlglot.TokenType.VAR})
+
+
+def _cant_run_as_written() -> None:
+    reason = "the query has characters that can't be run exactly as written"
+    raise GuardrailViolation("sql", reason, f"Blocked unsafe SQL: {reason}.")
 
 
 def _assert_single_select(sql: str, dialect: str) -> str:
@@ -525,22 +551,46 @@ class QueryResult:
         source ends in (normalize_frame). Columns by position: a join can return two `id`s."""
         kinds = self.kinds or (None,) * len(self.columns)
         cells = list(zip(*self.rows)) if self.rows else [()] * len(self.columns)
-        df = pd.DataFrame({i: _as_exported(pd.Series(list(v), dtype=object), k)
+        df = pd.DataFrame({i: _as_exported(list(v), k)
                            for i, (v, k) in enumerate(zip(cells, kinds))})
         df.columns = self.columns
         return normalize_frame(df)
 
 
 def _hms(t: datetime.timedelta) -> str:
-    """A MySQL TIME as its text: it may be negative or past 24 h (-25:00:01)."""
-    seconds = int(abs(t).total_seconds())
-    return f"{'-' * (t < datetime.timedelta(0))}{seconds // 3600:02d}:{seconds // 60 % 60:02d}:{seconds % 60:02d}"
+    """A MySQL TIME as its text: it may be negative or past 24 h (-25:00:01), and keeps its
+    fraction (TIME(6))."""
+    whole = abs(t)
+    seconds, micro = int(whole.total_seconds()), whole.microseconds
+    text = f"{seconds // 3600:02d}:{seconds // 60 % 60:02d}:{seconds % 60:02d}"
+    return f"{'-' * (t < datetime.timedelta(0))}{text}{f'.{micro:06d}' if micro else ''}"
 
 
-def _as_exported(s: pd.Series, kind: str | None) -> pd.Series:
+_PLAIN_TYPES = frozenset({type(None), str, float, bool, datetime.date})
+
+
+def _plain(values: list) -> bool:
+    """Every value one pandas reads as a CSV's would be: text, a float, a yes/no, a date, a naive
+    datetime, an int a float holds. Such a column skips the per-cell work (hardening audit: it
+    made a 50k-row load 12 times slower)."""
+    for v in values:
+        t = type(v)
+        if t in _PLAIN_TYPES or (t is datetime.datetime and v.tzinfo is None) or \
+                (t is int and -_FLOAT_EXACT <= v <= _FLOAT_EXACT):
+            continue
+        return False
+    return True
+
+
+def _as_exported(values: list, kind: str | None) -> pd.Series:
     """One column's driver values as the CSV of them reads: whole numbers exact, decimals with a
-    point as floats, a yes/no as True/False, bytes as hex, TIME / UUID / JSON as their text, a
-    tz-aware time as ISO text (normalize_frame's one date rule decides its zone, as for a CSV's)."""
+    point as floats (NaN and infinities too), a yes/no as True/False, bytes as hex, MySQL TIME /
+    UUID / JSON as their text, a tz-aware time as ISO text (normalize_frame's one date rule decides
+    its zone, as for a CSV's). An interval stays an interval (Postgres `age()`, `ts2 - ts1`): only
+    MySQL's TIME is a time of day (hardening audit: every interval became 'HHHH:MM:SS' text)."""
+    if kind is None and _plain(values):
+        return pd.Series(values)
+
     def one(v):
         if v is None or (isinstance(v, float) and math.isnan(v)):
             return None
@@ -552,7 +602,7 @@ def _as_exported(s: pd.Series, kind: str | None) -> pd.Series:
             return int.from_bytes(v, "big") if kind in ("bool", "bits") else "0x" + bytes(v).hex()
         if isinstance(v, (uuid.UUID, datetime.time)):
             return str(v)
-        if isinstance(v, datetime.timedelta):
+        if kind == "time" and isinstance(v, datetime.timedelta):
             return _hms(v)
         if isinstance(v, (dict, list)):
             return json.dumps(v)
@@ -560,17 +610,22 @@ def _as_exported(s: pd.Series, kind: str | None) -> pd.Series:
             return v.isoformat()
         return v
     # object until the end: Series.map re-infers, and ints with a None become float64
-    cells = [one(v) for v in s]
+    cells = [one(v) for v in values]
     present = [v for v in cells if v is not None]
     if kind == "bool" and all(v in (0, 1) for v in present):   # a TINYINT(1) holding 2 stays
         flags = [None if v is None else bool(v) for v in cells]   # a number; bool as a CSV reads
         return pd.Series(flags, dtype=object if len(present) < len(cells) else bool)   # it
     if present and all(isinstance(v, decimal.Decimal) for v in present):
-        if all(v.as_tuple().exponent >= 0 for v in present):   # written without a point
+        # written without a point, and finite ('NaN' has no exponent: it crashed the frame)
+        if all(v.is_finite() and v.as_tuple().exponent >= 0 for v in present):
             cells = [None if v is None else int(v) for v in cells]
+            present = [v for v in cells if v is not None]
         else:
             return pd.Series([None if v is None else float(v) for v in cells], dtype="float64")
-    if (exact := exact_whole_numbers(pd.Series(cells, dtype=object))) is not None:
+    # exact whole numbers only where the database gave numbers: a VARCHAR of digits is text
+    # (an ICCID or an account number with its leading zero: hardening audit)
+    if present and all(type(v) is int for v in present) and \
+            (exact := exact_whole_numbers(pd.Series(cells, dtype=object))) is not None:
         return exact
     return pd.Series(cells)   # pandas infers the rest from the values, as from a CSV's
 

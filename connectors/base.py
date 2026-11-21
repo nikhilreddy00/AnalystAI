@@ -373,7 +373,8 @@ def exact_whole_numbers(values: pd.Series) -> pd.Series | None:
     if present.empty:
         return None
     digits = present.map(lambda v: str(v).strip())
-    if not digits.str.fullmatch(r"[-+]?\d+").all():
+    # a leading zero makes it a code (an ICCID, an account number), whatever it holds: text
+    if not digits.str.fullmatch(r"[-+]?(?:0|[1-9]\d*)").all():
         return None
     whole = digits.map(int)
     if whole.map(abs).max() <= _FLOAT_EXACT:
