@@ -214,6 +214,33 @@ def test_a_real_sized_workbook_fits_under_the_unpacked_cap():
     assert _MAX_UNPACKED >= 10 * MAX_UPLOAD_MB * 2**20
 
 
+@pytest.mark.parametrize("content,shape", [
+    (b'a,b\n"' + b"," * 10_001 + b'",2\n', (1, 2)),               # one long quoted cell
+    (b"a;b\n" + b"x,y,z;1\n" * 3, (3, 2)),                         # ';' file whose text holds ','
+    ("a,b\n1,ü\n2,é\n".encode("utf-16"), (2, 2)),                  # UTF-16 with its BOM
+    (b"a,b\n" + b"1,2\n" * 20_000, (20_000, 2)),                   # long and narrow
+], ids=["long-quoted-cell", "semicolon-commas", "utf16-bom", "long-narrow"])
+def test_an_ordinary_file_is_never_refused_as_too_wide(content, shape):
+    """Senior audit: the cheap per-line gate counted raw delimiters, quotes included, and refused
+    a two-column file with one long quoted cell. Every guard gets ordinary inputs too, never
+    only the attacks it was written against."""
+    from connectors.csv_connector import _read_bytes
+    assert _read_bytes(content, ".csv")[0].shape == shape
+
+
+def test_a_hostile_wide_line_is_refused_fast_without_a_cheap_gate():
+    import time
+
+    from agents.errors import IngestionError
+    from connectors.csv_connector import _read_bytes
+    started = time.monotonic()
+    with pytest.raises(IngestionError):
+        _read_bytes(b"," * 5_000_000 + b"\n1\n", ".csv")
+    with pytest.raises(IngestionError, match="too many columns"):
+        _read_bytes(b",".join(b"c%d" % i for i in range(20_000)) + b"\n1\n", ".csv")
+    assert time.monotonic() - started < 5
+
+
 def test_a_workbook_zip_can_t_open_is_not_a_table_never_a_crash():
     """5.8b audit: a part's version zipfile can't read raised NotImplementedError: a 500."""
     from agents.errors import IngestionError

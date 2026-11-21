@@ -250,14 +250,10 @@ def _readable_size(content: bytes, suffix: str) -> None:
                                           for p in parts):
             raise IngestionError("workbook parts", "The workbook's parts aren't an Excel "
                                  "workbook's. Save it again from Excel and upload that.")
-    elif suffix in (".csv", ".tsv"):
-        # a cheap first gate before the layout's sniffing (security review): the lines it samples
-        # (any line ending), each under the cap per delimiter; the exact check is the header's
-        # width as the reader takes it (_read_text_table)
-        lines = content[:4 * 2**20].splitlines()[:_SAMPLE_LINES]
-        if any(line.count(d) >= _MAX_COLUMNS for line in lines for d in (b",", b";", b"\t", b"|")):
-            raise IngestionError("too many columns", f"The file has more than {_MAX_COLUMNS:,} "
-                                 "columns, past what can be read.")
+    # A CSV's width is checked once, exactly, as the reader takes its header (_read_text_table).
+    # 5.8b's cheap per-line gate counted raw delimiters, quotes included, and refused a two-column
+    # file with one long quoted cell (senior audit); without it a 5M-comma line is still refused
+    # in 0.3 s (tests/test_share_links.py).
 
 
 def _read_bytes(content: bytes, suffix: str) -> tuple[pd.DataFrame, dict]:
@@ -312,6 +308,14 @@ def _read_bytes(content: bytes, suffix: str) -> tuple[pd.DataFrame, dict]:
     if df.shape[1] == 1 and any(d in str(df.columns[0]) for d in _DELIMITERS if d != " "):
         raise IngestionError("one column", "All the data landed in one column. Check the file's "
                              "delimiter and upload it again.")
+    # one column read, but a line holds a table past the cap (a report title above it threw the
+    # layout off): said as too wide, never junk text. Only when the read came back one column: a
+    # count of raw delimiters elsewhere refused narrow files with a long quoted cell (senior audit)
+    if df.shape[1] == 1 and suffix in (".csv", ".tsv") and any(
+            line.count(d) >= _MAX_COLUMNS for line in content[:4 * 2**20].splitlines()[:_SAMPLE_LINES]
+            for d in (b",", b";", b"\t", b"|")):
+        raise IngestionError("too many columns", f"The file has more than {_MAX_COLUMNS:,} "
+                             "columns, past what can be read.")
     if df.empty:
         raise IngestionError("no rows", "The file has column headers but no data rows.")
     return normalize_frame(df), info
