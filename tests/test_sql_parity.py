@@ -153,19 +153,34 @@ async def test_the_models_stored_queries_get_postgres_answer_on_each_engine(tmp_
                                                                           model_answers):
     """A translated query the engine refuses is sqlglot's limit, counted (the model writes the
     engine's own SQL); one that runs and answers differently is a failure, always."""
+    from sqlalchemy import text
     from sqlalchemy.exc import DBAPIError
 
     from agents.errors import GuardrailViolation
     url = _seed(tmp_path, name)
     conn = _sql(url, None)
+    admin = _admin(tmp_path, name)
     assert len(model_answers) >= 50, "the corpus shrank: the check would mean little"
     wrong, refused = {}, []
     for sql, want in model_answers.items():
         try:
             mine = _for(sql, name)
-            got = _rows(await conn.query(mine))
-        except (sqlglot.errors.SqlglotError, DBAPIError) as exc:   # the translation's limits
+        except sqlglot.errors.SqlglotError as exc:   # sqlglot can't write it for this engine
             refused.append(f"{type(exc).__name__}: {str(exc)[:100]}")
+            continue
+        try:
+            got = _rows(await conn.query(mine))
+        except DBAPIError as exc:
+            # the translation's limit only if the engine refuses the same text sent raw: an
+            # error the product's path adds (its canonical text, its session) is ours (test
+            # analyst: every DBAPIError was counted as sqlglot's, up to 15% of the corpus)
+            try:
+                with admin.connect() as c:
+                    c.execute(text(mine)).fetchall()
+            except DBAPIError:
+                refused.append(f"{type(exc).__name__}: {str(exc)[:100]}")
+                continue
+            wrong[mine[:120]] = f"the product's path failed where the raw text ran: {exc}"[:300]
             continue
         except GuardrailViolation as exc:   # the guard refusing a read the model wrote: ours
             wrong[sql[:120]] = f"refused: {exc}"
