@@ -238,6 +238,10 @@ _HOSTILE = {   # each at the upload cap; built in the child process
         "b'a,b\\n1,2\\n1' + (b',' * 9000 + b'\"\\n\"') * (MAX_UPLOAD_MB * 2**20 // 9003)",
     # an unclosed quote: the regex held 1.3 GB on 10 MB (code review)
     "unclosed-quote": "b'\"' + b'x' * (MAX_UPLOAD_MB * 2**20 - 10) + b'\\n1\\n'",
+    # lines just short of the cap, half commas: the unanchored long-line regex retried from
+    # each character, O(L²) a line, ~25 CPU minutes (audit pass 2). A file this shape reads
+    "lines-just-short-of-the-cap":
+        "b'a,b\\n\"q\",1\\n' + ((b',' * 5000 + b'x' * 4999) + b'\\n') * (MAX_UPLOAD_MB * 2**20 // 10000)",
 }
 
 
@@ -264,7 +268,9 @@ print(round(time.monotonic() - started, 1), resource.getrusage(resource.RUSAGE_S
                          cwd=str(Path(__file__).resolve().parents[1]))
     took, peak, said = out.stdout.strip().split(" ", 2)
     peak_mb = int(peak) / (2**20 if sys.platform == "darwin" else 2**10)   # bytes vs KB
-    assert said != "read" and float(took) < 15 and peak_mb < 1024, (shape, took, peak_mb, said)
+    # a shape the reader may refuse or read: the bound is the point (wide shapes must refuse)
+    refused = said != "read" or shape == "lines-just-short-of-the-cap"
+    assert refused and float(took) < 15 and peak_mb < 1024, (shape, took, peak_mb, said)
 
 
 def test_a_header_past_the_cap_is_said_as_too_wide():
@@ -636,6 +642,18 @@ async def test_every_gzip_member_is_read_and_a_cut_or_corrupt_body_is_said():
         await capped_body(_Answer(b"\x1f\x8bjunk-not-gzip", "gzip"), 10**6)
     with pytest.raises(ValueError, match="couldn't be unpacked"):
         await capped_body(_Answer(gzip.compress(a) + b"trailing junk", "gzip"), 10**6)
+
+
+async def test_a_body_in_millions_of_gzip_pieces_is_refused_cheaply():
+    """Audit pass 2: 2.5M empty members cost 6 s of CPU a fetch."""
+    import gzip
+    import time
+
+    from connectors.base import capped_body
+    started = time.process_time()
+    with pytest.raises(ValueError, match="too many pieces"):
+        await capped_body(_Answer(gzip.compress(b"") * 200_000, "gzip"), 50 * 2**20)
+    assert time.process_time() - started < 1
 
 
 async def test_the_raw_bytes_are_capped_even_when_the_decoder_holds_them_back():

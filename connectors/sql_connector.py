@@ -566,13 +566,16 @@ class QueryResult:
         df.columns = self.columns
         return normalize_frame(df)
 
-    def blanked_dates(self) -> dict[str, int]:
-        """Per date column, the values `frame` reads as blank: a zero or partial date the driver
-        could only give as text."""
-        out = {}
+    def notes(self) -> list[str]:
+        """What `frame` read differently from the database, said: a zero or partial date the
+        driver could only give as text is blank. Read by the table load and the question path
+        alike (audit pass 2: a question's blanks were silent)."""
+        out = []
         for i, (name, kind) in enumerate(zip(self.columns, self.kinds or ())):
             if kind == "date" and (n := sum(isinstance(row[i], str) for row in self.rows)):
-                out[name] = n
+                out.append(f"{n:,} value{'s' * (n > 1)} in `{name}` {'are' if n > 1 else 'is'} a "
+                           "zero or partial date (like 0000-00-00), which has no calendar day: "
+                           "read as blank")
         return out
 
 
@@ -692,13 +695,26 @@ def run_readonly(engine, sql: str, max_rows: int = MAX_ROWS,
             # (security review: 587 MB to return 10 rows of 3M)
             result = conn.execution_options(stream_results=True).execute(text(sql))
             kinds = tuple(d.kind(c) for c in result.cursor.description or ())
+            columns = list(result.keys())
             rows = [tuple(r) for r in result.fetchmany(max_rows + 1)]
-            result.close()   # before the rollback: an unbuffered MySQL result must be let go
-            return QueryResult(list(result.keys()), rows[:max_rows], len(rows) > max_rows, kinds)
+            if len(rows) > max_rows:
+                # past the cap: the connection is dropped, never drained (PyMySQL's close reads
+                # every remaining row: a capped preview waited out the whole timeout, audit pass
+                # 2); the server ends the transaction with the session (NullPool: never reused).
+                # PyMySQL's cursor close and result finalizer would still drain the dropped
+                # socket (a traceback in the log each time): told the result is over first
+                unbuffered = getattr(getattr(result.cursor, "_result", None), "unbuffered_active", None)
+                if unbuffered:
+                    result.cursor._result.unbuffered_active = False
+                conn.invalidate()
+            else:
+                result.close()   # before the rollback: an unbuffered result must be let go
+            return QueryResult(columns, rows[:max_rows], len(rows) > max_rows, kinds)
         finally:
-            conn.rollback()
-            for statement in d.end:
-                conn.exec_driver_sql(statement)
+            if not conn.invalidated:
+                conn.rollback()
+                for statement in d.end:
+                    conn.exec_driver_sql(statement)
 
 
 class SQLConnector(DataConnector):
@@ -791,10 +807,8 @@ class SQLConnector(DataConnector):
         load = select(literal_column("*")).select_from(listed).order_by(*listed.c) \
             .limit(LOAD_MAX_ROWS + 1).suffix_with("OPTION (MAXDOP 1)", dialect="mssql")
         res = await asyncio.to_thread(run_readonly, engine, _sql_of(load, engine), LOAD_MAX_ROWS)
-        notes = [f"{n:,} value{'s' * (n > 1)} in `{col}` {'are' if n > 1 else 'is'} a zero or "
-                 "partial date (like 0000-00-00), which has no calendar day: read as blank"
-                 for col, n in res.blanked_dates().items()]   # never blanked without a word
-        if res.truncated:   # (silent-failure hunter)
+        notes = res.notes()
+        if res.truncated:
             try:
                 count = await asyncio.to_thread(run_readonly, engine, _sql_of(
                     select(func.count()).select_from(listed), engine), 1)

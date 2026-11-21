@@ -414,6 +414,11 @@ def _refusal(sql: str, dialect: str | None) -> str | None:
             return "SELECT ... INTO creates a table"
         if isinstance(node, exp.Select) and node.args.get("locks"):
             return "row locks (FOR UPDATE/SHARE) are not allowed"
+        # a server or session variable (@@hostname, @@datadir, @@SERVERNAME) says who and where
+        # the server is, as version() does: the allow list covered functions only (audit pass 2,
+        # proven on MySQL, MariaDB and SQL Server). No analyst query reads one, nor a @variable
+        if isinstance(node, (exp.SessionParameter, exp.Parameter)):
+            return f"server and session variables are not readable: {node.sql(dialect)}"
         if isinstance(node, exp.Func) and (why := _function_refused(node, dialect)):
             # any hard one wins over a soft one wherever it is (audit pass 2); a write, catalog
             # or lock is said first

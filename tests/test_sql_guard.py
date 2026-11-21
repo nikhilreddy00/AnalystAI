@@ -406,9 +406,26 @@ def test_session_random_and_replication_waits_are_final(sql, dialect):
     assert reason and not reason.soft, reason
 
 
+@pytest.mark.parametrize(("sql", "dialect"), [
+    ("SELECT @@hostname, @@datadir FROM t", "mysql"),
+    ("SELECT @@global.secure_file_priv FROM t", "mysql"),
+    ("SELECT a FROM t WHERE b = @x", "mysql"),
+    ("SELECT @@SERVERNAME, @@VERSION FROM t", "tsql"),
+    ("SELECT a FROM t WHERE b = @v", "tsql"),
+])
+def test_a_server_or_session_variable_is_a_final_refusal(sql, dialect):
+    """Audit pass 2 (proven through SQLConnector.query): @@hostname and @@datadir on MySQL and
+    MariaDB, @@SERVERNAME on SQL Server, ran while Postgres's version() was refused."""
+    reason = g.check_sql_readonly(sql, dialect)
+    assert reason and not reason.soft and "variables" in reason, reason
+
+
 def test_a_column_named_with_a_system_prefix_is_never_a_final_refusal():
     """`lo_x || 1` is exp.Or in MySQL, rendered whole: the lo_ prefix refused it finally."""
-    reason = g.check_sql_readonly("SELECT lo_total || 1, fn_code FROM t", "mysql")
+    # MEMBER OF is a known class off the list that renders whole, the column's name first: the
+    # prefix read finally refused it (`lo_total || 1` is on the list, so it never reached the
+    # check: test analyst)
+    reason = g.check_sql_readonly("SELECT fn_code MEMBER OF ('[1]') FROM t", "mysql")
     assert reason is None or reason.soft, reason
 
 

@@ -198,7 +198,9 @@ def _widest_record(text: str, sep: str) -> int:
     ponytail: a large file quoted throughout pays a Python step per field (~1 s a 10 MB)."""
     if text.count(sep) < _MAX_COLUMNS:
         return 0
-    long_line = re.compile(rf"[^\r\n]{{{_MAX_COLUMNS},}}")
+    # anchored at a line's start: unanchored, finditer retried from every character of a line
+    # just short of the cap, O(L²) a line (audit pass 2: ~25 CPU minutes, GIL held, at 50 MB)
+    long_line = re.compile(rf"(?<![^\r\n])[^\r\n]{{{_MAX_COLUMNS},}}")
     if '"' not in text:
         wide = any(m.group().count(sep) >= _MAX_COLUMNS for m in long_line.finditer(text))
         return _MAX_COLUMNS + 1 if wide else 0

@@ -77,18 +77,35 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+_UNEXPECTED = {"detail": "An unexpected error occurred. Please try again."}
+
+
 class _CredentialScope:
     """Each request its own credential registry (connectors.base): what one user's connector
     registers never masks another tenant's log lines. Pure ASGI: the route and every task or
-    thread it starts run in this context."""
+    thread it starts run in this context. An error escaping the route is logged and answered
+    here, inside the scope: Starlette's 500 handler and uvicorn's traceback run outside it, a
+    credential the request registered in plain text (audit pass 2, proven)."""
 
     def __init__(self, app):
         self.app = app
 
     async def __call__(self, scope, receive, send):
-        token = credential_scope()
+        if scope["type"] != "http":
+            return await self.app(scope, receive, send)
+        token, started = credential_scope(), False
+
+        async def sending(message):
+            nonlocal started
+            started = started or message["type"] == "http.response.start"
+            await send(message)
         try:
-            await self.app(scope, receive, send)
+            await self.app(scope, receive, sending)
+        except Exception:
+            logging.getLogger(__name__).error("unhandled error: %s %s", scope.get("method"),
+                                              scope.get("path"), exc_info=True)
+            if not started:
+                await JSONResponse(_UNEXPECTED, status_code=500)(scope, receive, send)
         finally:
             _credential_scope.reset(token)
 
@@ -115,10 +132,7 @@ app.include_router(runs.router, prefix="/runs", tags=["runs"])
 
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
-    return JSONResponse(
-        status_code=500,
-        content={"detail": "An unexpected error occurred. Please try again."},
-    )
+    return JSONResponse(status_code=500, content=_UNEXPECTED)
 
 
 @app.get("/health")

@@ -1546,7 +1546,10 @@ async def test_each_engines_own_types_read_as_their_values(tmp_path, name):
         if name in ("mysql", "mariadb"):   # the zero and the partial date: blanked, and said
             notes = conn.read_info.get("notes", [])
             assert any("2 values" in n and "zero or partial date" in n for n in notes), notes
-        asked = (await conn.query("SELECT * FROM tcat ORDER BY k")).frame()
+        result = await conn.query("SELECT * FROM tcat ORDER BY k")
+        asked = result.frame()
+        if name in ("mysql", "mariadb"):   # a question's blanks said too (audit pass 2)
+            assert any("2 values" in n for n in result.notes()), result.notes()
         for frame in (loaded, asked):
             frame.columns = [c.rstrip("_") for c in frame.columns]
             for col, want in {**_EXPECTED, **own}.items():
@@ -1736,7 +1739,8 @@ async def test_numbers_codes_and_intervals_read_as_the_database_wrote_them(tmp_p
 _BIG_RESULT = {
     "postgresql": "SELECT g, repeat('x', 100) AS s FROM generate_series(1, 3000000) g",
     "mysql": "WITH RECURSIVE r(g) AS (SELECT 1 UNION ALL SELECT g+1 FROM r WHERE g < 1000) "
-             "SELECT a.g, REPEAT('x', 100) AS s FROM r a CROSS JOIN r b CROSS JOIN r c LIMIT 3000000",
+             # 10^9 rows, no LIMIT: a drained result waits out the timeout, never 3 s (test analyst)
+             "SELECT a.g, REPEAT('x', 100) AS s FROM r a CROSS JOIN r b CROSS JOIN r c",
     "mssql": "SELECT TOP 3000000 ROW_NUMBER() OVER (ORDER BY (SELECT 1)) AS g, REPLICATE('x', 100) "
              "AS s FROM sys.all_objects a CROSS JOIN sys.all_objects b CROSS JOIN sys.all_objects c",
 }
@@ -1756,26 +1760,54 @@ import resource
 from connectors.sql_connector import SQLConnector, run_readonly
 from orchestrator.state import ConnectorConfig, ConnectorType
 engine = SQLConnector(ConnectorConfig(type=ConnectorType.SQL, connection_string={url!r}))._engine()
+import time
 before = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+started = time.monotonic()
 r = run_readonly(engine, {_BIG_RESULT[name]!r}, 10)
-print(len(r.rows), r.truncated, resource.getrusage(resource.RUSAGE_SELF).ru_maxrss - before)
+took = time.monotonic() - started
+print(len(r.rows), r.truncated, resource.getrusage(resource.RUSAGE_SELF).ru_maxrss - before, took)
 """
     out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, timeout=300,
                          cwd=str(Path(__file__).resolve().parents[1]))
-    rows, truncated, grew = out.stdout.split() or (out.stderr[-500:], "", "")
+    rows, truncated, grew, took = out.stdout.split() or (out.stderr[-500:], "", "", "")
     grew_mb = int(grew) / (2**20 if sys.platform == "darwin" else 2**10)
-    assert (rows, truncated) == ("10", "True") and grew_mb < 100, (name, rows, grew_mb)
+    # and at once: PyMySQL's close drained every remaining row, a capped preview waited out the
+    # statement timeout (audit pass 2); nothing in stderr (its drain of a dropped socket)
+    assert (rows, truncated) == ("10", "True") and grew_mb < 100 and float(took) < 5, \
+        (name, rows, grew_mb, took)
+    assert "Exception ignored" not in out.stderr, out.stderr[-800:]
 
 
-def test_a_plain_result_skips_the_per_cell_work():
-    """A 50k-row load was 12 times slower: plain columns go straight to pandas."""
-    import time
+def test_a_plain_result_skips_the_per_cell_work(monkeypatch):
+    """A 50k-row load was 12 times slower: plain columns go straight to pandas. Pinned by what
+    runs, never by a clock (test analyst: without the fast path it still met the time bound)."""
+    import connectors.sql_connector as sc
+    monkeypatch.setattr(sc, "exact_whole_numbers", lambda *_: pytest.fail("per-cell work ran"))
+    rows = [(i, f"name {i}", i * 1.5, i % 2 == 0, None) for i in range(1000)] + \
+        [(None, None, None, None, None)]
+    df = sc.QueryResult(["a", "b", "c", "d", "e"], rows, False).frame()
+    assert df["a"].iloc[3] == 3 and df["b"].iloc[3] == "name 3"
 
-    from connectors.sql_connector import QueryResult
-    rows = [(i, f"name {i}", i * 1.5, i % 2 == 0) for i in range(50_000)] * 1
-    started = time.monotonic()
-    QueryResult(["a", "b", "c", "d"] * 1, rows, False).frame()
-    assert time.monotonic() - started < 1.5
+
+def test_a_leading_zero_is_never_a_whole_number():
+    """An ICCID with its leading zero: the shared rule's own guard (test analyst: no test
+    reached it, the query's text column takes the fast path)."""
+    from connectors.base import exact_whole_numbers
+    assert exact_whole_numbers(pd.Series(["0123456789012345678", None], dtype=object)) is None
+    assert exact_whole_numbers(pd.Series(["123456789012345678", None], dtype=object)).tolist()[0] \
+        == 123456789012345678
+
+
+def test_a_postgres_day_is_utcs_whatever_the_servers_zone(tmp_path):
+    """The session's `SET LOCAL TIME ZONE 'UTC'`: a timestamptz's day computed in the database
+    is UTC's (test analyst: removing it failed nothing; instants compare equal in any zone)."""
+    from sqlalchemy import create_engine
+
+    from connectors.sql_connector import run_readonly
+    url = _each_dialect(tmp_path, "postgresql")
+    tokyo = create_engine(url, connect_args={"options": "-c timezone=Asia/Tokyo"})
+    r = run_readonly(tokyo, "SELECT CAST(TIMESTAMPTZ '2024-03-10 20:00:00+00' AS date) AS d")
+    assert str(r.rows[0][0]) == "2024-03-10"
 
 
 @pytest.mark.parametrize("values", [["2024-03-10 18:30:00+00", "2024-03-11 01:00:00+00"],
@@ -1789,6 +1821,20 @@ def test_a_postgres_export_of_instants_reads_as_instants(values):
     df = normalize_frame(_read_bytes(csv.encode(), ".csv")[0])
     assert _cells(df["tz"]) == [pd.Timestamp("2024-03-10 18:30:00", tz="UTC"), None,
                                 pd.Timestamp("2024-03-11 01:00:00", tz="UTC")]
+
+
+def test_an_hours_offset_counts_only_after_a_clock_time():
+    """Audit pass 2 (two reviewers): '2024-03-10 12-05' (a file stamp) became 12:00 at UTC-05,
+    and in a column mixing offsets the '-04' of '2025-01-04' stripped the day."""
+    from connectors.base import normalize_frame, parse_text_dates
+    from connectors.csv_connector import _read_bytes
+    df = normalize_frame(_read_bytes(b"shot,n\n2024-03-10 12-05,1\n2024-03-11 14-07,2\n", ".csv")[0])
+    assert df["shot"].tolist() == ["2024-03-10 12-05", "2024-03-11 14-07"]
+    mixed = parse_text_dates(pd.Series(["2025-01-05 10:00:00-05", "2025-01-04",
+                                        "2025-01-06 09:00:00-05"]), 0.0)
+    assert [t.day for t in mixed] == [5, 4, 6]
+    dst = parse_text_dates(pd.Series(["2024-11-03 01:30:00-0400", "2024-11-03 01:30:00.5-0500"]), 0.0)
+    assert dst.tolist() == [pd.Timestamp("2024-11-03 01:30:00"), pd.Timestamp("2024-11-03 01:30:00.5")]
 
 
 def test_a_file_keeps_long_ids_exact_with_a_blank():

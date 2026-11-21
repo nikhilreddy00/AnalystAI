@@ -28,13 +28,16 @@ from orchestrator.state import ConnectorConfig, ConnectorType, DataContract
 # Date-shaped text: ISO (2025-01, 2025-01-31, 2025-01-31 10:00, … -0500), US (1/31/2025),
 # European (31.01.2025), either with a time (31/01/2025 14:30), "Jan 31, 2025".
 _DATE_TEXT_RE = re.compile(
-    r"^(\d{4}-\d{1,2}(-\d{1,2})?([ T][\d:.]+( ?(Z|[+-]\d{2}(:?\d{2})?))?)?|(\d{1,2}/\d{1,2}/\d{2,4}|\d{1,2}\.\d{1,2}\.\d{4})( \d{1,2}:\d{2}(:\d{2})?)?"
+    r"^(\d{4}-\d{1,2}(-\d{1,2})?([ T](\d{1,2}:[\d:.]+( ?(Z|[+-]\d{2}(:?\d{2})?))?|[\d:.]+( ?(Z|[+-]\d{2}:?\d{2}))?))?|(\d{1,2}/\d{1,2}/\d{2,4}|\d{1,2}\.\d{1,2}\.\d{4})( \d{1,2}:\d{2}(:\d{2})?)?"
     r"|[A-Za-z]{3,9} \d{1,2}, \d{4})$")
 _FIRST_PART_RE = re.compile(r"^(\d{1,2})[/.]\d{1,2}[/.]\d{2,4}")
 # an offset of hours alone is Postgres's own writing of a timestamptz ('… 18:30:00+00', '-08'):
 # a CSV export of one stayed text while the same column read from the database was an instant
-# (5.8b hardening: the type catalog's timestamptz)
-_OFFSET_RE = re.compile(r" ?(Z|[+-]\d{2}(?::?\d{2})?)$")
+# (5.8b hardening: the type catalog's timestamptz). Only after a clock time (HH:MM…): the '-05'
+# of a file stamp '2024-03-10 12-05', or the '-04' of a date '2025-01-04', is no offset (audit
+# pass 2: both were read as one, shifting the time and stripping the day)
+_OFFSET_RE = re.compile(
+    r"(?<=\d:\d\d)(?P<rest>(?::\d\d(?:\.\d+)?)?) ?(?P<offset>Z|[+-]\d{2}(?::?\d{2})?)$")
 
 
 def _minutes(offset: str) -> int:
@@ -74,10 +77,10 @@ def parse_text_dates(s: pd.Series, share: float = 1.0) -> pd.Series | None:
                                 dayfirst=dayfirst, errors="coerce")
     except ValueError:   # mixed UTC offsets
         text = s.astype("string").str.strip()
-        offsets = {_minutes(m) for m in text.str.extract(_OFFSET_RE)[0].dropna().unique()}
+        offsets = {_minutes(m) for m in text.str.extract(_OFFSET_RE)["offset"].dropna().unique()}
         if len(offsets) == 2 and max(offsets) - min(offsets) == 60 and (max(offsets) <= 0 or min(offsets) >= 0):
             # one place across a daylight-saving change (Shopify's -0500 / -0400): local time
-            parsed = pd.to_datetime(text.str.replace(_OFFSET_RE, "", regex=True), format="mixed",
+            parsed = pd.to_datetime(text.str.replace(_OFFSET_RE, r"\g<rest>", regex=True), format="mixed",
                                     dayfirst=dayfirst, errors="coerce")
         else:   # several places (pickup -05:00, delivery -08:00): UTC keeps instants and durations
             parsed = pd.to_datetime(text, format="mixed", dayfirst=dayfirst, errors="coerce",
@@ -305,6 +308,7 @@ class BodyTooLarge(ValueError):
 
 
 _ZLIB_AUTO = 32 + zlib.MAX_WBITS   # zlib reads a gzip or a zlib header, whichever it finds
+_MAX_GZIP_MEMBERS = 10_000   # a concatenated log has a few hundred; each costs a decoder
 
 
 async def capped_body(response: httpx.Response, cap: int) -> bytes:
@@ -322,7 +326,7 @@ async def capped_body(response: httpx.Response, cap: int) -> bytes:
     else:
         raise ValueError(f"it compressed its answer as {encoding}, which isn't read here")
     body, raw = bytearray(), 0
-    raw_deflate_tried = False
+    raw_deflate_tried, members = False, 1
     try:
         async for chunk in response.aiter_raw():
             raw += len(chunk)   # the sent bytes too, whatever the decoder holds back
@@ -347,6 +351,9 @@ async def capped_body(response: httpx.Response, cap: int) -> bytes:
                 # reader returned only the first: test analyst), or junk, which is refused
                 chunk = decoder.unused_data if decoder.eof else b""
                 if chunk:
+                    members += 1
+                    if members > _MAX_GZIP_MEMBERS:   # millions of empty members: seconds of CPU
+                        raise ValueError(f"its {encoding} answer is in too many pieces")   # (audit 2)
                     decoder = zlib.decompressobj(_ZLIB_AUTO)
             if len(body) > cap:
                 raise BodyTooLarge   # each caller says it in its own words (the link's, the API's)

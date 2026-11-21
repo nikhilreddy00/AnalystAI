@@ -783,18 +783,19 @@ async def run_ingestion_agent(session: AnalysisSession, llm: LLMClient,
     ctx = build_context(session, question, reuse_query)
     connector = get_connector(ctx.config)
 
-    source_query = None
+    source_query, result_notes = None, []
     if ctx.config.type == ConnectorType.SQL and not ctx.config.table_name:
         from agents.sql_agent import run_sql_agent
         from semantic_layer import configured_layer
         if ctx.reuse_query:
-            df, source_query = (await connector.query(ctx.reuse_query.code)).frame(), ctx.reuse_query
+            result, source_query = await connector.query(ctx.reuse_query.code), ctx.reuse_query
         elif not ctx.question:
             raise IngestionError("no question", "Ask a question to query the database, or name a "
                                  "table to load.")
         else:
             answer = await run_sql_agent(ctx.question, connector, configured_layer(), llm, ctx.memory)
-            df, source_query = answer.result.frame(), answer.evidence
+            result, source_query = answer.result, answer.evidence
+        df, result_notes = result.frame(), result.notes()
     else:
         df = await connector.load()
     if df.empty:
@@ -806,6 +807,8 @@ async def run_ingestion_agent(session: AnalysisSession, llm: LLMClient,
     renamed = [f"'{a}' → '{b}'" for a, b in zip(map(str, df.columns), names) if a != b]
     df.columns = names
     info = dict(connector.read_info)
+    if result_notes:
+        info["notes"] = [*info.get("notes", []), *result_notes]
     if renamed:
         info["notes"] = [*info.get("notes", []),
                          f"Duplicate column names were renamed: {', '.join(renamed[:5])}."]

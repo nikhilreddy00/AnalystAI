@@ -108,6 +108,82 @@ async def test_one_runs_credentials_never_reach_another_runs_logs():
     assert redact("GuardrailViolation") == "GuardrailViolation"   # nor the process's
 
 
+async def test_the_worker_runs_each_run_in_its_own_scope_and_logs_its_failures_masked(monkeypatch):
+    """Audit pass 2: the scope was set on `execute` alone, so an error escaping the supervisor
+    (recording a failure hit a database blip) was logged by asyncio outside it, unmasked."""
+    import asyncio
+    from types import SimpleNamespace
+
+    import memory.retention
+    import orchestrator.runner as runner
+    from api.logging_scrub import ScrubFilter
+    from connectors.base import register_secrets
+    secret = "Run-only-pw-4471xq"
+
+    async def execute(run, deps):
+        register_secrets(secret)   # as get_connector does inside the run
+        raise RuntimeError(f"connect failed for postgresql://u:{secret}@db/x")
+
+    async def nothing(*a, **k):
+        return []
+    stop, claimed = asyncio.Event(), [SimpleNamespace(id="r1", attempt=1)]
+
+    async def claim():
+        return claimed.pop() if claimed else None
+
+    async def stop_later():   # once the run's failure is logged: a stop cancels a run still going
+        for _ in range(500):
+            if "supervisor failed" in out.getvalue():
+                break
+            await asyncio.sleep(0.01)
+        stop.set()
+    asyncio.get_running_loop().create_task(stop_later())
+    monkeypatch.setattr(runner, "execute", execute)
+    monkeypatch.setattr(memory.retention, "sweep_logged", nothing)
+    deps = SimpleNamespace(run_store=SimpleNamespace(claim=claim, reap=nothing))
+    out = io.StringIO()
+    handler = logging.StreamHandler(out)
+    handler.addFilter(ScrubFilter())
+    logging.getLogger("orchestrator.runner").addHandler(handler)
+    try:
+        await asyncio.wait_for(runner.work(deps, stop, poll_s=0.01), 5)
+        await asyncio.sleep(0.05)
+    finally:
+        logging.getLogger("orchestrator.runner").removeHandler(handler)
+    assert "supervisor failed" in out.getvalue() and secret not in out.getvalue(), out.getvalue()
+    from connectors.base import redact
+    assert redact(secret) == secret   # the run's registry, never the process's
+
+
+async def test_a_requests_crash_is_logged_masked_and_answered_500():
+    """Test analyst (proven): the middleware reset the request's scope before Starlette's 500
+    handler and uvicorn's traceback ran, so a credential the request registered was logged in
+    plain text. And the app has the middleware at all (deleting it failed nothing)."""
+    import httpx
+
+    from api.logging_scrub import ScrubFilter
+    from api.main import _CredentialScope, app
+    from connectors.base import register_secrets
+    assert any(m.cls is _CredentialScope for m in app.user_middleware)
+    secret = "Req-only-pw-9931zz"
+
+    async def route(scope, receive, send):
+        register_secrets(secret)
+        raise RuntimeError(f"driver said postgresql://u:{secret}@h/x")
+    out = io.StringIO()
+    handler = logging.StreamHandler(out)
+    handler.addFilter(ScrubFilter())
+    logging.getLogger("api.main").addHandler(handler)
+    try:
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=_CredentialScope(route)),
+                                     base_url="http://t") as client:
+            r = await client.get("/x")
+    finally:
+        logging.getLogger("api.main").removeHandler(handler)
+    assert r.status_code == 500 and "unhandled error" in out.getvalue()
+    assert secret not in out.getvalue(), out.getvalue()
+
+
 def test_ordinary_words_are_never_masked_in_the_logs():
     """Silent-failure hunter, test analyst: the password 'postgres' masked 'postgresql' in every
     log; `region_code=revenue&author=…` registered 'revenue' (a key matched as a substring)."""
