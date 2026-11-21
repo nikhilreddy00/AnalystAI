@@ -671,18 +671,15 @@ def test_an_engine_without_a_row_is_refused_in_so_many_words():
     # the whole string, then its user-info, then the password (split at the first ':' only)
     ("mysql://reader:p:a:ss@h/db", None, None, "bad mysql://reader:p:a:ss@h/db p:a:ss reader:p:a:ss",
      "bad *** *** ***"),
-    # 5.8b hardening (three reviewers): a credential FORM (user:password, a string, a value
-    # holding : or @) masks from 6 characters, a BARE value from 12: shorter, it is a word as
-    # often as a secret ('postgres' masked 'postgresql', 'analysis' a user's sentence)
-    ("postgresql://reader:s3cr%40t@h/db", None, None, "pw s3cr@t and s3cr%40t",
-     "pw *** and s3cr%40t"),
-    ("postgresql://reader:Long-s3cr%40t-99@h/db", None, None, "pw Long-s3cr%40t-99", "pw ***"),
-    ("postgresql://onlyuser@h/db", None, None, "user onlyuser XXXX", "user onlyuser XXXX"),
-    ("postgresql://a:zzzzzz@h/db", None, None, "a:zzzzzz", "***"),   # longest first, not abc
-    ("postgresql://u:abc@h/db", None, None, "abc", "abc"),           # a bare word: not cut
-    ("postgresql://u:ab@h/db", None, None, "ab cab", "ab cab"),
-    (None, "tok-1234567890", None, "key tok-1234567890", "key ***"),
-    (None, "tok-123", None, "the tok-123 key", "the tok-123 key"),
+    ("postgresql://reader:s3cr%40t@h/db", None, None, "pw s3cr@t and s3cr%40t", "pw *** and ***"),
+    ("postgresql://onlyuser@h/db", None, None, "user onlyuser XXXX", "user *** XXXX"),
+    ("postgresql://a:zzz@h/db", None, None, "a:zzz", "***"),     # longest first, not abc order
+    ("postgresql://u:abc@h/db", None, None, "abc", "***"),       # three characters: a secret
+    ("postgresql://u:ab@h/db", None, None, "ab cab", "ab cab"),  # two: too short to cut safely
+    # a short bare value only as a whole word (5.8b hardening: 'postgres' cut 'postgresql')
+    ("postgresql://postgres:postgres@h/db", None, None, "postgresql said: postgres refused",
+     "postgresql said: *** refused"),
+    (None, "tok-123", None, "key tok-123", "key ***"),
     (None, None, '{"k": 1}', 'sa {"k": 1}', "sa ***"),
     (None, None, None, "XXXX nothing to hide", "XXXX nothing to hide"),
 ])

@@ -99,6 +99,14 @@ def test_ordinary_words_are_never_masked_in_the_logs():
     assert redact("connect postgresql://postgres:postgres@db/x") == "connect ***"
 
 
+def test_a_query_key_is_a_credential_by_its_last_word():
+    from connectors.base import _secret_key
+    assert all(map(_secret_key, ["api_key", "apikey", "X-Amz-Security-Token", "X-Amz-Signature",
+                                 "sessionToken", "private_token", "auth", "code", "client_secret"]))
+    assert not any(map(_secret_key, ["region_code", "country_code", "author", "keyword",
+                                     "passenger", "tokens_used", "page", "q"]))
+
+
 def test_a_configs_own_credentials_are_registered_strongest_first():
     """At most 8 a registration: the password must not be the one dropped (test analyst)."""
     from connectors.base import redact

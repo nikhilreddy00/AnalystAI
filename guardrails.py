@@ -124,7 +124,9 @@ _HARD_NAMES = frozenset("""sleep benchmark get_lock release_lock release_all_loc
     current_schema current_role inet_server_addr txid_current gen_random_uuid user_name
     suser_name suser_sname host_name app_name db_name db_id original_login is_member
     is_srvrolemember has_perms_by_name openrowset openquery opendatasource openxml
-    sys_eval sys_exec load_extension readfile writefile""".split())
+    sys_eval sys_exec load_extension readfile writefile session_context context_info
+    random_bytes random_normal uuidv4 uuidv7 current_schemas master_pos_wait source_pos_wait
+    wait_for_executed_gtid_set wait_until_sql_thread_after_gtids""".split())
 
 
 # THE functions an analyst's query calls, per dialect, as the vendors document them (MySQL 8.4 /
@@ -157,7 +159,14 @@ _DOCUMENTED = {
         CAST(a AS CHAR) CONVERT(a, CHAR) CAST(a AS DECIMAL(10, 2)) BIN(n) HEX(n) CONV(n, 10, 2)
         ROW_NUMBER() OVER () RANK() OVER () DENSE_RANK() OVER () NTILE(4) OVER ()
         LAG(n) OVER () LEAD(n) OVER () FIRST_VALUE(n) OVER () LAST_VALUE(n) OVER ()
-        NTH_VALUE(n, 2) OVER () PERCENT_RANK() OVER () CUME_DIST() OVER ()""",
+        NTH_VALUE(n, 2) OVER () PERCENT_RANK() OVER () CUME_DIST() OVER ()
+        FIELD(s, 'a', 'b') ELT(1, 'a', 'b') MAKETIME(1, 2, 3) UTC_TIME() LOCALTIME()
+        LOCALTIMESTAMP() SYSDATE() TO_SECONDS(d) ASCII(s) ORD(s) CHAR(65) FIND_IN_SET(s, 'a,b')
+        STRCMP(s, s) SPACE(3) INSERT(s, 1, 2, 'x') QUOTE(s) EXPORT_SET(5, 'Y', 'N')
+        MAKE_SET(1, 'a') SOUNDEX(s) CRC32(s) MD5(s) SHA1(s) SHA2(s, 256) OCT(n) UNHEX(s)
+        BIT_COUNT(n) BIT_XOR(n) PI() DEGREES(n) RADIANS(n) SIN(n) COS(n) TAN(n) COT(n) ASIN(n)
+        ACOS(n) ATAN(n) ATAN2(n, n) JSON_OBJECT('a', a) JSON_ARRAY(a, b) JSON_ARRAYAGG(a)
+        JSON_OBJECTAGG(a, b) JSON_KEYS(j) JSON_SEARCH(j, 'one', 'x') JSON_TYPE(j) JSON_VALID(j)""",
     "tsql": """YEAR(d) MONTH(d) DAY(d) DATEPART(month, d) DATENAME(month, d) DATEADD(day, -30, d)
         DATEDIFF(day, d, d) DATEDIFF_BIG(day, d, d) DATEFROMPARTS(2024, 1, 1)
         DATETIMEFROMPARTS(2024, 1, 1, 0, 0, 0, 0) EOMONTH(d) DATETRUNC(month, d) GETDATE()
@@ -178,7 +187,13 @@ _DOCUMENTED = {
         RANK() OVER (ORDER BY a) DENSE_RANK() OVER (ORDER BY a) NTILE(4) OVER (ORDER BY a)
         LAG(n) OVER (ORDER BY a) LEAD(n) OVER (ORDER BY a) FIRST_VALUE(n) OVER (ORDER BY a)
         LAST_VALUE(n) OVER (ORDER BY a) PERCENT_RANK() OVER (ORDER BY a)
-        CUME_DIST() OVER (ORDER BY a)""",
+        CUME_DIST() OVER (ORDER BY a) FORMAT(n, 'N2') ASCII(s) CHAR(65) NCHAR(65) UNICODE(s)
+        SOUNDEX(s) DIFFERENCE(s, s) PARSENAME(s, 1) STRING_ESCAPE(s, 'json') STRING_SPLIT(s, ',')
+        SMALLDATETIMEFROMPARTS(2024, 1, 1, 0, 0) TIMEFROMPARTS(1, 2, 3, 0, 0)
+        DATETIME2FROMPARTS(2024, 1, 1, 0, 0, 0, 0, 0)
+        DATETIMEOFFSETFROMPARTS(2024, 1, 1, 0, 0, 0, 0, 0, 0, 0) CHECKSUM_AGG(n)
+        JSON_MODIFY(j, '$.k', 1) JSON_OBJECT('a':1) JSON_ARRAY(a, b) GENERATE_SERIES(1, 10)
+        DEGREES(n) RADIANS(n) SIN(n) COS(n) TAN(n) COT(n) ASIN(n) ACOS(n) ATAN(n) ATN2(n, n)""",
     "postgres": """date_trunc('month', d) date_part('year', d) EXTRACT(YEAR FROM d) age(d, d)
         age(d) make_date(2024, 1, 1) make_timestamp(2024, 1, 1, 0, 0, 0) to_char(d, 'YYYY-MM')
         to_date(s, 'YYYY-MM-DD') to_timestamp(s, 'YYYY') to_number(s, '999') now()
@@ -201,7 +216,21 @@ _DOCUMENTED = {
         json_extract_path_text(j, 'k') jsonb_array_length(j) to_json(a) row_number() OVER ()
         rank() OVER () dense_rank() OVER () ntile(4) OVER () lag(n) OVER () lead(n) OVER ()
         first_value(n) OVER () last_value(n) OVER () nth_value(n, 2) OVER () percent_rank() OVER ()
-        cume_dist() OVER () generate_series(1, 3) pg_typeof(a)""",
+        cume_dist() OVER () generate_series(1, 3) pg_typeof(a) regexp_matches(s, 'a')
+        regexp_split_to_table(s, ',') regexp_split_to_array(s, ',') regexp_count(s, 'a')
+        regexp_substr(s, 'a') make_interval(days => 1) bit_length(s) octet_length(s) chr(65)
+        ascii(s) starts_with(s, 'a') num_nonnulls(a, b) num_nulls(a, b) timezone('UTC', d)
+        string_to_array(s, ',') array_position(a, 1) array_remove(a, 1) array_upper(a, 1)
+        array_lower(a, 1) array_cat(a, a) array_append(a, 1) overlay(s placing 'x' from 1)
+        quote_literal(s) quote_ident(s) similar_to_escape(s) to_hex(n) sha256(s::bytea)
+        json_agg(a) jsonb_agg(a) json_object_agg(a, b) jsonb_object_agg(a, b)
+        json_build_object('a', a) jsonb_build_object('a', a) json_build_array(a)
+        jsonb_build_array(a) to_jsonb(a) jsonb_each(j) jsonb_each_text(j) json_each(j)
+        jsonb_object_keys(j) jsonb_array_elements(j) json_array_elements(j)
+        jsonb_array_elements_text(j) jsonb_typeof(j) json_typeof(j) json_array_length(j)
+        pi() degrees(n) radians(n) sin(n) cos(n) tan(n) cot(n) asin(n) acos(n) atan(n)
+        atan2(n, n) factorial(5) gcd(a, b) lcm(a, b) scale(n) trim_scale(n) min_scale(n)
+        any_value(a) range_agg(r) bit_and(n) bit_or(n) bit_xor(n)""",
 }
 _DOCUMENTED_CALL = re.compile(r"[A-Za-z_0-9]+\((?:[^()]|\([^()]*\))*\)(?:\s+(?:OVER|WITHIN GROUP)"
                               r"\s*\((?:[^()]|\([^()]*\))*\))*(?:\s+OVER\s*\([^()]*\))?"
@@ -270,7 +299,11 @@ def _function_refused(node: exp.Func, dialect: str | None) -> str | None:
     if (node.name.lower() in _SQL_NAMES.get(dialect, ()) or node.name.lower() in names) \
             if anonymous else (type(node) in _SQL_FUNCS or type(node) in classes):
         return None
-    if type(node) in _HARD_FUNCS or name in _HARD_NAMES or name.startswith(_HARD_PREFIXES):
+    # the system prefixes only on a function's own name: a known class renders as its whole
+    # expression at times ('lo_x or 1' is MySQL's `lo_x || 1`) and was hard-refused by the
+    # column's name (silent-failure hunter)
+    if type(node) in _HARD_FUNCS or name in _HARD_NAMES or \
+            (anonymous and name.startswith(_HARD_PREFIXES)):
         return Refusal(f"a lock, admin, session or random function is not allowed: {name}")
     return Refusal(f"{FUNCTION_REFUSED}{name}", soft=True)
 

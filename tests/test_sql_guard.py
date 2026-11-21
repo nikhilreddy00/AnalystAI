@@ -349,6 +349,69 @@ def test_every_function_the_vendor_documents_for_analysis_is_allowed(dialect):
     assert refused == {}
 
 
+# Written by a reviewer from the manuals, never from `_DOCUMENTED`: the test above checks the list
+# against itself and passed while 96 of these were refused (5.8b hardening audit 1). Coverage is
+# measured by calls the list's author didn't write.
+_INDEPENDENT = {
+    "mysql": """FIELD(a,'x','y') ELT(1,'a','b') MAKETIME(1,2,3) JSON_OBJECT('a',a) JSON_ARRAYAGG(a)
+        CRC32(a) ASCII(a) ORD(a) FIND_IN_SET(a,'x,y') STRCMP(a,b) UTC_TIME() LOCALTIME()
+        SYSDATE() TO_SECONDS(d) CHAR(65) LOCALTIMESTAMP() DATE_FORMAT(d,'%Y') JSON_KEYS(j)
+        JSON_SEARCH(j,'one','x') JSON_OBJECTAGG(a,b) STDDEV_SAMP(a) BIT_COUNT(a) SPACE(3)
+        EXPORT_SET(5,'Y','N') MAKE_SET(1,'a') INSERT(a,1,2,'x') QUOTE(a) SOUNDEX(a) DEGREES(a)
+        RADIANS(a) PI() ATAN2(a,b) COS(a) TRUNCATE(a,0) CEILING(a) OCT(a) UNHEX(a) DATE(d)
+        TIMESTAMP(d,'01:00:00') JSON_TYPE(j) WEEK(d,1)""",
+    "tsql": """ASCII(a) CHAR(65) NCHAR(65) UNICODE(a) SOUNDEX(a) DIFFERENCE(a,b) ATN2(a,b) RADIANS(a)
+        COT(a) LOG(a,2) CHECKSUM_AGG(a) STRING_ESCAPE(a,'json') STRING_SPLIT(a,',')
+        DATENAME(weekday,d) DATEPART(weekday,d) SMALLDATETIMEFROMPARTS(2024,1,1,0,0)
+        TIMEFROMPARTS(1,2,3,0,0) JSON_MODIFY(j,'$.a',1) FORMAT(n,'N2') ROUND(a,2,1) ABS(a) SIN(a)
+        COS(a) ACOS(a) DEGREES(a) CEILING(a) LTRIM(RTRIM(a)) SUBSTRING(a,1,3) CONCAT(a,b)
+        ISNULL(a,0) STRING_AGG(a,',') DATETRUNC(week,d) JSON_OBJECT('a':1) LEN(a)
+        PARSENAME(a,1) GENERATE_SERIES(1,10) EOMONTH(d,-1) TRIM(a) VAR(a) SIGN(a)""",
+    "postgres": """regexp_matches(a,'x') regexp_split_to_table(a,',') make_interval(days=>1)
+        to_timestamp(n) jsonb_build_object('a',a) json_agg(a) jsonb_agg(a)
+        json_build_object('a',a) regr_intercept(a,b) regr_r2(a,b) covar_samp(a,b) bit_length(a)
+        octet_length(a) chr(65) ascii(a) starts_with(a,'x') num_nonnulls(a,b) timezone('UTC',d)
+        log(2,a) string_to_array(a,',') array_position(arr,1) jsonb_each(j) jsonb_object_keys(j)
+        degrees(a) pi() sin(a) greatest(a,b) to_char(n,'FM999') date_part('dow',d)
+        array_remove(arr,1) bool_or(c) array_upper(arr,1) quote_literal(a) quote_ident(a)
+        jsonb_typeof(j) json_array_length(j) similar_to_escape('x') factorial(5) gcd(a,b)
+        scale(a) trim_scale(a) min_scale(a) any_value(a) range_agg(r) lower(a)""",
+}
+
+
+@pytest.mark.parametrize("dialect", list(_INDEPENDENT))
+def test_functions_an_independent_reviewer_listed_are_allowed(dialect):
+    calls = _INDEPENDENT[dialect].split()
+    refused = {c: r for c in calls if (r := g.check_sql_readonly(f"SELECT {c} FROM t", dialect))}
+    assert refused == {}
+
+
+def test_no_documented_function_is_also_a_hard_one():
+    """One list says run, the other says never: a name on both is a bug in one of them."""
+    for dialect in _INDEPENDENT:
+        _, names = g._documented(dialect)
+        assert not names & g._HARD_NAMES, dialect
+        assert not [n for n in names if n.startswith(g._HARD_PREFIXES) and n != "pg_typeof"]
+
+
+@pytest.mark.parametrize(("sql", "dialect"), [
+    ("SELECT SESSION_CONTEXT(N'k') FROM t", "tsql"), ("SELECT RANDOM_BYTES(8) FROM t", "mysql"),
+    ("SELECT current_schemas(true) FROM t", "postgres"), ("SELECT random_normal() FROM t", "postgres"),
+    ("SELECT MASTER_POS_WAIT('f', 4) FROM t", "mysql"),
+    ("SELECT SOURCE_POS_WAIT('f', 4) FROM t", "mysql"),
+    ("SELECT WAIT_FOR_EXECUTED_GTID_SET('x') FROM t", "mysql"),
+])
+def test_session_random_and_replication_waits_are_final(sql, dialect):
+    reason = g.check_sql_readonly(sql, dialect)
+    assert reason and not reason.soft, reason
+
+
+def test_a_column_named_with_a_system_prefix_is_never_a_final_refusal():
+    """`lo_x || 1` is exp.Or in MySQL, rendered whole: the lo_ prefix refused it finally."""
+    reason = g.check_sql_readonly("SELECT lo_total || 1, fn_code FROM t", "mysql")
+    assert reason is None or reason.soft, reason
+
+
 @pytest.mark.parametrize(("sql", "dialect"), [
     ("SELECT HOUR(ts), MINUTE(ts), WEEKDAY(ts) FROM t", "mysql"),
     ("SELECT SUBSTRING_INDEX(email, '@', -1), ANY_VALUE(x), YEARWEEK(d) FROM t", "mysql"),

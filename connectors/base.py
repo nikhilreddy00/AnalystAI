@@ -119,8 +119,8 @@ def as_times(s: pd.Series) -> pd.Series:
 def _config_secrets(config: ConnectorConfig) -> list[str]:
     """Every piece of a config that is a credential, the strongest first: the connection string
     whole and its user-info part raw and decoded, the bare password, the API key, a service
-    account, a key in the API URL's query (named a key: `country_code=` is a country). Which of
-    them mask text is `_masks`' rule."""
+    account, a value in the API URL's query whose key names a credential (`_secret_key`). How
+    each masks text is `_cut`'s rule."""
     from urllib.parse import parse_qsl, unquote, urlparse
     conn = config.connection_string or ""
     secrets = []
@@ -136,14 +136,21 @@ def _config_secrets(config: ConnectorConfig) -> list[str]:
             query = parse_qsl(urlparse(config.url).query)
         except ValueError:   # a malformed URL ('[::1'): no credential to read, never a crash in
             query = []       # the error handler that called this (code review)
-        secrets += [v for k, v in query if _SECRET_KEY.fullmatch(k)]
+        secrets += [v for k, v in query if _secret_key(k)]
     return [s for s in dict.fromkeys(secrets) if s]
 
 
-# a query key that names a credential, whole (`api_key`, `X-Amz-Signature`, `access_token`)
-_SECRET_KEY = re.compile(r"(?:x[-_]amz[-_])?(?:api[-_]?key|apikey|key|token|access[-_]?token|"
-                         r"sig|signature|secret|client[-_]secret|password|pwd|auth|code)",
-                         re.IGNORECASE)
+_CREDENTIAL_WORDS = frozenset("""key apikey token sig signature secret password passwd pwd pass
+    auth credential credentials""".split())
+
+
+def _secret_key(key: str) -> bool:
+    """A query key naming a credential, read by its last word (`-`, `_`, camelCase): api_key,
+    X-Amz-Security-Token, sessionToken, private_token. A substring read registered `revenue` for
+    `region_code=revenue` and `Shakespeare` for `author=` (three reviewers); a whole-key read
+    missed X-Amz-Security-Token (automated review). `code` only as the whole key (OAuth's)."""
+    words = re.findall(r"[A-Z]?[a-z0-9]+|[A-Z]+(?![a-z])", key)
+    return key.lower() == "code" or (bool(words) and words[-1].lower() in _CREDENTIAL_WORDS)
 # Every credential this process has been handed, masked where text reaches an operator: the log
 # filter and the eval reports (Airflow's SecretsMasker). 5.8a and 5.8b masked per sink, and each
 # new sink leaked (logs, three report writers, a query's key: P58-06). Registered where any
@@ -164,7 +171,7 @@ _SECRETS: tuple[tuple[str, ...], tuple[str, ...]] = ((), ())   # (newest last, l
 def register_secrets(*values: str) -> None:
     global _SECRETS
     new = [v for v in dict.fromkeys(values)
-           if _masks(v) and len(v) <= _MAX_SECRET_CHARS][:_PER_REGISTRATION]
+           if v and 6 <= len(v) <= _MAX_SECRET_CHARS][:_PER_REGISTRATION]
     known = _SECRETS[0]
     if not new or known[-len(new):] == tuple(new):   # nothing, or already the newest
         return
@@ -178,17 +185,18 @@ def redact(text: str) -> str:
     password inside its connection string goes with the string (longest first)."""
     for secret in _SECRETS[1]:
         if secret in text:
-            text = text.replace(secret, "***")
+            text = _cut(text, secret)
     return text
 
 
-def _masks(value: str) -> bool:
-    """Whether a credential masks text where it appears: a credential form (`user:password`, a
-    connection string) from 6 characters, a bare value (a password, an API key) from 12. A
-    shorter bare value is a word as often as a secret: the password 'postgres' masked
-    'postgresql' in every log, 'analysis' turned "the analysis step" into "the *** step"
-    (hardening audit, three reviewers)."""
-    return len(value) >= 12 or (len(value) >= 6 and (":" in value or "@" in value))
+def _cut(text: str, secret: str) -> str:
+    """`text` with `secret` as ***. A credential form (`user:password`, a connection string) or a
+    long value (≥ 12) wherever it stands; a short bare value only as a whole word: the password
+    'postgres' masked 'postgresql' in every log (three reviewers), and dropping short values
+    instead left a short password a driver echoed in plain sight (automated security review)."""
+    if len(secret) >= 12 or ":" in secret or "@" in secret:
+        return text.replace(secret, "***")
+    return re.sub(rf"(?<!\w){re.escape(secret)}(?!\w)", "***", text)
 
 
 def without_secrets(message: str, config: ConnectorConfig) -> str:
@@ -196,9 +204,8 @@ def without_secrets(message: str, config: ConnectorConfig) -> str:
     echo the password. Never another config's (see `_SECRETS`), and it registers nothing: a
     value typed into the connect form never masks the operator's logs (security review: a
     'password' of 'GuardrailViolation' hid it everywhere); `get_connector` registers real use."""
-    secrets = [s for s in _config_secrets(config) if _masks(s)]
-    for s in sorted(secrets, key=len, reverse=True):
-        message = message.replace(s, "***")
+    for s in sorted((s for s in _config_secrets(config) if len(s) >= 3), key=len, reverse=True):
+        message = _cut(message, s)
     return message
 
 
