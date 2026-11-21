@@ -674,16 +674,20 @@ def engine():
 
 
 @pg
-@pytest.mark.parametrize("sql", [
-    "DELETE FROM shop.returns",
-    "WITH d AS (DELETE FROM shop.returns RETURNING 1) SELECT count(*) FROM d",
-    "SELECT nextval('shop.order_seq')",
-    "SELECT * INTO shop.copy FROM shop.returns",
+@pytest.mark.parametrize(("sql", "reason"), [
+    # a question reads through a server-side cursor (5.8b hardening: streamed): a cursor holds
+    # one query, so these writes are refused there first, each for its own named reason; the
+    # read-only transaction stays proven alone by the writes a cursor takes (nextval, FOR UPDATE)
+    ("DELETE FROM shop.returns", "CURSOR FOR DELETE"),
+    ("WITH d AS (DELETE FROM shop.returns RETURNING 1) SELECT count(*) FROM d",
+     "must not contain data-modifying statements"),
+    ("SELECT nextval('shop.order_seq')", "read-only transaction"),
+    ("SELECT * INTO shop.copy FROM shop.returns", r"SELECT \.\.\. INTO is not allowed"),
 ])
-def test_read_only_transaction_blocks_writes_with_the_guard_bypassed(engine, sql):
+def test_read_only_transaction_blocks_writes_with_the_guard_bypassed(engine, sql, reason):
     from evals.sqlgen import fingerprint
     before = fingerprint(engine)
-    with pytest.raises(Exception, match="read-only transaction"):
+    with pytest.raises(Exception, match=reason):
         run_readonly(engine, sql)
     assert fingerprint(engine) == before
 
