@@ -153,3 +153,5 @@ Each item, matched to the ledger (ROADMAP 5.8 "Lessons out").
 - `mysql://` at a MariaDB server failed every session → P58-22 (new)
 - Uploads had no unpacked-size bound → P58-24 (new)
 - macOS drops `DYLD_*` for system binaries → P58-26 (new)
+- Two checks only CI runs fired after the push (gitleaks on CI's SQL Server password, the status-row cap) → P58-33 (new)
+- CLAUDE.md's 5.8 status row grew past its cap → PR3-05 (recurrence: a doc edit runs no test before the push)
