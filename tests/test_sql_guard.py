@@ -406,6 +406,20 @@ def test_session_random_and_replication_waits_are_final(sql, dialect):
     assert reason and not reason.soft, reason
 
 
+def test_a_refusal_is_its_words_and_whether_it_may_be_retried():
+    assert (g.Refusal("why"), g.Refusal("why").soft, g.Refusal("x", soft=True).soft) == \
+        ("why", False, True)
+
+
+def test_a_query_that_cant_run_as_written_is_said_so():
+    from agents.errors import GuardrailViolation
+    from connectors.sql_connector import _cant_run_as_written
+    with pytest.raises(GuardrailViolation) as err:
+        _cant_run_as_written()
+    assert err.value.user_message == \
+        "Blocked unsafe SQL: the query has characters that can't be run exactly as written."
+
+
 @pytest.mark.parametrize(("sql", "dialect"), [
     ("SELECT @@hostname, @@datadir FROM t", "mysql"),
     ("SELECT @@global.secure_file_priv FROM t", "mysql"),
