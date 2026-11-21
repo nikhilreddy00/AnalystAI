@@ -103,12 +103,12 @@ class Refusal(str):
     by its meaning, never by a caller matching its words (5.8b hardening: two modules matched
     message prefixes, and a lock function got the retry)."""
 
-    soft: bool
+    soft = False
 
-    def __new__(cls, text: str, soft: bool = False):
-        refusal = super().__new__(cls, text)
-        refusal.soft = soft
-        return refusal
+
+class SoftRefusal(Refusal):
+    """A refusal the SQL agent may retry once (a type, never a flag: no constructor to keep)."""
+    soft = True
 
 
 # Off the list AND never an analyst's: final, and traced as a read-only refusal. This only sorts
@@ -305,7 +305,7 @@ def _function_refused(node: exp.Func, dialect: str | None) -> str | None:
     if type(node) in _HARD_FUNCS or name in _HARD_NAMES or \
             (anonymous and name.startswith(_HARD_PREFIXES)):
         return Refusal(f"a lock, admin, session or random function is not allowed: {name}")
-    return Refusal(f"{FUNCTION_REFUSED}{name}", soft=True)
+    return SoftRefusal(f"{FUNCTION_REFUSED}{name}")
 
 
 # SQL Server runs a batch: a statement may follow another with no ';', and sqlglot reads
@@ -360,7 +360,7 @@ def _tsql_batch_word(sql: str) -> str | None:
         if word not in _TSQL_NAME_LIKE:   # every word read: a hard one anywhere wins (5.8b
             return Refusal("a T-SQL statement keyword outside a string or [name] is not "   # review:
                            f"allowed: {word}")                       # `close … EXEC` got the retry)
-        soft = soft or Refusal(f"{RESERVED_NAME}{word}", soft=True)
+        soft = soft or SoftRefusal(f"{RESERVED_NAME}{word}")
     return soft
 
 

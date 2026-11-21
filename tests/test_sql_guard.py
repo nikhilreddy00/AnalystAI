@@ -407,7 +407,7 @@ def test_session_random_and_replication_waits_are_final(sql, dialect):
 
 
 def test_a_refusal_is_its_words_and_whether_it_may_be_retried():
-    assert (g.Refusal("why"), g.Refusal("why").soft, g.Refusal("x", soft=True).soft) == \
+    assert (g.Refusal("why"), g.Refusal("why").soft, g.SoftRefusal("x").soft) == \
         ("why", False, True)
 
 
