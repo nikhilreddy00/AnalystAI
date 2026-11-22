@@ -81,6 +81,7 @@ def test_one_json_object_is_one_record():
     b'[{"a": 1}, 2, "x"]',                  # a record and two scalars
     b"[]",
     '[{"a": "é"}]'.encode("latin-1"),       # not UTF-8: JSON's own encoding
+    b"[" + b'{"a":' * 5000 + b"1" + b"}" * 5000 + b"]",   # past the parser's depth: was a 500
 ])
 def test_json_that_isnt_records_is_refused_in_words(content):
     """An allow list (5.8c review 3): only the shape counted is read."""
@@ -212,7 +213,10 @@ _DENSE = {   # each under the byte cap, each past what a read may build
                          '+ "]").encode()'),
     # nested children sharing names: bare keys count 200, the flattened columns are 10,000+
     # (security review 4: p_i_k_j paths, not k_j names)
-    "json nested shared keys": ('.json', '("[" + ",".join("{" + ",".join(f\'"p{i}":{{\' + '
+    # long keys nested deep: each path grew with its depth (security review 5)
+    "json long nested keys": ('.json', 'b"[" + b"".join(b\'{"\' + bytes([97 + i % 26]) * 200_000 '
+                              '+ b\'":\' for i in range(60)) + b"1" + b"}" * 60 + b"]"'),
+    "json nested shared keys":('.json', '("[" + ",".join("{" + ",".join(f\'"p{i}":{{\' + '
                                 '",".join(f\'"k{j}":0\' for j in range(100)) + "}" '
                                 'for i in range(101)) + "}" for _ in range(300)) + "]").encode()'),
 }

@@ -12,6 +12,7 @@ import asyncio
 import io
 import json
 import re
+import sys
 import zipfile
 from collections import Counter
 from pathlib import Path
@@ -352,6 +353,7 @@ class _TooWide(Exception):
 
 
 _NOT_RECORDS = "The JSON isn't a list of records (one object per row, or one per line)."
+_MAX_PATH = 1024   # a flattened JSON column name (a_b_c), in characters
 
 
 def _json_records(content: bytes) -> bool:
@@ -368,11 +370,18 @@ def _json_records(content: bytes) -> bool:
     interned: dict[frozenset, frozenset] = {}
 
     def hook(pairs):
-        own = frozenset(p for k, v in pairs
-                        for p in ([f"{k}_{c}" for c in v] if isinstance(v, frozenset) else [k]))
+        own = set()
+        for k, v in pairs:
+            for p in ([f"{k}_{c}" for c in v] if isinstance(v, frozenset) else [k]):
+                # a column name, never a paragraph: long keys nested deep grew each path with
+                # its depth (security review 5); the same name shared, never built again
+                if len(p) > _MAX_PATH:
+                    raise _TooWide
+                own.add(sys.intern(p))
         paths.update(own)
         if len(paths) > _MAX_COLUMNS:
             raise _TooWide
+        own = frozenset(own)
         return interned.setdefault(own, own)
 
     if max(content.count(b":"), content.count(b",")) + 1 > _MAX_JSON_CELLS:
@@ -393,8 +402,10 @@ def _json_records(content: bytes) -> bool:
             lines = True
     except _TooWide:
         raise IngestionError("too many columns", f"The file has more than {_MAX_COLUMNS:,} "
-                             "columns, past what can be read.") from None
-    except ValueError as exc:   # not JSON, or not UTF-8 (JSON's own encoding)
+                             f"columns, or a column name over {_MAX_PATH:,} characters, past "
+                             "what can be read.") from None
+    # not JSON, not UTF-8 (JSON's own encoding), or nested past the parser's depth (a 500 before)
+    except (ValueError, RecursionError) as exc:
         raise IngestionError("json", _NOT_RECORDS) from exc
     if not top or any(not isinstance(r, frozenset) for r in top):
         raise IngestionError("json shape", _NOT_RECORDS)

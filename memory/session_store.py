@@ -21,7 +21,7 @@ import json
 import os
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Callable
 
@@ -189,6 +189,96 @@ class Dataset:
                 "source": self.config.type.value if self.config else "csv"}
 
 
+# ── SaaS imports (5.8c, ADR-0010 amendment) ────────────────────────────────────────────────────
+# When a refresh may start: the one rule, read by both stores (Postgres under the row's lock).
+REFRESH_DEADLINE_S = 15 * 60     # a refresh past it is a failure, never a partial copy
+_REFRESH_MARGIN_S = 2 * 60       # past deadline + margin a "refreshing" row was interrupted
+REFRESH_GAP_S = 30 * 60          # after a good refresh (Stripe's read allowance, research §2)
+REFRESH_ATTEMPTS_PER_HOUR = 3    # failed ones too: each can cost ~1,000 reads
+
+
+@dataclass
+class ImportRecord:
+    """A user's link to one vendor account (GLOSSARY: Import). `secrets` decrypted; never in
+    `public()`. `status`: per table {as_of, rows, cut_from, unchanged, error: {code, what}}."""
+    id: str
+    user_id: str
+    vendor: str
+    account: str
+    test_mode: bool
+    secrets: dict
+    tables: dict                     # table name → its dataset id
+    window_from: str | None          # ISO date: "the last 12 months" from it, or everything
+    state: str                       # idle | refreshing | failed
+    owner: str | None                # the refresh holding the row (a token)
+    started_at: datetime | None
+    last_success_at: datetime | None
+    attempts: int
+    attempts_since: datetime | None
+    status: dict
+    progress: dict | None
+    created_at: datetime
+
+    def interrupted(self, now: datetime) -> bool:
+        """A refresh that should have ended long ago: its process died (a restart, a kill)."""
+        return self.state == "refreshing" and (
+            self.started_at is None
+            or now - _utc(self.started_at) > timedelta(seconds=REFRESH_DEADLINE_S
+                                                         + _REFRESH_MARGIN_S))
+
+    def public(self, now: datetime) -> dict:
+        state = "failed" if self.interrupted(now) else self.state
+        iso = lambda d: _utc(d).isoformat() if d else None   # noqa: E731
+        return {"id": self.id, "vendor": self.vendor, "account": self.account,
+                "test_mode": self.test_mode, "tables": self.tables, "window_from": self.window_from,
+                "state": state, "interrupted": self.interrupted(now),
+                "started_at": iso(self.started_at), "last_success_at": iso(self.last_success_at),
+                "status": self.status, "progress": self.progress if state == "refreshing" else None,
+                "created_at": iso(self.created_at)}
+
+
+def claim_verdict(rec: ImportRecord, now: datetime) -> str:
+    """'claimed', or why a refresh can't start now: 'running', 'too_soon', 'too_many'."""
+    if rec.state == "refreshing" and not rec.interrupted(now):
+        return "running"
+    if rec.last_success_at and now - _utc(rec.last_success_at) < timedelta(seconds=REFRESH_GAP_S):
+        return "too_soon"
+    recent = rec.attempts_since and now - _utc(rec.attempts_since) < timedelta(hours=1)
+    if recent and rec.attempts >= REFRESH_ATTEMPTS_PER_HOUR:
+        return "too_many"
+    return "claimed"
+
+
+def _claimed(rec: ImportRecord, token: str, now: datetime) -> dict:
+    """The fields a claim sets (both stores)."""
+    recent = rec.attempts_since and now - _utc(rec.attempts_since) < timedelta(hours=1)
+    return {"state": "refreshing", "owner": token, "started_at": now, "progress": None,
+            "attempts": rec.attempts + 1 if recent else 1,
+            "attempts_since": rec.attempts_since if recent else now}
+
+
+def _enc_secrets(secrets: dict) -> str:
+    return _ENC_PREFIX + _fernet().encrypt(json.dumps(secrets).encode()).decode()
+
+
+def _dec_secrets(stored: str) -> dict:
+    return json.loads(_fernet().decrypt(stored[len(_ENC_PREFIX):].encode()))
+
+
+def _latest_is(versions: list[DatasetVersion], content_hash: str) -> bool:
+    """An import's "nothing new": equal to the latest version only (red-team 3: a window
+    switched back matched an older version and the latest stayed the stale one)."""
+    return bool(versions) and versions[-1].content_hash.split("-")[0] == content_hash
+
+
+def _version_hash(versions: list[DatasetVersion], content_hash: str) -> str:
+    """The hash a new import version is stored under: its own, or, when an older version has
+    the same bytes (unique per dataset), the hash with its version number after it.
+    ponytail: the stored hash then isn't the bytes' alone; `_latest_is` reads past the suffix."""
+    taken = {v.content_hash for v in versions}
+    return content_hash if content_hash not in taken else f"{content_hash}-{len(versions) + 1}"
+
+
 def _own_upload(data: str) -> tuple[str, str] | None:
     """A pre-5.6b thread's own upload (no dataset): (path, user). A dataset's files are the
     dataset's, deleted with it, never with a thread."""
@@ -271,6 +361,38 @@ class DatasetVersionRow(Base):
     created_at = Column(DateTime(timezone=True), nullable=False)
 
 
+class ImportRow(Base):
+    __tablename__ = "imports"
+
+    id = Column(String, primary_key=True)
+    user_id = Column(String, nullable=False, index=True)
+    vendor = Column(String, nullable=False)
+    account = Column(String, nullable=False)
+    test_mode = Column(Boolean, nullable=False)
+    secrets = Column(Text, nullable=False)               # Fernet: the key, never plain at rest
+    tables = Column(Text, nullable=False)                # JSON {table: dataset id}
+    window_from = Column(String, nullable=True)
+    state = Column(String, nullable=False)
+    owner = Column(String, nullable=True)
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    last_success_at = Column(DateTime(timezone=True), nullable=True)
+    attempts = Column(Integer, nullable=False, default=0)
+    attempts_since = Column(DateTime(timezone=True), nullable=True)
+    status = Column(Text, nullable=False)                # JSON, per table
+    progress = Column(Text, nullable=True)               # JSON
+    created_at = Column(DateTime(timezone=True), nullable=False)
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
+
+
+def _import(r: ImportRow) -> ImportRecord:
+    return ImportRecord(
+        id=r.id, user_id=r.user_id, vendor=r.vendor, account=r.account, test_mode=r.test_mode,
+        secrets=_dec_secrets(r.secrets), tables=json.loads(r.tables), window_from=r.window_from,
+        state=r.state, owner=r.owner, started_at=r.started_at, last_success_at=r.last_success_at,
+        attempts=r.attempts, attempts_since=r.attempts_since, status=json.loads(r.status),
+        progress=json.loads(r.progress) if r.progress else None, created_at=r.created_at)
+
+
 def _summary(sid: str, m: dict) -> SessionSummary:
     return SessionSummary(
         session_id=sid, title=m.get("title"), dataset_id=m.get("dataset_id"),
@@ -298,6 +420,8 @@ class InMemorySessionStore:
                                                #        created_at, deleted_at}
         self._versions: dict[str, DatasetVersion] = {}
         self._upload_lock = asyncio.Lock()
+        self._imports: dict[str, dict] = {}    # id -> {rec: ImportRecord (no secrets),
+                                               #        secrets: encrypted, deleted_at}
 
     async def init(self) -> None:
         pass
@@ -490,9 +614,11 @@ class InMemorySessionStore:
             if dataset_id is not None and (dataset_id not in live
                                            or self._datasets[dataset_id]["kind"] != "upload"):
                 return None
-            # An explicit dataset ("Upload new version") only dedups within itself.
+            # An explicit dataset ("Upload new version") only dedups within itself; never into
+            # an import's or a live source's dataset (5.8c red-team 3)
+            uploads = [d for d in live if self._datasets[d]["kind"] == "upload"]
             for v in self._versions.values():
-                if v.dataset_id in ([dataset_id] if dataset_id else live) \
+                if v.dataset_id in ([dataset_id] if dataset_id else uploads) \
                         and v.content_hash == content_hash:
                     await asyncio.to_thread(_restore_file, v.file_path, write_file)
                     return self._dataset(v.dataset_id), v, "existing"
@@ -618,6 +744,116 @@ class InMemorySessionStore:
         self._datasets.pop(dataset_id, None)
         return True
 
+    # ── SaaS imports ─────────────────────────────────────────────────────────────
+
+    def _import_rec(self, import_id: str, user_id: str | None = None) -> ImportRecord | None:
+        stored = self._imports.get(import_id)
+        if stored is None or stored["deleted_at"] or (user_id and stored["rec"].user_id != user_id):
+            return None
+        rec = stored["rec"]   # a copy out: a caller's changes never reach the store
+        return ImportRecord(**{**rec.__dict__, "secrets": _dec_secrets(stored["secrets"]),
+                               "tables": dict(rec.tables),
+                               "status": json.loads(json.dumps(rec.status))})
+
+    def _import_set(self, import_id: str, **fields) -> None:
+        stored = self._imports[import_id]
+        if "secrets" in fields:   # encrypted at rest, as on Postgres
+            stored["secrets"] = _enc_secrets(fields.pop("secrets"))
+        for k, v in fields.items():
+            setattr(stored["rec"], k, v)
+
+    async def create_import(self, user_id: str, *, vendor: str, account: str, test_mode: bool,
+                            secrets: dict, tables: dict[str, str],
+                            window_from: str | None = None) -> ImportRecord:
+        """An import and one dataset per table (`tables`: name → the dataset's name)."""
+        ids = {t: self._new_dataset(user_id, label, "import") for t, label in tables.items()}
+        rec = ImportRecord(id=str(uuid.uuid4()), user_id=user_id, vendor=vendor, account=account,
+                           test_mode=test_mode, secrets={}, tables=ids,
+                           window_from=window_from, state="idle", owner=None, started_at=None,
+                           last_success_at=None, attempts=0, attempts_since=None, status={},
+                           progress=None, created_at=_now())
+        self._imports[rec.id] = {"rec": rec, "secrets": _enc_secrets(secrets), "deleted_at": None}
+        return ImportRecord(**{**rec.__dict__, "secrets": secrets, "tables": dict(ids)})
+
+    async def get_import(self, import_id: str, user_id: str) -> ImportRecord | None:
+        return self._import_rec(import_id, user_id)
+
+    async def list_imports(self, user_id: str) -> list[ImportRecord]:
+        return sorted((r for i in self._imports if (r := self._import_rec(i, user_id))),
+                      key=lambda r: r.created_at, reverse=True)
+
+    async def claim_refresh(self, import_id: str, user_id: str, token: str,
+                            now: datetime) -> str | None:
+        rec = self._import_rec(import_id, user_id)
+        if rec is None:
+            return None
+        verdict = claim_verdict(rec, now)
+        if verdict == "claimed":
+            self._import_set(import_id, **_claimed(rec, token, now))
+        return verdict
+
+    async def save_refresh(self, import_id: str, token: str, *, status: dict | None = None,
+                           progress: dict | None = None, state: str | None = None,
+                           now: datetime | None = None) -> bool:
+        """The refresh holding `token` records its progress, a table's status, or its end
+        (`state` idle: every table whole; failed: one wasn't). A write from a refresh that lost
+        the row (taken over as interrupted) changes nothing."""
+        rec = self._import_rec(import_id)
+        if rec is None or rec.owner != token:
+            return False
+        fields: dict = {}
+        if status is not None:
+            fields["status"] = status
+        if progress is not None:
+            fields["progress"] = progress
+        if state is not None:
+            fields.update(state=state, owner=None, progress=None)
+            if state == "idle":
+                fields["last_success_at"] = now
+        self._import_set(import_id, **fields)
+        return True
+
+    async def replace_import_key(self, import_id: str, user_id: str, *, secrets: dict,
+                                 account: str, test_mode: bool) -> bool:
+        if self._import_rec(import_id, user_id) is None:
+            return False
+        self._import_set(import_id, secrets=secrets, account=account, test_mode=test_mode)
+        return True
+
+    async def set_import_window(self, import_id: str, user_id: str,
+                                window_from: str | None) -> bool:
+        if self._import_rec(import_id, user_id) is None:
+            return False
+        self._import_set(import_id, window_from=window_from)
+        return True
+
+    async def delete_import(self, import_id: str, user_id: str, with_tables: bool) -> bool:
+        """The import and its key go now; its tables too when asked (then as any dataset)."""
+        rec = self._import_rec(import_id, user_id)
+        if rec is None:
+            return False
+        self._imports[import_id]["deleted_at"] = _now()
+        self._imports[import_id]["secrets"] = _enc_secrets({})   # the key goes now
+        for did in rec.tables.values() if with_tables else ():
+            await self.tombstone_dataset(did, user_id)
+        return True
+
+    async def add_import_version(self, user_id: str, dataset_id: str, *, content_hash: str,
+                                 columns: list[str], rows: int | None,
+                                 write_file: Callable[[], str]
+                                 ) -> tuple[DatasetVersion, str] | None:
+        """A refreshed table: ('unchanged' when equal to the latest version, else a new one).
+        None: not this user's import dataset."""
+        if dataset_id not in self._live_datasets(user_id) \
+                or self._datasets[dataset_id]["kind"] != "import":
+            return None
+        versions = self._dataset(dataset_id).versions
+        if _latest_is(versions, content_hash):
+            return versions[-1], "unchanged"
+        path = await asyncio.to_thread(write_file)
+        stored = _version_hash(versions, content_hash)
+        return self._add_version(dataset_id, stored, path, rows, columns, user_id), "new_version"
+
 
 class SessionStore:
     def __init__(self, database_url: str) -> None:
@@ -631,7 +867,7 @@ class SessionStore:
             await schema_lock(conn)
             await conn.run_sync(Base.metadata.create_all, tables=[
                 SessionRecord.__table__, DashboardChart.__table__, DatasetRow.__table__,
-                DatasetVersionRow.__table__])
+                DatasetVersionRow.__table__, ImportRow.__table__])
             # Backfill columns on pre-existing PG tables. SQLite picks these up
             # at table-create time so we only run on the postgresql dialect.
             if self._engine.dialect.name == "postgresql":
@@ -900,7 +1136,9 @@ class SessionStore:
             if dataset_id is not None and (dataset_id not in by_id
                                            or by_id[dataset_id].kind != "upload"):
                 return None
-            for d in ([by_id[dataset_id]] if dataset_id else live):   # explicit: only itself
+            # explicit: only itself; never into an import's or a live source's (5.8c red-team 3)
+            for d in ([by_id[dataset_id]] if dataset_id else
+                      [d for d in live if d.kind == "upload"]):
                 for v in d.versions:
                     if v.content_hash == content_hash:
                         await asyncio.to_thread(_restore_file, v.file_path, write_file)
@@ -1085,3 +1323,139 @@ class SessionStore:
             await db.execute(delete(DatasetRow).where(DatasetRow.id == dataset_id))
             await db.commit()
         return True
+
+    # ── SaaS imports ─────────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _live_import(import_id: str, user_id: str | None = None):
+        where = [ImportRow.id == import_id, ImportRow.deleted_at.is_(None)]
+        return where + ([ImportRow.user_id == user_id] if user_id else [])
+
+    async def _locked_import(self, db, import_id: str,
+                             user_id: str | None = None) -> ImportRow | None:
+        """The row under its lock for the transaction: one decision at a time (claim_verdict)."""
+        return (await db.execute(select(ImportRow).where(*self._live_import(import_id, user_id))
+                                 .with_for_update())).scalars().first()
+
+    async def create_import(self, user_id: str, *, vendor: str, account: str, test_mode: bool,
+                            secrets: dict, tables: dict[str, str],
+                            window_from: str | None = None) -> ImportRecord:
+        now = _now()
+        ids = {t: str(uuid.uuid4()) for t in tables}
+        row = ImportRow(id=str(uuid.uuid4()), user_id=user_id, vendor=vendor, account=account,
+                        test_mode=test_mode, secrets=_enc_secrets(secrets), tables=json.dumps(ids),
+                        window_from=window_from, state="idle", attempts=0, status="{}",
+                        created_at=now)
+        async with self._session_factory() as db:
+            for t, label in tables.items():
+                db.add(DatasetRow(id=ids[t], user_id=user_id, name=label, kind="import",
+                                  created_at=now))
+            db.add(row)
+            await db.commit()
+        return _import(row)
+
+    async def get_import(self, import_id: str, user_id: str) -> ImportRecord | None:
+        async with self._session_factory() as db:
+            row = (await db.execute(select(ImportRow).where(
+                *self._live_import(import_id, user_id)))).scalars().first()
+        return _import(row) if row else None
+
+    async def list_imports(self, user_id: str) -> list[ImportRecord]:
+        async with self._session_factory() as db:
+            rows = (await db.execute(select(ImportRow).where(
+                ImportRow.user_id == user_id, ImportRow.deleted_at.is_(None))
+                .order_by(ImportRow.created_at.desc()))).scalars().all()
+        return [_import(r) for r in rows]
+
+    async def claim_refresh(self, import_id: str, user_id: str, token: str,
+                            now: datetime) -> str | None:
+        async with self._session_factory() as db:
+            row = await self._locked_import(db, import_id, user_id)
+            if row is None:
+                return None
+            verdict = claim_verdict(_import(row), now)
+            if verdict == "claimed":
+                for k, v in _claimed(_import(row), token, now).items():
+                    setattr(row, k, json.dumps(v) if k == "progress" and v else v)
+                await db.commit()
+            return verdict
+
+    async def save_refresh(self, import_id: str, token: str, *, status: dict | None = None,
+                           progress: dict | None = None, state: str | None = None,
+                           now: datetime | None = None) -> bool:
+        async with self._session_factory() as db:
+            row = await self._locked_import(db, import_id)
+            if row is None or row.owner != token:
+                return False
+            if status is not None:
+                row.status = json.dumps(status)
+            if progress is not None:
+                row.progress = json.dumps(progress)
+            if state is not None:
+                row.state, row.owner, row.progress = state, None, None
+                if state == "idle":
+                    row.last_success_at = now
+            await db.commit()
+            return True
+
+    async def replace_import_key(self, import_id: str, user_id: str, *, secrets: dict,
+                                 account: str, test_mode: bool) -> bool:
+        async with self._session_factory() as db:
+            done = await db.execute(update(ImportRow).where(*self._live_import(import_id, user_id))
+                                    .values(secrets=_enc_secrets(secrets), account=account,
+                                            test_mode=test_mode))
+            await db.commit()
+            return done.rowcount == 1
+
+    async def set_import_window(self, import_id: str, user_id: str,
+                                window_from: str | None) -> bool:
+        async with self._session_factory() as db:
+            done = await db.execute(update(ImportRow).where(*self._live_import(import_id, user_id))
+                                    .values(window_from=window_from))
+            await db.commit()
+            return done.rowcount == 1
+
+    async def delete_import(self, import_id: str, user_id: str, with_tables: bool) -> bool:
+        async with self._session_factory() as db:
+            tables = (await db.execute(
+                update(ImportRow).where(*self._live_import(import_id, user_id))
+                .values(deleted_at=_now(), secrets=_enc_secrets({}))   # the key goes now
+                .returning(ImportRow.tables))).scalars().first()
+            await db.commit()
+        if tables is None:
+            return False
+        for did in json.loads(tables).values() if with_tables else ():
+            await self.tombstone_dataset(did, user_id)
+        return True
+
+    async def add_import_version(self, user_id: str, dataset_id: str, *, content_hash: str,
+                                 columns: list[str], rows: int | None,
+                                 write_file: Callable[[], str]
+                                 ) -> tuple[DatasetVersion, str] | None:
+        async with self._session_factory() as db:
+            ds = (await db.execute(select(DatasetRow).where(
+                DatasetRow.id == dataset_id, DatasetRow.kind == "import",
+                *self._live_ds(user_id)).with_for_update())).scalars().first()
+            if ds is None:
+                return None
+            versions = [self._version(v) for v in (await db.execute(
+                select(DatasetVersionRow).where(DatasetVersionRow.dataset_id == dataset_id)
+                .order_by(DatasetVersionRow.version))).scalars().all()]
+            if _latest_is(versions, content_hash):
+                return versions[-1], "unchanged"
+            path = await asyncio.to_thread(write_file)
+            try:
+                v = DatasetVersion(id=str(uuid.uuid4()), dataset_id=dataset_id,
+                                   version=len(versions) + 1,
+                                   content_hash=_version_hash(versions, content_hash),
+                                   file_path=path, rows=rows, columns=list(columns),
+                                   created_at=_now())
+                db.add(DatasetVersionRow(id=v.id, dataset_id=dataset_id, user_id=user_id,
+                                         version=v.version, content_hash=v.content_hash,
+                                         file_path=path, rows=rows, columns=json.dumps(columns),
+                                         created_at=v.created_at))
+                await db.commit()
+            except Exception:
+                _delete_upload(path, user_id)   # never a file no row points at
+                raise
+            return v, "new_version"
