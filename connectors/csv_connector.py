@@ -20,7 +20,7 @@ import chardet
 import pandas as pd
 
 from agents.errors import IngestionError
-from connectors.base import DataConnector, normalize_frame
+from connectors.base import DataConnector, exact_whole_numbers, normalize_frame
 
 # Path traversal guard: only files inside <repo>/uploads/ may be loaded.
 # Resolved once at import time so symlink games can't bypass the check at request time.
@@ -67,6 +67,7 @@ _MEASURE_HEADER_RE = re.compile(r"(?:^|[^a-z])(?:qty|quantity|units?|amount|coun
                                 r"score|weight|hours|days|minutes|sales|revenue)(?:$|[^a-z])", re.I)
 _CODE_HEADER_RE = re.compile(r"(?:^|[^a-z])(?:code|id|no|nr|ref|key)$", re.I)   # unit_code "007"
 _SAMPLE_LINES = 200
+_SAMPLE_LINE_CHARS = 1_000_000   # 10,000 columns of 100 characters
 
 
 def _decode(content: bytes) -> tuple[str, str]:
@@ -107,7 +108,10 @@ def _layout(text: str) -> tuple[str, int, str]:
     header is the first row unless it is narrower than 3/4 of the table: then report titles sit
     above it ("Acme, Inc." splits into 2 fields of 8). A decimal comma is assumed when the delimiter isn't a
     comma and unambiguous comma-decimals ("129,90", "1.249,00") outnumber dot-decimals."""
-    sample = "\n".join(text.splitlines()[:_SAMPLE_LINES])
+    # each sampled line cut at a width no real table reaches: csv.reader builds every field of a
+    # row, five times (one per delimiter), so a 50 MB line was 25M strings before any check
+    # (automated security review of the hardening push)
+    sample = "\n".join(line[:_SAMPLE_LINE_CHARS] for line in text.splitlines()[:_SAMPLE_LINES])
     best: tuple = (False, 0.0, 0)
     sep, rows = ",", []
     for d in _DELIMITERS:
@@ -139,6 +143,83 @@ def _layout(text: str) -> tuple[str, int, str]:
     return sep, line, "," if sep != "," and eu > us else "."
 
 
+_LINE_END = re.compile(r"\r\n|\n|\r")
+
+
+# unrolled and possessive (*+, Python 3.11): no backtracking state kept per character or per
+# repetition (hardening audit: the alternation form held 1.3 GB on a 10 MB unclosed quote; the
+# automated review: a long run of "" escapes grew the plain unrolled form's state)
+_QUOTED_FIELD = re.compile(r'"[^"]*+(?:""[^"]*+)*+"')
+
+
+def _record_fields(text: str, sep: str, pos: int) -> tuple[int, int]:
+    """(how many fields the record at `pos` has, where the next record starts), field by field
+    as pandas reads them, stopping one past the cap: no field is built, so a 50 MB row costs a
+    scan, never its millions of strings. A quote opens a quoted field only at the field's start
+    (mid-field it is a character: `a"b,c` is two fields), and a quoted field, which may hold the
+    delimiter or a newline, ends at its closing quote; an unclosed one is one field to the end,
+    as pandas reads it (automated reviews of the hardening: a free-floating quote token let
+    `a"b,…` count as one field while pandas built millions)."""
+    rest = re.compile(rf"[^{re.escape(sep)}\r\n]*")
+    fields = 1
+    while fields <= _MAX_COLUMNS:
+        if text.startswith('"', pos):
+            if not (m := _QUOTED_FIELD.match(text, pos)):
+                return fields, len(text)
+            pos = m.end()
+        pos = rest.match(text, pos).end()
+        if not text.startswith(sep, pos):
+            end = _LINE_END.match(text, pos)
+            return fields, end.end() if end else len(text)
+        fields, pos = fields + 1, pos + len(sep)
+    return fields, len(text)
+
+
+def _header_fields(text: str, sep: str, skip: int) -> int:
+    """How many fields the header row has, past `skip` lines (see `_record_fields`)."""
+    pos = 0
+    for _ in range(skip):
+        if not (end := _LINE_END.search(text, pos)):
+            return 0
+        pos = end.end()
+    return _record_fields(text, sep, pos)[0]
+
+
+def _widest_record(text: str, sep: str) -> int:
+    """Past the cap if any record is (else 0): pandas tokenizes every field of a row wider than
+    its header and then drops the extra ones (2.5 s a MB: one 50 MB line of commas under a
+    two-column header held a worker for minutes). C-speed where it can be, exact where it must:
+    - fewer delimiters in the whole text than the cap: no record can be wide;
+    - no quote anywhere: a record is a line (as pandas ends one: never str.splitlines, which ends
+      lines at \\x1c and U+2028), and only a line at least the cap long can be wide: found by a
+      regex, never by splitting the file (550 MB for 46 MB of short lines: security review);
+    - quotes: a quoted newline joins short lines into one record (1.6 GB proven: test analyst),
+      so records holding a quote are counted field by field, quote-free lines skipped whole.
+    ponytail: a large file quoted throughout pays a Python step per field (~1 s a 10 MB)."""
+    if text.count(sep) < _MAX_COLUMNS:
+        return 0
+    # anchored at a line's start: unanchored, finditer retried from every character of a line
+    # just short of the cap, O(L²) a line (audit pass 2: ~25 CPU minutes, GIL held, at 50 MB)
+    long_line = re.compile(rf"(?<![^\r\n])[^\r\n]{{{_MAX_COLUMNS},}}")
+    if '"' not in text:
+        wide = any(m.group().count(sep) >= _MAX_COLUMNS for m in long_line.finditer(text))
+        return _MAX_COLUMNS + 1 if wide else 0
+    quote_free_lines = re.compile(r'(?:[^"\r\n]*+(?:\r\n|\n|\r))++')   # possessive: no state
+    # kept per line (automated review: millions of short lines then a quote)
+    pos = 0
+    while pos < len(text):
+        if (run := quote_free_lines.match(text, pos)) is not None and run.end() > pos:
+            if any(m.group().count(sep) >= _MAX_COLUMNS
+                   for m in long_line.finditer(text, pos, run.end())):
+                return _MAX_COLUMNS + 1
+            pos = run.end()
+            continue
+        fields, pos = _record_fields(text, sep, pos)
+        if fields > _MAX_COLUMNS:
+            return fields
+    return 0
+
+
 def _read_text_table(content: bytes, suffix: str) -> tuple[pd.DataFrame, dict]:
     text, encoding = _decode(content)
     if sum(ch < " " and ch not in "\t\r\n" for ch in text[:4096]) > 40:   # control bytes: not text
@@ -147,14 +228,9 @@ def _read_text_table(content: bytes, suffix: str) -> tuple[pd.DataFrame, dict]:
     if suffix == ".tsv" and sep != "\t" and "\t" in text[:4096]:
         sep = "\t"
     # the header the read below will take (its delimiter, past its preamble, quotes honoured),
-    # read alone first: millions of columns would exhaust memory in the full read (5.8b; a data
-    # row wider than the header is a ParserError there)
-    try:
-        width = pd.read_csv(io.StringIO(text), sep=sep, skiprows=header, nrows=0,
-                            index_col=False).shape[1]
-    except (pd.errors.ParserError, pd.errors.EmptyDataError):
-        width = 0   # the full read says what's wrong
-    if width > _MAX_COLUMNS:   # as the message says (code review: exactly 10,000 was refused)
+    # counted first, stopping at the cap: millions of columns would exhaust memory in the full
+    # read (5.8b), and a header read with pandas built them all before the count (hardening)
+    if _header_fields(text, sep, header) > _MAX_COLUMNS or _widest_record(text, sep) > _MAX_COLUMNS:
         raise IngestionError("too many columns", f"The file has more than {_MAX_COLUMNS:,} "
                              "columns, past what can be read.")
     try:
@@ -170,8 +246,10 @@ def _read_text_table(content: bytes, suffix: str) -> tuple[pd.DataFrame, dict]:
     info = {"format": suffix.lstrip("."), "encoding": encoding, "delimiter": sep,
             "decimal": decimal, "header_line": header + 1, "notes": []}
     # Codes written with a leading zero (ZIP 02134, account 00731) are text: read as numbers they
-    # lose the zero for good. Only when the file has one, re-read those columns as text.
-    if re.search(rf"(?:^|{re.escape(sep)})\s*\"?0\d", text, re.M):
+    # lose the zero for good; and long whole numbers (ids past 2**53) a blank turns into rounded
+    # floats. Only when the file has either, re-read the columns as text.
+    long_digits = re.search(r"\d{16,}", text) is not None
+    if long_digits or re.search(rf"(?:^|{re.escape(sep)})\s*\"?0\d", text, re.M):
         try:
             as_text = pd.read_csv(io.StringIO(text), sep=sep, skiprows=header, index_col=False,
                                   dtype=str, low_memory=False)
@@ -193,6 +271,10 @@ def _read_text_table(content: bytes, suffix: str) -> tuple[pd.DataFrame, dict]:
             df[col] = as_text[col].str.strip()
         if zeros:
             info["notes"].append(f"Kept as text (leading zeros): {', '.join(map(str, zeros[:5]))}.")
+        for col in df.columns if long_digits else ():
+            if col not in zeros and not pd.api.types.is_integer_dtype(df[col]) and \
+                    (exact := exact_whole_numbers(as_text[col])) is not None:
+                df[col] = exact
     if header:
         info["notes"].append(f"Skipped {header} line{'s' * (header != 1)} above the header "
                              "(a report title).")
@@ -244,14 +326,10 @@ def _readable_size(content: bytes, suffix: str) -> None:
                                           for p in parts):
             raise IngestionError("workbook parts", "The workbook's parts aren't an Excel "
                                  "workbook's. Save it again from Excel and upload that.")
-    elif suffix in (".csv", ".tsv"):
-        # a cheap first gate before the layout's sniffing (security review): the lines it samples
-        # (any line ending), each under the cap per delimiter; the exact check is the header's
-        # width as the reader takes it (_read_text_table)
-        lines = content[:4 * 2**20].splitlines()[:_SAMPLE_LINES]
-        if any(line.count(d) >= _MAX_COLUMNS for line in lines for d in (b",", b";", b"\t", b"|")):
-            raise IngestionError("too many columns", f"The file has more than {_MAX_COLUMNS:,} "
-                                 "columns, past what can be read.")
+    # A CSV's width is checked once, exactly, as the reader takes its header (_read_text_table).
+    # 5.8b's cheap per-line gate counted raw delimiters, quotes included, and refused a two-column
+    # file with one long quoted cell (senior audit); without it a 5M-comma line is still refused
+    # in 0.3 s (tests/test_share_links.py).
 
 
 def _read_bytes(content: bytes, suffix: str) -> tuple[pd.DataFrame, dict]:
@@ -306,6 +384,17 @@ def _read_bytes(content: bytes, suffix: str) -> tuple[pd.DataFrame, dict]:
     if df.shape[1] == 1 and any(d in str(df.columns[0]) for d in _DELIMITERS if d != " "):
         raise IngestionError("one column", "All the data landed in one column. Check the file's "
                              "delimiter and upload it again.")
+    # one column read, but a record holds a table past the cap (a report title above it threw the
+    # layout off): said as too wide, never junk text. Counted as records, quotes honoured: a raw
+    # count refused a one-column file with a long quoted cell (hardening audit). latin-1: every
+    # byte one character, so the ASCII delimiters and quotes are where they are in the file
+    # the first 4 MB: a table behind a title shows there, and four full scans of a large quoted
+    # one-column file cost seconds each (automated review)
+    head = content[:4 * 2**20].decode("latin-1")
+    if df.shape[1] == 1 and suffix in (".csv", ".tsv") and any(
+            _widest_record(head, d) > _MAX_COLUMNS for d in (",", ";", "\t", "|")):
+        raise IngestionError("too many columns", f"The file has more than {_MAX_COLUMNS:,} "
+                             "columns, past what can be read.")
     if df.empty:
         raise IngestionError("no rows", "The file has column headers but no data rows.")
     return normalize_frame(df), info

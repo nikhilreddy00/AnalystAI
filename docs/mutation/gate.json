@@ -278,9 +278,33 @@
   "equivalents": [],
   "hash": "64762fd8b63479ff"
  },
+ "connectors/base.py::_Registry.__init__": {
+  "equivalents": [],
+  "hash": "4da4e47cb8967883"
+ },
+ "connectors/base.py::_config_secrets": {
+  "equivalents": [],
+  "hash": "9a3bf12b1dac6e9a"
+ },
+ "connectors/base.py::_cut": {
+  "equivalents": [],
+  "hash": "ef01555fc232e018"
+ },
  "connectors/base.py::_inside": {
   "equivalents": [],
   "hash": "117eebf467133fa3"
+ },
+ "connectors/base.py::_minutes": {
+  "equivalents": [],
+  "hash": "2aebd933f5c33931"
+ },
+ "connectors/base.py::_registry": {
+  "equivalents": [],
+  "hash": "db409e3367eff97f"
+ },
+ "connectors/base.py::_secret_key": {
+  "equivalents": [],
+  "hash": "8b14d6206d49075d"
  },
  "connectors/base.py::as_times": {
   "equivalents": [
@@ -323,9 +347,46 @@
     "new": "encoding = response.headers.get(\"content-encoding\", \"IDENTITY\").strip().lower()",
     "old": "encoding = response.headers.get(\"content-encoding\", \"identity\").strip().lower()",
     "reason": "the default is lower-cased on the same line before it is compared"
+   },
+   {
+    "n": 1,
+    "new": "out = decoder.decompress(chunk, cap + 1 + len(body))",
+    "old": "out = decoder.decompress(chunk, cap + 1 - len(body))",
+    "reason": "a looser limit still bounds a chunk's output (under 2 x cap + 1; the tracemalloc test allows 3 x cap) and a body past the cap is refused on the next lines"
+   },
+   {
+    "n": 1,
+    "new": "out = decoder.decompress(chunk, cap + 2 - len(body))",
+    "old": "out = decoder.decompress(chunk, cap + 1 - len(body))",
+    "reason": "one byte more may come out, and a body past the cap is refused on the next lines either way"
    }
   ],
-  "hash": "22dd705723db8370"
+  "hash": "5891dde72e48cd95"
+ },
+ "connectors/base.py::credential_scope": {
+  "equivalents": [],
+  "hash": "8c820e6fb31bf9f9"
+ },
+ "connectors/base.py::exact_whole_numbers": {
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "return pd.Series(pd.array(exact, ), index=values.index)    # goes via float",
+    "old": "return pd.Series(pd.array(exact, dtype=\"Int64\"), index=values.index)    # goes via float",
+    "reason": "the line above keeps only Python ints inside int64 and pd.NA, which pd.array infers as Int64 itself (checked: [2**62, NA], [-2**63, 5])"
+   },
+   {
+    "n": 1,
+    "new": "return pd.Series(pd.array(exact, dtype=None), index=values.index)    # goes via float",
+    "old": "return pd.Series(pd.array(exact, dtype=\"Int64\"), index=values.index)    # goes via float",
+    "reason": "dtype=None is pd.array's default: the same inference as the entry above"
+   }
+  ],
+  "hash": "88c8547ba7253dc4"
+ },
+ "connectors/base.py::get_connector": {
+  "equivalents": [],
+  "hash": "6d3ac0b19c2f972f"
  },
  "connectors/base.py::normalize_frame": {
   "equivalents": [
@@ -337,6 +398,10 @@
    }
   ],
   "hash": "457cb9c5401fbfb6"
+ },
+ "connectors/base.py::parse_text_dates": {
+  "equivalents": [],
+  "hash": "6b9085cd50f33a56"
  },
  "connectors/base.py::public_addresses": {
   "equivalents": [],
@@ -371,6 +436,14 @@
   ],
   "hash": "a408801d47bf0b15"
  },
+ "connectors/base.py::redact": {
+  "equivalents": [],
+  "hash": "152eafd950ce2719"
+ },
+ "connectors/base.py::register_secrets": {
+  "equivalents": [],
+  "hash": "8d8492318909b6f1"
+ },
  "connectors/base.py::resolved": {
   "equivalents": [],
   "hash": "8875898e7eabba9b"
@@ -384,11 +457,11 @@
     "reason": "sqlite is DIALECTS' last row, so leaving the loop after its row is the same as continuing; a row added after it goes through the README test"
    }
   ],
-  "hash": "0f921ef4ebf9aaf9"
+  "hash": "1f17f397ff525e5e"
  },
  "connectors/base.py::without_secrets": {
   "equivalents": [],
-  "hash": "7aca801387338cc3"
+  "hash": "3818735d974760f2"
  },
  "connectors/link.py::_capped": {
   "equivalents": [],
@@ -446,7 +519,7 @@
     "reason": "'xxxx' never contains 'text/html', as the empty default doesn't"
    }
   ],
-  "hash": "21ff0980627673b2"
+  "hash": "565c623a69f74fdc"
  },
  "connectors/link.py::_with_query": {
   "equivalents": [
@@ -491,15 +564,19 @@
     "reason": "httpx header lookup ignores case"
    }
   ],
-  "hash": "f8b325973ca5c6b0"
+  "hash": "d2567b6a9668b22f"
  },
  "connectors/sql_connector.py::QueryResult.frame": {
   "equivalents": [],
-  "hash": "07aa78d7d410dd98"
+  "hash": "ec278fede8186483"
+ },
+ "connectors/sql_connector.py::QueryResult.notes": {
+  "equivalents": [],
+  "hash": "fa83444a7e1704af"
  },
  "connectors/sql_connector.py::SQLConnector._engine": {
   "equivalents": [],
-  "hash": "68c392d4f4b5b149"
+  "hash": "48cc74af3e6ad54c"
  },
  "connectors/sql_connector.py::SQLConnector._read": {
   "equivalents": [
@@ -528,7 +605,7 @@
     "reason": "SQL keywords are case-insensitive in every dialect"
    }
   ],
-  "hash": "ac51b6363f47f0de"
+  "hash": "d4cd2409a7dbc463"
  },
  "connectors/sql_connector.py::SQLConnector.engine": {
   "equivalents": [],
@@ -536,7 +613,7 @@
  },
  "connectors/sql_connector.py::SQLConnector.query": {
   "equivalents": [],
-  "hash": "901894c6514a92a1"
+  "hash": "ea0dadbc59775c95"
  },
  "connectors/sql_connector.py::SQLConnector.schema_context": {
   "equivalents": [],
@@ -565,9 +642,32 @@
   ],
   "hash": "3d386f639f338bc2"
  },
+ "connectors/sql_connector.py::_as_exported": {
+  "equivalents": [],
+  "hash": "b7d0b7f732118de4"
+ },
  "connectors/sql_connector.py::_assert_single_select": {
   "equivalents": [],
   "hash": "7cc2d609e38d71a8"
+ },
+ "connectors/sql_connector.py::_ca_file": {
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "path = _ca_file_for(None)",
+    "old": "path = _ca_file_for(settings.extra_ca_bundle)",
+    "reason": "caught by --plant (test_the_ca_file_is_rebuilt_when_it_goes_and_a_bad_bundle_is_said fails); under mutmut the cached file of an earlier test is unlinked first, so the rebuild reads the setting"
+   }
+  ],
+  "hash": "42e6f35c744beae0"
+ },
+ "connectors/sql_connector.py::_canonical": {
+  "equivalents": [],
+  "hash": "57e17a69acca6922"
+ },
+ "connectors/sql_connector.py::_cant_run_as_written": {
+  "equivalents": [],
+  "hash": "aa58b253d05eca1b"
  },
  "connectors/sql_connector.py::_checked_address": {
   "equivalents": [
@@ -578,7 +678,7 @@
     "reason": "ips is read next only by `if not ips`, which refuses on None and [] alike"
    }
   ],
-  "hash": "9c4b934289052559"
+  "hash": "6103df1f91252bd4"
  },
  "connectors/sql_connector.py::_connect_pinned": {
   "equivalents": [
@@ -591,13 +691,29 @@
   ],
   "hash": "eee1ead093d5ed73"
  },
+ "connectors/sql_connector.py::_hms": {
+  "equivalents": [],
+  "hash": "61806d4fde35314e"
+ },
+ "connectors/sql_connector.py::_mssql_kind": {
+  "equivalents": [],
+  "hash": "d5fa625acf576b03"
+ },
+ "connectors/sql_connector.py::_mysql_kind": {
+  "equivalents": [],
+  "hash": "3bb74eff10d44bf2"
+ },
+ "connectors/sql_connector.py::_plain": {
+  "equivalents": [],
+  "hash": "61e2ab8c44c928c6"
+ },
  "connectors/sql_connector.py::_query_timeout": {
   "equivalents": [],
   "hash": "f114ffccfc4578dc"
  },
  "connectors/sql_connector.py::_session_error": {
   "equivalents": [],
-  "hash": "1e920e2e8f7437ad"
+  "hash": "dbd47a28aade6522"
  },
  "connectors/sql_connector.py::_sql_of": {
   "equivalents": [],
@@ -609,7 +725,7 @@
  },
  "connectors/sql_connector.py::_tls": {
   "equivalents": [],
-  "hash": "be14e87304125f98"
+  "hash": "17d3ef53a7280252"
  },
  "connectors/sql_connector.py::_unlisted_tables": {
   "equivalents": [
@@ -620,7 +736,7 @@
     "reason": "only the refusal's wording: a function's name is printed the same (upper case) in every dialect"
    }
   ],
-  "hash": "b378df676822aaf1"
+  "hash": "669f24cacbb89d41"
  },
  "connectors/sql_connector.py::dialect_of": {
   "equivalents": [],
@@ -635,11 +751,11 @@
     "reason": "15,015 ms against 15,000: a statement timeout 15 ms longer, which no test can tell from the real one (the slow-query test allows seconds)"
    }
   ],
-  "hash": "bf1bd85597b43763"
+  "hash": "69f00e6b798bf1da"
  },
  "connectors/sql_connector.py::safe_url": {
   "equivalents": [],
-  "hash": "be36049bf0f32a57"
+  "hash": "c1f44621070cd3a2"
  },
  "connectors/sql_connector.py::sql_dialect": {
   "equivalents": [],
@@ -892,7 +1008,7 @@
  },
  "guardrails.py::_function_refused": {
   "equivalents": [],
-  "hash": "4c0343ef48ec5592"
+  "hash": "15a53bd619c665c7"
  },
  "guardrails.py::_invisible": {
   "equivalents": [
@@ -939,17 +1055,32 @@
   ],
   "hash": "b16d3baff8d83652"
  },
+ "guardrails.py::_refusal": {
+  "equivalents": [],
+  "hash": "837c147755cc3fa0"
+ },
  "guardrails.py::_system_schemas": {
   "equivalents": [],
   "hash": "b23596f7da759259"
  },
  "guardrails.py::_tsql_batch_word": {
   "equivalents": [],
-  "hash": "ba99cfff9391a54a"
+  "hash": "cb702616a516477d"
  },
  "guardrails.py::check_sql_readonly": {
   "equivalents": [],
-  "hash": "3a6f2d2dcb374261"
+  "hash": "2a99b95e5e70683e"
+ },
+ "guardrails.py::documented_calls": {
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "return _DOCUMENTED_CALL.findall(_DOCUMENTED.get(dialect, \"XXXX\"))",
+    "old": "return _DOCUMENTED_CALL.findall(_DOCUMENTED.get(dialect, \"\"))",
+    "reason": "a default with no call in it: 'XXXX' and '' both find no documented call"
+   }
+  ],
+  "hash": "7735b25bc7ae99f3"
  },
  "guardrails.py::is_pii_column": {
   "equivalents": [],

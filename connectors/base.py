@@ -12,7 +12,9 @@ import ipaddress
 import re
 import socket
 import ssl
+import zlib
 from abc import ABC, abstractmethod
+from contextvars import ContextVar, Token
 
 import anyio.to_thread
 import certifi
@@ -26,18 +28,24 @@ from orchestrator.state import ConnectorConfig, ConnectorType, DataContract
 # Date-shaped text: ISO (2025-01, 2025-01-31, 2025-01-31 10:00, … -0500), US (1/31/2025),
 # European (31.01.2025), either with a time (31/01/2025 14:30), "Jan 31, 2025".
 _DATE_TEXT_RE = re.compile(
-    r"^(\d{4}-\d{1,2}(-\d{1,2})?([ T][\d:.]+( ?(Z|[+-]\d{2}:?\d{2}))?)?|(\d{1,2}/\d{1,2}/\d{2,4}|\d{1,2}\.\d{1,2}\.\d{4})( \d{1,2}:\d{2}(:\d{2})?)?"
+    r"^(\d{4}-\d{1,2}(-\d{1,2})?([ T](\d{1,2}:[\d:.]+( ?(Z|[+-]\d{2}(:?\d{2})?))?|[\d:.]+( ?(Z|[+-]\d{2}:?\d{2}))?))?|(\d{1,2}/\d{1,2}/\d{2,4}|\d{1,2}\.\d{1,2}\.\d{4})( \d{1,2}:\d{2}(:\d{2})?)?"
     r"|[A-Za-z]{3,9} \d{1,2}, \d{4})$")
 _FIRST_PART_RE = re.compile(r"^(\d{1,2})[/.]\d{1,2}[/.]\d{2,4}")
-_OFFSET_RE = re.compile(r" ?(Z|[+-]\d{2}:?\d{2})$")
+# an offset of hours alone is Postgres's own writing of a timestamptz ('… 18:30:00+00', '-08'):
+# a CSV export of one stayed text while the same column read from the database was an instant
+# (5.8b hardening: the type catalog's timestamptz). Only after a clock time (HH:MM…): the '-05'
+# of a file stamp '2024-03-10 12-05', or the '-04' of a date '2025-01-04', is no offset (audit
+# pass 2: both were read as one, shifting the time and stripping the day)
+_OFFSET_RE = re.compile(
+    r"(?<=\d:\d\d)(?P<rest>(?::\d\d(?:\.\d+)?)?) ?(?P<offset>Z|[+-]\d{2}(?::?\d{2})?)$")
 
 
 def _minutes(offset: str) -> int:
-    """'-0500' / '+01:00' / 'Z' as minutes east of UTC."""
+    """'-0500' / '+01:00' / '+05' / 'Z' as minutes east of UTC."""
     if offset in ("Z", "z"):
         return 0
     digits = offset[1:].replace(":", "")
-    return (1 if offset[0] == "+" else -1) * (int(digits[:2]) * 60 + int(digits[2:]))
+    return (1 if offset[0] == "+" else -1) * (int(digits[:2]) * 60 + int(digits[2:] or 0))
 
 
 def _looks_like_dates(s: pd.Series, share: float = 1.0) -> bool:
@@ -69,10 +77,10 @@ def parse_text_dates(s: pd.Series, share: float = 1.0) -> pd.Series | None:
                                 dayfirst=dayfirst, errors="coerce")
     except ValueError:   # mixed UTC offsets
         text = s.astype("string").str.strip()
-        offsets = {_minutes(m) for m in text.str.extract(_OFFSET_RE)[0].dropna().unique()}
+        offsets = {_minutes(m) for m in text.str.extract(_OFFSET_RE)["offset"].dropna().unique()}
         if len(offsets) == 2 and max(offsets) - min(offsets) == 60 and (max(offsets) <= 0 or min(offsets) >= 0):
             # one place across a daylight-saving change (Shopify's -0500 / -0400): local time
-            parsed = pd.to_datetime(text.str.replace(_OFFSET_RE, "", regex=True), format="mixed",
+            parsed = pd.to_datetime(text.str.replace(_OFFSET_RE, r"\g<rest>", regex=True), format="mixed",
                                     dayfirst=dayfirst, errors="coerce")
         else:   # several places (pickup -05:00, delivery -08:00): UTC keeps instants and durations
             parsed = pd.to_datetime(text, format="mixed", dayfirst=dayfirst, errors="coerce",
@@ -115,19 +123,125 @@ def as_times(s: pd.Series) -> pd.Series:
     return parsed.where(dated | text.str.contains(HAS_YEAR_RE, regex=True).fillna(False))
 
 
-def without_secrets(message: str, config: ConnectorConfig) -> str:
-    """`message` with the config's credentials cut out: a driver's error can quote its URL. The
-    connection string whole, its user-info part (everything between :// and the last @ before
-    the path, so a malformed string is covered too) and its decoded password, and the API key."""
-    from urllib.parse import unquote
+def _config_secrets(config: ConnectorConfig) -> list[str]:
+    """Every piece of a config that is a credential, the strongest first: the connection string
+    whole and its user-info part raw and decoded, the bare password, the API key, a service
+    account, a value in the API URL's query whose key names a credential (`_secret_key`). How
+    each masks text is `_cut`'s rule."""
+    from urllib.parse import parse_qsl, unquote, urlparse
     conn = config.connection_string or ""
-    secrets = {conn, config.auth_value or "", config.service_account_json or ""}
+    secrets = []
     if (m := re.match(r"^[^:/]+://(.*)@[^@/]*(/|$)", conn)) is not None:
         userinfo = m.group(1)
         password = userinfo.split(":", 1)[1] if ":" in userinfo else ""
-        secrets |= {userinfo, password, unquote(password)}
-    for s in sorted((s for s in secrets if len(s) >= 3), key=len, reverse=True):
-        message = message.replace(s, "***")
+        secrets = [conn, userinfo, unquote(userinfo), password, unquote(password)]
+    else:
+        secrets.append(conn)
+    secrets += [config.auth_value or "", config.service_account_json or ""]
+    if config.url:
+        try:
+            query = parse_qsl(urlparse(config.url).query)
+        except ValueError:   # a malformed URL ('[::1'): no credential to read, never a crash in
+            query = []       # the error handler that called this (code review)
+        secrets += [v for k, v in query if _secret_key(k)]
+    return [s for s in dict.fromkeys(secrets) if s]
+
+
+_CREDENTIAL_WORDS = frozenset("""key apikey token sig signature secret password passwd pwd pass
+    auth credential credentials""".split())
+
+
+def _secret_key(key: str) -> bool:
+    """A query key naming a credential, read by its last word (`-`, `_`, camelCase): api_key,
+    X-Amz-Security-Token, sessionToken, private_token. A substring read registered `revenue` for
+    `region_code=revenue` and `Shakespeare` for `author=` (three reviewers); a whole-key read
+    missed X-Amz-Security-Token (automated review). `code` only as the whole key (OAuth's)."""
+    words = re.findall(r"[A-Z]?[a-z0-9]+|[A-Z]+(?![a-z])", key)
+    # APIkey splits as AP + Ikey (automated review): read whole too (a key with a separator in it
+    # ends in its credential word: api_key, access-token)
+    return key.lower() in _CREDENTIAL_KEYS or (bool(words) and words[-1].lower() in _CREDENTIAL_WORDS)
+
+
+_CREDENTIAL_KEYS = frozenset("code apikey apitoken accesstoken authtoken clientsecret".split())
+# Every credential this process has been handed, masked where text reaches an operator: the log
+# filter and the eval reports (Airflow's SecretsMasker). 5.8a and 5.8b masked per sink, and each
+# new sink leaked (logs, three report writers, a query's key: P58-06). Registered where any
+# connector is built (`get_connector`). Text a USER reads is masked with that config's own
+# credentials only (`without_secrets`): one tenant's password masking another's text would tell
+# them it guessed right (automated security review of the hardening). Bounded: the newest 4,096
+# values of at most 8 KB, six characters at least (a short one would mask its letters
+# everywhere), at most 8 from one registration (a config's credentials first), and registering
+# again makes a value newest, so the connectors in use stay masked while old ones age out (one
+# user's flood can't evict them: automated review). Matched by substring, longest first, from a
+# list kept sorted on change (a regex of 4,096 values was a 32 MB compile). Swapped, never
+# mutated, so a log line on another thread reads it while a run registers.
+# One registry per run (the worker) and per request (the API), never one for the process where
+# one process serves many tenants: a shared one was a channel between them three times over (an
+# oracle on another tenant's password, a flood evicting their credentials, and any user masking
+# chosen words in every tenant's logs: automated reviews of the hardening). Child tasks and
+# to_thread copy the context, so they share their run's registry. Outside any scope (the CLI,
+# the evals, whose report writer runs after the run) the process's own.
+_MAX_SECRETS, _MAX_SECRET_CHARS, _PER_REGISTRATION = 4096, 8192, 8
+
+
+class _Registry:
+    __slots__ = ("secrets",)
+
+    def __init__(self) -> None:
+        self.secrets: tuple[tuple[str, ...], tuple[str, ...]] = ((), ())   # newest last; longest first
+
+
+_PROCESS = _Registry()
+_SCOPE: ContextVar[_Registry | None] = ContextVar("credential_scope", default=None)
+
+
+def credential_scope() -> Token:
+    """A fresh registry for this context and what it starts (`_SCOPE.reset(token)` ends it)."""
+    return _SCOPE.set(_Registry())
+
+
+def _registry() -> _Registry:
+    return _SCOPE.get() or _PROCESS
+
+
+def register_secrets(*values: str) -> None:
+    registry = _registry()
+    new = [v for v in dict.fromkeys(values)
+           if v and 6 <= len(v) <= _MAX_SECRET_CHARS][:_PER_REGISTRATION]
+    known = registry.secrets[0]
+    if not new or known[-len(new):] == tuple(new):   # nothing, or already the newest
+        return
+    fresh = set(new)
+    kept = (*(v for v in known if v not in fresh), *new)[-_MAX_SECRETS:]
+    registry.secrets = (kept, tuple(sorted(kept, key=len, reverse=True)))
+
+
+def redact(text: str) -> str:
+    """`text` with every registered credential as *** (operator sinks: logs, eval reports); a
+    password inside its connection string goes with the string (longest first)."""
+    for secret in _registry().secrets[1]:
+        if secret in text:
+            text = _cut(text, secret)
+    return text
+
+
+def _cut(text: str, secret: str) -> str:
+    """`text` with `secret` as ***. A credential form (`user:password`, a connection string) or a
+    long value (≥ 12) wherever it stands; a short bare value only as a whole word: the password
+    'postgres' masked 'postgresql' in every log (three reviewers), and dropping short values
+    instead left a short password a driver echoed in plain sight (automated security review)."""
+    if len(secret) >= 12 or ":" in secret or "@" in secret:
+        return text.replace(secret, "***")
+    return re.sub(rf"(?<!\w){re.escape(secret)}(?!\w)", "***", text)
+
+
+def without_secrets(message: str, config: ConnectorConfig) -> str:
+    """`message` with this config's credentials cut out: a driver's error can quote its URL or
+    echo the password. Never another config's (see `_Registry`), and it registers nothing: a
+    value typed into the connect form never masks the operator's logs (security review: a
+    'password' of 'GuardrailViolation' hid it everywhere); `get_connector` registers real use."""
+    for s in sorted((s for s in _config_secrets(config) if len(s) >= 3), key=len, reverse=True):
+        message = _cut(message, s)
     return message
 
 
@@ -194,19 +308,63 @@ class BodyTooLarge(ValueError):
     """A response past the reader's byte cap."""
 
 
+_ZLIB_AUTO = 32 + zlib.MAX_WBITS   # zlib reads a gzip or a zlib header, whichever it finds
+_MAX_GZIP_MEMBERS = 10_000   # a concatenated log has a few hundred; each costs a decoder
+
+
 async def capped_body(response: httpx.Response, cap: int) -> bytes:
-    """A response's body as sent, at most `cap` bytes, counted as it arrives (a size the server
-    states can't be trusted). Asked for identity, a server may still compress, and a compressed
-    chunk expands past any cap in one decode (5.8b audit: zstd), so a Content-Encoding other than
-    identity is refused (ValueError) and the raw bytes are counted."""
+    """A response's body, at most `cap` bytes once decoded, counted as it arrives (a size the
+    server states can't be trusted). Asked for identity, a server may still compress: gzip and
+    deflate are decoded here, each chunk to no more than the cap has left, so a bomb is refused
+    as too large and never expanded (httpx would decode a chunk whole: 5.8b audit, zstd). 5.8b
+    refused every compressed answer, and an API or CDN that gzips anyway (it loaded before)
+    stopped loading (senior audit). zstd and brotli have no decoder here: said, not read."""
     encoding = response.headers.get("content-encoding", "identity").strip().lower()
-    if encoding not in ("", "identity"):
-        raise ValueError(f"it compressed its answer ({encoding}) though asked not to")
-    body = bytearray()
-    async for chunk in response.aiter_raw():
-        body += chunk
-        if len(body) > cap:
-            raise BodyTooLarge   # each caller says it in its own words (the link's, the API's)
+    if encoding in ("", "identity"):
+        decoder = None
+    elif encoding in ("gzip", "x-gzip", "deflate"):
+        decoder = zlib.decompressobj(_ZLIB_AUTO)
+    else:
+        raise ValueError(f"it compressed its answer as {encoding}, which isn't read here")
+    body, raw = bytearray(), 0
+    raw_deflate_tried, members = False, 1
+    try:
+        async for chunk in response.aiter_raw():
+            raw += len(chunk)   # the sent bytes too, whatever the decoder holds back
+            if raw > cap:
+                raise BodyTooLarge
+            if decoder is None:   # raw is the body: its cap was checked above
+                body += chunk
+                continue
+            while chunk:
+                try:
+                    out = decoder.decompress(chunk, cap + 1 - len(body))
+                except zlib.error:   # deflate sent without its zlib header, as some servers do
+                    if encoding != "deflate" or body or raw_deflate_tried:
+                        raise
+                    raw_deflate_tried, decoder = True, zlib.decompressobj(-zlib.MAX_WBITS)
+                    continue
+                if decoder.unconsumed_tail:   # more would come out than the cap has left
+                    raise BodyTooLarge
+                body += out
+                if len(body) > cap:
+                    raise BodyTooLarge
+                # a member ended: the next one (gzip may be several, each read whole; the first
+                # reader returned only the first: test analyst), or junk, which is refused
+                chunk = decoder.unused_data   # b"" until the member's end
+                if chunk:
+                    members += 1
+                    if members > _MAX_GZIP_MEMBERS:   # millions of empty members: seconds of CPU
+                        raise ValueError(f"its {encoding} answer is in too many pieces")   # (audit 2)
+                    decoder = zlib.decompressobj(_ZLIB_AUTO)
+        if decoder is not None and raw:
+            body += decoder.flush()   # all input was taken (no tail): at most a match's bytes
+            if len(body) > cap:
+                raise BodyTooLarge
+            if not decoder.eof:   # cut short: never half a file read as the whole one
+                raise ValueError(f"its {encoding} answer ended before it was complete")
+    except zlib.error:
+        raise ValueError(f"its {encoding} answer couldn't be unpacked") from None
     return bytes(body)
 
 
@@ -285,6 +443,30 @@ def truncation_note(kept: int, total: int | None, limit: str) -> str:
     return f"{TRUNCATED}{kept:,}{of} rows were loaded ({limit}{more})."
 
 
+_FLOAT_EXACT = 2**53   # past it a float64 can't hold every whole number: two ids would become one
+
+
+def exact_whole_numbers(values: pd.Series) -> pd.Series | None:
+    """A column of whole numbers that a float would round (ids, order numbers past 2**53), as
+    exact Int64, or as its digits past int64; None when it isn't one (a float holds it, or a
+    value isn't a whole number). One rule for the file reader (an id column with a blank reads as
+    float64) and the databases (NUMERIC(19,0)) (5.8b hardening: two ids read as one)."""
+    present = values.dropna()
+    if present.empty:
+        return None
+    digits = present.map(lambda v: str(v).strip())
+    # a leading zero makes it a code (an ICCID, an account number), whatever it holds: text
+    if not digits.str.fullmatch(r"[-+]?(?:0|[1-9]\d*)").all():
+        return None
+    whole = digits.map(int)
+    if whole.map(abs).max() <= _FLOAT_EXACT:
+        return None
+    if whole.map(lambda v: -2**63 <= v < 2**63).all():
+        exact = [whole[i] if i in whole.index else pd.NA for i in values.index]   # no NaN: it
+        return pd.Series(pd.array(exact, dtype="Int64"), index=values.index)    # goes via float
+    return digits.reindex(values.index).astype(object).where(values.notna(), None)
+
+
 def normalize_frame(df: pd.DataFrame) -> pd.DataFrame:
     """The one load rule after any source's read (ADR-0010), so a table reads the same from each:
     '' is a blank; a text column whose values are all dates becomes datetimes (5.8a: dates read
@@ -341,17 +523,11 @@ def sources_table() -> str:
     from connectors import sql_connector as sql
     from connectors.csv_connector import MAX_UPLOAD_MB, UPLOAD_SUFFIXES
     from connectors import link
-    # what a user brings beyond the string (SQL Server has no read-only session: ADR-0010) and
-    # how hosted servers take TLS
-    needs = {"postgresql": " (hosted: `?sslmode=require`)",
-             "mysql": " (hosted, e.g. PlanetScale, RDS: `?ssl_mode=VERIFY_IDENTITY`)",
-             "mariadb": " (hosted: `?ssl_mode=VERIFY_IDENTITY`)",
-             "mssql": "; a read-only login (db_datareader only): a login that can write is refused"}
     rows = [("File upload", f"{', '.join(sorted(UPLOAD_SUFFIXES))} in the UI",
              f"{MAX_UPLOAD_MB} MB per file; old .xls: save as .xlsx first"),
             ("Share link", "a public Google Sheets, Google Drive or Dropbox link, or any https "
              "CSV/xlsx URL, pasted under the upload; OneDrive/SharePoint 'Anyone' links too "
-             "(tested on mocked links only)",
+             "(tested on mocked links only; a 1drv.ms short link is untested)",
              f"copied once as a dataset version (paste again to refresh); {MAX_UPLOAD_MB} MB, "
              f"{link.MAX_HOPS} redirects, public hosts only")]
     for key, d in sql.DIALECTS.items():
@@ -360,7 +536,7 @@ def sources_table() -> str:
                          "development only; refused when `APP_ENV=production`"))
             continue
         rows += [(f"{d.title}, ask questions", f"`{key}://user:password@host:port/database`"
-                  f"{needs[key]}, no table name: the SQL agent writes one read-only query "
+                  f"{d.needs}, no table name: the SQL agent writes one read-only query "
                   "per question and aggregates in the database",
                   f"{sql.MAX_ROWS:,} result rows, {sql.TIMEOUT_S} s per query"),
                  (f"{d.title}, one table", "the same + a table name",
@@ -390,4 +566,5 @@ def get_connector(config: ConnectorConfig) -> DataConnector:
     cls = mapping.get(config.type)
     if not cls:
         raise ValueError(f"Unsupported connector type: {config.type}")
+    register_secrets(*_config_secrets(config))   # every source's credentials, before any use
     return cls(config)

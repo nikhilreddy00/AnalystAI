@@ -14,6 +14,8 @@ from hypothesis import given
 from hypothesis import strategies as st
 from sqlalchemy import create_engine
 
+from tests.conftest import MSSQL_CAN_WRITE
+
 from agents.errors import IngestionError
 from connectors.base import TRUNCATED, get_connector
 from orchestrator.state import AnalysisSession, CleaningAudit, ConnectorConfig, ConnectorType
@@ -162,11 +164,30 @@ def test_a_write_through_run_readonly_fails_on_every_dialect(tmp_path, name, wri
         c.execute(text("DROP TABLE IF EXISTS ro_new"))
         c.execute(text("CREATE TABLE ro_t (a INTEGER)"))
         c.execute(text("INSERT INTO ro_t VALUES (1)"))
-    with pytest.raises(SQLAlchemyError, match=_READ_ONLY_ERROR[name]):
+    # Postgres reads a question through a server-side cursor (5.8b hardening: streamed), and a
+    # cursor holds only a query: the write is refused there first, by name, before the read-only
+    # transaction; that layer is proven alone by the FOR UPDATE case below
+    reason = rf"CURSOR FOR {write.split()[0]}" if name == "postgresql" else _READ_ONLY_ERROR[name]
+    with pytest.raises(SQLAlchemyError, match=reason):
         run_readonly(engine, write)
     with _admin(tmp_path, name).connect() as c:
         assert c.execute(text("SELECT a FROM ro_t")).fetchall() == [(1,)]
     assert "ro_new" not in inspect(engine).get_table_names()
+
+
+def test_postgres_read_only_transaction_refuses_a_query_that_locks(tmp_path):
+    """A query a cursor takes that still writes (row locks): the read-only transaction's own
+    refusal, the layer the cursor now stands in front of."""
+    from sqlalchemy import text
+    from sqlalchemy.exc import SQLAlchemyError
+
+    from connectors.sql_connector import run_readonly
+    engine = _engine_for(_each_dialect(tmp_path, "postgresql"))
+    with _admin(tmp_path, "postgresql").begin() as c:
+        c.execute(text("DROP TABLE IF EXISTS ro_t"))
+        c.execute(text("CREATE TABLE ro_t (a INTEGER)"))
+    with pytest.raises(SQLAlchemyError, match="read-only transaction"):
+        run_readonly(engine, "SELECT a FROM ro_t FOR UPDATE")
 
 
 # what makes each row read-only, removed by the plant below: the read-only transaction (SQLite's
@@ -385,7 +406,7 @@ def test_a_question_result_takes_the_same_load_rule_as_a_table_load():
     from connectors.sql_connector import QueryResult
     df = QueryResult(["day", "note", "flag", "level"],
                      [("2026-01-05", "", 1, 2), ("2026-02-01", "x", 0, 0)], False,
-                     frozenset({2, 3})).frame()
+                     (None, None, "bool", "bool")).frame()
     assert str(df["day"].dtype).startswith("datetime64") and df["note"].isna().tolist() == [True, False]
     assert df["flag"].tolist() == [True, False] and df["level"].tolist() == [2, 0]
 
@@ -676,6 +697,9 @@ def test_an_engine_without_a_row_is_refused_in_so_many_words():
     ("postgresql://a:zzz@h/db", None, None, "a:zzz", "***"),     # longest first, not abc order
     ("postgresql://u:abc@h/db", None, None, "abc", "***"),       # three characters: a secret
     ("postgresql://u:ab@h/db", None, None, "ab cab", "ab cab"),  # two: too short to cut safely
+    # a short bare value only as a whole word (5.8b hardening: 'postgres' cut 'postgresql')
+    ("postgresql://postgres:postgres@h/db", None, None, "postgresql said: postgres refused",
+     "postgresql said: *** refused"),
     (None, "tok-123", None, "key tok-123", "key ***"),
     (None, None, '{"k": 1}', 'sa {"k": 1}', "sa ***"),
     (None, None, None, "XXXX nothing to hide", "XXXX nothing to hide"),
@@ -766,7 +790,9 @@ def test_any_result_shape_becomes_a_frame_without_losing_a_column(names, data):
     from connectors.sql_connector import QueryResult
     rows = [tuple(data.draw(_FRAME_CELLS) for _ in names)
             for _ in range(data.draw(st.integers(0, 3)))]
-    df = QueryResult(list(names), rows, False, frozenset({0}), frozenset({len(names) - 1})).frame()
+    kinds = tuple("bool" if i == 0 else "date" if i == len(names) - 1 else None
+                  for i in range(len(names)))
+    df = QueryResult(list(names), rows, False, kinds).frame()
     assert list(df.columns) == names and len(df) == len(rows)
     assert list(normalize_frame(df).columns) == names
 
@@ -871,7 +897,7 @@ async def test_a_function_read_as_a_table_is_named_in_the_refusal(tmp_path):
     # every unlisted name is said, past a temp table too (mutation gate: `break` there passed)
     ("SELECT * FROM #mine, theirs", "tsql", ["#mine", "theirs"]),
     ("SELECT * FROM OPENDATASOURCE('x', 'y').db.dbo.mine", "tsql", ["dbo.mine()"]),
-    ("SELECT * FROM master..mine", "tsql", ["master.mine"]),
+    ("SELECT * FROM master..mine", "tsql", ["master..mine"]),   # another database, as written
     ("SELECT * FROM other.dbo.mine", "tsql", ["other.dbo.mine"]),
     ("SELECT * FROM mine CROSS APPLY (SELECT TOP 1 a FROM mine) q", "tsql", []),
     ("SELECT * FROM [dbo].[mine]", "tsql", []),
@@ -1288,26 +1314,7 @@ def test_in_production_a_pinned_mysql_without_a_port_dials_3306(monkeypatch):
     assert dialed == [("10.0.0.5", 3306)]
 
 
-@pytest.mark.parametrize(("grant", "revoke"), [
-    ("GRANT INSERT ON dbo.cw_t TO aai_reader", "REVOKE INSERT ON dbo.cw_t FROM aai_reader"),
-    ("GRANT UPDATE ON SCHEMA::dbo TO aai_reader", "REVOKE UPDATE ON SCHEMA::dbo FROM aai_reader"),
-    ("CREATE ROLE cw_role; GRANT DELETE ON dbo.cw_t TO cw_role; ALTER ROLE cw_role ADD MEMBER aai_reader",
-     "ALTER ROLE cw_role DROP MEMBER aai_reader; DROP ROLE cw_role"),
-    ("ALTER ROLE db_owner ADD MEMBER aai_reader", "ALTER ROLE db_owner DROP MEMBER aai_reader"),
-    ("EXEC('CREATE SCHEMA cw_owned AUTHORIZATION aai_reader')", "DROP SCHEMA cw_owned"),
-    ("GRANT IMPERSONATE ON USER::aai_writer TO aai_reader",
-     "REVOKE IMPERSONATE ON USER::aai_writer FROM aai_reader"),
-    ("GRANT EXECUTE TO aai_reader", "REVOKE EXECUTE FROM aai_reader"),
-    # audit pass 2 (security, proven: it granted itself INSERT and wrote; test analyst): the
-    # deny list missed these, the allow list refuses anything not a read
-    ("ALTER ROLE db_securityadmin ADD MEMBER aai_reader",
-     "ALTER ROLE db_securityadmin DROP MEMBER aai_reader"),
-    ("ALTER ROLE db_ddladmin ADD MEMBER aai_reader", "ALTER ROLE db_ddladmin DROP MEMBER aai_reader"),
-    ("GRANT ALTER ANY ROLE TO aai_reader", "REVOKE ALTER ANY ROLE FROM aai_reader"),
-    ("GRANT CREATE SCHEMA TO aai_reader", "REVOKE CREATE SCHEMA FROM aai_reader"),
-    ("ALTER AUTHORIZATION ON OBJECT::dbo.cw_t TO aai_reader",
-     "ALTER AUTHORIZATION ON OBJECT::dbo.cw_t TO SCHEMA OWNER"),
-])
+@pytest.mark.parametrize(("grant", "revoke"), MSSQL_CAN_WRITE)
 async def test_every_way_a_sql_server_login_can_write_is_refused(tmp_path, grant, revoke):
     """5.8b audit (security review, test analyst): the can-write check was proven for
     db_datawriter only. A grant on a table or a schema, a role holding one, db_owner, owning a
@@ -1331,6 +1338,29 @@ async def test_every_way_a_sql_server_login_can_write_is_refused(tmp_path, grant
     finally:
         with _admin(tmp_path, "mssql").begin() as c:
             c.execute(text(revoke))
+
+
+def test_a_grant_a_killed_run_left_on_the_reader_is_undone_at_the_next_start(tmp_path):
+    """The mutation gate's timeout killed a run between a grant and its revoke: the reader owned
+    a schema, and every later run on that database failed the can-write check (P58-35)."""
+    import os
+
+    from sqlalchemy import text
+    from sqlalchemy.engine import make_url
+
+    from connectors.sql_connector import run_readonly
+    from tests.conftest import _mssql_logins
+    url = _each_dialect(tmp_path, "mssql")
+    with _admin(tmp_path, "mssql").begin() as c:
+        c.execute(text("EXEC('CREATE SCHEMA cw_owned AUTHORIZATION aai_reader')"))
+    with pytest.raises(IngestionError, match="session setup"):
+        run_readonly(_engine_for(url), "SELECT 1")
+    admin = create_engine(make_url(os.environ["TEST_MSSQL_URL"]).set(database="master"),
+                          isolation_level="AUTOCOMMIT")
+    with admin.connect() as c:   # what the next start does
+        _mssql_logins(c, text, make_url(os.environ["TEST_MSSQL_URL"]).database)
+    admin.dispose()
+    assert run_readonly(_engine_for(url), "SELECT 1").rows == [(1,)]
 
 
 def test_a_sql_server_query_waits_for_a_lock_no_longer_than_the_timeout(tmp_path):
@@ -1444,3 +1474,438 @@ def test_a_safety_test_names_the_reason_it_expects():
     for f in ("test_connectors_sources.py", "test_sql_guard.py"):
         source = (here / f).read_text()
         assert not re.search(r"except Exception:\s*\n\s*pass", source), f
+
+
+# ── 5.8b hardening: each engine's own types, read as the truth (a catalog, not our datasets) ──
+# The 5.8b gates passed while a NUMERIC(19,0) id read as a float (two ids became one) and MySQL's
+# BIT(1) as bytes: the oracle's tables are written from CSVs, so they never held these types.
+# Two rows per table: edge values, then NULLs (a NULL turns an int column to float in pandas).
+_ID, _BIG = 123456789012345678, "12345678901234567890123"
+_P53 = 2**53 + 1   # the first whole number a float can't hold: the plain-column fast path's edge
+_CATALOG = {
+    "postgresql": (
+        "CREATE TABLE tcat (k int, n0 numeric(19,0), n38 numeric(38,0), n2 numeric(12,2), "
+        "r real, b boolean, tm time, u uuid, j jsonb, by bytea, ts timestamp(6), bi bigint, "
+        "tz timestamptz)",
+        f"INSERT INTO tcat VALUES (1, {_ID}, {_BIG}, 10.50, 0.1, true, '13:45:00', "
+        "'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', '{\"k\": 1}', '\\x0102', '2024-03-10 23:30:00', "
+        f"{_P53}, '2024-03-10 23:30:00+05'), "
+        f"(2, {_ID + 1}, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL), "
+        "(3, NULL, 1, 1.25, 2.5, false, '00:00:01', NULL, NULL, NULL, NULL, 1, NULL)",
+        # an instant, in UTC: as the CSV Postgres exports of it reads ('2024-03-10 18:30:00+00')
+        {"u": ["a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11", None, None], "j": ['{"k": 1}', None, None],
+         "tz": [pd.Timestamp("2024-03-10 18:30:00", tz="UTC"), None, None]}),
+    "mysql": (
+        "CREATE TABLE tcat (k int, n0 decimal(19,0), n38 decimal(38,0), n2 decimal(12,2), "
+        "r float, b bit(1), tm time, u char(36), j json, by_ blob, ts datetime(6), dt date, "
+        "bi bigint, bt bit(8))",
+        f"INSERT INTO tcat VALUES (1, {_ID}, {_BIG}, 10.50, 0.1, b'1', '13:45:00', "
+        "'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', '{\"k\": 1}', x'0102', '2024-03-10 23:30:00', "
+        f"'2024-03-10', {_P53}, b'101'), "
+        f"(2, {_ID + 1}, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '0000-00-00', "
+        "NULL, NULL), "
+        "(3, NULL, 1, 1.25, 2.5, b'0', '-25:00:01', NULL, NULL, NULL, NULL, '2024-03-00', 1, b'0')",
+        {"u": ["a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11", None, None], "j": ['{"k": 1}', None, None],
+         "tm": ["13:45:00", None, "-25:00:01"], "bt": [5, None, 0],   # BIT(8) is a number
+         # a zero date and a partial one are blanks, and the column stays a date column
+         "dt": [pd.Timestamp("2024-03-10"), None, None]}),
+    "mssql": (
+        "CREATE TABLE tcat (k int, n0 numeric(19,0), n38 numeric(38,0), n2 decimal(12,2), "
+        "r real, b bit, tm time(0), u uniqueidentifier, j nvarchar(40), by_ varbinary(4), "
+        "ts datetime2(6), bi bigint)",
+        f"INSERT INTO tcat VALUES (1, {_ID}, {_BIG}, 10.50, 0.1, 1, '13:45:00', "
+        "'A0EEBC99-9C0B-4EF8-BB6D-6BB9BD380A11', N'{\"k\": 1}', 0x0102, '2024-03-10 23:30:00', "
+        f"{_P53}), "
+        f"(2, {_ID + 1}, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL), "
+        "(3, NULL, 1, 1.25, 2.5, 0, '00:00:01', NULL, NULL, NULL, NULL, 1)",
+        {"u": ["A0EEBC99-9C0B-4EF8-BB6D-6BB9BD380A11", None, None], "j": ['{"k": 1}', None, None]}),
+}
+_CATALOG["mariadb"] = (_CATALOG["mysql"][0].replace("j json", "j longtext"), *_CATALOG["mysql"][1:])
+# what every engine's table must read as: exact ids (one NULL: still exact), a 23-digit number as
+# its digits, money as a float, REAL's 0.1 as 0.1 (pyodbc widens float32), a yes/no as one,
+# TIME as the text a CSV holds, bytes as hex, and the timestamp as the CSV of it reads
+_EXPECTED = {"n0": [_ID, _ID + 1, None], "n38": [_BIG, None, "1"], "n2": [10.5, None, 1.25],
+             "r": [0.1, None, 2.5], "b": [True, None, False], "tm": ["13:45:00", None, "00:00:01"],
+             "by": ["0x0102", None, None], "ts": [pd.Timestamp("2024-03-10 23:30:00"), None, None],
+             "bi": [_P53, None, 1]}
+
+
+def _cells(s: pd.Series) -> list:
+    return [None if pd.isna(v) else v for v in s.tolist()]
+
+
+@pytest.mark.parametrize("name", ["postgresql", "mysql", "mariadb", "mssql"])
+async def test_each_engines_own_types_read_as_their_values(tmp_path, name):
+    """Load and question alike (one rule, `QueryResult.frame`), against the values themselves."""
+    from sqlalchemy import text
+    ddl, rows, own = _CATALOG[name]
+    url = _each_dialect(tmp_path, name)
+    with _admin(tmp_path, name).begin() as c:
+        if name in ("mysql", "mariadb"):
+            c.execute(text("SET SESSION sql_mode = ''"))   # zero dates, as old schemas hold them
+        c.execute(text("DROP TABLE IF EXISTS tcat"))
+        c.execute(text(ddl))
+        c.execute(text(rows))
+    try:
+        conn = _sql(url, "tcat")
+        loaded = (await conn.load()).sort_values("k", ignore_index=True)
+        if name in ("mysql", "mariadb"):   # the zero and the partial date: blanked, and said
+            notes = conn.read_info.get("notes", [])
+            assert any("2 values" in n and "zero or partial date" in n for n in notes), notes
+        result = await conn.query("SELECT * FROM tcat ORDER BY k")
+        asked = result.frame()
+        if name in ("mysql", "mariadb"):   # a question's blanks said too (audit pass 2)
+            assert any("2 values" in n for n in result.notes()), result.notes()
+        for frame in (loaded, asked):
+            frame.columns = [c.rstrip("_") for c in frame.columns]
+            for col, want in {**_EXPECTED, **own}.items():
+                if col in frame.columns:
+                    assert _cells(frame[col]) == want, (name, col, frame[col].tolist())
+            assert frame["n0"].nunique() == 2   # two ids stay two
+            # money is a float column (a Decimal == float compare hid object dtype: test analyst)
+            assert frame["n2"].dtype == "float64" and frame["bi"].dtype == "Int64", frame.dtypes
+    finally:
+        with _admin(tmp_path, name).begin() as c:
+            c.execute(text("DROP TABLE tcat"))
+
+
+async def test_the_database_runs_what_the_guard_read_never_the_raw_text(tmp_path, monkeypatch):
+    """Canonicalize, then execute (5.8b hardening): every bypass so far was text the guard and
+    the server read differently. The server gets sqlglot's writing of what the guard parsed: no
+    comment survives, and a name the guard read as a name reaches the server quoted as one."""
+    import connectors.sql_connector as sc
+    sent = []
+    real = sc.run_readonly
+    monkeypatch.setattr(sc, "run_readonly", lambda e, sql, *a, **k: sent.append(sql) or real(e, sql, *a, **k))
+    conn = _sql(_sqlite(tmp_path, pd.DataFrame({"a": [1, 2]})), None)
+    res = await conn.query("SELECT a /* keep? */ FROM t -- a trailing note")
+    assert res.rows == [(1,), (2,)] and sent == ["SELECT a FROM t"]
+
+
+async def test_without_its_pre_scans_the_guard_still_never_lets_a_second_statement_run(
+        tmp_path, monkeypatch):
+    """The U+200B batch (5.8b audit pass 2, proven on SQL Server: the WAITFOR ran) with the
+    pre-scans that refuse it switched off: the server gets sqlglot's writing of what the guard
+    read, an alias, so nothing waits. This is the class closed by construction, not one more scan."""
+    import time
+
+    import guardrails
+    from sqlalchemy import text
+    monkeypatch.setattr(guardrails, "_invisible_outside_quotes", lambda sql, d: False)
+    monkeypatch.setattr(guardrails, "_tsql_batch_word", lambda sql: None)
+    url = _each_dialect(tmp_path, "mssql")
+    with _admin(tmp_path, "mssql").begin() as c:
+        c.execute(text("DROP TABLE IF EXISTS keyed"))
+        c.execute(text("CREATE TABLE keyed (a INT)"))
+        c.execute(text("INSERT INTO keyed VALUES (1)"))
+    import connectors.sql_connector as sc
+    sent = []
+    real = sc.run_readonly
+    monkeypatch.setattr(sc, "run_readonly", lambda e, sql, *a, **k: sent.append(sql) or real(e, sql, *a, **k))
+    for attack in ("SELECT TOP 1 a FROM keyed x​EXEC('WAITFOR DELAY ''0:0:4''')",
+                   "SELECT TOP 1 a FROM keyed x​EXEC(sp_who)"):
+        started = time.monotonic()
+        try:
+            await _sql(url, None).query(attack)
+        except Exception:   # noqa: BLE001 - refused or a syntax error: either way nothing ran
+            pass
+        assert time.monotonic() - started < 3, "the second statement ran"
+    # what reached the server: the alias as one bracketed name, never a word the server splits
+    assert sent and all("[x​EXEC]" in s for s in sent), sent
+
+
+async def test_the_canonical_query_answers_exactly_as_the_models_own_text(tmp_path):
+    """Hardening audit (two reviewers, on SQL Server): the first canonical form was sqlglot's
+    regenerated tree, whose writer CASTs DATEDIFF's DATETIMEOFFSET arguments to DATETIME2
+    (-3 hours became 2) and turns SYSDATETIME into GETDATE. Tokens only: the same answer."""
+    from sqlalchemy import create_engine, text
+    url = _each_dialect(tmp_path, "mssql")
+    q = ("SELECT DATEDIFF(hour, CAST('2024-01-01T23:00:00-05:00' AS datetimeoffset), "
+         "CAST('2024-01-02T01:00:00+00:00' AS datetimeoffset)) AS h, "
+         "DATEDIFF(day, CAST('2024-01-01T23:00:00-05:00' AS datetimeoffset), "
+         "CAST('2024-01-02T01:00:00+00:00' AS datetimeoffset)) AS d")
+    import os
+    with create_engine(os.environ["TEST_MSSQL_URL"]).connect() as c:
+        raw = [tuple(r) for r in c.execute(text(q))]
+    assert raw == [(-3, 0)]   # the database's own reading of the model's text
+    assert (await _sql(url, None).query(q)).rows == raw
+
+
+async def test_a_sql_server_question_never_reads_another_database_through_db_dot_dot(tmp_path):
+    """Hardening security review, proven: `xdb..t` (database xdb, default schema) was joined to
+    `xdb.t`, a listed schema of this database, and the other database's row came back."""
+    import os
+
+    from sqlalchemy import create_engine, text
+    from sqlalchemy.engine import make_url
+
+    from agents.errors import GuardrailViolation
+    url = _each_dialect(tmp_path, "mssql")
+    reader = make_url(os.environ["TEST_MSSQL_READER_URL"]).username
+    admin = create_engine(os.environ["TEST_MSSQL_URL"], isolation_level="AUTOCOMMIT")
+    with admin.connect() as c:
+        c.execute(text("IF DB_ID('xdb_5_8b') IS NULL CREATE DATABASE xdb_5_8b"))
+        c.execute(text(f"USE xdb_5_8b; IF OBJECT_ID('dbo.t') IS NULL BEGIN CREATE TABLE dbo.t "
+                       f"(s NVARCHAR(20)); INSERT INTO dbo.t VALUES ('OTHER_DB_SECRET') END; "
+                       f"IF USER_ID('{reader}') IS NULL CREATE USER [{reader}] FOR LOGIN [{reader}]; "
+                       f"ALTER ROLE db_datareader ADD MEMBER [{reader}]; USE master"))
+    with _admin(tmp_path, "mssql").begin() as c:   # a schema of the same name in this database
+        c.execute(text("IF SCHEMA_ID('xdb_5_8b') IS NULL EXEC('CREATE SCHEMA xdb_5_8b')"))
+        c.execute(text("IF OBJECT_ID('xdb_5_8b.t') IS NULL CREATE TABLE xdb_5_8b.t (s NVARCHAR(20))"))
+    conn = _sql(url, None)
+    with pytest.raises(GuardrailViolation, match="only the connected database's tables"):
+        await conn.query("SELECT * FROM xdb_5_8b..t")
+    assert (await conn.query("SELECT * FROM xdb_5_8b.t")).rows == []   # its own schema: allowed
+
+
+def test_a_sql_server_named_instance_is_said_not_a_host_not_found():
+    with pytest.raises(IngestionError, match="named instance") as err:
+        _sql("mssql://u:p@db.example\\SQLEXPRESS/acme")._engine()
+    assert "host:port" in err.value.user_message
+
+
+def test_in_production_a_dual_stack_host_is_reached_at_its_ipv4_address(monkeypatch):
+    """Senior audit: the pin took the first address, often IPv6, where many databases listen on
+    IPv4 only: it failed in production and worked in development (the driver tries each)."""
+    import socket
+
+    import connectors.sql_connector as sc
+    from api.config import settings
+    monkeypatch.setattr(settings, "app_env", "production")
+    monkeypatch.setattr(socket, "getaddrinfo", lambda h, *a, **k: [
+        (0, 0, 0, "", ("2606:4700::6810:84e5", 0, 0, 0)), (0, 0, 0, "", ("104.16.132.229", 0))]
+        if h == "db.example" else [(0, 0, 0, "", ("10.9.9.9", 0))])
+    assert sc._checked_address(sc.make_url("postgresql://u:p@db.example/x")) == "104.16.132.229"
+    monkeypatch.setattr(socket, "getaddrinfo", lambda h, *a, **k: [
+        (0, 0, 0, "", ("2606:4700::6810:84e5", 0, 0, 0))]
+        if h == "db.example" else [(0, 0, 0, "", ("10.9.9.9", 0))])
+    assert sc._checked_address(sc.make_url("postgresql://u:p@db.example/x")) == "2606:4700::6810:84e5"
+
+
+def test_the_ca_file_is_rebuilt_when_it_goes_and_a_bad_bundle_is_said(monkeypatch, tmp_path):
+    """Silent-failure hunter, test analyst: the cached temp file, once a cleaner took it, failed
+    every verified session until a restart; a bundle that isn't PEM was libpq's opaque word."""
+    import os
+
+    from api.config import settings
+    from connectors.sql_connector import _ca_file, _ca_file_for
+    monkeypatch.setattr(settings, "extra_ca_bundle", None)
+    _ca_file_for.cache_clear()
+    os.unlink(_ca_file())
+    assert os.path.isfile(_ca_file())
+    junk = tmp_path / "junk.pem"
+    junk.write_text("not a certificate")
+    monkeypatch.setattr(settings, "extra_ca_bundle", str(junk))
+    with pytest.raises(IngestionError) as err:
+        _ca_file()
+    assert "holds no PEM certificate" in err.value.user_message
+    monkeypatch.setattr(settings, "extra_ca_bundle", str(tmp_path / "missing.pem"))
+    with pytest.raises(IngestionError) as err:
+        _ca_file()
+    assert "EXTRA_CA_BUNDLE can't be read" in err.value.user_message
+
+
+@pytest.mark.parametrize("mode", ["verify-ca", "verify-full"])
+def test_a_verified_postgres_session_trusts_the_image_cas(mode, monkeypatch):
+    """Senior audit: libpq takes a CA file and the user can't name one (allowlist), so verify-full
+    against RDS failed: the code names certifi's and the operator's EXTRA_CA_BUNDLE."""
+    import certifi
+
+    from api.config import settings
+    from connectors.sql_connector import _ca_file_for
+    monkeypatch.setattr(settings, "extra_ca_bundle", certifi.where())
+    url = _sql(f"postgresql://u:p@db.example/x?sslmode={mode}")._engine().url
+    pem = open(url.query["sslrootcert"], "rb").read()
+    assert pem.count(b"BEGIN CERTIFICATE") >= 2 * open(certifi.where(), "rb").read().count(
+        b"BEGIN CERTIFICATE") and _ca_file_for.cache_info().currsize >= 1
+    assert "sslrootcert" not in _sql("postgresql://u:p@db.example/x?sslmode=require")._engine().url.query
+    with pytest.raises(IngestionError, match="connection string options"):   # never the user's
+        _sql("postgresql://u:p@db.example/x?sslmode=verify-full&sslrootcert=/etc/passwd")._engine()
+
+
+@pytest.mark.parametrize("name", ["postgresql", "mysql", "mssql"])
+async def test_numbers_codes_and_intervals_read_as_the_database_wrote_them(tmp_path, name):
+    """Hardening audit: NUMERIC 'NaN' crashed the frame; a VARCHAR of long digits (an ICCID, its
+    leading zero) became an Int64; every interval became text (Postgres age(), ts2 - ts1)."""
+    from sqlalchemy import text
+    conn = _sql(_each_dialect(tmp_path, name), None)
+    code = (await conn.query("SELECT '00123456789012345678' AS iccid")).frame()
+    assert code["iccid"].tolist() == ["00123456789012345678"]
+    if name == "postgresql":
+        df = (await conn.query("SELECT x::numeric AS n FROM (VALUES ('10'), ('NaN'), "
+                               "('Infinity')) AS v(x)")).frame()
+        assert df["n"].tolist()[0] == 10.0 and pd.isna(df["n"].tolist()[1])
+        assert df["n"].tolist()[2] == float("inf")
+        span = (await conn.query("SELECT '1 day 2 hours'::interval AS i")).frame()
+        assert span["i"].tolist() == [pd.Timedelta(hours=26)]
+    if name == "mysql":
+        with _admin(tmp_path, name).begin() as c:
+            c.execute(text("DROP TABLE IF EXISTS tm6"))
+            c.execute(text("CREATE TABLE tm6 (t TIME(6))"))
+            c.execute(text("INSERT INTO tm6 VALUES ('13:45:00.123456')"))
+        assert (await conn.query("SELECT t FROM tm6")).frame()["t"].tolist() == ["13:45:00.123456"]
+
+
+_BIG_RESULT = {
+    "postgresql": "SELECT g, repeat('x', 100) AS s FROM generate_series(1, 3000000) g",
+    "mysql": "WITH RECURSIVE r(g) AS (SELECT 1 UNION ALL SELECT g+1 FROM r WHERE g < 1000) "
+             # 10^9 rows, no LIMIT: a drained result waits out the timeout, never 3 s (test analyst)
+             "SELECT a.g, REPEAT('x', 100) AS s FROM r a CROSS JOIN r b CROSS JOIN r c",
+    "mssql": "SELECT TOP 3000000 ROW_NUMBER() OVER (ORDER BY (SELECT 1)) AS g, REPLICATE('x', 100) "
+             "AS s FROM sys.all_objects a CROSS JOIN sys.all_objects b CROSS JOIN sys.all_objects c",
+}
+_BIG_RESULT["mariadb"] = _BIG_RESULT["mysql"]
+
+
+@pytest.mark.parametrize("name", ["postgresql", "mysql", "mariadb", "mssql"])
+def test_a_question_holds_its_row_cap_never_the_whole_result(tmp_path, name):
+    """psycopg and PyMySQL buffered every row before fetchmany capped them (security review:
+    587 MB on Postgres, 659 MB on MySQL to return 10 of 3M rows). Measured as the process."""
+    import subprocess
+    import sys
+    from pathlib import Path
+    url = _each_dialect(tmp_path, name)
+    code = f"""
+import resource
+from connectors.sql_connector import SQLConnector, run_readonly
+from orchestrator.state import ConnectorConfig, ConnectorType
+engine = SQLConnector(ConnectorConfig(type=ConnectorType.SQL, connection_string={url!r}))._engine()
+import time
+before = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+started = time.monotonic()
+r = run_readonly(engine, {_BIG_RESULT[name]!r}, 10)
+took = time.monotonic() - started
+print(len(r.rows), r.truncated, resource.getrusage(resource.RUSAGE_SELF).ru_maxrss - before, took)
+"""
+    out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, timeout=300,
+                         cwd=str(Path(__file__).resolve().parents[1]))
+    rows, truncated, grew, took = out.stdout.split() or (out.stderr[-500:], "", "", "")
+    grew_mb = int(grew) / (2**20 if sys.platform == "darwin" else 2**10)
+    # and at once: PyMySQL's close drained every remaining row, a capped preview waited out the
+    # statement timeout (audit pass 2); nothing in stderr (its drain of a dropped socket)
+    assert (rows, truncated) == ("10", "True") and grew_mb < 100 and float(took) < 5, \
+        (name, rows, grew_mb, took)
+    assert "Exception ignored" not in out.stderr, out.stderr[-800:]
+
+
+def test_a_plain_result_skips_the_per_cell_work(monkeypatch):
+    """A 50k-row load was 12 times slower: plain columns go straight to pandas. Pinned by what
+    runs, never by a clock (test analyst: without the fast path it still met the time bound)."""
+    import connectors.sql_connector as sc
+    monkeypatch.setattr(sc, "exact_whole_numbers", lambda *_: pytest.fail("per-cell work ran"))
+    rows = [(i, f"name {i}", i * 1.5, i % 2 == 0, None) for i in range(1000)] + \
+        [(None, None, None, None, None)]
+    df = sc.QueryResult(["a", "b", "c", "d", "e"], rows, False).frame()
+    assert df["a"].iloc[3] == 3 and df["b"].iloc[3] == "name 3"
+
+
+def test_a_leading_zero_is_never_a_whole_number():
+    """An ICCID with its leading zero: the shared rule's own guard (test analyst: no test
+    reached it, the query's text column takes the fast path)."""
+    from connectors.base import exact_whole_numbers
+    assert exact_whole_numbers(pd.Series(["0123456789012345678", None], dtype=object)) is None
+    assert exact_whole_numbers(pd.Series(["123456789012345678", None], dtype=object)).tolist()[0] \
+        == 123456789012345678
+    # a float holds every whole number up to 2**53 itself, and not the one after it
+    assert exact_whole_numbers(pd.Series([str(2**53), "-1"], dtype=object)) is None
+    assert exact_whole_numbers(pd.Series([str(2**53 + 1)], dtype=object)).dtype == "Int64"
+    assert exact_whole_numbers(pd.Series([str(2**63 - 1)], dtype=object)).dtype == "Int64"
+    assert exact_whole_numbers(pd.Series([str(2**63)], dtype=object)).tolist() == [str(2**63)]
+    assert exact_whole_numbers(pd.Series([str(-2**63)], dtype=object)).dtype == "Int64"
+    assert exact_whole_numbers(pd.Series([str(-2**63 - 1)], dtype=object)).tolist() == [str(-2**63 - 1)]
+    kept = exact_whole_numbers(pd.Series([str(2**60), None], index=[7, 3], dtype=object))
+    assert kept.index.tolist() == [7, 3] and kept[7] == 2**60   # each value stays on its row
+    past = exact_whole_numbers(pd.Series([str(2**63), None], dtype=object)).tolist()
+    assert past[0] == str(2**63) and past[1] is None   # a blank stays None, never NaN in text
+
+
+def test_an_offset_reads_as_minutes_east_of_utc():
+    from connectors.base import _minutes
+    assert [_minutes(o) for o in ("+05:30", "-0530", "+05", "-05", "Z")] == [330, -330, 300, -300, 0]
+
+
+def test_a_sql_server_host_that_doesnt_answer_is_said_with_its_port():
+    from sqlalchemy import create_engine
+
+    from connectors.sql_connector import _session_error
+    said = Exception("[HYT00] [Microsoft][ODBC Driver 18 for SQL Server]Login timeout expired")
+    for url, where in (("mssql+pyodbc://u:p@db.example/x", "db.example:1433"),
+                       ("mssql+pyodbc://u:p@db.example:14330/x", "db.example:14330")):
+        assert f"can't reach {where} " in _session_error(said, create_engine(url)).user_message
+
+
+def test_only_a_one_wide_tinyint_or_bit_is_yes_no():
+    from pymysql.constants import FIELD_TYPE
+
+    from connectors.sql_connector import _mysql_kind
+    col = lambda code, size: ("c", code, None, size, None, None, True)   # noqa: E731
+    assert _mysql_kind(col(FIELD_TYPE.TINY, 1)) == "bool"
+    assert _mysql_kind(col(FIELD_TYPE.BIT, 1)) == "bool"
+    assert _mysql_kind(col(FIELD_TYPE.TINY, 4)) is None
+    assert _mysql_kind(col(FIELD_TYPE.VAR_STRING, 1)) is None   # a VARCHAR(1) of latin1
+
+
+def test_a_blanked_date_is_said_in_its_number():
+    from connectors.sql_connector import QueryResult
+    one = QueryResult(["d"], [("0000-00-00",), (None,)], False, ("date",))
+    two = QueryResult(["d"], [("0000-00-00",), ("2024-03-00",)], False, ("date",))
+    assert one.notes()[0].startswith("1 value in `d` is a zero or partial date")
+    assert one.notes()[0].endswith("has no calendar day: read as blank")
+    assert two.notes()[0].startswith("2 values in `d` are a zero or partial date")
+
+
+def test_a_query_that_cant_run_as_written_is_the_sql_guards_refusal():
+    from agents.errors import GuardrailViolation
+    from connectors.sql_connector import _cant_run_as_written
+    with pytest.raises(GuardrailViolation) as err:
+        _cant_run_as_written()
+    assert err.value.agent == "sql"
+    assert str(err.value) == "sql: the query has characters that can't be run exactly as written"
+
+
+def test_a_postgres_day_is_utcs_whatever_the_servers_zone(tmp_path):
+    """The session's `SET LOCAL TIME ZONE 'UTC'`: a timestamptz's day computed in the database
+    is UTC's (test analyst: removing it failed nothing; instants compare equal in any zone)."""
+    from sqlalchemy import create_engine
+
+    from connectors.sql_connector import run_readonly
+    url = _each_dialect(tmp_path, "postgresql")
+    tokyo = create_engine(url, connect_args={"options": "-c timezone=Asia/Tokyo"})
+    r = run_readonly(tokyo, "SELECT CAST(TIMESTAMPTZ '2024-03-10 20:00:00+00' AS date) AS d")
+    assert str(r.rows[0][0]) == "2024-03-10"
+
+
+@pytest.mark.parametrize("values", [["2024-03-10 18:30:00+00", "2024-03-11 01:00:00+00"],
+                                    ["2024-03-10 23:30:00+05", "2024-03-11 01:00:00+00"]])
+def test_a_postgres_export_of_instants_reads_as_instants(values):
+    """Postgres writes a timestamptz with an hours-only offset: its CSV export stayed text while
+    the same column read from the database was an instant (5.8b hardening, the type catalog)."""
+    from connectors.base import normalize_frame
+    from connectors.csv_connector import _read_bytes
+    csv = "k,tz\n1," + values[0] + "\n2,\n3," + values[1] + "\n"
+    df = normalize_frame(_read_bytes(csv.encode(), ".csv")[0])
+    assert _cells(df["tz"]) == [pd.Timestamp("2024-03-10 18:30:00", tz="UTC"), None,
+                                pd.Timestamp("2024-03-11 01:00:00", tz="UTC")]
+
+
+def test_an_hours_offset_counts_only_after_a_clock_time():
+    """Audit pass 2 (two reviewers): '2024-03-10 12-05' (a file stamp) became 12:00 at UTC-05,
+    and in a column mixing offsets the '-04' of '2025-01-04' stripped the day."""
+    from connectors.base import normalize_frame, parse_text_dates
+    from connectors.csv_connector import _read_bytes
+    df = normalize_frame(_read_bytes(b"shot,n\n2024-03-10 12-05,1\n2024-03-11 14-07,2\n", ".csv")[0])
+    assert df["shot"].tolist() == ["2024-03-10 12-05", "2024-03-11 14-07"]
+    mixed = parse_text_dates(pd.Series(["2025-01-05 10:00:00-05", "2025-01-04",
+                                        "2025-01-06 09:00:00-05"]), 0.0)
+    assert [t.day for t in mixed] == [5, 4, 6]
+    dst = parse_text_dates(pd.Series(["2024-11-03 01:30:00-0400", "2024-11-03 01:30:00.5-0500"]), 0.0)
+    assert dst.tolist() == [pd.Timestamp("2024-11-03 01:30:00"), pd.Timestamp("2024-11-03 01:30:00.5")]
+
+
+def test_a_file_keeps_long_ids_exact_with_a_blank():
+    """The same bug in the file reader: an id column with one blank read as float64."""
+    from connectors.csv_connector import _read_bytes
+    df = _read_bytes(f"id,x\n{_ID},1\n,2\n{_ID + 1},3\n{_BIG},4\n".encode(), ".csv")[0]
+    assert _cells(df["id"]) == [str(_ID), None, str(_ID + 1), _BIG]   # past int64: its digits
+    df = _read_bytes(f"id,x\n{_ID},1\n,2\n{_ID + 1},3\n".encode(), ".csv")[0]
+    assert _cells(df["id"]) == [_ID, None, _ID + 1] and df["id"].nunique() == 2

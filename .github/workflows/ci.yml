@@ -92,7 +92,7 @@ jobs:
         with:
           python-version: "3.11"
       # SQL Server's driver (pyodbc needs Microsoft's ODBC Driver 18; the runner image may carry it)
-      - run: odbcinst -q -d | grep -q "ODBC Driver 18" || (curl -sSL https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/packages-microsoft-prod.deb -o /tmp/ms.deb && sudo dpkg -i /tmp/ms.deb && sudo apt-get update -q && sudo ACCEPT_EULA=Y apt-get install -yq msodbcsql18 unixodbc)
+      - run: odbcinst -q -d | grep -q "ODBC Driver 18" || (curl -sSL "https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/packages-microsoft-prod.deb" -o /tmp/ms.deb && sudo dpkg -i /tmp/ms.deb && sudo apt-get update -q && sudo ACCEPT_EULA=Y apt-get install -yq msodbcsql18 unixodbc)
       - run: uv sync --frozen --extra dev
       - run: uv run ruff check .
       - run: uv run lint-imports   # domain_pack layers; the reference oracle never reads the product

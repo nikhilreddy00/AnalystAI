@@ -6,8 +6,10 @@ The route is the production path; the network is a fake under the production cli
 redirect chains research measured, docs/research/2026-11-20-5.8b-sources.md)."""
 from __future__ import annotations
 
+import functools
 import io
 import logging
+from pathlib import Path
 from functools import cache
 
 import httpx
@@ -212,6 +214,116 @@ def test_a_real_sized_workbook_fits_under_the_unpacked_cap():
     """5.8b review: 150 MB unpacked refused 20-30 MB workbooks (sheet XML packs 5-10 times)."""
     from connectors.csv_connector import _MAX_UNPACKED, MAX_UPLOAD_MB
     assert _MAX_UNPACKED >= 10 * MAX_UPLOAD_MB * 2**20
+
+
+@pytest.mark.parametrize("content,shape", [
+    (b'a,b\n"' + b"," * 10_001 + b'",2\n', (1, 2)),               # one long quoted cell
+    (b"a;b\n" + b"x,y,z;1\n" * 3, (3, 2)),                         # ';' file whose text holds ','
+    ("a,b\n1,ü\n2,é\n".encode("utf-16"), (2, 2)),                  # UTF-16 with its BOM
+    (b"a,b\n" + b"1,2\n" * 20_000, (20_000, 2)),                   # long and narrow
+], ids=["long-quoted-cell", "semicolon-commas", "utf16-bom", "long-narrow"])
+def test_an_ordinary_file_is_never_refused_as_too_wide(content, shape):
+    """Senior audit: the cheap per-line gate counted raw delimiters, quotes included, and refused
+    a two-column file with one long quoted cell. Every guard gets ordinary inputs too, never
+    only the attacks it was written against."""
+    from connectors.csv_connector import _read_bytes
+    assert _read_bytes(content, ".csv")[0].shape == shape
+
+
+_HOSTILE = {   # each at the upload cap; built in the child process
+    "wide-header": "b',' * (MAX_UPLOAD_MB * 2**20 - 10) + b'\\n1\\n'",
+    "wide-row-under-narrow-header": "b'a,b\\n1,2\\n' + b',' * (MAX_UPLOAD_MB * 2**20 - 20) + b'\\n'",
+    # quoted newlines join short lines into one record (test analyst: 1.6 GB, read)
+    "quoted-newlines-join-a-wide-record":
+        "b'a,b\\n1,2\\n1' + (b',' * 9000 + b'\"\\n\"') * (MAX_UPLOAD_MB * 2**20 // 9003)",
+    # an unclosed quote: the regex held 1.3 GB on 10 MB (code review)
+    "unclosed-quote": "b'\"' + b'x' * (MAX_UPLOAD_MB * 2**20 - 10) + b'\\n1\\n'",
+    # lines just short of the cap, half commas: the unanchored long-line regex retried from
+    # each character, O(L²) a line, ~25 CPU minutes (audit pass 2). A file this shape reads
+    "lines-just-short-of-the-cap":
+        "b'a,b\\n\"q\",1\\n' + ((b',' * 5000 + b'x' * 4999) + b'\\n') * (MAX_UPLOAD_MB * 2**20 // 10000)",
+}
+
+
+@pytest.mark.parametrize("shape", list(_HOSTILE))
+def test_a_hostile_file_is_refused_fast_and_small_measured_as_the_process(shape):
+    """The real peak of the process (tracemalloc can't see pandas' C tokenizer: test analyst),
+    in a fresh one: under 1 GB and 15 s at the 50 MB upload cap."""
+    import subprocess
+    import sys
+    code = f"""
+import resource, time
+from agents.errors import IngestionError
+from connectors.csv_connector import MAX_UPLOAD_MB, _read_bytes
+content = {_HOSTILE[shape]}
+started = time.monotonic()
+try:
+    _read_bytes(content, '.csv')
+    said = 'read'
+except IngestionError as e:
+    said = e.user_message
+print(round(time.monotonic() - started, 1), resource.getrusage(resource.RUSAGE_SELF).ru_maxrss, said)
+"""
+    out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, timeout=120,
+                         cwd=str(Path(__file__).resolve().parents[1]))
+    took, peak, said = out.stdout.strip().split(" ", 2)
+    peak_mb = int(peak) / (2**20 if sys.platform == "darwin" else 2**10)   # bytes vs KB
+    # a shape the reader may refuse or read: the bound is the point (wide shapes must refuse)
+    refused = said != "read" or shape == "lines-just-short-of-the-cap"
+    assert refused and float(took) < 15 and peak_mb < 1024, (shape, took, peak_mb, said)
+
+
+def test_a_header_past_the_cap_is_said_as_too_wide():
+    from agents.errors import IngestionError
+    from connectors.csv_connector import _read_bytes
+    with pytest.raises(IngestionError, match="too many columns"):
+        _read_bytes(b",".join(b"c%d" % i for i in range(20_000)) + b"\n1\n", ".csv")
+
+
+def test_the_header_count_honours_quotes_and_stops_at_the_cap():
+    from connectors.csv_connector import _MAX_COLUMNS, _header_fields
+    assert _header_fields('title\na,"b,c",d\n1,2,3\n', ",", 1) == 3
+    assert _header_fields('"x\ny",b\n1,2\n', ",", 0) == 2           # a newline inside quotes
+    assert _header_fields('a,"say ""hi"", ok",c\n', ",", 0) == 3     # an escaped quote
+    assert _header_fields("," * (_MAX_COLUMNS * 5), ",", 0) == _MAX_COLUMNS + 1
+    # a quote mid-field is a character, as pandas reads it: never a quoted span hiding commas
+    assert _header_fields('a"b,' + "," * (_MAX_COLUMNS * 5), ",", 0) == _MAX_COLUMNS + 1
+    assert _header_fields('a"b,c\n', ",", 0) == 2
+    assert _header_fields('"never closed,a,b\n1,2', ",", 0) == 1   # one field to the end
+
+
+def test_a_one_column_file_with_a_long_quoted_cell_reads():
+    """The one-column refusal counted raw delimiters (silent-failure hunter)."""
+    from connectors.csv_connector import _read_bytes
+    assert _read_bytes(b'comment\n"' + b"," * 10_001 + b'"\n', ".csv")[0].shape == (1, 1)
+
+
+def test_a_wide_row_split_by_a_character_pandas_reads_inside_a_row_is_refused():
+    """str.splitlines ends a line at \\x1c, \\x0c, U+2028; pandas reads on: each 'line' looked
+    narrow to the pre-count while pandas saw one row of 20,000 fields (automated review)."""
+    from agents.errors import IngestionError
+    from connectors.csv_connector import _read_bytes
+    row = b"\x1c".join(b"," * 1_000 for _ in range(20))
+    with pytest.raises(IngestionError, match="too many columns"):
+        _read_bytes(b"a,b\n1,2\n" + row + b"\n", ".csv")
+
+
+async def test_a_csv_named_csv_whose_header_starts_with_a_bracket_is_a_csv(client, monkeypatch):
+    """Senior audit: `[Date],[Sales]` (SQL tools export headers so) went to the JSON reader by its
+    first byte and was refused; the file's own name says what it is."""
+    export = b"[Date],[Sales]\n2024-01-01,10\n2024-01-02,12\n"
+    serve(monkeypatch, _chain(("https://files.example/", _ok(export, **{
+        "content-disposition": 'attachment; filename="export.csv"'}))))
+    r = await _link(client, "https://files.example/q")
+    assert r.status_code == 200, r.text
+
+
+def test_a_header_hiding_its_width_behind_a_mid_field_quote_is_refused():
+    """Automated review: `a"b,,,,…` counted as one field, then pandas built every one."""
+    from agents.errors import IngestionError
+    from connectors.csv_connector import _read_bytes
+    with pytest.raises(IngestionError, match="too many columns"):
+        _read_bytes(b'a"b,' + b"c," * 20_000 + b"\n1\n", ".csv")
 
 
 def test_a_workbook_zip_can_t_open_is_not_a_table_never_a_crash():
@@ -478,22 +590,182 @@ def test_more_share_links_are_rewritten_to_their_file(shared, direct):
 
 # ── 5.8b audit pass 1 (silent-failure hunter, code review, test analyst) ────────────────────
 
-@pytest.mark.parametrize("encoding", ["gzip", "zstd", "br", "deflate"])
-async def test_a_compressed_answer_is_refused_not_unpacked(client, monkeypatch, encoding):
-    """Asked for identity, a server may still compress; httpx would unpack a chunk to any size
-    before the cap counted it (a zstd bomb). Refused, counted raw."""
+@pytest.mark.parametrize("encoding", ["gzip", "deflate"])
+async def test_a_gzipped_answer_is_read_with_its_size_counted_unpacked(client, monkeypatch, encoding):
+    """Senior audit: 5.8b refused every compressed answer, and a host that gzips anyway (it
+    loaded before) stopped loading. Decoded here, the cap counted on what comes out."""
+    import gzip
+    import zlib
+    packed = {"gzip": gzip.compress, "deflate": zlib.compress}[encoding](CSV)
+    serve(monkeypatch, lambda r: httpx.Response(200, content=packed, headers={
+        "content-type": "text/csv", "content-encoding": encoding}))
+    r = await _link(client, "https://files.example/q.csv")
+    assert r.status_code == 200, r.text
+
+
+@functools.cache
+def _gzip_bomb() -> bytes:
+    """1 GB of zeros as gzip (~1 MB), built a megabyte at a time: never the 1 GB itself in a
+    worker (test analyst: 12.6 s and 1 GB of RSS per xdist worker)."""
+    import zlib
+    packer, block = zlib.compressobj(9, zlib.DEFLATED, 16 + zlib.MAX_WBITS), b"0" * 2**20
+    return b"".join([*(packer.compress(block) for _ in range(1024)), packer.flush()])
+
+
+class _Answer:
+    """A response whose body comes in chunks, for capped_body alone."""
+
+    def __init__(self, body: bytes, encoding: str):
+        self.headers, self.body = {"content-encoding": encoding}, body
+
+    async def aiter_raw(self):
+        for i in range(0, len(self.body), 65536):
+            yield self.body[i:i + 65536]
+
+
+async def test_every_gzip_member_is_read_and_a_cut_or_corrupt_body_is_said():
+    """Test analyst and silent-failure hunter: the first reader returned only the first gzip
+    member of several (rows missing, no word), and half a truncated stream as the file."""
     import gzip
     import zlib
 
+    from connectors.base import capped_body
+    a, b = b"id,v\n1,2\n", b"3,4\n"
+    assert await capped_body(_Answer(gzip.compress(a) + gzip.compress(b), "gzip"), 10**6) == a + b
+    assert await capped_body(_Answer(gzip.compress(a), "x-gzip"), 10**6) == a
+    headerless = zlib.compressobj(9, zlib.DEFLATED, -zlib.MAX_WBITS)
+    raw_deflate = headerless.compress(a) + headerless.flush()
+    assert await capped_body(_Answer(raw_deflate, "deflate"), 10**6) == a   # as httpx read it
+    with pytest.raises(ValueError, match="ended before it was complete"):
+        await capped_body(_Answer(gzip.compress(a)[:-12], "gzip"), 10**6)
+    with pytest.raises(ValueError, match="couldn't be unpacked"):
+        await capped_body(_Answer(b"\x1f\x8bjunk-not-gzip", "gzip"), 10**6)
+    with pytest.raises(ValueError, match="couldn't be unpacked"):
+        await capped_body(_Answer(gzip.compress(a) + b"trailing junk", "gzip"), 10**6)
+
+
+def _read(body: bytes, encoding: str, cap: int) -> bytes:
+    """capped_body on its own thread, bounded: a reader that loops forever fails here, never
+    hangs the run (the mutation gate's retry mutants spun until mutmut's timeout)."""
+    import asyncio
+    import threading
+
+    from connectors.base import capped_body
+    out: dict = {}
+
+    def go():
+        try:
+            out["body"] = asyncio.run(capped_body(_Answer(body, encoding), cap))
+        except Exception as exc:
+            out["error"] = exc
+    reader = threading.Thread(target=go, daemon=True)
+    reader.start()
+    reader.join(5)
+    assert not reader.is_alive(), "the reader was still going after 5 s"
+    if "error" in out:
+        raise out["error"]
+    return out["body"]
+
+
+def test_the_body_reader_holds_its_boundaries(monkeypatch):
+    """Mutation gate: each limit at its edge (a cap-sized body reads, a byte more is refused, the
+    member count is the documented one) and a mislabelled or corrupt body is never read."""
+    import gzip
+    import os
+    import zlib
+
+    import connectors.base as base
+    from connectors.base import BodyTooLarge
+    long = os.urandom(200_000)   # 4 chunks: each one read, none dropped
+    assert _read(long, "identity", 200_000) == long
+    cap, full = 1000, b"x" * 1000
+    for encoding, pack in (("identity", bytes), ("gzip", gzip.compress)):
+        assert _read(pack(full), encoding, cap) == full
+        with pytest.raises(BodyTooLarge):
+            _read(pack(full + b"y"), encoding, cap)
+    with pytest.raises(BodyTooLarge):   # a member ending at the cap, a byte more in the next
+        _read(gzip.compress(full) + gzip.compress(b"y"), "gzip", cap)
+    noise = gzip.compress(os.urandom(50_000)) * 3   # 150,000 decoded, more sent, in 3 chunks
+    assert len(noise) > 150_010
+    with pytest.raises(BodyTooLarge):
+        _read(noise, "gzip", 150_010)
+    monkeypatch.setattr(base, "_MAX_GZIP_MEMBERS", 3)
+    assert _read(gzip.compress(b"a") * 3, "gzip", cap) == b"aaa"
+    with pytest.raises(ValueError, match="too many pieces"):
+        _read(gzip.compress(b"a") * 4, "gzip", cap)
+    headerless = zlib.compressobj(9, zlib.DEFLATED, -zlib.MAX_WBITS)
+    raw_deflate = headerless.compress(b"id\n1\n") + headerless.flush()
+    assert _read(raw_deflate, "deflate", cap) == b"id\n1\n"
+    with pytest.raises(ValueError, match="couldn't be unpacked"):   # gzip's label is believed
+        _read(raw_deflate, "gzip", cap)
+    with pytest.raises(ValueError, match="couldn't be unpacked"):   # once as raw, then said
+        _read(b"\xff\xff not deflate at all", "deflate", cap)
+
+
+def test_a_text_files_own_name_decides_its_reader():
+    from connectors.link import _suffix
+    answer = httpx.Response(200)
+    assert _suffix(b"[Date],[Sales]\n", answer, "h", "sales.2024.TSV") == ".tsv"
+    assert _suffix(b'"one value"', answer, "h", "x.Json") == ".json"
+    assert _suffix(b"[1, 2]", answer, "h", "x.csv") == ".csv"
+    assert _suffix(b"[1, 2]", answer, "h", "") == ".json"   # no name: its first character
+    assert _suffix(b"a,b\n", answer, "h", "data.csv.gz") == ".csv"
+
+
+async def test_a_body_in_millions_of_gzip_pieces_is_refused_cheaply():
+    """Audit pass 2: 2.5M empty members cost 6 s of CPU a fetch."""
+    import gzip
+    import time
+
+    from connectors.base import capped_body
+    started = time.process_time()
+    with pytest.raises(ValueError, match="too many pieces"):
+        await capped_body(_Answer(gzip.compress(b"") * 200_000, "gzip"), 50 * 2**20)
+    assert time.process_time() - started < 1
+
+
+async def test_the_raw_bytes_are_capped_even_when_the_decoder_holds_them_back():
+    import gzip
+
+    from connectors.base import BodyTooLarge, capped_body
+    tail = gzip.compress(b"x") * 4000   # tiny members past a small cap
+    with pytest.raises(BodyTooLarge):
+        await capped_body(_Answer(tail, "gzip"), 10_000)
+
+
+async def test_a_gzip_bomb_is_refused_as_too_large_never_unpacked(client, monkeypatch):
+    bomb = _gzip_bomb()
+    serve(monkeypatch, lambda r: httpx.Response(200, content=bomb, headers={
+        "content-type": "text/csv", "content-encoding": "gzip"}))
+    assert (await _link(client, "https://files.example/q.csv")).status_code == 413
+
+
+async def test_the_body_reader_never_holds_more_than_its_cap_unpacking():
+    """Each chunk is decoded to no more than the cap has left: the 1 GB bomb is refused holding
+    about twice the cap (measured on the reader itself: the in-process fake network the route
+    test uses keeps its own copies)."""
+    import tracemalloc
+
+    from connectors.base import BodyTooLarge, capped_body
+    bomb, cap = _gzip_bomb(), 2**20   # under a 64 KB chunk's 64 MB: a chunk unpacked whole shows
+    tracemalloc.start()   # the reader is pure Python: tracemalloc sees all it holds
+    with pytest.raises(BodyTooLarge):
+        await capped_body(_Answer(bomb, "gzip"), cap)
+    peak = tracemalloc.get_traced_memory()[1]
+    tracemalloc.stop()
+    assert peak < 3 * cap, peak / 2**20
+
+
+@pytest.mark.parametrize("encoding", ["zstd", "br"])
+async def test_a_compression_without_a_decoder_here_is_said(client, monkeypatch, encoding):
     import zstandard
-    packed = {"gzip": gzip.compress, "deflate": zlib.compress, "br": lambda b: b,
-              "zstd": zstandard.ZstdCompressor().compress}[encoding](CSV)
+    packed = {"br": lambda b: b, "zstd": zstandard.ZstdCompressor().compress}[encoding](CSV)
     serve(monkeypatch, lambda r: httpx.Response(200, content=packed, headers={
         "content-type": "text/csv", "content-encoding": encoding}))
     r = await _link(client, "https://files.example/q.csv")
     assert r.status_code == 400
     assert r.json()["detail"] == ("The file at files.example couldn't be read: it compressed its "
-                                  f"answer ({encoding}) though asked not to.")
+                                  f"answer as {encoding}, which isn't read here.")
 
 
 def _parquet() -> bytes:
@@ -575,7 +847,7 @@ async def test_each_refusal_carries_its_own_code(monkeypatch, why, code):
     import gzip
     answer = {"busy": lambda: httpx.Response(503),   # built per request, as the route tests do
               "compressed": lambda: httpx.Response(200, content=gzip.compress(CSV), headers={
-                  "content-encoding": "gzip"})}.get(why, _ok)
+                  "content-encoding": "br"})}.get(why, _ok)
     serve(monkeypatch, lambda r: answer())
 
     def missing(*a, **k):

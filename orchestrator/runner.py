@@ -14,6 +14,7 @@ Each (re)start seeds this run's PII guard, as api/routes/chat.py did when runs l
 from __future__ import annotations
 
 import asyncio
+import contextvars
 import hashlib
 import io
 import logging
@@ -32,6 +33,7 @@ from llm.client import get_client, pii_values, run_meter
 from memory.run_store import (CANCELLED, HEARTBEAT_S, InMemoryRunStore, Run, RunStore,
                               cancel_events)
 from agents.errors import AgentError
+from connectors.base import credential_scope
 from memory.session_data import read_cleaned_parquet
 from orchestrator.graph import RunEnv, build_graph, run_env
 from orchestrator.state import AnalysisSession
@@ -324,7 +326,8 @@ async def _fail(store, run: Run, message: str, retryable: bool = True, reask: bo
 
 
 async def supervise(run: Run, deps: Deps, heartbeat_s: float = HEARTBEAT_S) -> str:
-    """Run one claimed run with a heartbeat that keeps its lease and notices a cancel."""
+    """Run one claimed run with a heartbeat that keeps its lease and notices a cancel. Started by
+    `work` in the run's own credential scope: everything here logs with the run's registry."""
     job = asyncio.create_task(execute(run, deps))
     why = None
     try:
@@ -353,6 +356,12 @@ async def supervise(run: Run, deps: Deps, heartbeat_s: float = HEARTBEAT_S) -> s
         job.cancel()   # this worker is shutting down: hand the run back
         await deps.run_store.requeue(run.id, run.attempt)
         raise
+    except Exception:
+        # e.g. recording the failure hit a database blip: said here, in the run's scope. Left to
+        # asyncio's "never retrieved" log it was written outside it, a credential the run
+        # registered in plain text (audit pass 2); the lease's expiry hands the run back
+        logger.error("run %s: its supervisor failed", run.id, exc_info=True)
+        return "failed"
 
 
 async def work(deps: Deps, stop: asyncio.Event, *, concurrency: int = 4,
@@ -377,7 +386,11 @@ async def work(deps: Deps, stop: asyncio.Event, *, concurrency: int = 4,
                     last_sweep = time.monotonic()
                     sweeping = asyncio.create_task(sweep_logged(deps))
                 if len(tasks) < concurrency and (run := await deps.run_store.claim()):
-                    task = asyncio.create_task(supervise(run, deps, heartbeat_s))
+                    # its own credential registry: one run's never masks another tenant's logs,
+                    # and all the run logs is masked with it (connectors.base)
+                    context = contextvars.copy_context()
+                    context.run(credential_scope)
+                    task = asyncio.create_task(supervise(run, deps, heartbeat_s), context=context)
                     tasks.add(task)
                     task.add_done_callback(tasks.discard)
                     continue

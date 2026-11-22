@@ -14,14 +14,22 @@ An engine without a row in DIALECTS gets none of this, so it is refused (fail cl
 from __future__ import annotations
 
 import asyncio
+import datetime
+import decimal
+import functools
+import json
 import logging
+import math
 import re
 import socket
 import ssl
+import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field, replace
+from pathlib import Path
 
 import certifi
+import numpy as np
 import pandas as pd
 import sqlglot
 from sqlalchemy import column, create_engine, event, func, inspect, literal_column, select, text
@@ -33,7 +41,8 @@ from sqlglot import exp
 from sqlglot.optimizer.scope import traverse_scope
 
 from agents.errors import AgentError, GuardrailViolation, IngestionError
-from connectors.base import DataConnector, normalize_frame, resolved, truncation_note
+from connectors.base import (_FLOAT_EXACT, DataConnector, _cut, exact_whole_numbers,
+                             normalize_frame, resolved, truncation_note)
 from guardrails import check_sql_readonly
 
 logger = logging.getLogger(__name__)
@@ -43,10 +52,26 @@ LOAD_MAX_ROWS = 50_000   # a named table is loaded whole up to this; past it, th
 TIMEOUT_S = 15
 CONNECT_TIMEOUT_S = 10
 _SCHEMA_CHARS = 12_000   # table descriptions in the SQL agent's prompt; past it, names only
-_TYPE_CODE, _INTERNAL_SIZE, _MYSQL_TINY = 1, 3, 1   # cursor.description fields; FIELD_TYPE.TINY
+_TYPE_CODE, _INTERNAL_SIZE, _PRECISION = 1, 3, 4   # cursor.description fields
+_MYSQL_TINY, _MYSQL_BIT, _MYSQL_TIME = 1, 16, 11    # PyMySQL FIELD_TYPE codes
 _MYSQL_DATES = frozenset({7, 10, 12, 14})   # FIELD_TYPE TIMESTAMP, DATE, DATETIME, NEWDATE
-# MySQL's zero date, as PyMySQL returns what it can't convert: DATE, DATETIME, DATETIME(fsp)
-_ZERO_DATE = re.compile(r"0000-00-00( 00:00:00(\.0+)?)?")
+
+
+def _mysql_kind(col: tuple) -> str | None:
+    """What a MySQL/MariaDB column is beyond its Python value: TINYINT(1) and BIT(1) are yes/no
+    (PyMySQL gives 0/1 and b'\\x01'), a wider BIT a number, a date type a date (a zero or partial
+    date, '2024-03-00', comes back as the string it can't convert)."""
+    code, size = col[_TYPE_CODE], col[_INTERNAL_SIZE]
+    if code in (_MYSQL_TINY, _MYSQL_BIT) and size == 1:
+        return "bool"
+    if code == _MYSQL_TIME:   # a time of day as text, as a CSV holds it (PyMySQL: a timedelta)
+        return "time"
+    return "bits" if code == _MYSQL_BIT else "date" if code in _MYSQL_DATES else None
+
+
+def _mssql_kind(col: tuple) -> str | None:
+    """REAL: pyodbc hands back the float32 widened (0.1 → 0.10000000149011612)."""
+    return "float32" if col[_TYPE_CODE] is float and col[_PRECISION] == 24 else None
 
 
 @dataclass(frozen=True)
@@ -68,8 +93,10 @@ class Dialect:
     # every CTE may refer to itself (T-SQL has no RECURSIVE keyword); elsewhere, a CTE's own name
     # inside its body is the real table (5.8a: WITH pg_shadow AS (SELECT * FROM pg_shadow))
     recursive_ctes: bool = False
-    yes_no: Callable[[tuple], bool] | None = None   # a cursor column the engine types as a yes/no
-    dates: Callable[[tuple], bool] | None = None    # one it types as a date (may hold zero dates)
+    # what a cursor column is beyond its Python value ("bool", "bits", "date", "float32"), read
+    # from cursor.description; the value's own type says the rest (QueryResult.frame)
+    kind: Callable[[tuple], str | None] = lambda col: None
+    needs: str = ""   # what a user brings beyond the string, in the README's source list
     # the statement timeout where the engine has no statement for it: (DB-API connection, s)
     driver_timeout: Callable[[object, int], None] | None = None
     # production: the URL connecting to the checked address, the name kept for TLS
@@ -120,6 +147,37 @@ _SSL_MODES = ("REQUIRED", "VERIFY_CA", "VERIFY_IDENTITY")   # the MySQL client's
 _PINNED = "_analystai_checked_address"   # production: the address the socket goes to (do_connect)
 
 
+def _ca_file() -> str:
+    """The CAs a verified Postgres session trusts, as one file (libpq takes a path)."""
+    from api.config import settings
+    path = _ca_file_for(settings.extra_ca_bundle)
+    if not Path(path).is_file():   # a temp cleaner took it: every verified session failed until
+        _ca_file_for.cache_clear()   # a restart (silent-failure hunter)
+        path = _ca_file_for(settings.extra_ca_bundle)
+    return path
+
+
+@functools.cache
+def _ca_file_for(extra_ca_bundle: str | None) -> str:
+    import tempfile
+    try:
+        pems = [Path(certifi.where()).read_bytes(),
+                *([Path(extra_ca_bundle).read_bytes()] if extra_ca_bundle else [])]
+    except OSError as exc:   # this server's setting, not the user's database
+        raise IngestionError("ca bundle", "This server's EXTRA_CA_BUNDLE can't be read "
+                             f"({type(exc).__name__}); ask the administrator.") from exc
+    if extra_ca_bundle:   # alone: next to certifi's, OpenSSL skips what isn't a certificate, so a
+        try:              # wrong file left the operator's CA out without a word (silent-failure
+            ssl.create_default_context(cafile=extra_ca_bundle)   # hunter)
+        except ssl.SSLError as exc:
+            raise IngestionError("ca bundle", "This server's EXTRA_CA_BUNDLE holds no PEM "
+                                 "certificate; ask the administrator.") from exc
+    with tempfile.NamedTemporaryFile("wb", suffix=".pem", prefix="analystai-ca-",
+                                     delete=False) as f:
+        f.write(b"\n".join(pems))
+    return f.name
+
+
 def _tls(mode: str) -> ssl.SSLContext:
     """MySQL/MariaDB TLS: REQUIRED encrypts, VERIFY_CA also checks the certificate's chain,
     VERIFY_IDENTITY its name too. The CAs: certifi's and the operator's EXTRA_CA_BUNDLE (the
@@ -128,15 +186,20 @@ def _tls(mode: str) -> ssl.SSLContext:
     if mode.upper() not in _SSL_MODES:
         raise IngestionError("ssl_mode", "ssl_mode must be REQUIRED, VERIFY_CA or VERIFY_IDENTITY "
                              "(leave it out for no TLS).")
+    return _tls_context_for(mode.upper(), settings.extra_ca_bundle)
+
+
+@functools.cache   # one context per mode and bundle: the CAs were read again for every engine
+def _tls_context_for(mode: str, extra_ca_bundle: str | None) -> ssl.SSLContext:
     ctx = ssl.create_default_context(cafile=certifi.where())
-    if settings.extra_ca_bundle:
+    if extra_ca_bundle:
         try:
-            ctx.load_verify_locations(settings.extra_ca_bundle)
+            ctx.load_verify_locations(extra_ca_bundle)
         except (OSError, ssl.SSLError) as exc:   # this server's setting, not the user's database
             raise IngestionError("ca bundle", "This server's EXTRA_CA_BUNDLE can't be read "
                                  f"({type(exc).__name__}); ask the administrator.") from exc
-    ctx.check_hostname = mode.upper() == "VERIFY_IDENTITY"
-    if mode.upper() == "REQUIRED":
+    ctx.check_hostname = mode == "VERIFY_IDENTITY"   # _tls passes it upper case
+    if mode == "REQUIRED":
         ctx.verify_mode = ssl.CERT_NONE
     return ctx
 
@@ -161,7 +224,7 @@ def _connect_pinned(dialect, conn_rec, cargs, cparams):
 
 
 _MYSQL = Dialect(
-    title="MySQL",
+    title="MySQL", needs=" (hosted, e.g. PlanetScale, RDS: `?ssl_mode=VERIFY_IDENTITY`)",
     sqlglot="mysql", driver="pymysql", drivers=frozenset({"", "pymysql"}),
     # SESSION read only too: a DDL statement commits the open transaction implicitly and
     # would run outside it; max_execution_time covers SELECT, the only statement let through
@@ -179,20 +242,22 @@ _MYSQL = Dialect(
     one_database=True,
     # a DB-API description is (name, type_code, display_size, internal_size, …): PyMySQL's
     # TINY type (1) of width 1 is BOOL / TINYINT(1); the same on MariaDB (5.8b, checked)
-    yes_no=lambda col: col[_TYPE_CODE] == _MYSQL_TINY and col[_INTERNAL_SIZE] == 1,
-    dates=lambda col: col[_TYPE_CODE] in _MYSQL_DATES)
+    kind=_mysql_kind)
 
 
 DIALECTS: dict[str, Dialect] = {
     "postgresql": Dialect(
-        title="PostgreSQL",
+        title="PostgreSQL", needs=" (hosted: `?sslmode=require`, or `verify-full` to check its "
+                                  "certificate)",
         sqlglot="postgres", driver="psycopg", drivers=frozenset({"", "psycopg", "asyncpg"}),
         query_keys=frozenset({"sslmode", "channel_binding", "connect_timeout", "application_name",
                               "target_session_attrs"}),
         # the server reads quotes as the parse guard does: with standard_conforming_strings off a
         # backslash escapes a quote, and a string sqlglot ends reads on (5.8b security review)
+        # and a timestamptz arrives in UTC, as MySQL's session is: else in the server's own zone,
+        # and a day depends on where the server runs (5.8b hardening)
         begin=("SET TRANSACTION READ ONLY", "SET LOCAL statement_timeout = {ms}",
-               "SET LOCAL standard_conforming_strings = on"),
+               "SET LOCAL standard_conforming_strings = on", "SET LOCAL TIME ZONE 'UTC'"),
         system_schemas=frozenset({"information_schema", "pg_catalog", "pg_toast"}),
         connect_args={"connect_timeout": CONNECT_TIMEOUT_S},
         # libpq connects to hostaddr and verifies TLS against host
@@ -201,11 +266,12 @@ DIALECTS: dict[str, Dialect] = {
     # MySQL's row but its timeout: max_statement_time is seconds and stops any statement (1969);
     # MariaDB has no max_execution_time (1193). Picked by the server (dialect_of), not the URL.
     "mariadb": replace(
-        _MYSQL, title="MariaDB",
+        _MYSQL, title="MariaDB", needs=" (hosted: `?ssl_mode=VERIFY_IDENTITY`)",
         begin=("SET SESSION TRANSACTION READ ONLY", "SET SESSION max_statement_time = {s}",
                "START TRANSACTION READ ONLY")),
     "mssql": Dialect(
-        title="SQL Server",
+        title="SQL Server", needs="; a read-only login (db_datareader only): a login that can "
+                                  "write is refused. Self-hosted and RDS; Azure SQL is untested",
         sqlglot="tsql", driver="pyodbc", drivers=frozenset({"", "pyodbc"}),
         # `driver`, `odbc_connect`, `dsn` and every other ODBC attribute are the user's way to a
         # different driver or connection: refused; the driver is set by code
@@ -214,7 +280,7 @@ DIALECTS: dict[str, Dialect] = {
         # no LOCK_TIMEOUT: the driver's query timeout already ends a lock wait (5.8b audit: the
         # two raced at the same limit)
         begin=(_MSSQL_CANT_WRITE, "SET XACT_ABORT ON", "SET QUOTED_IDENTIFIER ON"),
-        driver_timeout=_query_timeout, recursive_ctes=True,
+        driver_timeout=_query_timeout, recursive_ctes=True, kind=_mssql_kind,
         system_schemas=frozenset({"sys", "information_schema", "guest", "db_owner",
                                   "db_accessadmin", "db_securityadmin", "db_ddladmin",
                                   "db_backupoperator", "db_datareader", "db_datawriter",
@@ -281,6 +347,10 @@ def safe_url(conn_str: str) -> tuple[URL, Dialect]:
             d.driver == "pyodbc" and not url.username:
         raise IngestionError("no database", "The connection string must name the user and the "
                              f"database: {engine}://user:password@host:port/<database>.")
+    if "\\" in (url.host or ""):   # a SQL Server named instance: the driver would ask the
+        # browser service on another port, past the production host check (senior audit)
+        raise IngestionError("named instance", "Named instances (host\\INSTANCE) aren't "
+                             "supported: use the instance's port instead (host:port).")
     from api.config import settings
     url = url.set(drivername=f"{engine}+{d.driver}" if d.driver else engine,
                   # one spelling for every reader after the allowlist (5.8b audit: SSL_MODE passed
@@ -324,7 +394,10 @@ def _checked_address(url: URL) -> str:
                 ip in own_ips:
             raise IngestionError("host refused", f"The database host '{url.host}' isn't allowed "
                           "(it is this server itself, or a reserved address).")
-    return str(ips[0])
+    # an IPv4 address first: a dual-stack name whose database listens on IPv4 only failed in
+    # production and worked in development, where the driver tries each (senior audit).
+    # ponytail: one address, never a list; drivers that take several (libpq) are a later step
+    return str(next((ip for ip in ips if ip.version == 4), ips[0]))
 
 
 def _tables(engine) -> dict[str, tuple[str | None, str]]:
@@ -350,6 +423,69 @@ def sql_dialect(engine) -> str:
     """The engine's sqlglot dialect name (the parse guard's and the SQL agent's); refuses an
     engine without a row."""
     return dialect_of(engine).sqlglot
+
+
+_PLAIN_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+
+
+_QUOTE = {"tsql": ("[", "]"), "mysql": ("`", "`")}   # else the standard "…"
+_PLAIN_SPACE = frozenset(" \t\r\n")
+
+
+def _canonical(sql: str, dialect: str) -> str:
+    """The query as the guard's tokenizer read it: what the database runs, never the model's
+    own text. Every way past the guard was text the guard and the server split differently (a
+    statement word read as an alias, U+200B inside a name, a comment): here every token is sent
+    exactly as written, the text between tokens becomes plain spaces (comments gone), and a
+    name that isn't plain ASCII is quoted, so the server sees the guard's tokens and nothing
+    else (5.8b hardening). Tokens, never a regenerated tree: sqlglot's writer rewrites functions
+    (T-SQL DATEDIFF on DATETIMEOFFSET got CASTs that dropped the offset: -3 hours became 2;
+    SYSDATETIME became GETDATE), so the meaning would change (hardening audit, both reviewers)."""
+    try:
+        tokens = sqlglot.tokenize(sql, read=dialect)
+    except sqlglot.errors.SqlglotError:
+        reason = "the query couldn't be read"   # the guard's parse refused it already
+        raise GuardrailViolation("sql", reason, f"Blocked unsafe SQL: {reason}.") from None
+    left, right = _QUOTE.get(dialect, ('"', '"'))
+    out, kinds, end = [], [], 0
+    for token in tokens:
+        gap = sql[end:token.start]
+        # whitespace stays (MySQL reads `COUNT (` as a user function); anything else between
+        # tokens was a comment, or a character the tokenizer skipped: one plain space
+        out.append("".join(c if c in _PLAIN_SPACE else " " for c in gap)
+                   if all(c.isspace() for c in gap) else " ")
+        text, kind = sql[token.start:token.end + 1], token.token_type
+        if kind == sqlglot.TokenType.VAR and not _PLAIN_NAME.fullmatch(text):
+            name = re.sub(r"[A-Z]+", lambda m: m.group().lower(), text) \
+                if dialect == "postgres" else text   # Postgres folds an unquoted name's ASCII
+            text, kind = f"{left}{name.replace(right, right * 2)}{right}", sqlglot.TokenType.IDENTIFIER
+        elif kind not in _AS_WRITTEN and kind.name[-6:] != "STRING":
+            # a keyword or an operator: plain ASCII, one space inside (`GROUP BY` may span a
+            # space the server doesn't take as one: automated review of the token form)
+            if not text.isascii():
+                _cant_run_as_written()
+            text = re.sub(r"\s+", " ", text)
+        out.append(text)
+        kinds.append(kind)
+        end = token.end + 1
+    canonical = "".join(out).strip()
+    # what the server is sent reads back as the same tokens, or it isn't run
+    try:
+        again = [t.token_type for t in sqlglot.tokenize(canonical, read=dialect)]
+    except sqlglot.errors.SqlglotError:
+        again = None
+    if again != kinds:
+        _cant_run_as_written()
+    return canonical
+
+
+_AS_WRITTEN = frozenset({sqlglot.TokenType.IDENTIFIER, sqlglot.TokenType.NUMBER,
+                         sqlglot.TokenType.VAR})
+
+
+def _cant_run_as_written() -> None:
+    reason = "the query has characters that can't be run exactly as written"
+    raise GuardrailViolation("sql", reason, f"Blocked unsafe SQL: {reason}.")
 
 
 def _assert_single_select(sql: str, dialect: str) -> str:
@@ -390,7 +526,13 @@ def _unlisted_tables(sql: str, d: Dialect, listed) -> list[str]:
         if t.this.args.get("temporary") or t.this.args.get("global_"):
             out.append(f"#{t.name}")
             continue
-        name = ".".join(p for p in (t.catalog, t.db, t.name) if p)
+        if t.catalog:   # another database on the server (`sales..t`: database sales, default
+            # schema): joining the parts without the empty one made it `sales.t`, a listed schema
+            # of this database, and the other database's table was read (hardening security
+            # review, proven on SQL Server). A name's parts are compared as parts, never joined
+            out.append(f"{t.catalog}.{t.db}.{t.name}")
+            continue
+        name = ".".join(p for p in (t.db, t.name) if p)
         cte_ref = id(t) not in real and name == t.name and t.name.lower() in ctes
         if not cte_ref and name.lower() not in known:
             out.append(name)
@@ -408,25 +550,106 @@ class QueryResult:
     columns: list[str]
     rows: list[tuple]
     truncated: bool          # more than max_rows existed; only the first max_rows are here
-    yes_no: frozenset[int] = frozenset()   # positions the database types as a yes/no (TINYINT(1))
-    dates: frozenset[int] = frozenset()    # positions it types as a date
+    kinds: tuple[str | None, ...] = ()   # per position, the dialect row's `kind` of the column
 
     def frame(self) -> pd.DataFrame:
         """The one place a database result becomes a frame (ADR-0010), a table load and a
-        question's result alike: what a CSV of the same table gives. NUMERIC/DECIMAL → float
-        (coerce_float), a yes/no type holding only 0/1 → True/False (a TINYINT(1) may hold 2: then
-        it stays a number), a date column's zero date (legacy MySQL, any precision) → blank; then
-        the load rule every source ends in (normalize_frame: DATE objects become datetimes
-        there). Columns by position: a join can return two `id` columns."""
-        df = pd.DataFrame.from_records(self.rows, columns=self.columns, coerce_float=True)
-        for i in range(df.shape[1]):
-            s = df.iloc[:, i]
-            if i in self.yes_no and s.dropna().isin((0, 1)).all():
-                df.isetitem(i, s.map({1: True, 0: False}))
-            elif i in self.dates:
-                df.isetitem(i, s.mask(s.map(lambda v: isinstance(v, str)
-                                            and _ZERO_DATE.fullmatch(v) is not None)))
+        question's result alike: each column as a CSV export of the same table reads, by the type
+        the driver declares (its value's Python type, and the row's `kind` where that isn't
+        enough), never by what the values look like (5.8b hardening: NUMERIC(19,0) ids rounded
+        to one float, BIT(1) as bytes, REAL as 0.10000000149011612). Then the load rule every
+        source ends in (normalize_frame). Columns by position: a join can return two `id`s."""
+        kinds = self.kinds or (None,) * len(self.columns)
+        cells = list(zip(*self.rows)) if self.rows else [()] * len(self.columns)
+        df = pd.DataFrame({i: _as_exported(list(v), k)
+                           for i, (v, k) in enumerate(zip(cells, kinds))})
+        df.columns = self.columns
         return normalize_frame(df)
+
+    def notes(self) -> list[str]:
+        """What `frame` read differently from the database, said: a zero or partial date the
+        driver could only give as text is blank. Read by the table load and the question path
+        alike (audit pass 2: a question's blanks were silent)."""
+        out = []
+        for i, (name, kind) in enumerate(zip(self.columns, self.kinds or ())):
+            if kind == "date" and (n := sum(isinstance(row[i], str) for row in self.rows)):
+                out.append(f"{n:,} value{'s' * (n > 1)} in `{name}` {'are' if n > 1 else 'is'} a "
+                           "zero or partial date (like 0000-00-00), which has no calendar day: "
+                           "read as blank")
+        return out
+
+
+def _hms(t: datetime.timedelta) -> str:
+    """A MySQL TIME as its text: it may be negative or past 24 h (-25:00:01), and keeps its
+    fraction (TIME(6))."""
+    whole = abs(t)
+    seconds, micro = int(whole.total_seconds()), whole.microseconds
+    text = f"{seconds // 3600:02d}:{seconds // 60 % 60:02d}:{seconds % 60:02d}"
+    return f"{'-' * (t < datetime.timedelta(0))}{text}{f'.{micro:06d}' if micro else ''}"
+
+
+_PLAIN_TYPES = frozenset({type(None), str, float, bool, datetime.date})
+
+
+def _plain(values: list) -> bool:
+    """Every value one pandas reads as a CSV's would be: text, a float, a yes/no, a date, a naive
+    datetime, an int a float holds. Such a column skips the per-cell work (hardening audit: it
+    made a 50k-row load 12 times slower)."""
+    for v in values:
+        t = type(v)
+        if t in _PLAIN_TYPES or (t is datetime.datetime and v.tzinfo is None) or \
+                (t is int and -_FLOAT_EXACT <= v <= _FLOAT_EXACT):
+            continue
+        return False
+    return True
+
+
+def _as_exported(values: list, kind: str | None) -> pd.Series:
+    """One column's driver values as the CSV of them reads: whole numbers exact, decimals with a
+    point as floats (NaN and infinities too), a yes/no as True/False, bytes as hex, MySQL TIME /
+    UUID / JSON as their text, a tz-aware time as ISO text (normalize_frame's one date rule decides
+    its zone, as for a CSV's). An interval stays an interval (Postgres `age()`, `ts2 - ts1`): only
+    MySQL's TIME is a time of day (hardening audit: every interval became 'HHHH:MM:SS' text)."""
+    if kind is None and _plain(values):
+        return pd.Series(values)
+
+    def one(v):
+        if v is None or (isinstance(v, float) and math.isnan(v)):
+            return None
+        if kind == "date" and isinstance(v, str):   # a zero or partial date ('2024-03-00') the
+            return None                             # driver couldn't convert
+        if kind == "float32":
+            return float(str(np.float32(v)))   # its shortest text: 0.1, never 0.10000000149…
+        if isinstance(v, (bytes, bytearray)):
+            return int.from_bytes(v, "big") if kind in ("bool", "bits") else "0x" + bytes(v).hex()
+        if isinstance(v, (uuid.UUID, datetime.time)):
+            return str(v)
+        if kind == "time" and isinstance(v, datetime.timedelta):
+            return _hms(v)
+        if isinstance(v, (dict, list)):
+            return json.dumps(v)
+        if isinstance(v, datetime.datetime) and v.tzinfo is not None:
+            return v.isoformat()
+        return v
+    # object until the end: Series.map re-infers, and ints with a None become float64
+    cells = [one(v) for v in values]
+    present = [v for v in cells if v is not None]
+    if kind == "bool" and all(v in (0, 1) for v in present):   # a TINYINT(1) holding 2 stays
+        flags = [None if v is None else bool(v) for v in cells]   # a number; bool as a CSV reads
+        return pd.Series(flags, dtype=object if len(present) < len(cells) else bool)   # it
+    if present and all(isinstance(v, decimal.Decimal) for v in present):
+        # written without a point, and finite ('NaN' has no exponent: it crashed the frame)
+        if all(v.is_finite() and v.as_tuple().exponent >= 0 for v in present):
+            cells = [None if v is None else int(v) for v in cells]
+            present = [v for v in cells if v is not None]
+        else:
+            return pd.Series([None if v is None else float(v) for v in cells], dtype="float64")
+    # exact whole numbers only where the database gave numbers: a VARCHAR of digits is text
+    # (an ICCID or an account number with its leading zero: hardening audit)
+    if present and all(type(v) is int for v in present) and \
+            (exact := exact_whole_numbers(pd.Series(cells, dtype=object))) is not None:
+        return exact
+    return pd.Series(cells)   # pandas infers the rest from the values, as from a CSV's
 
 
 def _session_error(exc: SQLAlchemyError, engine) -> IngestionError:
@@ -434,8 +657,13 @@ def _session_error(exc: SQLAlchemyError, engine) -> IngestionError:
     lacks) as the database's problem, never the query's: no paid retry. The driver's first line,
     the password cut out."""
     said = str(getattr(exc, "orig", None) or exc).strip().splitlines()[0][:300]
+    if "Login timeout expired" in said:   # never HYT00 alone: a query timeout shares it
+        # ODBC's words for a host that doesn't answer (none listening, or no such host): the
+        # cause said as the user can act on it (5.8b hardening: the connection matrix)
+        said = f"can't reach {engine.url.host}:{engine.url.port or 1433} (no answer within " \
+               f"{CONNECT_TIMEOUT_S} s): check the host, the port and that the server allows it"
     if engine.url.password:
-        said = said.replace(engine.url.password, "***")
+        said = _cut(said, engine.url.password)   # the one rule: a short one only as a word
     return IngestionError("session setup", f"Couldn't open a read-only session on the database: "
                           f"{said}")
 
@@ -462,17 +690,31 @@ def run_readonly(engine, sql: str, max_rows: int = MAX_ROWS,
         raise _session_error(exc, engine) from exc
     with conn:
         try:
-            result = conn.execute(text(sql))
-            described = list(enumerate(result.cursor.description or ()))
-            yes_no = frozenset(i for i, c in described if d.yes_no and d.yes_no(c))
-            dates = frozenset(i for i, c in described if d.dates and d.dates(c))
+            # streamed (a server-side cursor on Postgres, unbuffered on MySQL; pyodbc fetches as
+            # read): psycopg and PyMySQL otherwise hold the whole result before fetchmany caps it
+            # (security review: 587 MB to return 10 rows of 3M)
+            result = conn.execution_options(stream_results=True).execute(text(sql))
+            kinds = tuple(d.kind(c) for c in result.cursor.description or ())
+            columns = list(result.keys())
             rows = [tuple(r) for r in result.fetchmany(max_rows + 1)]
-            return QueryResult(list(result.keys()), rows[:max_rows], len(rows) > max_rows,
-                               yes_no, dates)
+            if len(rows) > max_rows:
+                # past the cap: the connection is dropped, never drained (PyMySQL's close reads
+                # every remaining row: a capped preview waited out the whole timeout, audit pass
+                # 2); the server ends the transaction with the session (NullPool: never reused).
+                # PyMySQL's cursor close and result finalizer would still drain the dropped
+                # socket (a traceback in the log each time): told the result is over first
+                unbuffered = getattr(getattr(result.cursor, "_result", None), "unbuffered_active", None)
+                if unbuffered:
+                    result.cursor._result.unbuffered_active = False
+                conn.invalidate()
+            else:
+                result.close()   # before the rollback: an unbuffered result must be let go
+            return QueryResult(columns, rows[:max_rows], len(rows) > max_rows, kinds)
         finally:
-            conn.rollback()
-            for statement in d.end:
-                conn.exec_driver_sql(statement)
+            if not conn.invalidated:
+                conn.rollback()
+                for statement in d.end:
+                    conn.exec_driver_sql(statement)
 
 
 class SQLConnector(DataConnector):
@@ -486,6 +728,10 @@ class SQLConnector(DataConnector):
         if (mode := url.query.get("ssl_mode")) is not None:   # MySQL's word; PyMySQL takes a context
             args["ssl"] = _tls(mode)
             url = url.difference_update_query(["ssl_mode"])
+        if url.query.get("sslmode") in ("verify-ca", "verify-full"):   # Postgres: libpq reads a
+            # file; the same CAs as MySQL's (certifi + EXTRA_CA_BUNDLE, the image ships RDS's),
+            # never a path from the user's string (senior audit: verify-full against RDS failed)
+            url = url.update_query_dict({"sslrootcert": _ca_file()})
         # NullPool: a connector lives for one request and builds an engine per call, so a pool
         # would leave idle connections open on the user's database (measured: 4 after 5 queries).
         engine = create_engine(url, poolclass=NullPool, connect_args=args)
@@ -521,7 +767,8 @@ class SQLConnector(DataConnector):
         the tables this connection lists."""
         engine = await self.engine()
         d = dialect_of(engine)
-        sql = _assert_single_select(sql, d.sqlglot)
+        sql = _assert_single_select(_canonical(_assert_single_select(sql, d.sqlglot), d.sqlglot),
+                                    d.sqlglot)
         try:
             listed = await asyncio.to_thread(_tables, engine)
         except SQLAlchemyError as exc:   # the first connection a question makes: the database
@@ -560,6 +807,7 @@ class SQLConnector(DataConnector):
         load = select(literal_column("*")).select_from(listed).order_by(*listed.c) \
             .limit(LOAD_MAX_ROWS + 1).suffix_with("OPTION (MAXDOP 1)", dialect="mssql")
         res = await asyncio.to_thread(run_readonly, engine, _sql_of(load, engine), LOAD_MAX_ROWS)
+        notes = res.notes()
         if res.truncated:
             try:
                 count = await asyncio.to_thread(run_readonly, engine, _sql_of(
@@ -569,9 +817,11 @@ class SQLConnector(DataConnector):
             # stand, and "the source has more" still holds (5.8b audit)
             except (SQLAlchemyError, IngestionError):
                 total = None
-            self.read_info = {"notes": [truncation_note(
+            notes.insert(0, truncation_note(
                 len(res.rows), total, f"a named table loads at most {LOAD_MAX_ROWS:,} rows; "
-                "connect without a table to have questions answered in the database")]}
+                "connect without a table to have questions answered in the database"))
+        if notes:
+            self.read_info = {"notes": notes}
         return res.frame()
 
     async def test_connection(self) -> tuple[bool, str]:

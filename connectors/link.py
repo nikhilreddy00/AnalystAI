@@ -11,6 +11,7 @@ says more than the host."""
 from __future__ import annotations
 
 import asyncio
+import os
 import re
 from urllib.parse import parse_qsl, unquote, urlencode, urljoin, urlparse
 
@@ -102,8 +103,8 @@ async def download(link: str) -> tuple[bytes, str, str]:
                         continue
                     _ok(response.status_code, host)
                     content = await _capped(response, host)
-                    return (content, _suffix(content, response, host),
-                            _name(response, link))
+                    name = _name(response, link)
+                    return content, _suffix(content, response, host, name), name
     except HostNotFound:
         raise IngestionError("link host not found", f"The link's host '{host}' wasn't "
                              "found. Check the link.") from None
@@ -155,10 +156,12 @@ async def _capped(response: httpx.Response, host: str) -> bytes:
 _MAGIC = ((_XLSX, ".xlsx"), (b"PAR1", ".parquet"), (b"\xd0\xcf\x11\xe0", ".xls"))
 
 
-def _suffix(content: bytes, response: httpx.Response, host: str) -> str:
+def _suffix(content: bytes, response: httpx.Response, host: str, name: str) -> str:
     """The reader a file's bytes go to: a workbook, Parquet, an old .xls (refused, as an upload
     is), JSON or JSON lines, else CSV text; an HTML page (a sign-in, a virus-scan notice) is no
-    file, whatever its status and type say."""
+    file, whatever its status and type say. Text: its own name's extension first, then its first
+    character (senior audit: a CSV whose header starts `[Date],[Sales]`, as SQL tools export it,
+    went to the JSON reader and was refused)."""
     for magic, suffix in _MAGIC:
         if content.startswith(magic):
             return suffix
@@ -166,4 +169,6 @@ def _suffix(content: bytes, response: httpx.Response, host: str) -> str:
     if "text/html" in response.headers.get("content-type", "").lower() or \
             head.startswith((b"<!doctype html", b"<html", b"<head", b"<!--")):
         raise _not_public(host, "a web page came back, not a file")
+    if (named := os.path.splitext(name.lower())[1]) in (".csv", ".tsv", ".json"):
+        return named
     return ".json" if content.lstrip(b"\xef\xbb\xbf \t\r\n")[:1] in (b"[", b"{") else ".csv"

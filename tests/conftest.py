@@ -6,6 +6,29 @@ from llm.client import RecordedClient, set_client
 
 
 _MSSQL_ROLES = {"TEST_MSSQL_READER_URL": "db_datareader", "TEST_MSSQL_WRITER_URL": "db_datawriter"}
+# Each way a login can write, and its undo (test_every_way_a_sql_server_login_can_write_is_refused).
+# The reader's are undone here, at every start: a run killed between a grant and its revoke (the
+# mutation gate's timeout) left the reader owning a schema, and every later run failed (5.8b hardening)
+MSSQL_CAN_WRITE = [
+    ("GRANT INSERT ON dbo.cw_t TO aai_reader", "REVOKE INSERT ON dbo.cw_t FROM aai_reader"),
+    ("GRANT UPDATE ON SCHEMA::dbo TO aai_reader", "REVOKE UPDATE ON SCHEMA::dbo FROM aai_reader"),
+    ("CREATE ROLE cw_role; GRANT DELETE ON dbo.cw_t TO cw_role; ALTER ROLE cw_role ADD MEMBER aai_reader",
+     "ALTER ROLE cw_role DROP MEMBER aai_reader; DROP ROLE cw_role"),
+    ("ALTER ROLE db_owner ADD MEMBER aai_reader", "ALTER ROLE db_owner DROP MEMBER aai_reader"),
+    ("EXEC('CREATE SCHEMA cw_owned AUTHORIZATION aai_reader')", "DROP SCHEMA cw_owned"),
+    ("GRANT IMPERSONATE ON USER::aai_writer TO aai_reader",
+     "REVOKE IMPERSONATE ON USER::aai_writer FROM aai_reader"),
+    ("GRANT EXECUTE TO aai_reader", "REVOKE EXECUTE FROM aai_reader"),
+    # audit pass 2 (security, proven: it granted itself INSERT and wrote; test analyst): the
+    # deny list missed these, the allow list refuses anything not a read
+    ("ALTER ROLE db_securityadmin ADD MEMBER aai_reader",
+     "ALTER ROLE db_securityadmin DROP MEMBER aai_reader"),
+    ("ALTER ROLE db_ddladmin ADD MEMBER aai_reader", "ALTER ROLE db_ddladmin DROP MEMBER aai_reader"),
+    ("GRANT ALTER ANY ROLE TO aai_reader", "REVOKE ALTER ANY ROLE FROM aai_reader"),
+    ("GRANT CREATE SCHEMA TO aai_reader", "REVOKE CREATE SCHEMA FROM aai_reader"),
+    ("ALTER AUTHORIZATION ON OBJECT::dbo.cw_t TO aai_reader",
+     "ALTER AUTHORIZATION ON OBJECT::dbo.cw_t TO SCHEMA OWNER"),
+]
 
 
 def _mssql_logins(c, text, name: str) -> None:
@@ -26,6 +49,13 @@ def _mssql_logins(c, text, name: str) -> None:
         c.execute(text(f"USE [{name}]; IF USER_ID('{user}') IS NULL CREATE USER [{user}] FOR LOGIN "
                        f"[{user}]; ALTER ROLE db_datareader ADD MEMBER [{user}]; "
                        f"ALTER ROLE {role} ADD MEMBER [{user}]; USE master"))
+        if var == "TEST_MSSQL_READER_URL":
+            from sqlalchemy.exc import DBAPIError
+            for _, undo in MSSQL_CAN_WRITE:
+                try:
+                    c.execute(text(f"USE [{name}]; {undo}; USE master"))
+                except DBAPIError:   # nothing to undo
+                    c.execute(text("USE master"))
         os.environ[var] = login.set(database=name).render_as_string(hide_password=False)
 
 

@@ -238,7 +238,8 @@ def without_credentials(report_text: str) -> str:
     connector config, so any URL's password or key in its query, the API's auth value and a
     service-account key are masked (5.8b, recurrence of P58-06: 5.8a covered messages, traces
     and SSE, never reports)."""
-    text = _URL_PASSWORD.sub(r"\1***@", report_text)
+    from connectors.base import redact   # and every credential the run's connectors were given
+    text = _URL_PASSWORD.sub(r"\1***@", redact(report_text))
     return _SECRET_KEYS.sub(r'\1"***"', _QUERY_SECRET.sub(r"\1***", text))
 
 
