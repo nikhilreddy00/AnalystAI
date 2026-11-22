@@ -86,6 +86,18 @@ def test_parquet_with_every_logical_type_reads():
     assert df["d"].notna().all() and df["tsz"].notna().all()
 
 
+def test_parquet_list_and_struct_columns_read_as_json_text():
+    """As the JSON reader writes a list (5.8c: a parquet list column crashed normalize_frame)."""
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    buf = io.BytesIO()
+    pq.write_table(pa.table({"id": [1, 2], "tags": [["a", "b"], []],
+                             "addr": [{"city": "Oslo", "zip": 150}, None]}), buf)
+    df, _ = _read_bytes(buf.getvalue(), ".parquet")
+    assert df["tags"].tolist() == ['["a", "b"]', "[]"]
+    assert df["addr"].iloc[0] == '{"city": "Oslo", "zip": 150}' and pd.isna(df["addr"].iloc[1])
+
+
 @settings(max_examples=300, deadline=None)
 @given(st.lists(st.text(st.sampled_from("ab,\"é"), max_size=6), max_size=40),
        st.lists(st.sampled_from(["\n", "\r\n", "\r", "\x1c", " ", "\x0b"]), min_size=40,
@@ -148,32 +160,54 @@ print(round(time.monotonic() - started, 1), round(peak_mb()), len(df))
     assert float(took) < 30 and float(peak) < 1500 and int(rows) > 1_500_000
 
 
-@pytest.mark.parametrize("suffix", [".csv", ".parquet"])
-def test_a_file_past_the_cell_bound_is_refused_before_it_is_parsed(suffix):
-    """A 100 MB CSV of single digits is 52M cells and peaked at 2.49 GB (5.8c measured): the
-    bytes cap alone doesn't bound a read; the declared cells do, read before the parse."""
+_DENSE = {   # each under the byte cap, each past what a read may build
+    # a 100 MB CSV of single digits is 52M cells and peaked at 2.49 GB (5.8c measured)
+    "csv": ('.csv', 'b"a,b,c,d,e,f,g,h,i,j\\n" + b"0,1,2,3,4,5,6,7,8,9\\n" * 2_600_001'),
+    # rows wider than their header: pandas builds every field, then drops the extras (security
+    # review of WP1: lines × header width missed it)
+    "csv wider rows": ('.csv', 'b"a,b\\n" + b"1,2\\n" * 300 + (b"0," * 9_000 + b"0\\n") * 3_000'),
+    # JSON builds a dict a record: a 28 MB file of 4M cells peaked at 678 MB (5.8c measured)
+    "json": ('.json', 'b"[" + b\'{"a":0,"b":1},\' * 4_100_000 + b\'{"a":0}]\''),
+    "parquet": ('.parquet', '_pq({"a": pa.array([0] * 26_000_001, pa.int8())})'),
+    # a list column: few rows and one column, millions of values (security review of WP1)
+    "parquet nested": ('.parquet', '_pq({"a": pa.array([list(range(1_000_000))] * 26)})'),
+    # long strings: few cells, gigabytes once unpacked (repeated text compresses to nothing)
+    "parquet long strings": ('.parquet', '_pq({"a": pa.array(["x" * 10_000_000] * 60)})'),
+}
+
+
+@pytest.mark.parametrize("shape", list(_DENSE))
+def test_a_file_past_the_cell_bound_is_refused_before_it_is_parsed(shape, tmp_path):
+    """The bytes cap alone doesn't bound a read; the declared or counted cells (and a parquet
+    file's unpacked size) do, before the parse. Built in one child, read in a fresh one: the
+    reader's peak is its own, never the build's."""
+    suffix, build = _DENSE[shape]
+    path = tmp_path / f"dense{suffix}"
+    _in_a_child(f"""
+import io
+import pyarrow as pa, pyarrow.parquet as pq
+def _pq(cols):
+    buf = io.BytesIO()
+    pq.write_table(pa.table(cols), buf)
+    return buf.getvalue()
+open({str(path)!r}, "wb").write({build})
+""")
     took, peak, said = _in_a_child(f"""
-import io, time
+import time
 from agents.errors import IngestionError
 from connectors.csv_connector import _read_bytes
-if {suffix!r} == ".csv":
-    content = b"a,b,c,d,e,f,g,h,i,j\\n" + b"0,1,2,3,4,5,6,7,8,9\\n" * 2_600_001
-else:
-    import pyarrow as pa, pyarrow.parquet as pq
-    buf = io.BytesIO()
-    pq.write_table(pa.table({{"a": pa.array([0] * 26_000_001, pa.int8())}}), buf)
-    content = buf.getvalue()
+content = open({str(path)!r}, "rb").read()
 started = time.monotonic()
 try:
     _read_bytes(content, {suffix!r})
     said = "read"
 except IngestionError as e:
-    said = "refused" if "million cells" in e.user_message else e.user_message.replace(" ", "_")
+    said = "refused"   # in its own words (the cell bound, or rows that don't line up)
 print(round(time.monotonic() - started, 1), round(peak_mb()), said)
 """)
-    # 5.8c measured: 216 MB (CSV) and 352 MB (parquet), building the input included; a parse ~1.2 GB+
+    # a parse of any of these: 1 GB+; the file and the imports alone ~250 MB.
     # time: 0.9 s alone, 2.0 s under `-n 8`; the bound catches a parse, not load
-    assert said == "refused" and float(took) < 5 and float(peak) < 600
+    assert said == "refused" and float(took) < 5 and float(peak) < 500
 
 
 def test_a_file_just_under_the_cell_bound_reads():

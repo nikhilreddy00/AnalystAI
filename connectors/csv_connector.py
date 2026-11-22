@@ -248,8 +248,10 @@ def _read_text_table(content: bytes, suffix: str) -> tuple[pd.DataFrame, dict]:
     if width > _MAX_COLUMNS or _widest_record(text, sep) > _MAX_COLUMNS:
         raise IngestionError("too many columns", f"The file has more than {_MAX_COLUMNS:,} "
                              "columns, past what can be read.")
-    # lines × header width: at least the cells the parse builds (a quoted newline only adds lines)
-    if max(text.count("\n"), text.count("\r")) * width > _MAX_CELLS:
+    # lines × header width, or the delimiters (a row wider than its header): at least the cells
+    # the parse builds (a quoted newline or delimiter only adds to the count)
+    lines = max(text.count("\n"), text.count("\r"))
+    if max(lines * width, text.count(sep) + lines) > _MAX_CELLS:
         raise IngestionError("too many cells", _TOO_MANY_CELLS)
     # Codes written with a leading zero (ZIP 02134, account 00731) are text: read as numbers they
     # lose the zero for good; and long whole numbers (ids past 2**53) a blank turns into rounded
@@ -333,6 +335,13 @@ _MAX_UNPACKED, _MAX_PARTS, _MAX_COLUMNS = 1000 * 2**20, 10_000, 10_000
 _MAX_CELLS = 25_000_000
 _TOO_MANY_CELLS = (f"The file has more than {_MAX_CELLS // 1_000_000} million cells (rows × "
                    "columns), past what can be read. Upload fewer rows or columns.")
+# JSON costs ~170 bytes a cell (a dict a record): 8M cells ≈ 1.35 GB (5.8c measured)
+_MAX_JSON_CELLS = 8_000_000
+_TOO_MANY_JSON_CELLS = _TOO_MANY_CELLS.replace(f"{_MAX_CELLS // 1_000_000} million",
+                                               f"{_MAX_JSON_CELLS // 1_000_000} million")
+# a parquet file's decoded data (5.8c measured: its 4M-row, 8-column file decodes to ~280 MB and
+# peaks at 1.3 GB read; 30 strings of 10 MB, 300 MB, peaked at 1.05 GB)
+_MAX_PARQUET_UNPACKED = 400 * 2**20
 _MAX_RATIO, _RATIO_FROM = 200, 10 * 2**20   # a part over 10 MB packed more than 200 times
 
 
@@ -363,12 +372,58 @@ def _readable_size(content: bytes, suffix: str) -> None:
             meta = pq.ParquetFile(io.BytesIO(content)).metadata
         except Exception as exc:   # pyarrow raises its own types for a corrupt file
             raise IngestionError(f"parquet: {type(exc).__name__}", _NOT_A_TABLE) from exc
-        if meta.num_rows * meta.num_columns > _MAX_CELLS:
+        groups = [meta.row_group(i) for i in range(meta.num_row_groups)]
+        # values: a list column's every element counts (security review of WP1: rows × columns
+        # missed a nested column). Its unpacked size is measured as it is read (_read_parquet).
+        values = sum(g.column(j).num_values for g in groups for j in range(g.num_columns))
+        if max(values, meta.num_rows * meta.num_columns) > _MAX_CELLS:
             raise IngestionError("too many cells", _TOO_MANY_CELLS)
+    if suffix in (".json", ".jsonl") and \
+            max(content.count(b":"), content.count(b",")) + 1 > _MAX_JSON_CELLS:
+        # each value is a key's (:) or follows a comma: at least the cells pandas builds, a
+        # dict a record (5.8c measured: 4M cells of tiny records peaked at 678 MB)
+        raise IngestionError("too many cells", _TOO_MANY_JSON_CELLS)
     # A CSV's width is checked once, exactly, as the reader takes its header (_read_text_table).
     # 5.8b's cheap per-line gate counted raw delimiters, quotes included, and refused a two-column
     # file with one long quoted cell (senior audit); without it a 5M-comma line is still refused
     # in 0.3 s (tests/test_share_links.py).
+
+
+def _read_parquet(content: bytes) -> pd.DataFrame:
+    """A parquet file as pandas reads it, its decoded size measured first: repeated text is
+    stored once (a dictionary), so 60 copies of a 10 MB string are a small file and 600 MB once
+    read (security review of WP1). Text columns are read with their dictionaries kept, and the
+    size they decode to is summed without decoding them. A list or struct column becomes JSON
+    text, as the JSON reader writes one (5.8c: a list column crashed normalize_frame).
+    ponytail: text inside a list column isn't measured this way; its values count as cells."""
+    import pyarrow as pa
+    import pyarrow.compute as pc
+    import pyarrow.parquet as pq
+    try:
+        pf = pq.ParquetFile(io.BytesIO(content))
+        fields = pf.schema_arrow
+        text = [f.name for f in fields if pa.types.is_string(f.type) or pa.types.is_binary(f.type)
+                or pa.types.is_large_string(f.type) or pa.types.is_large_binary(f.type)]
+        packed = pq.ParquetFile(io.BytesIO(content), read_dictionary=text).read()
+        unpacked = sum(packed.column(n).nbytes for n in packed.column_names if n not in text)
+        for name in text:
+            for chunk in packed.column(name).chunks:
+                lengths = pc.take(pc.binary_length(chunk.dictionary), chunk.indices)
+                unpacked += pc.sum(lengths).as_py() or 0
+        del packed
+        if unpacked > _MAX_PARQUET_UNPACKED:
+            raise IngestionError("parquet too large", "The file unpacks to more than "
+                                 f"{_MAX_PARQUET_UNPACKED // 2**20} MB, past what can be read.")
+        df = pd.read_parquet(io.BytesIO(content))
+        for f in fields:
+            if pa.types.is_nested(f.type):
+                df[f.name] = [None if v is None else json.dumps(v, default=str)
+                              for v in pf.read(columns=[f.name]).column(0).to_pylist()]
+    except IngestionError:
+        raise
+    except Exception as exc:   # pyarrow raises its own types for a corrupt file
+        raise IngestionError(f"parquet: {type(exc).__name__}", _NOT_A_TABLE) from exc
+    return df
 
 
 def _read_bytes(content: bytes, suffix: str) -> tuple[pd.DataFrame, dict]:
@@ -392,10 +447,7 @@ def _read_bytes(content: bytes, suffix: str) -> tuple[pd.DataFrame, dict]:
                                  "ignored.")
         df = sheets[name]
     elif suffix == ".parquet":
-        try:
-            df = pd.read_parquet(io.BytesIO(content))
-        except Exception as exc:   # pyarrow raises its own types for a corrupt file
-            raise IngestionError(f"parquet: {type(exc).__name__}", _NOT_A_TABLE) from exc
+        df = _read_parquet(content)
         info = {"format": "parquet", "notes": []}
     elif suffix in (".json", ".jsonl"):
         content = content.removeprefix(b"\xef\xbb\xbf")   # a byte-order mark (Windows tools write one)
