@@ -1806,6 +1806,9 @@ def test_a_leading_zero_is_never_a_whole_number():
     assert exact_whole_numbers(pd.Series(["0123456789012345678", None], dtype=object)) is None
     assert exact_whole_numbers(pd.Series(["123456789012345678", None], dtype=object)).tolist()[0] \
         == 123456789012345678
+    # a float holds every whole number up to 2**53 itself, and not the one after it
+    assert exact_whole_numbers(pd.Series([str(2**53), "-1"], dtype=object)) is None
+    assert exact_whole_numbers(pd.Series([str(2**53 + 1)], dtype=object)).dtype == "Int64"
     assert exact_whole_numbers(pd.Series([str(2**63 - 1)], dtype=object)).dtype == "Int64"
     assert exact_whole_numbers(pd.Series([str(2**63)], dtype=object)).tolist() == [str(2**63)]
 
@@ -1841,6 +1844,7 @@ def test_a_blanked_date_is_said_in_its_number():
     one = QueryResult(["d"], [("0000-00-00",), (None,)], False, ("date",))
     two = QueryResult(["d"], [("0000-00-00",), ("2024-03-00",)], False, ("date",))
     assert one.notes()[0].startswith("1 value in `d` is a zero or partial date")
+    assert one.notes()[0].endswith("has no calendar day: read as blank")
     assert two.notes()[0].startswith("2 values in `d` are a zero or partial date")
 
 

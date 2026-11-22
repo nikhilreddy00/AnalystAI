@@ -691,7 +691,8 @@
   "hash": "d5fa625acf576b03"
  },
  "connectors/sql_connector.py::_mysql_kind": {
-  "equivalents": []
+  "equivalents": [],
+  "hash": "3bb74eff10d44bf2"
  },
  "connectors/sql_connector.py::_plain": {
   "equivalents": [],
@@ -1069,7 +1070,8 @@
     "old": "return _DOCUMENTED_CALL.findall(_DOCUMENTED.get(dialect, \"\"))",
     "reason": "a default with no call in it: 'XXXX' and '' both find no documented call"
    }
-  ]
+  ],
+  "hash": "7735b25bc7ae99f3"
  },
  "guardrails.py::is_pii_column": {
   "equivalents": [],

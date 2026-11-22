@@ -333,9 +333,10 @@ async def capped_body(response: httpx.Response, cap: int) -> bytes:
             raw += len(chunk)   # the sent bytes too, whatever the decoder holds back
             if raw > cap:
                 raise BodyTooLarge
-            if decoder is None:
+            if decoder is None:   # raw is the body: its cap was checked above
                 body += chunk
-            while decoder is not None and chunk:
+                continue
+            while chunk:
                 try:
                     out = decoder.decompress(chunk, cap + 1 - len(body))
                 except zlib.error:   # deflate sent without its zlib header, as some servers do
@@ -356,8 +357,6 @@ async def capped_body(response: httpx.Response, cap: int) -> bytes:
                     if members > _MAX_GZIP_MEMBERS:   # millions of empty members: seconds of CPU
                         raise ValueError(f"its {encoding} answer is in too many pieces")   # (audit 2)
                     decoder = zlib.decompressobj(_ZLIB_AUTO)
-            if len(body) > cap:
-                raise BodyTooLarge   # each caller says it in its own words (the link's, the API's)
         if decoder is not None and raw:
             body += decoder.flush()   # all input was taken (no tail): at most a match's bytes
             if len(body) > cap:

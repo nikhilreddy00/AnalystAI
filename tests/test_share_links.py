@@ -676,6 +676,8 @@ def test_the_body_reader_holds_its_boundaries(monkeypatch):
 
     import connectors.base as base
     from connectors.base import BodyTooLarge
+    long = os.urandom(200_000)   # 4 chunks: each one read, none dropped
+    assert _read(long, "identity", 200_000) == long
     cap, full = 1000, b"x" * 1000
     for encoding, pack in (("identity", bytes), ("gzip", gzip.compress)):
         assert _read(pack(full), encoding, cap) == full
