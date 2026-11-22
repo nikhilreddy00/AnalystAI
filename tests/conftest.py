@@ -31,6 +31,22 @@ MSSQL_CAN_WRITE = [
 ]
 
 
+# The tests that measure a read "as the process" run it in a child and print `peak_mb()`, the
+# child's own peak. Never ru_maxrss on Linux: it is kept across exec, so a child of a large xdist
+# worker starts at the worker's peak (CI: a 0.3 GB read said as 1.6 GB, and a before/after
+# delta could read 0 for a real 1 GB; post-merge audit, 5.8b hardening). VmHWM is the new
+# process's own; macOS has no /proc and keeps no peak across exec.
+PEAK_MB = """
+def peak_mb():
+    try:
+        with open('/proc/self/status') as f:
+            return next(int(x.split()[1]) for x in f if x.startswith('VmHWM:')) / 1024
+    except OSError:
+        import resource
+        return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 2**20
+"""
+
+
 def _mssql_logins(c, text, name: str) -> None:
     """SQL Server (5.8b): the admin URL writes the fixtures; the connector reads with a login that
     can't write (the can-write check refuses any other), and the refusal test needs one that can.
