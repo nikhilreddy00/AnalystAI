@@ -381,7 +381,8 @@
     "old": "return pd.Series(pd.array(exact, dtype=\"Int64\"), index=values.index)    # goes via float",
     "reason": "dtype=None is pd.array's default: the same inference as the entry above"
    }
-  ]
+  ],
+  "hash": "88c8547ba7253dc4"
  },
  "connectors/base.py::get_connector": {
   "equivalents": [],
