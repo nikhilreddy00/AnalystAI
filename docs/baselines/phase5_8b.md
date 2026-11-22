@@ -218,7 +218,7 @@ password with its own `str.replace`, a second copy of `_cut`'s rule. A short pas
 - the connection matrix;
 - golden 64/64 and `domain_diff.py main` identical on every dataset after each shared-rule change;
 - CSV hostile shapes under 15 s and 1 GB;
-- full suite: SUITE_RESULT;
+- full suite: 4707 passed, 3 skipped, 5 xfailed (each an Open ledger row), 16 min, at 4e37345;
 - mutation gate: every changed gated function recorded, `--check main` passes.
 
 **Spend:** paid E2E at k=1, 6/6 (e2e-10, e2e-99..103), ≈ $0.15 of the $0.30 cap.
