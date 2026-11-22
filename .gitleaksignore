@@ -4,3 +4,9 @@
 # CI's SQL Server container password, a throwaway that only ever opened a container living for one
 # CI run (Phase 5.8b); made per run from github.run_id since, never a literal again.
 bfae6c40974aab8d32f300db454f67cc15d893bc:.github/workflows/ci.yml:generic-api-key:70
+# The fixed pseudonym keys of the tests and the evals, public by design (they make pseudonyms
+# reproducible; production's key comes from ENCRYPTION_KEY and is never in the repo).
+0ed5060a00898f059e9d07fd8071db60f80e36ff:evals/run.py:generic-api-key:1565
+0ed5060a00898f059e9d07fd8071db60f80e36ff:tests/conftest.py:generic-api-key:37
+# The share-link tests' made-up canary: planted so a test proves it reaches no sink (Phase 5.8b).
+74af9ae036cc5b1d57778af47176e9217a917ce0:tests/test_share_links.py:generic-api-key:20

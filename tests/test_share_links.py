@@ -251,8 +251,9 @@ def test_a_hostile_file_is_refused_fast_and_small_measured_as_the_process(shape)
     in a fresh one: under 1 GB and 15 s at the 50 MB upload cap."""
     import subprocess
     import sys
-    code = f"""
-import resource, time
+    from tests.conftest import PEAK_MB
+    code = PEAK_MB + f"""
+import time
 from agents.errors import IngestionError
 from connectors.csv_connector import MAX_UPLOAD_MB, _read_bytes
 content = {_HOSTILE[shape]}
@@ -262,12 +263,12 @@ try:
     said = 'read'
 except IngestionError as e:
     said = e.user_message
-print(round(time.monotonic() - started, 1), resource.getrusage(resource.RUSAGE_SELF).ru_maxrss, said)
+print(round(time.monotonic() - started, 1), round(peak_mb()), said)
 """
     out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, timeout=120,
                          cwd=str(Path(__file__).resolve().parents[1]))
     took, peak, said = out.stdout.strip().split(" ", 2)
-    peak_mb = int(peak) / (2**20 if sys.platform == "darwin" else 2**10)   # bytes vs KB
+    peak_mb = int(peak)
     # a shape the reader may refuse or read: the bound is the point (wide shapes must refuse)
     refused = said != "read" or shape == "lines-just-short-of-the-cap"
     assert refused and float(took) < 15 and peak_mb < 1024, (shape, took, peak_mb, said)

@@ -1764,23 +1764,23 @@ def test_a_question_holds_its_row_cap_never_the_whole_result(tmp_path, name):
     import subprocess
     import sys
     from pathlib import Path
+    from tests.conftest import PEAK_MB
     url = _each_dialect(tmp_path, name)
-    code = f"""
-import resource
+    code = PEAK_MB + f"""
 from connectors.sql_connector import SQLConnector, run_readonly
 from orchestrator.state import ConnectorConfig, ConnectorType
 engine = SQLConnector(ConnectorConfig(type=ConnectorType.SQL, connection_string={url!r}))._engine()
 import time
-before = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+before = peak_mb()
 started = time.monotonic()
 r = run_readonly(engine, {_BIG_RESULT[name]!r}, 10)
 took = time.monotonic() - started
-print(len(r.rows), r.truncated, resource.getrusage(resource.RUSAGE_SELF).ru_maxrss - before, took)
+print(len(r.rows), r.truncated, round(peak_mb() - before), took)
 """
     out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, timeout=300,
                          cwd=str(Path(__file__).resolve().parents[1]))
     rows, truncated, grew, took = out.stdout.split() or (out.stderr[-500:], "", "", "")
-    grew_mb = int(grew) / (2**20 if sys.platform == "darwin" else 2**10)
+    grew_mb = int(grew)
     # and at once: PyMySQL's close drained every remaining row, a capped preview waited out the
     # statement timeout (audit pass 2); nothing in stderr (its drain of a dropped socket)
     assert (rows, truncated) == ("10", "True") and grew_mb < 100 and float(took) < 5, \
