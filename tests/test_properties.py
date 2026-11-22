@@ -779,6 +779,22 @@ def test_tier_b_money_in_another_scale_scales_money_kpis_only(name, k):
 
 # ── D: the product against the independent reference (evals/reference_kpis.py) ──────────────
 
+def _a_short_subscription_beside_another(df: pd.DataFrame) -> bool:
+    """P58-18's shape: a customer with a subscription shorter than a month and another one."""
+    short = df["ended_at"] - df["created"] < pd.Timedelta(days=31)
+    return bool((short & df["customer_id"].duplicated(keep=False)).any())
+
+
+# The open rows' shapes, left out of the generative check (the module's contract above): each is
+# pinned by its own xfail-strict test, named by its row in that test's reason. Retro 5.8b
+# hardening: these two were pinned but still drawn, so the nightly was red every night, and a new
+# red (the security job, three nights) looked like the old one (P58-21's warning held no news).
+OPEN_SHAPES = {
+    "book_order_lines": ("D1-40", lambda df: bool(df["delivered_date"].isna().all())),
+    "book_subscription_list": ("P58-18", _a_short_subscription_beside_another),
+}
+
+
 @pytest.mark.parametrize("book,pack,roles,spec", [   # broken runs too: the cadence is declared (C7)
     (*BOOKS[0], "book_mrr_export"), (*BOOKS[1], "book_subscription_list"),
     (*BOOKS[2], "book_roster"), (*BOOKS[3], "book_hr_snapshots"),
@@ -789,6 +805,8 @@ def test_tier_b_money_in_another_scale_scales_money_kpis_only(name, k):
 def test_d_the_product_equals_the_reference(book, pack, roles, spec, data):
     from evals.reference_kpis import reference
     df = data.draw(book)
+    if spec in OPEN_SHAPES:
+        assume(not OPEN_SHAPES[spec][1](df))
     ref = reference(spec, df)
     for k, v in _kpis(pack, roles, df).items():
         if k in ref:
@@ -800,6 +818,17 @@ def test_d_the_product_equals_the_reference(book, pack, roles, spec, data):
         got = dp.compute_kpi(df, roles, pack, k, by="segment")   # C3: each segment's own lines
         got = {} if got is None else {str(s): v for s, v in got.items() if v}
         assert got == pytest.approx({str(s): v for s, v in ref[f"{k}_by_segment"].items() if v}), k
+
+
+def test_each_shape_left_out_is_an_open_pinned_row_and_each_pinned_d_row_is_left_out():
+    """The contract above, checked both ways: a row fixed (its xfail gone) stops hiding its shape,
+    and a property-D failure pinned as xfail is left out of the draw, or the nightly stays red on
+    news already known (retro 5.8b hardening: P58-21's warning recurred as noise)."""
+    import sys
+    pinned = {m.kwargs["reason"].split(" ", 1)[0]
+              for name, f in vars(sys.modules[__name__]).items() if name.startswith("test_d_")
+              for m in getattr(f, "pytestmark", []) if m.name == "xfail" and m.kwargs.get("strict")}
+    assert {row for row, _ in OPEN_SHAPES.values()} == pinned
 
 
 @pytest.mark.xfail(strict=True, reason="D1-40 (Open, nightly 2026-11-19/20): every line still open "

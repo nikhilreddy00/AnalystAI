@@ -198,13 +198,27 @@ def caller_tests(names: list[str], root: Path = ROOT) -> list[str]:
     return sorted(t for t in tests if t.startswith("tests/test_"))
 
 
-def rerun(problems: list[str], ref: str, root: Path = ROOT) -> str | None:
+def record_tests(names: list[str], given: list[str] | None, root: Path = ROOT) -> list[str]:
+    """The tests a --record runs: every caller's test file (runnable under mutmut) and any extra
+    given. A given list that leaves a caller's out is refused, naming it: a shorter list hides
+    survivors the full one shows, so each hand-picked re-record found a different one (PR9-02
+    recurred twice: the hint printed the callers, main still took any --tests)."""
+    callers = runnable(caller_tests(names, root))
+    if given is None:
+        return callers
+    if missing := [t for t in callers if t not in given]:
+        raise ValueError(f"--record leaves out callers' tests: {' '.join(missing)} "
+                         "(omit --tests to run them all)")
+    return [*callers, *(t for t in given if t not in callers)]
+
+
+def rerun(problems: list[str], ref: str) -> str | None:
     """The run that clears check's refusals: only the refused functions, never --changed-since
     (it mutates every changed function, gated or not), over their callers' tests; None when only
     orphans are left."""
     names = [p.split("::", 1)[1].split(":", 1)[0] for p in problems if "no clean mutation" in p]
-    return (f"run: uv run python scripts/mutation.py {' '.join(names)} --lines {ref} --record "
-            f"--tests {' '.join(caller_tests(names, root)) or '<the callers test files>'}") if names else None
+    return (f"run: uv run python scripts/mutation.py {' '.join(names)} --lines {ref} --record"
+            if names else None)   # --record runs every caller's tests itself (record_tests)
 
 
 def unnamed(entry: dict, mutants: list[tuple[str, str, str]]) -> list[tuple[str, str, str]]:
@@ -478,8 +492,15 @@ def main() -> int:
         return 1 if problems else 0
     if args.record and not args.lines:
         ap.error("--record needs --lines REF (it records a gate on changed lines)")
+    if args.record:
+        try:
+            names = [*args.functions, *(changed_functions(args.changed_since)
+                                        if args.changed_since else [])]
+            args.tests = record_tests(names, args.tests)
+        except ValueError as e:
+            ap.error(str(e))
     if not args.tests:
-        ap.error("--tests is required")
+        ap.error("--tests is required (a --record finds its own: the callers' tests)")
     if args.plant:
         _refuse_uncommitted([args.plant[0], *args.tests])
         return plant(*args.plant, args.tests, args.keyword)

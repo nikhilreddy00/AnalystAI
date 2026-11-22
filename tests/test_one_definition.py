@@ -34,6 +34,15 @@ def test_every_shared_file_the_guards_read_exists():
                                          "kpi", "rows", "story"}
 
 
+def test_a_childs_memory_peak_is_read_only_through_peak_mb():
+    """P58-36: ru_maxrss is kept across exec on Linux, so a child of a large xdist worker read the
+    worker's peak (CI said 1.6 GB for a 0.3 GB read; a before/after delta could read 0). Only
+    tests/conftest.py's PEAK_MB may read it: VmHWM first, ru_maxrss where there is no /proc."""
+    readers = sorted(str(p.relative_to(ROOT)) for p in (ROOT / "tests").glob("*.py")
+                     if "ru_maxrss" in p.read_text() and p.name != Path(__file__).name)
+    assert readers == ["tests/conftest.py"], readers
+
+
 def test_ties_rank_the_same_on_every_machine():
     """CI (Linux) and macOS ranked tied groups differently: an unstable sort. utils.ranked sorts
     by label, then stably by value."""

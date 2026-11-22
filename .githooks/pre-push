@@ -21,12 +21,17 @@ if [ -n "$missing" ]; then
   echo "pre-push: commit the reports a test names:"; echo "$missing"; exit 1
 fi
 
-# the nightly (deep properties) on main: a warning, never a block (retro 5.8a: two red nights went
-# unseen until after a merge); offline or without gh, nothing is said
-night=$(gh run list --branch main --event schedule --limit 1 --json conclusion,createdAt \
-  -q '.[0] | "\(.conclusion) \(.createdAt)"' 2>/dev/null || true)
-case "$night" in failure*) echo "pre-push: WARNING: the last nightly on main failed ($night):" \
-  "gh run list --branch main --event schedule" ;; esac
+# the nightly on main: a warning, never a block (retro 5.8a: two red nights went unseen until after
+# a merge), naming its failed jobs and said last, after "all checks passed", where a tail of the
+# push still shows it (retro 5.8b hardening: a red security job went unread three nights behind a
+# run-level warning, cut by `| tail`); offline or without gh, nothing is said
+night=$(gh run list --branch main --event schedule --limit 1 --json conclusion,createdAt,databaseId \
+  -q '.[0] | select(.conclusion == "failure") | "\(.databaseId) \(.createdAt)"' 2>/dev/null || true)
+night_failed=""
+if [ -n "$night" ]; then
+  night_failed=$(gh run view "${night%% *}" --json jobs \
+    -q '[.jobs[] | select(.conclusion == "failure") | .name] | join(", ")' 2>/dev/null || true)
+fi
 
 uv run ruff check .
 uv run lint-imports   # the domain_pack layers + the reference oracle's independence (pyproject)
@@ -73,3 +78,7 @@ if [ "$(tree)" != "$start" ]; then
   echo "pre-push: files changed while the checks ran: commit them and push again"; exit 1
 fi
 echo "pre-push: all checks passed"
+if [ -n "$night" ]; then
+  echo "pre-push: WARNING: the last nightly on main (${night#* }) failed: ${night_failed:-its jobs unread}." \
+    "Read each: gh run view ${night%% *} --log-failed"
+fi
