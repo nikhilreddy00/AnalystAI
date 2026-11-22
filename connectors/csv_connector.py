@@ -351,42 +351,54 @@ class _TooWide(Exception):
     pass
 
 
-def _json_shape(content: bytes) -> None:
-    """A JSON file's cells, counted before pandas builds them: records × distinct keys (a frame
-    has a column per key any record has: 20k one-key records were a 20k × 20k frame, 78 s and
-    4 GB; security review 2 of WP1). Parsed with every object discarded as it closes, so the
-    count holds almost nothing; a file that isn't JSON is left to the reader to say so."""
+_NOT_RECORDS = "The JSON isn't a list of records (one object per row, or one per line)."
+_OBJECT = object()   # what each parsed JSON object becomes in _json_records: nothing is kept
+
+
+def _json_records(content: bytes) -> bool:
+    """Whether a JSON file is JSON Lines (else one array), once it is known to be records, the
+    only shape read (an allow list, 5.8c: three review passes each found a shape past the last
+    count, a dict of columns and arrays of arrays among them): a top-level array of objects, or
+    one object a line. Its cells are counted first, records × distinct keys (a frame has a
+    column per key any record has: 20k one-key records were 20k × 20k, 78 s and 4 GB). Parsed
+    with every object discarded as it closes, so the count holds almost nothing. Anything else
+    is refused here, never left to a reader that accepts more than was counted."""
     keys: set[str] = set()
 
     def hook(pairs):
-        keys.update(k for k, _ in pairs)
+        keys.update(k for k, _ in pairs)   # a nested object's keys become columns too (a_b)
         if len(keys) > _MAX_COLUMNS:
             raise _TooWide
-        # a nested object's keys become columns too (flattened a_b); counted with the others
+        return _OBJECT
 
     if max(content.count(b":"), content.count(b",")) + 1 > _MAX_JSON_CELLS:
         # each value is a key's (:) or follows a comma: at least the values pandas builds, a
         # dict a record (5.8c measured: 4M cells of tiny records peaked at 678 MB)
         raise IngestionError("too many cells", _TOO_MANY_JSON_CELLS)
-    content = content.removeprefix(b"\xef\xbb\xbf")
     decoder = json.JSONDecoder(object_pairs_hook=hook)
     try:
         try:
-            top = decoder.decode(content.decode("utf-8", errors="replace"))
-            records = len(top) if isinstance(top, list) else 1
+            top, lines = decoder.decode(content.decode("utf-8")), False
+            if top is _OBJECT:   # one object: a JSON Lines file of one record
+                top, lines = [top], True
+            elif not isinstance(top, list):
+                raise IngestionError("json shape", _NOT_RECORDS)
         except ValueError:   # JSON Lines: one record a line, read a line at a time
-            records = 0
-            for line in io.BytesIO(content):
-                if line.strip():
-                    decoder.decode(line.decode("utf-8", errors="replace"))
-                    records += 1
+            top = [decoder.decode(line.decode("utf-8")) for line in io.BytesIO(content)
+                   if line.strip()]
+            lines = True
     except _TooWide:
         raise IngestionError("too many columns", f"The file has more than {_MAX_COLUMNS:,} "
                              "columns, past what can be read.") from None
-    except ValueError:
-        return   # not JSON: the reader's own message
-    if records * max(len(keys), 1) > _MAX_JSON_CELLS:
+    except ValueError as exc:   # not JSON, or not UTF-8 (JSON's own encoding)
+        raise IngestionError("json", _NOT_RECORDS) from exc
+    if not top or any(r is not _OBJECT for r in top):
+        raise IngestionError("json shape", _NOT_RECORDS)
+    if len(top) * len(keys) > _MAX_JSON_CELLS:
         raise IngestionError("too many cells", _TOO_MANY_JSON_CELLS)
+    return lines
+
+
 _MAX_RATIO, _RATIO_FROM = 200, 10 * 2**20   # a part over 10 MB packed more than 200 times
 
 
@@ -432,8 +444,6 @@ def _readable_size(content: bytes, suffix: str) -> None:
         # that disagrees with its footer isn't caught; pyarrow sizes a page by its header.
         if sum(c.total_uncompressed_size for c in chunks) > _MAX_PARQUET_UNPACKED:
             raise IngestionError("parquet too large", _PARQUET_TOO_LARGE)
-    if suffix in (".json", ".jsonl"):
-        _json_shape(content)
     # A CSV's width is checked once, exactly, as the reader takes its header (_read_text_table).
     # 5.8b's cheap per-line gate counted raw delimiters, quotes included, and refused a two-column
     # file with one long quoted cell (senior audit); without it a 5M-comma line is still refused
@@ -502,16 +512,14 @@ def _read_bytes(content: bytes, suffix: str) -> tuple[pd.DataFrame, dict]:
         info = {"format": "parquet", "notes": []}
     elif suffix in (".json", ".jsonl"):
         content = content.removeprefix(b"\xef\xbb\xbf")   # a byte-order mark (Windows tools write one)
+        lines = _json_records(content)   # records only, counted: the shape read is the one counted
         try:
             # dtype=False: values keep the type they were written with ("02134" stays text).
             # precise_float: the fast parser reads 2.76 as 2.7600000000000002 (5.8a source oracle)
-            df = pd.read_json(io.BytesIO(content), dtype=False, precise_float=True)
-        except ValueError:
-            try:
-                df = pd.read_json(io.BytesIO(content), lines=True, dtype=False, precise_float=True)
-            except ValueError as exc:
-                raise IngestionError("json", "The JSON isn't a list of records (one object per "
-                                     "row, or one per line).") from exc
+            df = pd.read_json(io.BytesIO(content), orient="records", lines=lines, dtype=False,
+                              precise_float=True)
+        except ValueError as exc:
+            raise IngestionError("json", _NOT_RECORDS) from exc
         info = {"format": "json", "notes": []}
         # Nested records ({"holder": {"name": ...}}) become columns (holder_name), so every value
         # is profiled and masked like any other; lists become JSON text.

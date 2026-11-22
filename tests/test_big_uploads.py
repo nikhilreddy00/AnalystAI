@@ -55,10 +55,38 @@ def test_a_semicolon_file_with_decimal_commas_reads_its_numbers():
     assert df["amount"].tolist() == [1249.0, 12.5, 7.25] and df["qty"].tolist() == [3, 4, 1]
 
 
-def test_a_json_array_of_objects_reads():
-    df, _ = _read_bytes(b'[{"id": 1, "region": "North", "amount": 2.76}, '
-                        b'{"id": 2, "region": "South", "amount": 3.1}]', ".json")
+@pytest.mark.parametrize(("content", "suffix"), [
+    (b'[{"id": 1, "region": "North", "amount": 2.76}, {"id": 2, "region": "South", "amount": 3.1}]',
+     ".json"),
+    (b'\xef\xbb\xbf[{"id": 1, "region": "North", "amount": 2.76}, '
+     b'{"id": 2, "region": "South", "amount": 3.1}]', ".json"),
+    (b'{"id": 1, "region": "North", "amount": 2.76}\n{"id": 2, "region": "South", "amount": 3.1}\n',
+     ".jsonl"),
+    (b'{"id": 1, "region": "North", "amount": 2.76}\r\n\r\n'
+     b'{"id": 2, "region": "South", "amount": 3.1}', ".json"),
+])
+def test_json_records_read(content, suffix):
+    """Normal files first (D1-38): an array of objects (a BOM too), JSON Lines (\\r\\n, a blank)."""
+    df, _ = _read_bytes(content, suffix)
     assert df.to_dict("list") == {"id": [1, 2], "region": ["North", "South"], "amount": [2.76, 3.1]}
+
+
+def test_one_json_object_is_one_record():
+    df, _ = _read_bytes(b'{"id": 1, "holder": {"name": "Ann"}}', ".jsonl")
+    assert df.to_dict("list") == {"id": [1], "holder_name": ["Ann"]}
+
+
+@pytest.mark.parametrize("content", [
+    b"[[0, 1, 2], [3, 4, 5]]",              # arrays of arrays
+    b'[{"a": 1}, 2, "x"]',                  # a record and two scalars
+    b"[]",
+    '[{"a": "é"}]'.encode("latin-1"),       # not UTF-8: JSON's own encoding
+])
+def test_json_that_isnt_records_is_refused_in_words(content):
+    """An allow list (5.8c review 3): only the shape counted is read."""
+    with pytest.raises(IngestionError) as exc:
+        _read_bytes(content, ".json")
+    assert "list of records" in exc.value.user_message
 
 
 def test_parquet_with_every_logical_type_reads():
