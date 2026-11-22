@@ -2,7 +2,7 @@ import asyncio
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from slowapi import _rate_limit_exceeded_handler
@@ -110,7 +110,40 @@ class _CredentialScope:
             _credential_scope.reset(token)
 
 
+from connectors.csv_connector import MAX_UPLOAD_MB  # noqa: E402
+
+MAX_BODY = (MAX_UPLOAD_MB + 1) * 2**20   # the largest file plus its multipart framing
+_TOO_LARGE = f"File too large (max {MAX_UPLOAD_MB} MB)"
+
+
+class _BodyLimit:
+    """No request body past MAX_BODY reaches the app (5.8c red-team): Starlette spools a whole
+    multipart body to disk before a route runs, so a route's own cap fired only after a 10 GB body
+    was stored. Refused by its declared length unread, or counted as it streams (no length)."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            return await self.app(scope, receive, send)
+        declared = dict(scope["headers"]).get(b"content-length", b"0")
+        if declared.isdigit() and int(declared) > MAX_BODY:
+            return await JSONResponse({"detail": _TOO_LARGE}, status_code=413)(scope, receive, send)
+        seen = 0
+
+        async def counted():
+            nonlocal seen
+            message = await receive()
+            seen += len(message.get("body", b""))
+            if seen > MAX_BODY:   # FastAPI re-raises an HTTPException from its body parse
+                raise HTTPException(status_code=413, detail=_TOO_LARGE)
+            return message
+        await self.app(scope, counted, send)
+
+
 app.add_middleware(_CredentialScope)
+app.add_middleware(_BodyLimit)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,

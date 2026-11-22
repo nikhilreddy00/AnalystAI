@@ -38,7 +38,7 @@ const SOURCE_TABS: { key: ConnectorType; label: string; Icon: LucideIcon }[] = [
 ];
 
 const ACCEPTED_FORMATS = ".csv,.xlsx,.tsv,.json,.jsonl,.parquet";
-const ACCEPTED_FORMATS_LABEL = "CSV, XLSX, TSV, JSON, JSON Lines, Parquet — max 50 MB";
+const ACCEPTED_FORMATS_LABEL = "CSV, XLSX, TSV, JSON, JSON Lines, Parquet — max 100 MB";
 
 interface FilePreview {
   file: File;
@@ -302,7 +302,7 @@ export default function ConnectorSetup({ onConnectorReady }: ConnectorSetupProps
             </button>
           </form>
           <p className="text-[11px] text-muted-foreground">
-            Shared as &lsquo;Anyone with the link&rsquo;. The file is copied once (max 50 MB); paste the link again for a newer copy.
+            Shared as &lsquo;Anyone with the link&rsquo;. The file is copied once (max 100 MB); paste the link again for a newer copy.
           </p>
         </div>
       )}

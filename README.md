@@ -120,8 +120,8 @@ The API runs at `http://localhost:8000` — interactive docs at `http://localhos
 <!-- sources:start -->
 | Source | How to connect | Limits |
 |--------|----------------|--------|
-| **File upload** | .csv, .json, .jsonl, .parquet, .tsv, .xlsx in the UI | 50 MB per file; old .xls: save as .xlsx first |
-| **Share link** | a public Google Sheets, Google Drive or Dropbox link, or any https CSV/xlsx URL, pasted under the upload; OneDrive/SharePoint 'Anyone' links too (tested on mocked links only; a 1drv.ms short link is untested) | copied once as a dataset version (paste again to refresh); 50 MB, 5 redirects, public hosts only |
+| **File upload** | .csv, .json, .jsonl, .parquet, .tsv, .xlsx in the UI | 100 MB and 25 million cells (rows × columns) per file; old .xls: save as .xlsx first |
+| **Share link** | a public Google Sheets, Google Drive or Dropbox link, or any https CSV/xlsx URL, pasted under the upload; OneDrive/SharePoint 'Anyone' links too (tested on mocked links only; a 1drv.ms short link is untested) | copied once as a dataset version (paste again to refresh); 100 MB, 5 redirects, public hosts only |
 | **PostgreSQL, ask questions** | `postgresql://user:password@host:port/database` (hosted: `?sslmode=require`, or `verify-full` to check its certificate), no table name: the SQL agent writes one read-only query per question and aggregates in the database | 10,000 result rows, 15 s per query |
 | **PostgreSQL, one table** | the same + a table name | first 50,000 rows, 15 s, read-only |
 | **MySQL, ask questions** | `mysql://user:password@host:port/database` (hosted, e.g. PlanetScale, RDS: `?ssl_mode=VERIFY_IDENTITY`), no table name: the SQL agent writes one read-only query per question and aggregates in the database | 10,000 result rows, 15 s per query |
@@ -152,9 +152,9 @@ The API runs at `http://localhost:8000` — interactive docs at `http://localhos
   (up to its cap) for each run.
 - **Large or live data:** connect the database without a table, so each question is aggregated
   in the database instead of loading rows.
-- **Planned (Phase 5.8b–d):** MariaDB and SQL Server; share links (a public Google Sheet, OneDrive,
-  SharePoint and Google Drive files); files up to ~250 MB; Stripe, HubSpot, Shopify and GA4; Snowflake
-  and BigQuery (`docs/ROADMAP.md` Phase 5.8).
+- **Planned (Phase 5.8c–d):** Stripe, Shopify and HubSpot imports; Snowflake and BigQuery
+  (`docs/ROADMAP.md` Phase 5.8). A file is read whole into memory: about 13 times its size at its
+  peak (a 100 MB CSV ≈ 1.3 GB), so plan 4 GB of RAM for the host.
 
 ---
 
@@ -339,7 +339,8 @@ Detection has limits (listed in the ADR); on patient data the stricter rules abo
 
 - **E2B sandbox** — LLM-generated Python runs in an isolated VM, never in the FastAPI process
 - **SQL connector** — only `SELECT` statements are permitted; anything else is rejected before execution
-- **File uploads** — limited to 50 MB; only `.csv`, `.xlsx`, `.xls` accepted
+- **File uploads** — 100 MB and 25 million cells; a larger body is refused before it is stored;
+  the formats in "Data sources and limits"
 - **Rate limiting** — 30 requests/minute per IP on the chat endpoint (via slowapi)
 - **No secrets in code** — all credentials are loaded from environment variables; `.env` is gitignored
 

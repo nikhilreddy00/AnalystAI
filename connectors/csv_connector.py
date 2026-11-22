@@ -95,11 +95,25 @@ def _decode(content: bytes) -> tuple[str, str]:
 
 
 UPLOAD_SUFFIXES = {".csv", ".xlsx", ".tsv", ".json", ".jsonl", ".parquet"}   # .xls: XLS_REFUSAL
-MAX_UPLOAD_MB = 50
+# 5.8c, measured as the process: a 100 MB long-narrow CSV peaks at 1.3 GB and reads in ~5 s;
+# 150 MB needs 1.8 GB. With _MAX_CELLS, every read stays under the 1.5 GB budget a 4 GB host allows.
+MAX_UPLOAD_MB = 100
 XLS_REFUSAL = ("Old .xls workbooks aren't supported. Save the file as .xlsx (Excel → Save As) "
                "and upload it again.")
 _NOT_A_TABLE = ("This file can't be read as a table. Upload a CSV, TSV, Excel (.xlsx), JSON or "
                 "Parquet file.")
+
+
+def _first_lines(text: str, n: int) -> list[str]:
+    """`text.splitlines()[:n]` without splitting the whole text (5.8c: 520 MB of line strings
+    at 250 MB, to sample 200 lines). A head holding more than n lines has its first n whole,
+    whatever its cut splits (a \\r\\n, a character)."""
+    size = 1 << 16
+    while True:
+        lines = text[:size].splitlines()
+        if len(lines) > n or size >= len(text):
+            return lines[:n]
+        size *= 4
 
 
 def _layout(text: str) -> tuple[str, int, str]:
@@ -111,7 +125,7 @@ def _layout(text: str) -> tuple[str, int, str]:
     # each sampled line cut at a width no real table reaches: csv.reader builds every field of a
     # row, five times (one per delimiter), so a 50 MB line was 25M strings before any check
     # (automated security review of the hardening push)
-    sample = "\n".join(line[:_SAMPLE_LINE_CHARS] for line in text.splitlines()[:_SAMPLE_LINES])
+    sample = "\n".join(line[:_SAMPLE_LINE_CHARS] for line in _first_lines(text, _SAMPLE_LINES))
     best: tuple = (False, 0.0, 0)
     sep, rows = ",", []
     for d in _DELIMITERS:
@@ -230,13 +244,26 @@ def _read_text_table(content: bytes, suffix: str) -> tuple[pd.DataFrame, dict]:
     # the header the read below will take (its delimiter, past its preamble, quotes honoured),
     # counted first, stopping at the cap: millions of columns would exhaust memory in the full
     # read (5.8b), and a header read with pandas built them all before the count (hardening)
-    if _header_fields(text, sep, header) > _MAX_COLUMNS or _widest_record(text, sep) > _MAX_COLUMNS:
+    width = _header_fields(text, sep, header)
+    if width > _MAX_COLUMNS or _widest_record(text, sep) > _MAX_COLUMNS:
         raise IngestionError("too many columns", f"The file has more than {_MAX_COLUMNS:,} "
                              "columns, past what can be read.")
+    # lines × header width: at least the cells the parse builds (a quoted newline only adds lines)
+    if max(text.count("\n"), text.count("\r")) * width > _MAX_CELLS:
+        raise IngestionError("too many cells", _TOO_MANY_CELLS)
+    # Codes written with a leading zero (ZIP 02134, account 00731) are text: read as numbers they
+    # lose the zero for good; and long whole numbers (ids past 2**53) a blank turns into rounded
+    # floats. Only when the file has either, the columns are re-read as text (below).
+    long_digits = re.search(r"\d{16,}", text) is not None
+    as_text_needed = long_digits or re.search(rf"(?:^|{re.escape(sep)})\s*\"?0\d", text, re.M)
+    del text   # 5.8c: the decoded copy is let go before the parse, not held through it
+    # pandas reads the bytes with the codec _decode chose, never io.StringIO(text): StringIO
+    # widens the text to 4 bytes a character (5.8c: +720 MB at a 250 MB file)
+    codec = "utf-8-sig" if encoding == "utf-8" else encoding
     try:
         # index_col=False: a trailing delimiter must not turn the first column into the index.
-        df = pd.read_csv(io.StringIO(text), sep=sep, skiprows=header, decimal=decimal,
-                         index_col=False, low_memory=False)
+        df = pd.read_csv(io.BytesIO(content), encoding=codec, sep=sep, skiprows=header,
+                         decimal=decimal, index_col=False, low_memory=False)
     except pd.errors.ParserError as exc:
         raise IngestionError(f"parse error: {exc}",
                              "The file's rows don't line up into columns. Check that it is a plain "
@@ -245,13 +272,10 @@ def _read_text_table(content: bytes, suffix: str) -> tuple[pd.DataFrame, dict]:
         raise IngestionError("no columns", "The file is empty.") from exc
     info = {"format": suffix.lstrip("."), "encoding": encoding, "delimiter": sep,
             "decimal": decimal, "header_line": header + 1, "notes": []}
-    # Codes written with a leading zero (ZIP 02134, account 00731) are text: read as numbers they
-    # lose the zero for good; and long whole numbers (ids past 2**53) a blank turns into rounded
-    # floats. Only when the file has either, re-read the columns as text.
-    long_digits = re.search(r"\d{16,}", text) is not None
-    if long_digits or re.search(rf"(?:^|{re.escape(sep)})\s*\"?0\d", text, re.M):
+    if as_text_needed:
         try:
-            as_text = pd.read_csv(io.StringIO(text), sep=sep, skiprows=header, index_col=False,
+            as_text = pd.read_csv(io.BytesIO(content), encoding=codec, sep=sep, skiprows=header,
+                                  index_col=False,
                                   dtype=str, low_memory=False)
         except (pd.errors.ParserError, ValueError):   # the first read worked: keep its types
             as_text = pd.DataFrame(columns=df.columns)
@@ -299,9 +323,16 @@ def _read_text_table(content: bytes, suffix: str) -> tuple[pd.DataFrame, dict]:
 # openpyxl unpacks whole, so a 50 MB upload could declare gigabytes; a CSV header could name
 # millions of columns. zipfile never unpacks a part past its declared size, so the declared
 # sizes are a real bound.
-# Unpacked: 20 times the upload cap (sheet XML packs 5 to 10 times: a real 50 MB workbook fits;
-# 5.8b review: 150 MB refused 20-30 MB workbooks); a bomb packs a thousand times
-_MAX_UNPACKED, _MAX_PARTS, _MAX_COLUMNS = 20 * MAX_UPLOAD_MB * 2**20, 10_000, 10_000
+# Unpacked: 1000 MB (sheet XML packs 5 to 10 times: Excel's 1,048,576 rows of 8 columns is a 49 MB
+# workbook unpacking to 419 MB, read in 35 s at 1.0 GB, measured 5.8c; 5.8b review: 150 MB refused
+# 20-30 MB workbooks); a bomb packs a thousand times. Its own number, never a multiple of the
+# upload cap: 5.8c's cap rise would have let a bomb declare 2 GB (red-team).
+_MAX_UNPACKED, _MAX_PARTS, _MAX_COLUMNS = 1000 * 2**20, 10_000, 10_000
+# Cells (rows × columns) a read may build: the bytes cap alone doesn't bound one (5.8c measured: a
+# 100 MB CSV of single digits is 52M cells and peaked at 2.49 GB; 25M cells stays near 1.2 GB)
+_MAX_CELLS = 25_000_000
+_TOO_MANY_CELLS = (f"The file has more than {_MAX_CELLS // 1_000_000} million cells (rows × "
+                   "columns), past what can be read. Upload fewer rows or columns.")
 _MAX_RATIO, _RATIO_FROM = 200, 10 * 2**20   # a part over 10 MB packed more than 200 times
 
 
@@ -326,6 +357,14 @@ def _readable_size(content: bytes, suffix: str) -> None:
                                           for p in parts):
             raise IngestionError("workbook parts", "The workbook's parts aren't an Excel "
                                  "workbook's. Save it again from Excel and upload that.")
+    if suffix == ".parquet":   # its footer declares rows and columns: read before any data
+        import pyarrow.parquet as pq
+        try:
+            meta = pq.ParquetFile(io.BytesIO(content)).metadata
+        except Exception as exc:   # pyarrow raises its own types for a corrupt file
+            raise IngestionError(f"parquet: {type(exc).__name__}", _NOT_A_TABLE) from exc
+        if meta.num_rows * meta.num_columns > _MAX_CELLS:
+            raise IngestionError("too many cells", _TOO_MANY_CELLS)
     # A CSV's width is checked once, exactly, as the reader takes its header (_read_text_table).
     # 5.8b's cheap per-line gate counted raw delimiters, quotes included, and refused a two-column
     # file with one long quoted cell (senior audit); without it a 5M-comma line is still refused

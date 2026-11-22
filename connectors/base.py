@@ -521,10 +521,11 @@ def sources_table() -> str:
     dialects and caps (tests/test_sources_readme.py keeps the README equal to it)."""
     from connectors import api_connector as api
     from connectors import sql_connector as sql
-    from connectors.csv_connector import MAX_UPLOAD_MB, UPLOAD_SUFFIXES
+    from connectors.csv_connector import _MAX_CELLS, MAX_UPLOAD_MB, UPLOAD_SUFFIXES
     from connectors import link
     rows = [("File upload", f"{', '.join(sorted(UPLOAD_SUFFIXES))} in the UI",
-             f"{MAX_UPLOAD_MB} MB per file; old .xls: save as .xlsx first"),
+             f"{MAX_UPLOAD_MB} MB and {_MAX_CELLS // 1_000_000} million cells (rows × columns) "
+             "per file; old .xls: save as .xlsx first"),
             ("Share link", "a public Google Sheets, Google Drive or Dropbox link, or any https "
              "CSV/xlsx URL, pasted under the upload; OneDrive/SharePoint 'Anyone' links too "
              "(tested on mocked links only; a 1drv.ms short link is untested)",

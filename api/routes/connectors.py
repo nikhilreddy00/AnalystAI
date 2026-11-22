@@ -70,22 +70,13 @@ async def upload_csv(
         raise HTTPException(status_code=400, detail=XLS_REFUSAL if suffix == ".xls"
                             else f"Unsupported file type: {suffix}")
 
-    # Chunked reading with early exit to prevent OOM on large uploads.
-    # UploadFile is not async-iterable; read in fixed-size chunks instead.
+    # The body is already bounded (api.main's body limit) and spooled to an unnamed temp file by
+    # Starlette; one read of at most the cap + 1 byte, never chunks plus their join (5.8c: 2×).
     max_size = MAX_UPLOAD_MB * 1024 * 1024
-    chunk_size = 1024 * 1024     # 1 MB per read
-    chunks: list[bytes] = []
-    total = 0
-    while True:
-        chunk = await file.read(chunk_size)
-        if not chunk:
-            break
-        total += len(chunk)
-        if total > max_size:
-            raise HTTPException(status_code=413, detail=f"File too large (max {MAX_UPLOAD_MB} MB)")
-        chunks.append(chunk)
-    return await _register(request, current_user, b"".join(chunks), safe_name, suffix,
-                           dataset_id)
+    content = await file.read(max_size + 1)
+    if len(content) > max_size:
+        raise HTTPException(status_code=413, detail=f"File too large (max {MAX_UPLOAD_MB} MB)")
+    return await _register(request, current_user, content, safe_name, suffix, dataset_id)
 
 
 class LinkRequest(BaseModel):
