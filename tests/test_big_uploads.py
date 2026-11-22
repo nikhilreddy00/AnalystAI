@@ -173,6 +173,15 @@ _DENSE = {   # each under the byte cap, each past what a read may build
     "parquet nested": ('.parquet', '_pq({"a": pa.array([list(range(1_000_000))] * 26)})'),
     # long strings: few cells, gigabytes once unpacked (repeated text compresses to nothing)
     "parquet long strings": ('.parquet', '_pq({"a": pa.array(["x" * 10_000_000] * 60)})'),
+    # the same stored plainly and compressed: decoded before any measure of it (security
+    # review 2 of WP1): the footer's declared unpacked size is read first
+    "parquet plain long strings": ('.parquet', '_pq({"a": pa.array(["x" * 10_000_000] * 60)}, '
+                                   'use_dictionary=False, compression="zstd")'),
+    # values under a list: each a Python object once read (security review 2)
+    "parquet nested values": ('.parquet', '_pq({"a": pa.array([list(range(500_000))] * 6)})'),
+    # sparse JSON: each record its own key, a frame of records × keys (security review 2)
+    "json sparse keys": ('.json', '("[" + ",".join(f\'{{"k{i}":0}}\' for i in range(20_000)) '
+                         '+ "]").encode()'),
 }
 
 
@@ -186,9 +195,9 @@ def test_a_file_past_the_cell_bound_is_refused_before_it_is_parsed(shape, tmp_pa
     _in_a_child(f"""
 import io
 import pyarrow as pa, pyarrow.parquet as pq
-def _pq(cols):
+def _pq(cols, **kw):
     buf = io.BytesIO()
-    pq.write_table(pa.table(cols), buf)
+    pq.write_table(pa.table(cols), buf, **kw)
     return buf.getvalue()
 open({str(path)!r}, "wb").write({build})
 """)

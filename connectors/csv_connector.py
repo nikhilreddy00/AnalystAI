@@ -342,6 +342,51 @@ _TOO_MANY_JSON_CELLS = _TOO_MANY_CELLS.replace(f"{_MAX_CELLS // 1_000_000} milli
 # a parquet file's decoded data (5.8c measured: its 4M-row, 8-column file decodes to ~280 MB and
 # peaks at 1.3 GB read; 30 strings of 10 MB, 300 MB, peaked at 1.05 GB)
 _MAX_PARQUET_UNPACKED = 400 * 2**20
+_PARQUET_TOO_LARGE = (f"The file unpacks to more than {_MAX_PARQUET_UNPACKED // 2**20} MB, past "
+                      "what can be read.")
+_MAX_NESTED_VALUES = 2_000_000   # values inside list or struct columns (3M read at 431 MB)
+
+
+class _TooWide(Exception):
+    pass
+
+
+def _json_shape(content: bytes) -> None:
+    """A JSON file's cells, counted before pandas builds them: records × distinct keys (a frame
+    has a column per key any record has: 20k one-key records were a 20k × 20k frame, 78 s and
+    4 GB; security review 2 of WP1). Parsed with every object discarded as it closes, so the
+    count holds almost nothing; a file that isn't JSON is left to the reader to say so."""
+    keys: set[str] = set()
+
+    def hook(pairs):
+        keys.update(k for k, _ in pairs)
+        if len(keys) > _MAX_COLUMNS:
+            raise _TooWide
+        # a nested object's keys become columns too (flattened a_b); counted with the others
+
+    if max(content.count(b":"), content.count(b",")) + 1 > _MAX_JSON_CELLS:
+        # each value is a key's (:) or follows a comma: at least the values pandas builds, a
+        # dict a record (5.8c measured: 4M cells of tiny records peaked at 678 MB)
+        raise IngestionError("too many cells", _TOO_MANY_JSON_CELLS)
+    content = content.removeprefix(b"\xef\xbb\xbf")
+    decoder = json.JSONDecoder(object_pairs_hook=hook)
+    try:
+        try:
+            top = decoder.decode(content.decode("utf-8", errors="replace"))
+            records = len(top) if isinstance(top, list) else 1
+        except ValueError:   # JSON Lines: one record a line, read a line at a time
+            records = 0
+            for line in io.BytesIO(content):
+                if line.strip():
+                    decoder.decode(line.decode("utf-8", errors="replace"))
+                    records += 1
+    except _TooWide:
+        raise IngestionError("too many columns", f"The file has more than {_MAX_COLUMNS:,} "
+                             "columns, past what can be read.") from None
+    except ValueError:
+        return   # not JSON: the reader's own message
+    if records * max(len(keys), 1) > _MAX_JSON_CELLS:
+        raise IngestionError("too many cells", _TOO_MANY_JSON_CELLS)
 _MAX_RATIO, _RATIO_FROM = 200, 10 * 2**20   # a part over 10 MB packed more than 200 times
 
 
@@ -375,14 +420,20 @@ def _readable_size(content: bytes, suffix: str) -> None:
         groups = [meta.row_group(i) for i in range(meta.num_row_groups)]
         # values: a list column's every element counts (security review of WP1: rows × columns
         # missed a nested column). Its unpacked size is measured as it is read (_read_parquet).
-        values = sum(g.column(j).num_values for g in groups for j in range(g.num_columns))
-        if max(values, meta.num_rows * meta.num_columns) > _MAX_CELLS:
+        chunks = [g.column(j) for g in groups for j in range(g.num_columns)]
+        values = sum(c.num_values for c in chunks)
+        # under a list or struct: each value a Python object once read (security review 2)
+        nested = sum(c.num_values for c in chunks if "." in c.path_in_schema)
+        if max(values, meta.num_rows * meta.num_columns) > _MAX_CELLS or \
+                nested > _MAX_NESTED_VALUES:
             raise IngestionError("too many cells", _TOO_MANY_CELLS)
-    if suffix in (".json", ".jsonl") and \
-            max(content.count(b":"), content.count(b",")) + 1 > _MAX_JSON_CELLS:
-        # each value is a key's (:) or follows a comma: at least the cells pandas builds, a
-        # dict a record (5.8c measured: 4M cells of tiny records peaked at 678 MB)
-        raise IngestionError("too many cells", _TOO_MANY_JSON_CELLS)
+        # the footer's unpacked size, before any page is decoded (security review 2: plain,
+        # compressed text decoded before _read_parquet measured it). ponytail: a page header
+        # that disagrees with its footer isn't caught; pyarrow sizes a page by its header.
+        if sum(c.total_uncompressed_size for c in chunks) > _MAX_PARQUET_UNPACKED:
+            raise IngestionError("parquet too large", _PARQUET_TOO_LARGE)
+    if suffix in (".json", ".jsonl"):
+        _json_shape(content)
     # A CSV's width is checked once, exactly, as the reader takes its header (_read_text_table).
     # 5.8b's cheap per-line gate counted raw delimiters, quotes included, and refused a two-column
     # file with one long quoted cell (senior audit); without it a 5M-comma line is still refused
