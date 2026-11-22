@@ -304,9 +304,10 @@ async def _stripe_auth(client, secrets: dict) -> dict:
 
 
 async def _stripe_list(client, headers: dict, path: str, *, what: str, params: dict,
-                       keep: Callable[[dict], bool] = lambda o: True) -> tuple[list[dict], bool]:
+                       keep: Callable[[dict], bool] = lambda o: True,
+                       cap: int = ROW_CAP) -> tuple[list[dict], bool]:
     """A Stripe list, newest first, page by page on `starting_after` (only the cursor is read):
-    (objects, cut). Stops at ROW_CAP objects kept."""
+    (objects, cut). Stops at `cap` objects kept."""
     out, after = [], None
     while True:
         page = await get_json(client, f"{STRIPE_API}{path}", what=what, headers=headers,
@@ -314,8 +315,8 @@ async def _stripe_list(client, headers: dict, path: str, *, what: str, params: d
                                       **({"starting_after": after} if after else {})})
         data = need(page, "data")
         out.extend(o for o in data if keep(o))
-        if len(out) >= ROW_CAP:
-            return out[:ROW_CAP], True
+        if len(out) >= cap:
+            return out[:cap], True
         if not need(page, "has_more") or not data:
             return out, False
         after = need(data[-1], "id")
@@ -344,10 +345,12 @@ async def _stripe_subscriptions(client, headers, window_from) -> tuple[list[dict
     for s in subs:
         items = need(s, "items", "data")
         if need(s, "items", "has_more"):   # more than the embedded items: page them
-            more, _ = await _stripe_list(client, headers, "/subscription_items",
-                                         what="Subscriptions", params={"subscription": s["id"]})
-            items = more
+            items, _ = await _stripe_list(client, headers, "/subscription_items",
+                                          what="Subscriptions", params={"subscription": s["id"]},
+                                          cap=ROW_CAP - len(rows))
         rows += [{"sub": s, "item": it} for it in items]
+        if len(rows) >= ROW_CAP:   # the cap is on rows, never on subscriptions (review)
+            return rows[:ROW_CAP], _cut_date([s], True)
     return rows, _cut_date(subs, cut)
 
 
@@ -405,7 +408,7 @@ async def _stripe_invoice_lines(client, headers, window_from) -> tuple[list[dict
         lines = need(inv, "lines", "data")
         if need(inv, "lines", "has_more"):
             lines, _ = await _stripe_list(client, headers, f"/invoices/{need(inv, 'id')}/lines",
-                                          what="Invoices", params={})
+                                          what="Invoices", params={}, cap=ROW_CAP - len(rows))
         rows += [{"inv": inv, "line": ln} for ln in lines]
         if len(rows) >= ROW_CAP:
             return rows[:ROW_CAP], _cut_date([inv], True)

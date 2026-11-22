@@ -184,6 +184,19 @@ async def test_an_invoices_lines_past_the_embedded_ones_are_paged(client, monkey
     assert _tables(body)["invoice_lines"]["rows"] == 12
 
 
+async def test_the_row_cap_counts_rows_and_says_where_it_cut(client, monkeypatch):
+    """The cap is on the table's rows (a subscription with three items is three), newest kept,
+    the first day kept said (review: the cap counted subscriptions, not their rows)."""
+    import connectors.imports as imports
+    monkeypatch.setattr(imports, "ROW_CAP", 5)
+    serve(monkeypatch, Stripe([_sub(i, items=3) for i in range(1, 6)],
+                              [_inv(i, lines=2) for i in range(1, 6)]))
+    body = (await _connect(client)).json()
+    t = _tables((await client.get(f"/api/imports/{body['id']}")).json())
+    assert t["subscriptions"]["rows"] == 5 and t["invoice_lines"]["rows"] == 5
+    assert t["subscriptions"]["cut_from"] == "2024-11-05" and t["invoice_lines"]["cut_from"]
+
+
 async def test_an_account_with_no_subscriptions_says_so_and_isnt_a_failure(client, monkeypatch):
     serve(monkeypatch, Stripe([], [_inv(1)]))
     body = (await _connect(client)).json()
