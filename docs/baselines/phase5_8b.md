@@ -158,3 +158,72 @@ Each item, matched to the ledger (ROADMAP 5.8 "Lessons out").
 - macOS drops `DYLD_*` for system binaries → P58-26 (new)
 - Two checks only CI runs fired after the push (gitleaks on CI's SQL Server password, the status-row cap) → P58-33 (new)
 - CLAUDE.md's 5.8 status row grew past its cap → PR3-05 (recurrence: a doc edit runs no test before the push)
+
+## Hardening addendum (2026-11-21, branch `5.8b-hardening`)
+After the merge, the user asked for a senior audit: does every source give the right answer, and does it
+connect or fail correctly? The audit found **6 majors that every 5.8b gate had passed**, each reproduced on a
+real server:
+- NUMERIC(19,0) ids read as one float;
+- BIT(1) read as bytes;
+- the allow list refused HOUR, SYSUTCDATETIME and `unnest`;
+- a narrow CSV was refused as 10,000 columns wide;
+- REAL, DATETIMEOFFSET and TIME read wrong;
+- `EXEC` drew a soft retry.
+
+Plan: the same plan file, W1–W6.
+
+**Why the bugs kept coming back (D1-38, 8 recurrences):**
+- each gate was built from the failures it was written against, never from the normal inputs it must accept;
+- values were typed by their look, never by the type the database declares;
+- one decision lived in two places: the guard's parse and the raw text the server ran, and a mask per sink.
+
+**The fix per class, each with its must-pass gate:**
+- types read by the cursor (`Dialect.kind`), checked against a type catalog per engine (load ≡ question ≡ CSV export);
+- the canonical text the guard read is what the server runs;
+- the allow list comes from the vendors' documented functions, measured against an independent corpus;
+- one credential registry per run or request, and one redactor;
+- the SQL eval's goldens and the 138 stored queries give Postgres's answer on MySQL, MariaDB and SQL Server;
+- a connection matrix on 4 engines through the form's route (local Postgres now refuses a wrong password).
+
+**Audit: two passes, four fresh reviewers each** (code-review, silent-failure-hunter, pr-test-analyzer,
+security-review):
+- Pass 1 found what the fixes missed:
+  - every gzip member read;
+  - credentials masked only as whole words;
+  - a question streams to its row cap (Postgres 587 → 144 MB, MySQL 659 → 143 MB, a capped preview in 0.0–0.1 s);
+  - the CSV width counted at C speed;
+  - instants read as instants from a file too.
+- Pass 2 found three of pass 1's own fixes breaking a neighbour (D1-38):
+  - an hours offset read inside `2024-03-10 12-05`;
+  - an unanchored O(L²) scan;
+  - a credential scope that ended before the logs it guards.
+
+  It also found `@@` server variables readable and a capped MySQL question draining 10⁹ rows. All of these are
+  fixed, each with its must-pass cases beside its red one. The stop rule's cap (2 passes) ended the audit.
+
+**The mutation gate (first run 58 survivors on changed lines) found one real bug:** `_session_error` masked the
+password with its own `str.replace`, a second copy of `_cut`'s rule. A short password masked letters inside words
+(`db.exam***le`). It now calls `_cut` (P58-06). Of the rest:
+- the boundary tests killed the most, each limit tested at its edge;
+- simplifications removed some: four dead branches in `capped_body`, `_suffix` by `splitext`, and the separator
+  strip in `_secret_key`;
+- the body reader's tests run it on a bounded thread, so a looping mutant fails in 5 s, never a timeout;
+- 6 are named equivalents in `gate.json`, each with its reason. Two of them (`_ca_file`, and before it
+  `run_readonly`) are caught by `--plant` but not under mutmut, which can't see a subprocess or a cached file.
+
+**Gates:**
+- type catalog on 4 engines;
+- parity: goldens and stored queries on 4 engines (a planted `frame()` bug is caught);
+- the connection matrix;
+- golden 64/64 and `domain_diff.py main` identical on every dataset after each shared-rule change;
+- CSV hostile shapes under 15 s and 1 GB;
+- full suite: SUITE_RESULT;
+- mutation gate: every changed gated function recorded, `--check main` passes.
+
+**Spend:** paid E2E at k=1, 6/6 (e2e-10, e2e-99..103), ≈ $0.15 of the $0.30 cap.
+
+**Retro → ledger:**
+- recurrences, each closed by construction with its gate: P58-02, P58-05, P58-06, P58-08, P58-24, P58-27,
+  P58-28, P58-31, D1-38;
+- new: P58-34 (the first parity check read its reference through the code it checked: a plant passed on both
+  sides).

@@ -14,6 +14,8 @@ from hypothesis import given
 from hypothesis import strategies as st
 from sqlalchemy import create_engine
 
+from tests.conftest import MSSQL_CAN_WRITE
+
 from agents.errors import IngestionError
 from connectors.base import TRUNCATED, get_connector
 from orchestrator.state import AnalysisSession, CleaningAudit, ConnectorConfig, ConnectorType
@@ -1312,26 +1314,7 @@ def test_in_production_a_pinned_mysql_without_a_port_dials_3306(monkeypatch):
     assert dialed == [("10.0.0.5", 3306)]
 
 
-@pytest.mark.parametrize(("grant", "revoke"), [
-    ("GRANT INSERT ON dbo.cw_t TO aai_reader", "REVOKE INSERT ON dbo.cw_t FROM aai_reader"),
-    ("GRANT UPDATE ON SCHEMA::dbo TO aai_reader", "REVOKE UPDATE ON SCHEMA::dbo FROM aai_reader"),
-    ("CREATE ROLE cw_role; GRANT DELETE ON dbo.cw_t TO cw_role; ALTER ROLE cw_role ADD MEMBER aai_reader",
-     "ALTER ROLE cw_role DROP MEMBER aai_reader; DROP ROLE cw_role"),
-    ("ALTER ROLE db_owner ADD MEMBER aai_reader", "ALTER ROLE db_owner DROP MEMBER aai_reader"),
-    ("EXEC('CREATE SCHEMA cw_owned AUTHORIZATION aai_reader')", "DROP SCHEMA cw_owned"),
-    ("GRANT IMPERSONATE ON USER::aai_writer TO aai_reader",
-     "REVOKE IMPERSONATE ON USER::aai_writer FROM aai_reader"),
-    ("GRANT EXECUTE TO aai_reader", "REVOKE EXECUTE FROM aai_reader"),
-    # audit pass 2 (security, proven: it granted itself INSERT and wrote; test analyst): the
-    # deny list missed these, the allow list refuses anything not a read
-    ("ALTER ROLE db_securityadmin ADD MEMBER aai_reader",
-     "ALTER ROLE db_securityadmin DROP MEMBER aai_reader"),
-    ("ALTER ROLE db_ddladmin ADD MEMBER aai_reader", "ALTER ROLE db_ddladmin DROP MEMBER aai_reader"),
-    ("GRANT ALTER ANY ROLE TO aai_reader", "REVOKE ALTER ANY ROLE FROM aai_reader"),
-    ("GRANT CREATE SCHEMA TO aai_reader", "REVOKE CREATE SCHEMA FROM aai_reader"),
-    ("ALTER AUTHORIZATION ON OBJECT::dbo.cw_t TO aai_reader",
-     "ALTER AUTHORIZATION ON OBJECT::dbo.cw_t TO SCHEMA OWNER"),
-])
+@pytest.mark.parametrize(("grant", "revoke"), MSSQL_CAN_WRITE)
 async def test_every_way_a_sql_server_login_can_write_is_refused(tmp_path, grant, revoke):
     """5.8b audit (security review, test analyst): the can-write check was proven for
     db_datawriter only. A grant on a table or a schema, a role holding one, db_owner, owning a
@@ -1355,6 +1338,29 @@ async def test_every_way_a_sql_server_login_can_write_is_refused(tmp_path, grant
     finally:
         with _admin(tmp_path, "mssql").begin() as c:
             c.execute(text(revoke))
+
+
+def test_a_grant_a_killed_run_left_on_the_reader_is_undone_at_the_next_start(tmp_path):
+    """The mutation gate's timeout killed a run between a grant and its revoke: the reader owned
+    a schema, and every later run on that database failed the can-write check (P58-35)."""
+    import os
+
+    from sqlalchemy import text
+    from sqlalchemy.engine import make_url
+
+    from connectors.sql_connector import run_readonly
+    from tests.conftest import _mssql_logins
+    url = _each_dialect(tmp_path, "mssql")
+    with _admin(tmp_path, "mssql").begin() as c:
+        c.execute(text("EXEC('CREATE SCHEMA cw_owned AUTHORIZATION aai_reader')"))
+    with pytest.raises(IngestionError, match="session setup"):
+        run_readonly(_engine_for(url), "SELECT 1")
+    admin = create_engine(make_url(os.environ["TEST_MSSQL_URL"]).set(database="master"),
+                          isolation_level="AUTOCOMMIT")
+    with admin.connect() as c:   # what the next start does
+        _mssql_logins(c, text, make_url(os.environ["TEST_MSSQL_URL"]).database)
+    admin.dispose()
+    assert run_readonly(_engine_for(url), "SELECT 1").rows == [(1,)]
 
 
 def test_a_sql_server_query_waits_for_a_lock_no_longer_than_the_timeout(tmp_path):
