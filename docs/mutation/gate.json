@@ -374,6 +374,12 @@
     "new": "return pd.Series(pd.array(exact, ), index=values.index)    # goes via float",
     "old": "return pd.Series(pd.array(exact, dtype=\"Int64\"), index=values.index)    # goes via float",
     "reason": "the line above keeps only Python ints inside int64 and pd.NA, which pd.array infers as Int64 itself (checked: [2**62, NA], [-2**63, 5])"
+   },
+   {
+    "n": 1,
+    "new": "return pd.Series(pd.array(exact, dtype=None), index=values.index)    # goes via float",
+    "old": "return pd.Series(pd.array(exact, dtype=\"Int64\"), index=values.index)    # goes via float",
+    "reason": "dtype=None is pd.array's default: the same inference as the entry above"
    }
   ]
  },
