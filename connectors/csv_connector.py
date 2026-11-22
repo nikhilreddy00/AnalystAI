@@ -352,24 +352,28 @@ class _TooWide(Exception):
 
 
 _NOT_RECORDS = "The JSON isn't a list of records (one object per row, or one per line)."
-_OBJECT = object()   # what each parsed JSON object becomes in _json_records: nothing is kept
 
 
 def _json_records(content: bytes) -> bool:
     """Whether a JSON file is JSON Lines (else one array), once it is known to be records, the
     only shape read (an allow list, 5.8c: three review passes each found a shape past the last
     count, a dict of columns and arrays of arrays among them): a top-level array of objects, or
-    one object a line. Its cells are counted first, records × distinct keys (a frame has a
-    column per key any record has: 20k one-key records were 20k × 20k, 78 s and 4 GB). Parsed
-    with every object discarded as it closes, so the count holds almost nothing. Anything else
-    is refused here, never left to a reader that accepts more than was counted."""
-    keys: set[str] = set()
+    one object a line. Its cells are counted first, records × columns (a frame has a column per
+    flattened path any record has: 20k one-key records were 20k × 20k, 78 s and 4 GB). Each
+    object becomes the set of its flattened paths (a nested {"x": 1} under "a" is a_x: review 4,
+    bare names undercounted), interned so equal records share one; every object's paths join
+    one set, a bound above the columns. Anything else is refused here, never left to a reader
+    that accepts more than was counted."""
+    paths: set[str] = set()
+    interned: dict[frozenset, frozenset] = {}
 
     def hook(pairs):
-        keys.update(k for k, _ in pairs)   # a nested object's keys become columns too (a_b)
-        if len(keys) > _MAX_COLUMNS:
+        own = frozenset(p for k, v in pairs
+                        for p in ([f"{k}_{c}" for c in v] if isinstance(v, frozenset) else [k]))
+        paths.update(own)
+        if len(paths) > _MAX_COLUMNS:
             raise _TooWide
-        return _OBJECT
+        return interned.setdefault(own, own)
 
     if max(content.count(b":"), content.count(b",")) + 1 > _MAX_JSON_CELLS:
         # each value is a key's (:) or follows a comma: at least the values pandas builds, a
@@ -379,7 +383,7 @@ def _json_records(content: bytes) -> bool:
     try:
         try:
             top, lines = decoder.decode(content.decode("utf-8")), False
-            if top is _OBJECT:   # one object: a JSON Lines file of one record
+            if isinstance(top, frozenset):   # one object: a JSON Lines file of one record
                 top, lines = [top], True
             elif not isinstance(top, list):
                 raise IngestionError("json shape", _NOT_RECORDS)
@@ -392,9 +396,9 @@ def _json_records(content: bytes) -> bool:
                              "columns, past what can be read.") from None
     except ValueError as exc:   # not JSON, or not UTF-8 (JSON's own encoding)
         raise IngestionError("json", _NOT_RECORDS) from exc
-    if not top or any(r is not _OBJECT for r in top):
+    if not top or any(not isinstance(r, frozenset) for r in top):
         raise IngestionError("json shape", _NOT_RECORDS)
-    if len(top) * len(keys) > _MAX_JSON_CELLS:
+    if len(top) * len(paths) > _MAX_JSON_CELLS:
         raise IngestionError("too many cells", _TOO_MANY_JSON_CELLS)
     return lines
 

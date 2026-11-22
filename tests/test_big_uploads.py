@@ -210,6 +210,11 @@ _DENSE = {   # each under the byte cap, each past what a read may build
     # sparse JSON: each record its own key, a frame of records × keys (security review 2)
     "json sparse keys": ('.json', '("[" + ",".join(f\'{{"k{i}":0}}\' for i in range(20_000)) '
                          '+ "]").encode()'),
+    # nested children sharing names: bare keys count 200, the flattened columns are 10,000+
+    # (security review 4: p_i_k_j paths, not k_j names)
+    "json nested shared keys": ('.json', '("[" + ",".join("{" + ",".join(f\'"p{i}":{{\' + '
+                                '",".join(f\'"k{j}":0\' for j in range(100)) + "}" '
+                                'for i in range(101)) + "}" for _ in range(300)) + "]").encode()'),
 }
 
 
