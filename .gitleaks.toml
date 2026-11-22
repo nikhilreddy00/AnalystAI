@@ -1,0 +1,11 @@
+# gitleaks' default rules, plus the one field shape of ours its generic-api-key rule misreads.
+# The nightly full-history scan failed from 2026-11-19 on these alone, and a job that always fails
+# hides the day it finds a real one (post-merge audit, 5.8b hardening). Exact one-off findings go
+# in .gitleaksignore by fingerprint, never here.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "an eval case's truth_key names a reference value (e.g. revenue_by_region.Sales), not a key"
+regexTarget = "line"
+regexes = ['''^\s*truth_key:\s''']
