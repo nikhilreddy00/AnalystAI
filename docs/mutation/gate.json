@@ -360,7 +360,8 @@
     "old": "out = decoder.decompress(chunk, cap + 1 - len(body))",
     "reason": "one byte more may come out, and a body past the cap is refused on the next lines either way"
    }
-  ]
+  ],
+  "hash": "5891dde72e48cd95"
  },
  "connectors/base.py::credential_scope": {
   "equivalents": [],
@@ -563,7 +564,8 @@
   "hash": "ec278fede8186483"
  },
  "connectors/sql_connector.py::QueryResult.notes": {
-  "equivalents": []
+  "equivalents": [],
+  "hash": "fa83444a7e1704af"
  },
  "connectors/sql_connector.py::SQLConnector._engine": {
   "equivalents": [],

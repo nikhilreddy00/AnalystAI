@@ -207,7 +207,8 @@ password with its own `str.replace`, a second copy of `_cut`'s rule. A short pas
 - the boundary tests killed the most, each limit tested at its edge;
 - simplifications removed some: four dead branches in `capped_body`, `_suffix` by `splitext`, and the separator
   strip in `_secret_key`;
-- the body reader's tests run it on a bounded thread, so a looping mutant fails in 5 s, never a timeout;
+- the body reader's tests run it on a bounded thread, so a looping mutant fails in 5 s, never a timeout; an
+  identity body skips the decoder loop, so `while chunk` can't spin;
 - 6 are named equivalents in `gate.json`, each with its reason. Two of them (`_ca_file`, and before it
   `run_readonly`) are caught by `--plant` but not under mutmut, which can't see a subprocess or a cached file.
 
@@ -226,4 +227,6 @@ password with its own `str.replace`, a second copy of `_cut`'s rule. A short pas
 - recurrences, each closed by construction with its gate: P58-02, P58-05, P58-06, P58-08, P58-24, P58-27,
   P58-28, P58-31, D1-38;
 - new: P58-34 (the first parity check read its reference through the code it checked: a plant passed on both
-  sides).
+  sides); P58-35 (a mutation run killed between a grant and its revoke left the SQL Server reader owning a
+  schema, and every later run failed: conftest now undoes every can-write grant on the reader at each start,
+  with a test that plants the leftover).
