@@ -7,7 +7,8 @@ import pytest
 
 from scripts.mutation import (GATED, ROOT, check, function_hashes, functions_touching,
                               mutant_lines, naming, outside_source_paths, plant, plant_verdict,
-                              planted, progress, recorded, rerun, runnable, scores, uncommitted,
+                              planted, progress, record_tests, recorded, rerun, runnable, scores,
+                              uncommitted,
                               undefined, unnamed, unreached, without_spinner)
 
 
@@ -287,20 +288,41 @@ def test_the_gates_rerun_command_names_only_the_functions_it_refused():
     problems = [f"{SPELL}::f: changed since abc with no clean mutation gate recorded",
                 "domain_pack/story.py::P.k: changed since abc with no clean mutation gate recorded",
                 f"{SPELL}::g: in docs/mutation/gate.json, but no such function (renamed or deleted)"]
-    assert rerun(problems, "abc").startswith("run: uv run python scripts/mutation.py f P.k --lines abc "
-                                             "--record --tests ")
+    assert rerun(problems, "abc") == "run: uv run python scripts/mutation.py f P.k --lines abc --record"
     assert rerun(problems[2:], "abc") is None     # an orphan is fixed in gate.json, not by a run
 
 
 def test_the_gates_rerun_command_runs_as_printed():
     """Retro Domain 8: the hint said '--tests <each function's callers' test files>' and the
-    hand-picked list missed test_second_pack.py. It names them: the tests that name the function,
-    and those that import a module calling it."""
+    hand-picked list missed test_second_pack.py. The printed run picks them itself (no --tests):
+    the tests that name the function, and those that import a module calling it."""
     problems = ["domain_pack/story.py::glossary_hits: changed since abc with no clean mutation gate recorded"]
-    tests = rerun(problems, "abc").split("--tests ")[1].split()
+    assert "--tests" not in rerun(problems, "abc")
+    tests = record_tests(["glossary_hits"], None)
     assert {"tests/test_unit_words.py", "tests/test_second_pack.py",   # name it
             "tests/test_intake_agent.py"} <= set(tests)                # import agents.intake_agent
     assert all(t.startswith("tests/") and t.endswith(".py") for t in tests)
+
+
+def test_a_record_runs_every_callers_tests_never_a_hand_picked_few():
+    """Retro 5.8b hardening (PR9-02's third time): the hint printed the callers' tests, but main
+    still required --tests, so each re-record ran a shorter hand-picked list and showed a
+    different survivor (five runs where one would do). A record runs them all by default, and a
+    list that leaves one out is refused, naming it."""
+    callers = record_tests(["glossary_hits"], None)
+    assert {"tests/test_unit_words.py", "tests/test_second_pack.py"} <= set(callers)
+    assert callers == runnable(callers)   # the source guards are left out here too
+    with pytest.raises(ValueError, match="test_second_pack.py"):
+        record_tests(["glossary_hits"], ["tests/test_unit_words.py"])
+    assert record_tests(["glossary_hits"], [*callers, "tests/test_x.py"])[-1] == "tests/test_x.py"
+
+
+def test_the_hooks_nightly_warning_names_the_failed_jobs_and_is_said_last():
+    """Retro 5.8b hardening (P58-21 recurred): a run-level warning, said before ruff and the
+    suites, was cut by `git push | tail` and named no job, so a red security job went unread."""
+    hook = (ROOT / ".githooks/pre-push").read_text()
+    assert '.conclusion == "failure") | .name' in hook   # the failed jobs, by name
+    assert hook.rindex("WARNING: the last nightly") > hook.index('echo "pre-push: all checks passed"')
 
 
 def test_the_hook_and_ci_both_run_the_gate():

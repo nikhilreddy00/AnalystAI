@@ -163,6 +163,8 @@ scripts/
                              <name> serves any dataset's dashboard through the real filtered_dashboard
   live_check/              — the live stack (production mode, asyncpg, real worker): up.sh, ask.py,
                              spend.py (what live runs cost), down.sh
+  hooks/no_shell_edits.sh  — the agent's PreToolUse hook (wired in .claude/settings.local.json):
+                             a shell write into a repo file is refused; edits go through Edit/Write
 ```
 
 ---

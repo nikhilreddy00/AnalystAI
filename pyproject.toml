@@ -52,6 +52,13 @@ dev = [
     "ruff>=0.4",
 ]
 
+# The editor's Pyright reads the uv venv: without it every edit drew dozens of false "import could
+# not be resolved" diagnostics into the agent's context (retro 5.8b hardening)
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
+pythonVersion = "3.11"
+
 [tool.ruff]
 line-length = 100
 target-version = "py311"
