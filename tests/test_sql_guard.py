@@ -386,6 +386,10 @@ def test_functions_an_independent_reviewer_listed_are_allowed(dialect):
     assert refused == {}
 
 
+def test_a_dialect_without_a_documented_list_has_no_calls():
+    assert g.documented_calls("sqlite") == [] and g.documented_calls(None) == []
+
+
 def test_no_documented_function_is_also_a_hard_one():
     """One list says run, the other says never: a name on both is a bug in one of them."""
     for dialect in _INDEPENDENT:

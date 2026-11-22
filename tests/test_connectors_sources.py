@@ -1819,6 +1819,25 @@ def test_a_sql_server_host_that_doesnt_answer_is_said_with_its_port():
         assert f"can't reach {where} " in _session_error(said, create_engine(url)).user_message
 
 
+def test_only_a_one_wide_tinyint_or_bit_is_yes_no():
+    from pymysql.constants import FIELD_TYPE
+
+    from connectors.sql_connector import _mysql_kind
+    col = lambda code, size: ("c", code, None, size, None, None, True)   # noqa: E731
+    assert _mysql_kind(col(FIELD_TYPE.TINY, 1)) == "bool"
+    assert _mysql_kind(col(FIELD_TYPE.BIT, 1)) == "bool"
+    assert _mysql_kind(col(FIELD_TYPE.TINY, 4)) is None
+    assert _mysql_kind(col(FIELD_TYPE.VAR_STRING, 1)) is None   # a VARCHAR(1) of latin1
+
+
+def test_a_blanked_date_is_said_in_its_number():
+    from connectors.sql_connector import QueryResult
+    one = QueryResult(["d"], [("0000-00-00",), (None,)], False, ("date",))
+    two = QueryResult(["d"], [("0000-00-00",), ("2024-03-00",)], False, ("date",))
+    assert one.notes()[0].startswith("1 value in `d` is a zero or partial date")
+    assert two.notes()[0].startswith("2 values in `d` are a zero or partial date")
+
+
 def test_a_query_that_cant_run_as_written_is_the_sql_guards_refusal():
     from agents.errors import GuardrailViolation
     from connectors.sql_connector import _cant_run_as_written

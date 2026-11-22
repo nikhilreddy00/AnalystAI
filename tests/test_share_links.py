@@ -644,7 +644,30 @@ async def test_every_gzip_member_is_read_and_a_cut_or_corrupt_body_is_said():
         await capped_body(_Answer(gzip.compress(a) + b"trailing junk", "gzip"), 10**6)
 
 
-async def test_the_body_reader_holds_its_boundaries(monkeypatch):
+def _read(body: bytes, encoding: str, cap: int) -> bytes:
+    """capped_body on its own thread, bounded: a reader that loops forever fails here, never
+    hangs the run (the mutation gate's retry mutants spun until mutmut's timeout)."""
+    import asyncio
+    import threading
+
+    from connectors.base import capped_body
+    out: dict = {}
+
+    def go():
+        try:
+            out["body"] = asyncio.run(capped_body(_Answer(body, encoding), cap))
+        except Exception as exc:
+            out["error"] = exc
+    reader = threading.Thread(target=go, daemon=True)
+    reader.start()
+    reader.join(5)
+    assert not reader.is_alive(), "the reader was still going after 5 s"
+    if "error" in out:
+        raise out["error"]
+    return out["body"]
+
+
+def test_the_body_reader_holds_its_boundaries(monkeypatch):
     """Mutation gate: each limit at its edge (a cap-sized body reads, a byte more is refused, the
     member count is the documented one) and a mislabelled or corrupt body is never read."""
     import gzip
@@ -652,28 +675,29 @@ async def test_the_body_reader_holds_its_boundaries(monkeypatch):
     import zlib
 
     import connectors.base as base
-    from connectors.base import BodyTooLarge, capped_body
+    from connectors.base import BodyTooLarge
     cap, full = 1000, b"x" * 1000
     for encoding, pack in (("identity", bytes), ("gzip", gzip.compress)):
-        assert await capped_body(_Answer(pack(full), encoding), cap) == full
+        assert _read(pack(full), encoding, cap) == full
         with pytest.raises(BodyTooLarge):
-            await capped_body(_Answer(pack(full + b"y"), encoding), cap)
+            _read(pack(full + b"y"), encoding, cap)
     with pytest.raises(BodyTooLarge):   # a member ending at the cap, a byte more in the next
-        await capped_body(_Answer(gzip.compress(full) + gzip.compress(b"y"), "gzip"), cap)
+        _read(gzip.compress(full) + gzip.compress(b"y"), "gzip", cap)
     noise = gzip.compress(os.urandom(50_000)) * 3   # 150,000 decoded, more sent, in 3 chunks
     assert len(noise) > 150_010
     with pytest.raises(BodyTooLarge):
-        await capped_body(_Answer(noise, "gzip"), 150_010)
+        _read(noise, "gzip", 150_010)
     monkeypatch.setattr(base, "_MAX_GZIP_MEMBERS", 3)
-    assert await capped_body(_Answer(gzip.compress(b"a") * 3, "gzip"), cap) == b"aaa"
+    assert _read(gzip.compress(b"a") * 3, "gzip", cap) == b"aaa"
     with pytest.raises(ValueError, match="too many pieces"):
-        await capped_body(_Answer(gzip.compress(b"a") * 4, "gzip"), cap)
+        _read(gzip.compress(b"a") * 4, "gzip", cap)
     headerless = zlib.compressobj(9, zlib.DEFLATED, -zlib.MAX_WBITS)
     raw_deflate = headerless.compress(b"id\n1\n") + headerless.flush()
+    assert _read(raw_deflate, "deflate", cap) == b"id\n1\n"
     with pytest.raises(ValueError, match="couldn't be unpacked"):   # gzip's label is believed
-        await capped_body(_Answer(raw_deflate, "gzip"), cap)
+        _read(raw_deflate, "gzip", cap)
     with pytest.raises(ValueError, match="couldn't be unpacked"):   # once as raw, then said
-        await capped_body(_Answer(b"\xff\xff not deflate at all", "deflate"), cap)
+        _read(b"\xff\xff not deflate at all", "deflate", cap)
 
 
 def test_a_text_files_own_name_decides_its_reader():
