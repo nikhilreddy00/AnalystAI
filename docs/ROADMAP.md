@@ -801,7 +801,10 @@ dataset should land in a workspace users can come back to. Expected size: 2 sess
     MySQL TLS + the parse guard's functions as an **allow list** (5.8a: five security-review rounds
     each found one more denied name missing; a deny list never ends) + a password field in the form.
   - **5.8c:** DuckDB file reader (cap ~250 MB, a clear message past it; analysis stays pandas) +
-    Stripe/HubSpot/Shopify/GA4 imported by `dlt` into DuckDB with a Refresh button.
+    Stripe/HubSpot/Shopify/GA4 imported by `dlt` into DuckDB with a Refresh button. **Rescoped
+    2026-11-22** (debate + user, ADR-0010 amendment): own fetchers through `public_client` (no dlt),
+    no DuckDB (the cap rises on today's reader to what `peak_mb()` holds), Stripe → Shopify → HubSpot;
+    GA4 deferred (service-account keys blocked by default in new Google Cloud orgs).
   - **5.8d:** Snowflake + BigQuery. After v0.1: QuickBooks/Xero (registered OAuth app), private
     Drive/OneDrive via OAuth.
 - **Decisions:** databases are queried live (questions → read-only SQL, a named table → a capped

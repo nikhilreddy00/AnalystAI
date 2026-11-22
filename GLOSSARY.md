@@ -148,7 +148,22 @@ Domain words (ALOS, readmission, NPL …) live in `domain_packs/<domain>.yaml`, 
 - **Live query / snapshot load / import** — a question answered by read-only SQL in the user's database;
   a named table loaded whole into the pipeline (capped, the cap disclosed); a copy kept and refreshed on
   demand: a share link imported once as a dataset version (paste again for a newer copy, 5.8b), a SaaS
-  copy in local DuckDB (5.8c).
+  import (5.8c).
+- **Import** — a user's link to one vendor account (Stripe, Shopify, HubSpot): its key and its tables,
+  each table a dataset of its own.
+- **Refresh** ("Get latest data") — one fetch of every table of an import; each table that arrives whole
+  becomes a new version of its dataset. One table per question: tables are never joined.
+- **Last good copy** — a table's newest version from a whole fetch; questions read it.
+- **Stale** — a table whose last refresh failed, timed out or was interrupted: shown with its last good
+  time and the reason, never as fresh.
+- **Cut** — a table capped at its row limit: the newest rows kept, the first date kept said, and an
+  answer over earlier dates called incomplete. Never a fetch that ran out of time (that is stale).
+- **Date window** — a span the user chose for an import to fetch ("the last 12 months"), said on its
+  card. A subscription is in it when it was in force at some time inside it, whenever it started.
+- **Minor units** — an amount in a currency's smallest unit (cents). Imports show the major unit, as the
+  vendor's own export does, by the vendor's own currency list.
+- **Instant vs date** — an instant is a moment (an order placed at 14:03 UTC); a date is a calendar day
+  with no zone. An instant is shown in the zone the vendor's own export uses.
 - **Checked address** — an address the server connects to only after `resolved()` has unwrapped it (an
   IPv4 address inside an IPv6 one is that IPv4 address) and its host rule passed: public internet for a
   URL fetch (`public_client`), not loopback/link-local/the app's store for a database. The connection goes

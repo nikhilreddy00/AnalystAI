@@ -43,8 +43,9 @@ actually read-only (`run_readonly` set nothing for any other engine) and any SQL
   Postgres session runs in UTC (`SET LOCAL TIME ZONE 'UTC'`), so `now()`, `date_trunc` and a
   `timestamptz` read the same day whatever the database's default zone, as on the other engines.
 - **Live vs import** (user, 2026-11-19): databases are queried live (a question → read-only SQL; a named
-  table → a snapshot load, capped and disclosed). SaaS sources (5.8c) are imported by dlt into a local
-  DuckDB copy refreshed on demand: no API rate limits per question, and the same numbers every run.
+  table → a snapshot load, capped and disclosed). SaaS sources (5.8c) are imported into a local copy
+  refreshed on demand: no API rate limits per question, and the same numbers every run (5.8c amendment:
+  own fetchers into dataset versions, not dlt into DuckDB).
 - **Values are normalised once**, where a database result becomes a frame (`QueryResult.frame`): Decimal →
   float, `TINYINT(1)` → bool, a date column's zero dates → missing (by the cursor's type, not the
   value). Columns by position (a join returns two `id` columns). No per-source frame code anywhere else.
@@ -85,6 +86,21 @@ read-only login, links as imports.
 - **MySQL/MariaDB TLS** is `ssl_mode` in the client's own words; the CAs are certifi's and the operator's bundle (the
   image ships AWS RDS's), never a path from the user; the pinned socket keeps the name for verification.
 - **Every file read is bounded before it is parsed**: a workbook's declared unpacked size and parts, a CSV header's width.
+
+## Amendment, 5.8c (2026-11-22)
+Research: `docs/research/2026-11-22-5.8c-sources.md`. Decided by a design debate and accepted by the user.
+- **SaaS imports use our own fetchers, not dlt.** dlt's verified sources reach the network through their own
+  clients (stripe-python, `requests`), outside `public_client`; telemetry is opt-out; a floating `sqlglot` would move
+  under our pinned guard. Each vendor is a few cursor paginators through `public_client`, with a fixed host list
+  refused before connecting, typed by a declared per-vendor catalog through `QueryResult.frame`.
+- **No DuckDB.** An import is filed as parquet dataset versions (one dataset per table), so nothing reads a DuckDB
+  copy, and questions on an import run on pandas only: no new SQL path, no new guard. Files stay on today's one reader
+  (a second sniffer would break the one load rule); the upload cap rises to what a measured `peak_mb()` holds.
+- **Vendors: Stripe, Shopify, HubSpot.** Shopify through a merchant-owned Dev Dashboard app (client credentials) and
+  Bulk Operations; HubSpot through Service Keys, a public beta (2026-02). **GA4 is deferred**: Google Cloud orgs created
+  since 2024-05-03 block service-account keys by default, and OAuth needs a consent screen per install.
+- **A refresh files each table on its own.** A table that fails, times out or is interrupted keeps its last good
+  version and is said stale; the row cap is the only cut, and it is said with its first date.
 
 ## Consequences
 - MariaDB (its own timeout variable) and SQL Server (no read-only transaction; CI-only database) come in
