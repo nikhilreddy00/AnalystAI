@@ -1811,6 +1811,8 @@ def test_a_leading_zero_is_never_a_whole_number():
     assert exact_whole_numbers(pd.Series([str(2**53 + 1)], dtype=object)).dtype == "Int64"
     assert exact_whole_numbers(pd.Series([str(2**63 - 1)], dtype=object)).dtype == "Int64"
     assert exact_whole_numbers(pd.Series([str(2**63)], dtype=object)).tolist() == [str(2**63)]
+    kept = exact_whole_numbers(pd.Series([str(2**60), None], index=[7, 3], dtype=object))
+    assert kept.index.tolist() == [7, 3] and kept[7] == 2**60   # each value stays on its row
     past = exact_whole_numbers(pd.Series([str(2**63), None], dtype=object)).tolist()
     assert past[0] == str(2**63) and past[1] is None   # a blank stays None, never NaN in text
 
