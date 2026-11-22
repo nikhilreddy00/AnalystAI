@@ -377,10 +377,11 @@ def _json_records(content: bytes) -> bool:
                 # its depth (security review 5); the same name shared, never built again
                 if len(p) > _MAX_PATH:
                     raise _TooWide
-                own.add(sys.intern(p))
-        paths.update(own)
-        if len(paths) > _MAX_COLUMNS:
-            raise _TooWide
+                p = sys.intern(p)
+                own.add(p)
+                paths.add(p)   # the cap as each path is added, never after (review 6)
+                if len(paths) > _MAX_COLUMNS:
+                    raise _TooWide
         own = frozenset(own)
         return interned.setdefault(own, own)
 
