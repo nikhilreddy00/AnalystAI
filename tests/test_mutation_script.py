@@ -292,6 +292,14 @@ def test_the_gates_rerun_command_names_only_the_functions_it_refused():
     assert rerun(problems[2:], "abc") is None     # an orphan is fixed in gate.json, not by a run
 
 
+# caller_tests finds files with `git grep`: mutmut's copy is an untracked folder (5.8c: the gate's
+# own baseline failed here, the search finding nothing in it)
+_IN_GIT = subprocess.run(["git", "-C", str(ROOT), "ls-files", "--error-unmatch",
+                          "scripts/mutation.py"], capture_output=True).returncode == 0
+needs_git = pytest.mark.skipif(not _IN_GIT, reason="the caller search reads git; this copy isn't")
+
+
+@needs_git
 def test_the_gates_rerun_command_runs_as_printed():
     """Retro Domain 8: the hint said '--tests <each function's callers' test files>' and the
     hand-picked list missed test_second_pack.py. The printed run picks them itself (no --tests):
@@ -304,6 +312,7 @@ def test_the_gates_rerun_command_runs_as_printed():
     assert all(t.startswith("tests/") and t.endswith(".py") for t in tests)
 
 
+@needs_git
 def test_a_record_runs_every_callers_tests_never_a_hand_picked_few():
     """Retro 5.8b hardening (PR9-02's third time): the hint printed the callers' tests, but main
     still required --tests, so each re-record ran a shorter hand-picked list and showed a
