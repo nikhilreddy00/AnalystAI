@@ -543,6 +543,35 @@ async def test_delete_takes_the_tables_when_asked(client, monkeypatch):
 
 # ── the key in no sink (P58-06, red-team 7) ────────────────────────────────────────────────────
 
+async def test_shopifys_secret_and_minted_token_are_in_no_sink(client, monkeypatch, caplog,
+                                                                tmp_path):
+    """The client secret, and the token minted at each refresh (red-team 7: registered when
+    minted), through a refresh the store then fails: in no log, status, answer or file."""
+    import memory.session_store as ss
+    caplog.set_level(logging.DEBUG)
+    monkeypatch.setattr(ss, "REFRESH_GAP_S", 0)
+    minted = "CANARY-minted-token-5_8c-0001"
+    shop = recorded("shopify")
+
+    def failing(request):
+        if request.url.path.endswith("/oauth/access_token"):
+            return httpx.Response(200, json={"access_token": minted, "scope": "read_orders"})
+        return httpx.Response(503, text=f"upstream said {minted} {SHOP['key']}")
+    serve(monkeypatch, shop)
+    made = (await client.post("/api/imports", json=SHOP)).json()
+    await _settle(client)
+    serve(monkeypatch, failing)
+    await client.post(f"/api/imports/{made['id']}/refresh")
+    await _settle(client)
+    store = client._transport.app.state.session_store
+    after = (await client.get(f"/api/imports/{made['id']}")).json()
+    assert after["state"] == "failed"
+    sinks = [caplog.text, json.dumps(after), (await client.get("/api/imports")).text,
+             json.dumps((await store.list_imports("u1"))[0].status)]
+    sinks += [p.read_bytes().decode("latin-1") for p in tmp_path.rglob("*.parquet")]
+    assert not [s for s in sinks if minted in s or SHOP["key"] in s]
+
+
 async def test_the_key_is_in_no_sink(client, monkeypatch, caplog, tmp_path):
     caplog.set_level(logging.DEBUG)
     after, _ = await _good_then(client, monkeypatch, Stripe([_sub(1)], [_inv(1)], key="other"))

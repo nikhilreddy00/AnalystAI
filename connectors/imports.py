@@ -26,7 +26,8 @@ from typing import Awaitable, Callable
 import httpx
 import pandas as pd
 
-from connectors.base import (_SCOPE, BodyTooLarge, RefusedHost, capped_body, credential_scope,
+from connectors.base import (_SCOPE, BodyTooLarge, HostNotFound, RefusedHost, capped_body,
+                             credential_scope,
                              public_client, register_secrets)
 from connectors.sql_connector import QueryResult
 from memory.session_store import REFRESH_DEADLINE_S, ImportRecord
@@ -132,6 +133,8 @@ async def fetch(client: httpx.AsyncClient, url: str, *, what: str, method: str =
                 return await capped_body(r, cap)
         except ImportFailure:
             raise
+        except HostNotFound:   # a name that doesn't resolve: the network, never the host rule
+            raise ImportFailure("network") from None   # (connection matrix: said as "another server")
         except RefusedHost:
             raise ImportFailure("host") from None
         except BodyTooLarge:
