@@ -30,6 +30,13 @@ _PERSONAL = {"name", "phone", "address", "shipping", "line1", "line2", "postal_c
              "customer_name", "customer_phone", "customer_address", "customer_shipping",
              "billing_details", "shipping_details"}
 _THINGS = {"product", "coupon", "price", "plan", "account"}   # objects whose `name` is no person
+# an export's header words that may mean a person or where they live
+_PERSON_WORDS = {"name", "phone", "address", "address1", "address2", "street", "zip", "postal",
+                 "company", "city", "province", "country", "notes", "note", "description",
+                 "billing", "shipping", "customer", "employee", "device", "ip", "receipt"}
+# headers with those words that hold no one's details (checked against the real exports)
+_NO_ONES = {"Name", "Lineitem name", "Product", "Plan", "Shipping", "Shipping Method",
+            "Lineitem requires shipping", "Billing", "Customer", "Customer ID"}
 _TOKENS = re.compile(r"\b(?:sk|rk|pk)_(?:live|test)_[A-Za-z0-9]{8,}|shpat_\w+|shpss_\w+|pat-\w+")
 
 
@@ -45,7 +52,10 @@ def _env(name: str) -> str:
 def email(value: str) -> str:
     """An address as its placeholder, the same from every file (the recording and the vendor's
     own export of one customer match, for the oracle): customer<hash>@mail.invalid, never
-    @example.com, which the SaaS pack's test_marker reads as a test account."""
+    @example.com, which the SaaS pack's test_marker reads as a test account. A placeholder stays
+    itself (scrubbing a scrubbed file changes nothing)."""
+    if re.fullmatch(r"customer[0-9a-f]{8}@mail\.invalid", value.strip()):
+        return value.strip()
     return f"customer{hashlib.sha256(value.strip().lower().encode()).hexdigest()[:8]}@mail.invalid"
 
 
@@ -72,11 +82,14 @@ def scrub_csv(path: Path) -> None:
     import pandas as pd
     df = pd.read_csv(path, dtype=str, keep_default_na=False)
     for c in df.columns:
-        low = c.lower()
-        if "email" in low:
+        words = set(re.findall(r"[a-z0-9]+", c.lower()))
+        if re.search(r"e-?mail", c.lower()):
             df[c] = df[c].map(lambda v: email(v) if v else v)
-        elif any(w in low for w in ("name", "description", "phone", "address", "shipping")) \
-                and not low.startswith(("product", "plan")):
+        # fail closed (5.8: allow lists over deny lists): a header that may hold a person or a
+        # place is scrubbed unless it is one known to be no one's (Shopify's Name is the order's
+        # number, Lineitem name the product: an over-wide first rule wiped both; a narrowed
+        # second one let Billing City through, security review)
+        elif words & _PERSON_WORDS and c not in _NO_ONES:
             df[c] = df[c].map(lambda v: "[scrubbed]" if v else v)
     text = df.to_csv(index=False)
     if hit := _TOKENS.search(text):
