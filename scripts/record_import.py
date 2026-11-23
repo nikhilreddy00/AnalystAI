@@ -29,6 +29,7 @@ _PERSONAL = {"name", "phone", "address", "shipping", "line1", "line2", "postal_c
              # an invoice's copy of its customer (the first recording kept customer_name)
              "customer_name", "customer_phone", "customer_address", "customer_shipping",
              "billing_details", "shipping_details"}
+_THINGS = {"product", "coupon", "price", "plan", "account"}   # objects whose `name` is no person
 _TOKENS = re.compile(r"\b(?:sk|rk|pk)_(?:live|test)_[A-Za-z0-9]{8,}|shpat_\w+|shpss_\w+|pat-\w+")
 
 
@@ -52,8 +53,11 @@ def scrub(value, emails: dict):
     """People out, structure kept: an email becomes its placeholder, a name, phone or address
     `[scrubbed]` (an address's parts too)."""
     if isinstance(value, dict):
-        return {k: ("[scrubbed]" if k in _PERSONAL and isinstance(v, str) and v
-                    else None if k in _PERSONAL and isinstance(v, dict) else scrub(v, emails))
+        # a product's or a coupon's name is no person's (the first oracle run: every Product
+        # read "[scrubbed]")
+        personal = _PERSONAL - ({"name"} if value.get("object") in _THINGS else set())
+        return {k: ("[scrubbed]" if k in personal and isinstance(v, str) and v
+                    else None if k in personal and isinstance(v, dict) else scrub(v, emails))
                 for k, v in value.items()}
     if isinstance(value, list):
         return [scrub(v, emails) for v in value]

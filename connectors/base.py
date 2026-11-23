@@ -477,6 +477,8 @@ def normalize_frame(df: pd.DataFrame) -> pd.DataFrame:
         s = df.iloc[:, i]
         if not pd.api.types.is_numeric_dtype(s) and (blank := s.eq("")).any():
             s = s.mask(blank)   # '' is a blank, as a CSV reads it (MySQL, JSON keep it)
+        if s.dtype == object and len(s) and s.isna().all():
+            s = s.astype("float64")   # no value at all: a CSV's empty column (5.8c import oracle)
         if (parsed := parse_text_dates(s)) is not None:
             s = parsed
         if pd.api.types.is_datetime64_any_dtype(s):

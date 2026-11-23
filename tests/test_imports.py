@@ -188,7 +188,10 @@ async def test_every_recorded_normal_page_imports(client, monkeypatch):
     assert subs["Percent Off"].dropna().tolist() == [20.0]
     assert subs["id"].value_counts().max() == 2            # the two-price subscription: 2 rows
     assert subs["Customer Email"].str.fullmatch(r"customer[0-9a-f]{8}@mail\.invalid").all()
-    assert invoices["Total"].max() == 290 and 78 in invoices["Total"].tolist()   # 12 lines' total
+    totals = dict(zip(invoices["Currency"] + " " + invoices["Number"].str[-4:], invoices["Total"]))
+    assert 78.0 in invoices["Total"].tolist()             # the 12-line invoice: its own total
+    assert sorted(invoices.loc[invoices["Currency"].ne("usd"), "Total"]) == [0.0, 500.0, 500.0,
+                                                                            2500.0], totals
 
 
 @pytest.mark.parametrize(("table", "export"), [("subscriptions", "export_subscriptions.csv"),
