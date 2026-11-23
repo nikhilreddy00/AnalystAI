@@ -127,10 +127,11 @@ async def test_an_import_connects_or_says_why(vendor, case, monkeypatch):
     async with _client(in_memory_deps()) as c:
         r = await c.post("/api/imports", json=IMPORTS[vendor])
         await _settle(c)
-    assert time.monotonic() - started < 10
     if words is None:
         assert r.status_code == 201, r.text
-    else:
+    else:   # a failure is said within a bound; a good import's time is its data's (under
+        # mutmut's instrumented run a whole Stripe import passed 10 s: the gate's baseline failed)
+        assert time.monotonic() - started < 10
         assert r.status_code == 400 and words in r.json()["detail"], r.text
         assert IMPORTS[vendor]["key"] not in r.text
 
