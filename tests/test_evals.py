@@ -244,8 +244,10 @@ def test_every_case_is_well_formed():
         cases = load_cases(suite, None)
         assert len(cases) == {"analysis": 115, "e2e": 104}[suite]   # 5.5: +22/+14; 5.7 retail +7/+8, banking +4/+9, healthcare +5/+9, insurance +6/+7, hr +7/+7, saas +7/+5, iot +5/+8, logistics +6/+7; 5.8a mysql +0/+2; 5.8b mariadb/mssql/link +0/+5; 5.8c stripe/shopify/refresh/cap +0/+4
         assert len({c["id"] for c in cases}) == len(cases)
-        for c in cases:
-            _, truth = datagen.make(c["dataset"]["name"], c["dataset"]["seed"])
+        from evals.run import IMPORT_ENV
+        for c in cases:   # an import's truth is the case's own (evals.run.dataset): no vendor call
+            truth = c["truth"] if c.get("source") in IMPORT_ENV else \
+                datagen.make(c["dataset"]["name"], c["dataset"]["seed"])[1]
             for spec in [*c["checks"], *(s for t in c.get("turns", []) for s in t["checks"])]:
                 assert spec["kind"] in kinds, c["id"]
                 if "truth_key" in spec:
