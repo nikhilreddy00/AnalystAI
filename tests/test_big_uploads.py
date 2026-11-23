@@ -149,7 +149,10 @@ def test_the_first_lines_hold_across_the_head_cut(cut):
 def test_the_cap_is_the_measured_one_everywhere():
     """One constant: the backend, the frontend's label and link copy, the README source list."""
     assert MAX_UPLOAD_MB == 100
-    ui = (ROOT / "frontend/src/components/ConnectorSetup.tsx").read_text()
+    form = ROOT / "frontend/src/components/ConnectorSetup.tsx"
+    if not form.exists():   # mutmut's copy holds the Python sources only
+        pytest.skip("no frontend in this copy")
+    ui = form.read_text()
     labels = re.findall(r"max (\d+) MB", ui)
     assert labels and set(labels) == {str(MAX_UPLOAD_MB)}
 

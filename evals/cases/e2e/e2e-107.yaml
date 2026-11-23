@@ -1,0 +1,23 @@
+id: e2e-107
+domain: saas
+source: stripe
+refresh: true
+dataset:
+  name: stripe-invoices
+  seed: 0
+  table: invoices
+truth:
+  paid_usd_total: 415.2
+question: What is the sum of the Total column over the paid invoices in USD?
+overview_done: true
+checks:
+- kind: number_in_answer
+  truth_key: paid_usd_total
+  rel_tol: 0.001
+hard_rules:
+- charts_lint_clean
+- charts_have_rationale
+- non_empty_or_error
+label_note: 'Phase 5.8c: the code path after a Refresh: the Stripe test account''s invoices fetched
+  twice by the production engine, the question read on the second copy. Paid USD invoices total
+  290 + 23.20 + 44 + 29 + 29 (the open 12-line invoice and the other currencies are out).'

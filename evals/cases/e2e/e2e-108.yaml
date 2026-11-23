@@ -1,0 +1,27 @@
+id: e2e-108
+domain: retail
+dataset:
+  name: simpson
+  seed: 1
+  tile_to_mb: 95
+question: What is the conversion rate of the treatment group versus control?
+overview_done: true
+checks:
+- kind: number_in_answer
+  truth_key: pooled_conversion.treatment
+  rel_tol: 0.02
+  scales:
+  - 1
+  - 100
+- kind: number_in_answer
+  truth_key: pooled_conversion.control
+  rel_tol: 0.02
+  scales:
+  - 1
+  - 100
+hard_rules:
+- charts_lint_clean
+- charts_have_rationale
+- non_empty_or_error
+label_note: 'Phase 5.8c: e2e-18''s table repeated to ~95 MB, just under the 100 MB upload cap,
+  through the one file reader as an upload: the rates are the same, the read is the cap''s.'
