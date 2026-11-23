@@ -282,6 +282,34 @@ async def test_the_shopify_import_reads_as_shopifys_own_export(client, monkeypat
     assert groles == {r: c for r, c in wroles.items() if r != "email"}
 
 
+async def test_a_store_that_is_always_throttled_is_said_never_waited_on_forever(client, monkeypatch):
+    """Security review: Shopify's throttle was waited out without end, and a key's test runs in
+    the request under no refresh's deadline."""
+    import connectors.imports as imports
+    monkeypatch.setattr(imports, "THROTTLE_WAIT_S", 0)
+
+    def shop(request):
+        if request.url.path.endswith("/oauth/access_token"):
+            return httpx.Response(200, json={"access_token": "minted-token-0000000000"})
+        return httpx.Response(200, json={"errors": [{"extensions": {"code": "THROTTLED"}}]})
+    wire = serve(monkeypatch, shop)
+    r = await client.post("/api/imports", json=SHOP)
+    assert r.status_code == 400 and "slow down" in r.json()["detail"]
+    assert len(wire.requests) == 1 + imports.THROTTLE_TRIES
+
+
+async def test_a_key_test_past_its_deadline_is_said(client, monkeypatch):
+    import api.routes.imports as routes
+    import connectors.imports as imports
+    monkeypatch.setattr(routes, "KEY_TEST_S", 0.05)
+
+    async def slow(client, secrets):
+        await asyncio.sleep(1)
+    monkeypatch.setattr(imports.VENDORS["stripe"], "test", slow)
+    r = await _connect(client)
+    assert r.status_code == 400 and "within a minute" in r.json()["detail"]
+
+
 @pytest.mark.parametrize("pasted", ["analystai-test", "AnalystAI-Test.myshopify.com",
                                     "https://analystai-test.myshopify.com/admin/orders",
                                     "admin.shopify.com/store/analystai-test"])

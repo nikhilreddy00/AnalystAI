@@ -54,6 +54,7 @@ REASONS = {
     "too_large": "One of {vendor}'s answers was larger than this server reads.",
     "host": "{vendor} pointed us at another server, which isn't allowed.",
     "unexpected": "Something went wrong reading {vendor}.",
+    "slow_test": "{vendor} didn't answer the key's test within a minute. Try again in a moment.",
     # the key's form, before any request (Stripe)
     "live_secret_key": "That's a live secret key, which can also move money. Create a restricted "
                        "key with Read access instead (Stripe Dashboard → Developers → API keys → "
@@ -544,7 +545,7 @@ VENDORS["stripe"] = Vendor(
 
 SHOPIFY_API = "2026-01"
 ORDERS_PAGE, LINES_PAGE = 25, 50   # a page's requested cost stays under Shopify's 1,000
-THROTTLE_WAIT_S = 2.0
+THROTTLE_WAIT_S, THROTTLE_TRIES = 2.0, 30   # about a minute of Shopify's throttle, then said
 _SHOP = re.compile(r"[a-z0-9][a-z0-9-]*")
 
 REASONS.update({
@@ -603,15 +604,17 @@ async def _gql(client, headers: dict, query: str, what: str, **variables) -> dic
     """A GraphQL answer's data. Its errors arrive inside a 200: each said as a reason code; a
     throttle is waited out (the refresh's deadline bounds the waiting)."""
     shop = headers["_shop"]
-    while True:
-        got = await get_json(client, f"https://{shop}/admin/api/{SHOPIFY_API}/graphql.json",
-                             what=what, method="POST",
-                             headers={k: v for k, v in headers.items() if not k.startswith("_")},
-                             json={"query": query, "variables": variables})
+    for _ in range(THROTTLE_TRIES):   # bounded on its own too (security review: a key test runs
+        got = await get_json(          # in the request, under no refresh's deadline)
+            client, f"https://{shop}/admin/api/{SHOPIFY_API}/graphql.json", what=what,
+            method="POST", headers={k: v for k, v in headers.items() if not k.startswith("_")},
+            json={"query": query, "variables": variables})
         codes = [(e.get("extensions") or {}).get("code") for e in got.get("errors") or []]
         if codes != ["THROTTLED"]:
             break
         await asyncio.sleep(THROTTLE_WAIT_S)
+    else:
+        raise ImportFailure("rate_limited")
     for e in got.get("errors") or []:
         ext = e.get("extensions") or {}
         if ext.get("code") == "ACCESS_DENIED":

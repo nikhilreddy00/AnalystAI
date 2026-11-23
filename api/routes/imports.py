@@ -22,6 +22,7 @@ from connectors.base import _SCOPE, credential_scope, register_secrets
 
 router = APIRouter()
 log = logging.getLogger(__name__)
+KEY_TEST_S = 60   # a key's test answers within it, or is said too slow
 
 _BUSY = {
     "running": "A refresh is already running. It shows here when it ends.",
@@ -66,10 +67,13 @@ async def _tested(vendor: imp.Vendor, secrets: dict) -> tuple[str, bool]:
     register_secrets(*imp.secret_values(secrets))
     try:
         vendor.check(secrets)
-        async with vendor.client(secrets) as client:
+        async with asyncio.timeout(KEY_TEST_S), vendor.client(secrets) as client:
             return await vendor.test(client, secrets)
     except imp.ImportFailure as f:
         raise HTTPException(status_code=400, detail=imp.said(vendor.name, f.public())) from None
+    except TimeoutError:   # the test runs in the request: bounded by a deadline of its own
+        raise HTTPException(status_code=400, detail=imp.said(vendor.name, {"code": "slow_test"})) \
+            from None
 
 
 def _public(rec, request: Request) -> dict:
