@@ -133,6 +133,7 @@ first draft committed red (P58-32). Not done: semgrep, zizmor, actionlint (not i
 - The key test read one endpoint, so a key missing Customers passed it → P58-40 (new)
 - A host that didn't resolve was said as another server → P58-41 (new)
 - Importing `api.main` in tests installed the log scrubber on pytest's handler → P58-42 (new)
+- It came back through `test_boot` in the gate's one-process run → P58-42 (recurrence: the first fix moved one importer, not the leak; a conftest fixture now removes it after every test)
 - The import oracle found an empty column typed two ways and same-second orders in two orders → P58-43 (new)
 - The row cap counted subscriptions and was bound at import time → P58-44 (new)
 - The SaaS pack had never read a real Stripe export → D1-38 (recurrence: 5.8b gave must-pass corpora to the guards it touched, never to the domain packs)
