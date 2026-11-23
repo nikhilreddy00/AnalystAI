@@ -20,7 +20,7 @@ signals:
   - {sub: [subscription], plan: [plan]}
 # Another domain's headers (all words in ONE header)
 exclude_headers: [[employee], [hire], [termination], [patient], [mrn], [admit], [discharge],
-                  [claim], [policy], [premium], [loan], [balance], [sku], [payroll], [sensor],
+                  [claim], [policy], [premium], [loan], [sku], [payroll], [sensor],
                   [shipment], [diagnosis], [ticker]]
 abbreviations: {cus: customer, cust: customer, sub: subscription, subs: subscription,
                 acct: account, amt: amount, qty: quantity, inv: invoice, pct: percent}
@@ -45,17 +45,24 @@ roles:
                                          cancellation_requested_at]}
   cancel_at:      {kind: date, headers: [cancel_at, cancel_at_utc, scheduled_cancel_date,
                                          cancel_at_period_end_date]}
+  # Stripe's invoice export dates an invoice `Date (UTC)`: a date only beside its amount_due
   invoice_date:   {kind: date, headers: [invoice_date, invoice_created, date_utc, invoiced_at,
-                                         invoice_created_at, finalized_at]}
+                                         invoice_created_at, date, finalized_at],
+                   when: {date: [amount_due]}}
   period_start:   {kind: date, headers: [period_start, service_period_start, line_period_start,
                                          period_start_utc]}
   period_end:     {kind: date, headers: [period_end, service_period_end, line_period_end,
                                          period_end_utc]}
   customer:       {kind: id, headers: [customer_id, customer, account_id,
                                        customer_number, company_id]}
-  subscription:   {kind: id, headers: [subscription_id, subscription]}
-  invoice:        {kind: id, headers: [invoice_id, invoice, invoice_number]}
-  plan:           {kind: category, headers: [plan, plan_name, price_name, product, product_name,
+  # Stripe's exports name their own row `id` (5.8c, real exports in tests/fixtures/imports/
+  # stripe): a subscription's beside its billing interval, an invoice's beside its amount due
+  subscription:   {kind: id, headers: [subscription_id, subscription, id],
+                   when: {id: [interval]}}
+  invoice:        {kind: id, headers: [invoice_id, invoice, invoice_number, id],
+                   when: {id: [amount_due]}}
+  # a product's name before a plan column, which Stripe's export fills with the price's id
+  plan:           {kind: category, headers: [plan_name, product_name, product, price_name, plan,
                                              tier, plan_tier]}
   interval:       {kind: category, headers: [interval, billing_interval, plan_interval,
                                              billing_period, billing_cycle, recurring_interval],
@@ -64,9 +71,11 @@ roles:
                              yearly: 12, annual: 12, annually: 12}}
   interval_count: {kind: count, additive: false,
                    headers: [interval_count, plan_interval_count, billing_interval_count]}
+  # Stripe's subscription export: `Amount` is the price per interval, never billed money
   unit_amount:    {kind: money, additive: false,
                    headers: [unit_amount, plan_amount, price, unit_price, plan_price,
-                             amount_per_period]}
+                             amount_per_period, amount],
+                   when: {amount: [interval]}}
   quantity:       {kind: count, additive: false, headers: [quantity, seats, licenses, units]}
   # a rate (0.2) or Stripe's percent_off (20, or 0.5 = 0.5%): Stripe's headers declare their
   # scale; the rest are guessed only when unambiguous (columns.rate_values; PR1-07)

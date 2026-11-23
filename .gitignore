@@ -21,6 +21,8 @@ uploads/
 *.csv
 # Eval fixtures are hand-written fake data (no real people), committed on purpose.
 !evals/cases/ingestion/files/*.csv
+# A vendor's real exports of a TEST account, scrubbed of people (scripts/record_import.py scrub-csv)
+!tests/fixtures/imports/*/export_*.csv
 *.xlsx
 
 # Session data (per-session artifacts and parquet cache)

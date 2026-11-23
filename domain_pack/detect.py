@@ -115,8 +115,9 @@ def detect(df: pd.DataFrame, date_columns: set[str] = frozenset(),
         roles: dict[str, str] = {}
         matched: dict[str, str] = {}   # role → the header that filled it
         expanded = {c: expand_header(n, pack) for c, n in norm.items()}
+        have = set(expanded.values())
         for role, r in pack.roles.items():
-            for header in r.headers:
+            for header in (h for h in r.headers if r.reads(h, have)):
                 col = next((c for c, n in expanded.items() if n == header and c not in roles.values()
                             and not (r.kind == "id" and c in pii_columns)
                             and _fits(df[c], r, pack, c in date_columns, header)), None)

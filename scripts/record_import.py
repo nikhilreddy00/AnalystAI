@@ -11,6 +11,7 @@ token-shaped value, is still in it. Not product code: a recording aid."""
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import os
 import re
@@ -24,7 +25,10 @@ ENV = {"stripe": {"key": "STRIPE_TEST_RESTRICTED"},
        "shopify": {"key": "SHOPIFY_CLIENT_SECRET", "client_id": "SHOPIFY_CLIENT_ID",
                    "shop": "SHOPIFY_SHOP"}}
 _PERSONAL = {"name", "phone", "address", "shipping", "line1", "line2", "postal_code",
-             "first_name", "last_name", "firstName", "lastName"}
+             "first_name", "last_name", "firstName", "lastName",
+             # an invoice's copy of its customer (the first recording kept customer_name)
+             "customer_name", "customer_phone", "customer_address", "customer_shipping",
+             "billing_details", "shipping_details"}
 _TOKENS = re.compile(r"\b(?:sk|rk|pk)_(?:live|test)_[A-Za-z0-9]{8,}|shpat_\w+|shpss_\w+|pat-\w+")
 
 
@@ -37,9 +41,16 @@ def _env(name: str) -> str:
                  if ln.startswith(f"{name}=")), "")
 
 
+def email(value: str) -> str:
+    """An address as its placeholder, the same from every file (the recording and the vendor's
+    own export of one customer match, for the oracle): customer<hash>@mail.invalid, never
+    @example.com, which the SaaS pack's test_marker reads as a test account."""
+    return f"customer{hashlib.sha256(value.strip().lower().encode()).hexdigest()[:8]}@mail.invalid"
+
+
 def scrub(value, emails: dict):
-    """People out, structure kept: an email becomes customerN@example.com (the same one each
-    time it appears, so a customer still joins up), a name/phone/address a placeholder."""
+    """People out, structure kept: an email becomes its placeholder, a name, phone or address
+    `[scrubbed]` (an address's parts too)."""
     if isinstance(value, dict):
         return {k: ("[scrubbed]" if k in _PERSONAL and isinstance(v, str) and v
                     else None if k in _PERSONAL and isinstance(v, dict) else scrub(v, emails))
@@ -47,8 +58,27 @@ def scrub(value, emails: dict):
     if isinstance(value, list):
         return [scrub(v, emails) for v in value]
     if isinstance(value, str) and re.fullmatch(r"[^@\s]+@[^@\s]+\.\w+", value):
-        return emails.setdefault(value, f"customer{len(emails) + 1}@example.com")
+        return emails.setdefault(value, email(value))
     return value
+
+
+def scrub_csv(path: Path) -> None:
+    """A vendor's own export, scrubbed in place by the same rules: an email column's values
+    become their placeholders, a name, description, phone or address column `[scrubbed]`."""
+    import pandas as pd
+    df = pd.read_csv(path, dtype=str, keep_default_na=False)
+    for c in df.columns:
+        low = c.lower()
+        if "email" in low:
+            df[c] = df[c].map(lambda v: email(v) if v else v)
+        elif any(w in low for w in ("name", "description", "phone", "address", "shipping")) \
+                and not low.startswith(("product", "plan")):
+            df[c] = df[c].map(lambda v: "[scrubbed]" if v else v)
+    text = df.to_csv(index=False)
+    if hit := _TOKENS.search(text):
+        sys.exit(f"refused: a key or token is in {path.name} ({hit.group()[:6]}…)")
+    path.write_text(text)
+    print(f"scrubbed {path}")
 
 
 async def record(vendor_name: str) -> Path:
@@ -101,4 +131,8 @@ async def record(vendor_name: str) -> Path:
 
 
 if __name__ == "__main__":
-    asyncio.run(record(sys.argv[1] if len(sys.argv) > 1 else "stripe"))
+    if sys.argv[1:2] == ["scrub-csv"]:   # record_import.py scrub-csv <export.csv> …
+        for f in sys.argv[2:]:
+            scrub_csv(Path(f))
+    else:
+        asyncio.run(record(sys.argv[1] if len(sys.argv) > 1 else "stripe"))
