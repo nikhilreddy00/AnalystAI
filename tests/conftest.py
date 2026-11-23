@@ -167,6 +167,19 @@ def pytest_collection_modifyitems(config, items):
 
 
 @pytest.fixture(autouse=True)
+def _no_log_scrubber_left_behind():
+    """P58-42 (5.8c, twice): importing api.main installs the log scrubber on every root handler,
+    pytest's capture handlers among them, and it drops exc_info: a later test reading a logged
+    traceback failed, in one process only (mutmut's ordered run; CI's shards hid it). A test that
+    wants the scrubber adds it to its own handler."""
+    import logging
+    yield
+    from api.logging_scrub import ScrubFilter
+    for handler in logging.getLogger().handlers:
+        handler.filters[:] = [f for f in handler.filters if not isinstance(f, ScrubFilter)]
+
+
+@pytest.fixture(autouse=True)
 def recorded_llm(tmp_path, monkeypatch):
     """Every test runs against an empty RecordedClient — a real model call is impossible.
     Tests that need LLM output append to `recorded_llm.responses`."""
