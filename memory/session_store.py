@@ -265,15 +265,15 @@ def _rekeyed(rec: ImportRecord, secrets: dict) -> dict:
     (it held the old key), the old key's failures and its hourly tries go with it. The same key
     saved again resets no tries, nor a working key swapped for another: only a key that mends a
     key's failure does (security review: else the hour's limit is a key swap away)."""
-    fields: dict = {"owner": None, "progress": None}
-    mends = any((s.get("error") or {}).get("code") in _KEY_FAILURES for s in rec.status.values())
-    if secrets == rec.secrets or not mends:
-        return fields
-    status = {t: {**s, "error": None} if (s.get("error") or {}).get("code") in _KEY_FAILURES
-              else s for t, s in rec.status.items()}
+    mends = secrets != rec.secrets and any(
+        (s.get("error") or {}).get("code") in _KEY_FAILURES for s in rec.status.values())
+    status = {t: {**s, "error": None} if mends and (s.get("error") or {}).get("code")
+              in _KEY_FAILURES else s for t, s in rec.status.items()}
     failed = any(s.get("error") for s in status.values())
-    return {**fields, "status": status, "attempts": 0, "attempts_since": None,
-            "state": "failed" if failed else "idle"}
+    # the row never stays "refreshing" once its refresh has lost it (owner cleared)
+    fields = {"owner": None, "progress": None, "status": status,
+              "state": "failed" if failed else "idle"}
+    return {**fields, "attempts": 0, "attempts_since": None} if mends else fields
 
 
 def _enc_secrets(secrets: dict) -> str:

@@ -35,3 +35,22 @@ def test_the_hook_refuses_a_write_into_a_repo_file_and_nothing_else(want, cmd):
     out = subprocess.run(["bash", str(HOOK)], input=json.dumps({"tool_input": {"command": cmd}}),
                          capture_output=True, text=True, check=True).stdout
     assert ("deny" if '"deny"' in out else "allow") == want, cmd
+
+
+PIPED = HOOK.with_name("no_piped_test_commit.sh")
+
+
+@pytest.mark.skipif(not shutil.which("jq"), reason="the hook reads its input with jq")
+@pytest.mark.parametrize("want,cmd", [
+    # P58-45, as it ran in 5.8c: the commit ran on the pipe's status, tail's
+    ("deny", 'uv run pytest -q tests/a.py 2>&1 | tail -1 && git add a && git commit -m "x"'),
+    ("deny", "uv run pytest -q tests/a.py | grep passed; git commit -qm x"),
+    ("allow", "uv run pytest -q tests/a.py 2>&1 | tail -1"),
+    ("allow", "uv run pytest -q tests/a.py && git commit -m x"),
+    ("allow", "set -o pipefail; uv run pytest -q tests/a.py | tail -1 && git commit -m x"),
+    ("allow", 'git commit -m "tests: pytest | tail once misled us"'),
+])
+def test_a_piped_test_run_never_commits(want, cmd):
+    out = subprocess.run(["bash", str(PIPED)], input=json.dumps({"tool_input": {"command": cmd}}),
+                         capture_output=True, text=True, check=True).stdout
+    assert ("deny" if '"deny"' in out else "allow") == want, cmd
