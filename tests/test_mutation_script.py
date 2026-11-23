@@ -207,6 +207,11 @@ def test_the_hash_is_the_functions_code_never_its_comments_docstring_or_place():
     assert "f" not in function_hashes(BASE.replace("def f", "@cache\ndef f"))
     assert "W.m" not in function_hashes(BASE.replace("    def m", "    @property\n    def m"))
     assert "W.m" in function_hashes(BASE.replace("    def m(self)", "    @staticmethod\n    def m()"))
+    # retro 5.8c: a function mutmut finds nothing to mutate in (`return uuid.uuid4().hex`) got no
+    # trampoline, so the record called it unreached after a 2 h baseline; mutmut decides, not a copy
+    plain = "import uuid\n\ndef new_token() -> str:\n    return uuid.uuid4().hex\n"
+    assert function_hashes(plain) == {}
+    assert functions_touching(plain, {4}) == []
 
 
 def test_the_gate_refuses_an_unrecorded_change_to_a_gated_function_and_passes_a_recorded_one(tmp_path):

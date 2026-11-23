@@ -37,6 +37,7 @@ or no test reached it, or when mutmut itself fails."""
 import argparse
 import ast
 import copy
+import functools
 import hashlib
 import json
 import os
@@ -107,18 +108,20 @@ def scores(metas: list[dict]) -> dict[str, dict]:
     return out
 
 
-def mutated(d: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
-    """mutmut mutates a function unless it is decorated (a lone @staticmethod or @classmethod
-    aside): a @property, a pydantic validator, an @cache function has no mutants, so its tests
-    and plants are its only check (mutmut/mutation/file_mutation.py)."""
-    decs = d.decorator_list
-    return not decs or (len(decs) == 1 and isinstance(decs[0], ast.Name)
-                        and decs[0].id in ("staticmethod", "classmethod"))
+@functools.lru_cache(maxsize=64)
+def mutated(source: str) -> frozenset[str]:
+    """The functions mutmut makes a mutant of, asked of mutmut itself: it skips a decorated one
+    (a lone @staticmethod / @classmethod aside) and one with nothing to mutate (`return
+    uuid.uuid4().hex`); either has no trampoline, so no test is ever seen to reach it. Retro
+    5.8c: a copy of the decorator rule here gated such a function and failed a 2 h record."""
+    from mutmut.mutation.file_mutation import mutate_file_contents
+    return frozenset(_function(n) for n in mutate_file_contents("x.py", source).mutant_names)
 
 
 def _defs(source: str, every: bool = False):
     """(name, node) per top-level function and method ('Pack.kpi') mutmut mutates (every: all of
     them), named as mutmut names them (a nested function belongs to the one it is in)."""
+    keep = None if every else mutated(source)
     for node in ast.parse(source).body:
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             found = [(node.name, node)]
@@ -127,7 +130,7 @@ def _defs(source: str, every: bool = False):
                      if isinstance(m, (ast.FunctionDef, ast.AsyncFunctionDef))]
         else:
             continue
-        yield from ((n, d) for n, d in found if every or mutated(d))
+        yield from ((n, d) for n, d in found if keep is None or n in keep)
 
 
 def functions_touching(source: str, lines: set[int], every: bool = False) -> list[str]:
@@ -137,12 +140,12 @@ def functions_touching(source: str, lines: set[int], every: bool = False) -> lis
                    for n in lines)]
 
 
-def function_hashes(source: str) -> dict[str, str]:
-    """Each function mutmut mutates (the gate's), its code as a hash: its AST with the docstring
-    out, so a comment, a docstring or a move down the file is the same code, and a changed
-    expression is not."""
+def function_hashes(source: str, every: bool = False) -> dict[str, str]:
+    """Each function mutmut mutates (the gate's; every: all), its code as a hash: its AST with the
+    docstring out, so a comment, a docstring or a move down the file is the same code, and a
+    changed expression is not."""
     out = {}
-    for name, d in _defs(source):
+    for name, d in _defs(source, every):
         node = copy.copy(d)
         if ast.get_docstring(d, clean=False) is not None:
             node.body = d.body[1:] or [ast.Pass()]
@@ -165,12 +168,12 @@ def check(ref: str, root: Path = ROOT) -> list[str]:
     problems, exist = [], set()
     # a file outside GATED may hold named equivalents only (the --lines run reads them)
     for f in sorted({*GATED, *(k.split("::", 1)[0] for k in gate)}):
-        now = function_hashes(_at("HEAD", f, root))
-        exist |= {f"{f}::{name}" for name in now}
-        if f not in GATED:
+        head, was = _at("HEAD", f, root), _at(ref, f, root)
+        exist |= {f"{f}::{name}" for name in function_hashes(head, every=True)}
+        if f not in GATED or head == was:   # asking mutmut costs seconds a file: changed ones only
             continue
-        before = function_hashes(_at(ref, f, root))
-        for name, h in now.items():
+        before = function_hashes(was, every=True)
+        for name, h in function_hashes(head).items():
             if before.get(name) != h and gate.get(key := f"{f}::{name}", {}).get("hash") != h:
                 problems.append(f"{key}: changed since {ref[:12]} with no clean mutation gate "
                                 f"recorded")
