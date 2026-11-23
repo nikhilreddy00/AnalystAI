@@ -42,7 +42,7 @@ PIPED = HOOK.with_name("no_piped_test_commit.sh")
 
 @pytest.mark.skipif(not shutil.which("jq"), reason="the hook reads its input with jq")
 @pytest.mark.parametrize("want,cmd", [
-    # P58-45, as it ran in 5.8c: the commit ran on the pipe's status, tail's
+    # P58-32, as it ran in 5.8c: the commit ran on the pipe's status, tail's
     ("deny", 'uv run pytest -q tests/a.py 2>&1 | tail -1 && git add a && git commit -m "x"'),
     ("deny", "uv run pytest -q tests/a.py | grep passed; git commit -qm x"),
     ("allow", "uv run pytest -q tests/a.py 2>&1 | tail -1"),
