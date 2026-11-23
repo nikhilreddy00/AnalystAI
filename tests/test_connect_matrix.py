@@ -85,10 +85,16 @@ IMPORTS = {"stripe": {"vendor": "stripe", "key": "rk_test_51CANARYmatrixKEY00000
 
 
 @pytest.fixture(autouse=True)
-def _fresh_limits():
-    """Each case its own rate limits (connecting is 10 a minute per user)."""
+def _fresh_limits(monkeypatch):
+    """Each case its own rate limits (connecting is 10 a minute per user) and its own encryption
+    key: the store encrypts an import's key, and the environment's may be none (the mutation
+    gate ran with a placeholder: every import case a 500, its baseline red twice)."""
+    from cryptography.fernet import Fernet
+
+    from api.config import settings
     from api.rate_limit import limiter
     limiter.reset()
+    monkeypatch.setattr(settings, "encryption_key", Fernet.generate_key().decode())
 
 
 def _faulty(handler, fault):
