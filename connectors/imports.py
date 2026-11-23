@@ -197,6 +197,7 @@ class Vendor:
     test: Callable[..., Awaitable[tuple[str, bool]]]    # (account name, test mode)
     auth: Callable[..., Awaitable[dict]]                # request headers (a minted token too)
     tables: list[Table] = field(default_factory=list)
+    limit: str = ""   # what the vendor itself withholds, said in the README's source list
 
     def client(self, secrets: dict) -> httpx.AsyncClient:
         return vendor_client(self.hosts(secrets))
@@ -759,4 +760,5 @@ async def _shopify_test(client, secrets: dict) -> tuple[str, bool]:
 VENDORS["shopify"] = Vendor(
     name="shopify", label="Shopify",
     hosts=lambda s: frozenset({shop_host(s.get("shop", ""))}),
-    check=_shopify_check, test=_shopify_test, auth=_shopify_auth, tables=[SHOPIFY_ORDERS])
+    check=_shopify_check, test=_shopify_test, auth=_shopify_auth, tables=[SHOPIFY_ORDERS],
+    limit="orders of the last 60 days (Shopify's own limit for an app without `read_all_orders`)")

@@ -133,6 +133,8 @@ The API runs at `http://localhost:8000` — interactive docs at `http://localhos
 | **SQLite** | `sqlite:///path.db` | development only; refused when `APP_ENV=production` |
 | **Google Sheets** | Spreadsheet ID + sheet name + service-account JSON | read as the sheet's CSV export |
 | **REST API** | URL + auth (Bearer, API key with a configurable header, Basic) + optional pagination key | 20 pages or 100,000 records; public hosts only |
+| **Stripe import** | the Stripe / Shopify tab: read-only credentials (setup steps in the app); tables Subscriptions, Invoices, laid out as Stripe's own export | copied as dataset versions, refreshed by Get latest data (at most every 30 min, 15 min per refresh); newest 100,000 rows per table, the cut said |
+| **Shopify import** | the Stripe / Shopify tab: read-only credentials (setup steps in the app); tables Orders, laid out as Shopify's own export | orders of the last 60 days (Shopify's own limit for an app without `read_all_orders`); copied as dataset versions, refreshed by Get latest data (at most every 30 min, 15 min per refresh); newest 100,000 rows per table, the cut said |
 <!-- sources:end -->
 
 (Generated from the connectors: `tests/test_sources_readme.py` fails when this table and the code differ.)

@@ -96,9 +96,14 @@ Research: `docs/research/2026-11-22-5.8c-sources.md`. Decided by a design debate
 - **No DuckDB.** An import is filed as parquet dataset versions (one dataset per table), so nothing reads a DuckDB
   copy, and questions on an import run on pandas only: no new SQL path, no new guard. Files stay on today's one reader
   (a second sniffer would break the one load rule); the upload cap rises to what a measured `peak_mb()` holds.
-- **Vendors: Stripe, Shopify, HubSpot.** Shopify through a merchant-owned Dev Dashboard app (client credentials) and
-  Bulk Operations; HubSpot through Service Keys, a public beta (2026-02). **GA4 is deferred**: Google Cloud orgs created
-  since 2024-05-03 block service-account keys by default, and OAuth needs a consent screen per install.
+- **Vendors: Stripe and Shopify.** Shopify through a merchant-owned Dev Dashboard app (client credentials).
+  **GA4 is deferred**: Google Cloud orgs created since 2024-05-03 block service-account keys by default, and OAuth
+  needs a consent screen per install. **HubSpot was cut for time** (Service Keys, a public beta since 2026-02, stay
+  the planned route).
+- **Shopify pages its GraphQL cursor, not Bulk Operations** (as built, 2026-11-23): bulk access is switched on per
+  app and lapses after 31 days unused, and the recording session's client-credentials token was refused it. Throttling
+  is waited out, at most 30 tries. A Dev Dashboard app can't be granted `read_all_orders`, so an import holds the
+  last 60 days of orders, said in the app and the README.
 - **A refresh files each table on its own.** A table that fails, times out or is interrupted keeps its last good
   version and is said stale; the row cap is the only cut, and it is said with its first date.
 

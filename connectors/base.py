@@ -549,6 +549,15 @@ def sources_table() -> str:
              ("REST API", "URL + auth (Bearer, API key with a configurable header, Basic) + "
               "optional pagination key",
               f"{api.MAX_PAGES} pages or {api.MAX_RECORDS:,} records; public hosts only")]
+    from connectors import imports as imp
+    from memory.session_store import REFRESH_DEADLINE_S, REFRESH_GAP_S
+    rows += [(f"{v.label} import", "the Stripe / Shopify tab: read-only credentials (setup steps "
+              f"in the app); tables {', '.join(t.label.split(' · ')[-1] for t in v.tables)}, "
+              f"laid out as {v.label}'s own export",
+              f"{v.limit + '; ' if v.limit else ''}copied as dataset versions, refreshed by Get "
+              f"latest data (at most every {REFRESH_GAP_S // 60} min, {REFRESH_DEADLINE_S // 60} "
+              f"min per refresh); newest {imp.ROW_CAP:,} rows per table, the cut said")
+             for v in imp.VENDORS.values()]
     return ("| Source | How to connect | Limits |\n|--------|----------------|--------|\n"
             + "\n".join(f"| **{a}** | {b} | {c} |" for a, b, c in rows))
 

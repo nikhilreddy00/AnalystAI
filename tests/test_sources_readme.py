@@ -23,3 +23,5 @@ def test_every_dialect_and_upload_format_is_in_the_table():
     table = sources_table()
     assert all(s in table for s in UPLOAD_SUFFIXES)
     assert all(f"`{name}://" in table for name in DIALECTS)
+    from connectors.imports import VENDORS
+    assert VENDORS and all(f"**{v.label} import**" in table for v in VENDORS.values())
