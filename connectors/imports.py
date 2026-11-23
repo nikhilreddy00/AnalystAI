@@ -332,14 +332,24 @@ def _cut_date(objects: list[dict], cut: bool, field_name: str = "created") -> st
     return instant(objects[-1][field_name]).date().isoformat() if cut and objects else None
 
 
+# Each table's list request, read by its fetch and by the key test alike: the test sends the very
+# request the table will (recorded session: the test read /subscriptions bare, the table expands
+# the customer, which needs Customers too, and only the refresh found it)
+_STRIPE_FIRST = {
+    "subscriptions": ("/subscriptions", "Subscriptions and Customers",
+                      {"status": "all", "expand[]": "data.customer"}),
+    "invoice_lines": ("/invoices", "Invoices", {}),
+}
+
+
 async def _stripe_subscriptions(client, headers, window_from) -> tuple[list[dict], str | None]:
     """One row per subscription item (a subscription with two prices is two rows: red-team 11),
     every status (the API's default leaves canceled ones out: churn would read 0). A window keeps
     subscriptions in force at some time inside it, whenever they started (red-team 1)."""
     since = _since(window_from)
+    path, what, params = _STRIPE_FIRST["subscriptions"]
     subs, cut = await _stripe_list(
-        client, headers, "/subscriptions", what="Subscriptions",
-        params={"status": "all", "expand[]": "data.customer"},
+        client, headers, path, what=what, params=params,
         keep=lambda s: since is None or s.get("ended_at") is None or s["ended_at"] >= since)
     rows = []
     for s in subs:
@@ -400,9 +410,10 @@ async def _stripe_invoice_lines(client, headers, window_from) -> tuple[list[dict
     """One row per invoice line; an invoice's lines past the embedded ones paged on their own
     endpoint (red-team 11: never the first handful only)."""
     since = _since(window_from)
+    path, what, params = _STRIPE_FIRST["invoice_lines"]
     invoices, cut = await _stripe_list(
-        client, headers, "/invoices", what="Invoices",
-        params={"created[gte]": since} if since else {})
+        client, headers, path, what=what,
+        params={**params, **({"created[gte]": since} if since else {})})
     rows = []
     for inv in invoices:
         lines = need(inv, "lines", "data")
@@ -445,9 +456,9 @@ async def _stripe_test(client, secrets: dict) -> tuple[str, bool]:
     if the key may read it. Test or live from Stripe's answer, never from the key's prefix."""
     headers = await _stripe_auth(client, secrets)
     live = None
-    for path, what in (("/subscriptions", "Subscriptions"), ("/invoices", "Invoices")):
+    for path, what, params in _STRIPE_FIRST.values():
         page = await get_json(client, f"{STRIPE_API}{path}", what=what, headers=headers,
-                              params={"limit": 1, **({"status": "all"} if "sub" in path else {})})
+                              params={**params, "limit": 1})
         if need(page, "data"):
             live = bool(page["data"][0].get("livemode"))
     name = "Stripe account"

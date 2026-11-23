@@ -72,9 +72,11 @@ def _inv(i: int, *, lines=1, has_more=False, currency="usd"):
 class Stripe:
     """The objects, newest first, paged on starting_after as Stripe does. `fail`: path → status."""
 
-    def __init__(self, subs=(), invoices=(), *, key=KEY, fail=None, more_lines=None):
+    def __init__(self, subs=(), invoices=(), *, key=KEY, fail=None, more_lines=None,
+                 customers=True):
         self.subs, self.invoices, self.key = list(subs), list(invoices), key
         self.fail, self.more_lines, self.seen = dict(fail or {}), more_lines or {}, []
+        self.customers = customers   # the key may read Customers (an expanded customer needs it)
 
     def __call__(self, request: httpx.Request) -> httpx.Response:
         url = urlparse(str(request.url))
@@ -86,6 +88,8 @@ class Stripe:
         for prefix, status in self.fail.items():
             if url.path.startswith(prefix) and (status != 500 or q.get("starting_after")):
                 return httpx.Response(status, json={"error": {"message": "nope"}})
+        if not self.customers and "data.customer" in q.get("expand[]", ""):
+            return httpx.Response(403, json={"error": {"message": "requires rak_customer_read"}})
         if url.path == "/v1/account":
             return httpx.Response(200, json={"settings": {"dashboard": {"display_name": "Acme"}}})
         if url.path == "/v1/subscriptions":
@@ -242,6 +246,14 @@ async def test_a_key_that_cant_read_is_refused_in_words_and_never_saved(client, 
     r = await _connect(client)
     assert r.status_code == 400 and words in r.json()["detail"]
     assert KEY not in r.text and (await client.get("/api/imports")).json() == []
+
+
+async def test_a_key_the_table_would_be_refused_is_refused_at_connect(client, monkeypatch):
+    """Recorded session (2026-11-23): the key test read /subscriptions bare, passed, and the
+    refresh then hit a 403 on the expanded customer. The test sends each table's own request."""
+    serve(monkeypatch, Stripe([_sub(1)], [_inv(1)], customers=False))
+    r = await _connect(client)
+    assert r.status_code == 400 and "Subscriptions and Customers" in r.json()["detail"]
 
 
 async def test_a_key_test_reads_each_table_and_the_mode_from_stripes_answer(client, monkeypatch):
