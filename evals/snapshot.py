@@ -67,6 +67,8 @@ async def _snapshot(suites, analysis_agent, insight_agent, intake_agent, CSVConn
     # E2E loads through the connector (file → load → contract), not read_csv.
     harness.UPLOADS.mkdir(parents=True, exist_ok=True)
     for case in harness.load_cases("e2e", None) if "e2e" in suites else []:
+        if case.get("source") in harness.IMPORT_ENV:   # a live vendor's table: nothing offline
+            continue                                   # to pin (its import oracle pins the read)
         _, _, csv = harness.dataset(case)
         path = harness.UPLOADS / f"{case['dataset']['name']}-{case['dataset']['seed']}.csv"
         if not path.exists() or path.read_text() != csv:
@@ -75,7 +77,8 @@ async def _snapshot(suites, analysis_agent, insight_agent, intake_agent, CSVConn
         out["e2e"][case["id"]] = {"roles": _roles(conn.build_data_contract(await conn.load()))}
     if "deterministic" in suites:   # every analysis + E2E dataset
         names = datasets or {(c["dataset"]["name"], c["dataset"]["seed"])
-                             for s in ("analysis", "e2e") for c in harness.load_cases(s, None)}
+                             for s in ("analysis", "e2e") for c in harness.load_cases(s, None)
+                             if c.get("source") not in harness.IMPORT_ENV}
         out["deterministic"] = await deterministic(names)
     return out
 

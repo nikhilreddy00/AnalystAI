@@ -24,6 +24,7 @@ router = APIRouter()
 log = logging.getLogger(__name__)
 KEY_TEST_S = 60   # a key's test answers within it, or is said too slow
 
+MAX_IMPORTS = 5   # each refresh holds up to its row cap in memory (security review 1)
 _BUSY = {
     "running": "A refresh is already running. It shows here when it ends.",
     "too_soon": "The data was updated less than 30 minutes ago. Try again a little later.",
@@ -74,6 +75,10 @@ async def _tested(vendor: imp.Vendor, secrets: dict) -> tuple[str, bool]:
     except TimeoutError:   # the test runs in the request: bounded by a deadline of its own
         raise HTTPException(status_code=400, detail=imp.said(vendor.name, {"code": "slow_test"})) \
             from None
+    except Exception:   # an answer we didn't foresee: logged, said, never a bare 500
+        log.exception("import key test failed: %s", vendor.name)
+        raise HTTPException(status_code=400, detail=imp.said(vendor.name, {"code": "unexpected"})) \
+            from None
 
 
 def _public(rec, request: Request) -> dict:
@@ -122,6 +127,13 @@ def _start(request: Request, rec, token: str) -> None:
         _SCOPE.reset(scope)
     tasks.add(task)
     task.add_done_callback(tasks.discard)
+    task.add_done_callback(_logged)
+
+
+def _logged(task: asyncio.Task) -> None:
+    """An exception that escaped the refresh: logged, never lost with the task."""
+    if not task.cancelled() and task.exception():
+        log.error("import refresh task ended with an error", exc_info=task.exception())
 
 
 @router.post("", status_code=201)
@@ -129,9 +141,12 @@ def _start(request: Request, rec, token: str) -> None:
 async def create_import(request: Request, body: ImportKey,
                         current_user: UserProfile = Depends(get_current_user)) -> dict:
     vendor = _vendor(body.vendor)
+    store = request.app.state.session_store
+    if len(await store.list_imports(current_user.uid)) >= MAX_IMPORTS:
+        raise HTTPException(status_code=409, detail="You have five imports, the most there can "
+                            "be: delete one to add another.")
     secrets = _secrets(body)
     account, test_mode = await _tested(vendor, secrets)
-    store = request.app.state.session_store
     rec = await store.create_import(current_user.uid, vendor=vendor.name, account=account,
                                     test_mode=test_mode, secrets=secrets,
                                     tables={t.name: t.label for t in vendor.tables})
@@ -182,6 +197,9 @@ async def replace_key(import_id: str, request: Request, body: ImportKey,
     rec = await _own(request, import_id, current_user.uid)
     if body.vendor != rec.vendor:
         raise HTTPException(status_code=400, detail="That key is for another source.")
+    if rec.public(dt.datetime.now(dt.timezone.utc))["state"] == "refreshing":
+        raise HTTPException(status_code=409, detail="A refresh is running with the current key. "
+                            "Replace the key when it ends.")
     secrets = _secrets(body)
     account, test_mode = await _tested(imp.VENDORS[rec.vendor], secrets)
     await request.app.state.session_store.replace_import_key(

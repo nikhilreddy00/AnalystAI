@@ -63,6 +63,11 @@ async def lifespan(app: FastAPI):
     stop.set()
     if embedded:
         await embedded
+    # import refreshes say "interrupted" while the store is still open (silent-failure hunt 2)
+    if running := list(getattr(app.state, "import_tasks", ())):
+        for task in running:
+            task.cancel()
+        await asyncio.gather(*running, return_exceptions=True)
     for close in deps.closers:
         await close()
 

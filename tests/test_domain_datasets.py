@@ -9,7 +9,7 @@ import pandas as pd
 import pytest
 
 from evals import datagen
-from evals.run import load_cases, rescore, score_e2e, summarize
+from evals.run import case_truth, load_cases, rescore, score_e2e, summarize
 from evals.scoring import (
     ANALYSIS_CHECKS,
     E2E_CHECKS,
@@ -76,7 +76,7 @@ def test_every_domain_case_resolves_and_names_its_domain():
     assert {c["domain"] for c in cases} == {"retail", "banking", "healthcare", "insurance", "hr",
                                             "saas", "iot", "logistics"}
     for c in cases:
-        _, truth = datagen.make(c["dataset"]["name"], c["dataset"]["seed"])
+        _, truth = case_truth(c)   # the harness's one reading (an import's truth is its own)
         for spec in c["checks"]:
             assert spec["kind"] in (ANALYSIS_CHECKS if "task" in c else E2E_CHECKS), c["id"]
             if "truth_key" in spec:

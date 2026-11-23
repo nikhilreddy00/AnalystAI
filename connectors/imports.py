@@ -105,9 +105,12 @@ async def get_json(client: httpx.AsyncClient, url: str, *, what: str, method: st
     """One answer as JSON, its failure as a reason code."""
     body = await fetch(client, url, what=what, method=method, **kw)
     try:
-        return json.loads(body)
+        got = json.loads(body)
     except ValueError:
         raise ImportFailure("vendor_down", "not JSON") from None
+    if not isinstance(got, dict):   # every answer read is an object (silent-failure hunt 4)
+        raise ImportFailure("vendor_down", "not JSON")
+    return got
 
 
 async def fetch(client: httpx.AsyncClient, url: str, *, what: str, method: str = "GET",
@@ -233,23 +236,41 @@ async def refresh(store, rec: ImportRecord, token: str, file_table: FileTable) -
     status: dict = {t: dict(s) for t, s in rec.status.items()}
     done: set[str] = set()
     started = _now()
+    lost = False
 
     def fail(tables, error: ImportFailure) -> None:
-        for t in tables:
-            status[t] = {**status.get(t, {}), "error": error.public(), "failed_at": _now().isoformat()}
+        for t in tables:   # the last good copy's time and rows kept; never its filing (type review)
+            old = {k: v for k, v in status.get(t, {}).items() if k != "filed"}
+            status[t] = {**old, "error": error.public(), "failed_at": _now().isoformat()}
+
+    async def save(**fields) -> None:
+        """A write while the refresh holds the row; once it doesn't (the import deleted, a new
+        key, taken over as interrupted) the refresh stops: no request, no filing (audit 1)."""
+        if not await store.save_refresh(rec.id, token, **fields):
+            raise _Lost
 
     try:
         register_secrets(*secret_values(rec.secrets))
+        # the one window there is, "the last 12 months", from this refresh's day: a date stored
+        # once would hold two years a year on (senior audit m2); stored, so the card says it
+        window = (started.date() - dt.timedelta(days=365)).isoformat() if rec.window_from \
+            else None
+        if window and window != rec.window_from:
+            await store.set_import_window(rec.id, rec.user_id, window)
         async with asyncio.timeout(REFRESH_DEADLINE_S):
             async with vendor.client(rec.secrets) as client:
+                await save(progress={"table": 1, "of": len(vendor.tables), "rows": 0,
+                                     "name": vendor.tables[0].label,
+                                     "started_at": started.isoformat()})
                 headers = await vendor.auth(client, rec.secrets)
                 for i, table in enumerate(vendor.tables, 1):
                     progress = {"table": i, "of": len(vendor.tables), "name": table.label,
                                 "rows": 0, "started_at": started.isoformat()}
-                    await store.save_refresh(rec.id, token, progress=progress)
+                    await save(progress=progress)
                     try:
-                        records, cut_from = await table.fetch(client, headers, rec.window_from)
+                        records, cut_from = await table.fetch(client, headers, window)
                         frame = table.frame(records)
+                        await save(progress={**progress, "rows": len(frame)})   # still ours?
                         filed = await file_table(rec.user_id, rec.tables[table.name], frame) \
                             if len(frame) else "empty"
                         status[table.name] = {"as_of": _now().isoformat(), "rows": len(frame),
@@ -259,8 +280,15 @@ async def refresh(store, rec: ImportRecord, token: str, file_table: FileTable) -
                         if f.code in ACCOUNT_WIDE:
                             fail([t.name for t in vendor.tables[i:]], f)
                             break
+                    except (_Lost, asyncio.CancelledError, TimeoutError):
+                        raise
+                    except Exception:   # this table only: the next one still gets its refresh
+                        log.exception("import table failed: %s %s", rec.vendor, table.name)
+                        fail([table.name], ImportFailure("unexpected"))
                     done.add(table.name)
-                    await store.save_refresh(rec.id, token, status=status)
+                    await save(status=status)
+    except _Lost:   # the row is someone else's now: nothing of ours to write
+        lost = True
     except ImportFailure as f:   # the key test or the token mint
         fail([t.name for t in vendor.tables if t.name not in done], f)
     except TimeoutError:
@@ -273,15 +301,24 @@ async def refresh(store, rec: ImportRecord, token: str, file_table: FileTable) -
         log.exception("import refresh failed: %s", rec.vendor)
         fail([t.name for t in vendor.tables if t.name not in done], ImportFailure("unexpected"))
     finally:
-        if not asyncio.current_task().cancelling():
+        if not lost and not asyncio.current_task().cancelling():
             await _end(store, rec, token, status)
         _SCOPE.reset(scope)
 
 
+class _Lost(Exception):
+    """The refresh no longer holds its import's row."""
+
+
 async def _end(store, rec: ImportRecord, token: str, status: dict) -> None:
+    """The refresh's last write. If it fails (the store down) the row reads as interrupted at
+    its deadline; the failure is logged, never lost with the task (silent-failure hunt 1)."""
     ok = all(not s.get("error") for s in status.values()) and set(status) >= set(rec.tables)
-    await store.save_refresh(rec.id, token, status=status, state="idle" if ok else "failed",
-                             now=_now())
+    try:
+        await store.save_refresh(rec.id, token, status=status, state="idle" if ok else "failed",
+                                 now=_now())
+    except Exception:
+        log.exception("import refresh's end not saved: %s", rec.vendor)
 
 
 def new_token() -> str:

@@ -24,6 +24,42 @@ def _session(export: str, plan: dict):
     return run_targeted_analysis(s).answer_text
 
 
+@pytest.mark.xfail(strict=True, reason="P58-51 Open: what the import card says of a table (stale, "
+                   "cut, empty) never reaches the dataset an analysis reads: its answers read the "
+                   "last good copy as current and complete")
+@pytest.mark.parametrize("case", ["stale", "cut", "empty"])
+async def test_a_dataset_read_from_an_import_says_what_its_card_says(case, monkeypatch, tmp_path):
+    """Audit 1 (senior audit M2, m3) and the plan's red-team line "a failed table's staleness
+    said on every answer that reads it": the dataset carries its import's word for it."""
+    from cryptography.fernet import Fernet
+
+    from api.config import settings
+    from api.rate_limit import limiter
+    from connectors import csv_connector
+    from connectors import imports as imp
+    from orchestrator.runner import in_memory_deps
+    from tests.fake_network import serve
+    from tests.test_imports import Stripe, _connect, _inv, _settle, _sub
+    from tests.test_workspace_api import _client
+    import memory.session_store as ss
+    monkeypatch.setattr(settings, "encryption_key", Fernet.generate_key().decode())
+    monkeypatch.setattr(csv_connector, "_UPLOADS_DIR", tmp_path)
+    limiter.reset()
+    if case == "cut":
+        monkeypatch.setattr(imp, "ROW_CAP", 1)
+    async with _client(in_memory_deps()) as client:
+        serve(monkeypatch, Stripe([_sub(1), _sub(2)], [_inv(1), _inv(2)]))
+        body = (await _connect(client)).json()
+        if case != "cut":
+            monkeypatch.setattr(ss, "REFRESH_GAP_S", 0)
+            serve(monkeypatch, Stripe([], [], key="other") if case == "stale" else Stripe([], []))
+            await client.post(f"/api/imports/{body['id']}/refresh")
+            await _settle(client)
+        did = body["tables"][0]["dataset_id"]
+        ds = (await client.get(f"/api/datasets/{did}")).json()
+        assert (ds.get("import") or {}).get(case), ds
+
+
 @pytest.mark.xfail(strict=True, reason="P58-46 Open: a subscription with two prices is two rows "
                    "of Stripe's export; the built-in count counts rows (8), not subscriptions (7)")
 def test_active_subscriptions_are_counted_as_subscriptions_never_item_rows():

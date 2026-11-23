@@ -51,14 +51,23 @@ export default function ImportSources({ onConnectorReady }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => { listImports().then(setImports).catch(() => {}); }, []);
+  useEffect(() => {
+    listImports().then(setImports).catch(() => setError("Couldn't load your imports. Reload the page to try again."));
+  }, []);
 
-  // A refresh runs on the server: the page asks how it is going until it ends.
+  // A refresh runs on the server: the page asks how it is going until it ends, or until three
+  // asks in a row get no answer (never a spinner that turns forever).
   const running = imports.filter((i) => i.state === "refreshing").map((i) => i.id).join(",");
   useEffect(() => {
     if (!running) return;
+    let misses = 0;
     const t = setInterval(async () => {
       const fresh = await Promise.all(running.split(",").map((id) => getImport(id).catch(() => null)));
+      misses = fresh.some((f) => f === null) ? misses + 1 : 0;
+      if (misses >= 3) {
+        clearInterval(t);
+        setError("Can't reach the server to check the refresh. Reload the page to see how it ended.");
+      }
       setImports((all) => all.map((i) => fresh.find((f) => f?.id === i.id) ?? i));
     }, 2000);
     return () => clearInterval(t);
@@ -131,9 +140,9 @@ function ImportCard({ imp, onChange, onRemoved, onAnalyse }: {
   const refreshing = imp.state === "refreshing";
   const failed = imp.state === "failed";
 
-  async function act(f: () => Promise<ImportView>) {
+  async function act(f: () => Promise<ImportView>): Promise<boolean> {
     setNote(null);
-    try { onChange(await f()); } catch (err) { setNote(err instanceof Error ? err.message : "That didn't work"); }
+    try { onChange(await f()); return true; } catch (err) { setNote(err instanceof Error ? err.message : "That didn't work"); return false; }
   }
 
   const status = refreshing
@@ -182,7 +191,7 @@ function ImportCard({ imp, onChange, onRemoved, onAnalyse }: {
         <button type="button" onClick={() => setConfirming(true)} className="ml-auto rounded-md px-2.5 py-1.5 text-xs text-destructive hover:bg-destructive/10">Delete</button>
       </div>
       {rekey && (
-        <form className="space-y-2" onSubmit={(e) => { e.preventDefault(); act(() => replaceImportKey(imp.id, { vendor: imp.vendor, key: form.key, ...(imp.vendor === "shopify" ? { shop: form.shop, client_id: form.client_id } : {}) })).then(() => setRekey(false)); }}>
+        <form className="space-y-2" onSubmit={(e) => { e.preventDefault(); act(() => replaceImportKey(imp.id, { vendor: imp.vendor, key: form.key, ...(imp.vendor === "shopify" ? { shop: form.shop, client_id: form.client_id } : {}) })).then((saved) => { if (saved) setRekey(false); }); }}>
           {imp.vendor === "shopify" && (
             <>
               <Input label="Store address" placeholder="your-store.myshopify.com" value={form.shop} onChange={(v) => setForm({ ...form, shop: v })} />

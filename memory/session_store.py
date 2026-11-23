@@ -257,6 +257,19 @@ def _claimed(rec: ImportRecord, token: str, now: datetime) -> dict:
             "attempts_since": rec.attempts_since if recent else now}
 
 
+_KEY_FAILURES = {"bad_key", "permission", "protected_data"}   # what a new key can mend
+
+
+def _rekeyed(rec: ImportRecord) -> dict:
+    """The fields a new key resets (both stores; audit 1): the running refresh loses the row
+    (it held the old key), the old key's failures and its hourly tries go with it."""
+    status = {t: {**s, "error": None} if (s.get("error") or {}).get("code") in _KEY_FAILURES
+              else s for t, s in rec.status.items()}
+    failed = any(s.get("error") for s in status.values())
+    return {"owner": None, "progress": None, "status": status, "attempts": 0,
+            "attempts_since": None, "state": "failed" if failed else "idle"}
+
+
 def _enc_secrets(secrets: dict) -> str:
     return _ENC_PREFIX + _fernet().encrypt(json.dumps(secrets).encode()).decode()
 
@@ -276,7 +289,13 @@ def _version_hash(versions: list[DatasetVersion], content_hash: str) -> str:
     the same bytes (unique per dataset), the hash with its version number after it.
     ponytail: the stored hash then isn't the bytes' alone; `_latest_is` reads past the suffix."""
     taken = {v.content_hash for v in versions}
-    return content_hash if content_hash not in taken else f"{content_hash}-{len(versions) + 1}"
+    return content_hash if content_hash not in taken else \
+        f"{content_hash}-{_next_version(versions)}"
+
+
+def _next_version(versions: list[DatasetVersion]) -> int:
+    """After the highest, never the count: a version split off leaves a gap (code review 2)."""
+    return max((v.version for v in versions), default=0) + 1
 
 
 def _own_upload(data: str) -> tuple[str, str] | None:
@@ -716,7 +735,7 @@ class InMemorySessionStore:
         for v in self._versions.values():
             last[v.dataset_id] = max(last.get(v.dataset_id, v.created_at), v.created_at)
         return [(did, d["user_id"]) for did, d in self._datasets.items()
-                if d["deleted_at"] is None and did not in used
+                if d["deleted_at"] is None and did not in used and d["kind"] != "import"
                 and last.get(did, d["created_at"]) < before]
 
     async def tombstone_threads_of(self, dataset_id: str) -> list[str]:
@@ -815,9 +834,11 @@ class InMemorySessionStore:
 
     async def replace_import_key(self, import_id: str, user_id: str, *, secrets: dict,
                                  account: str, test_mode: bool) -> bool:
-        if self._import_rec(import_id, user_id) is None:
+        rec = self._import_rec(import_id, user_id)
+        if rec is None:
             return False
-        self._import_set(import_id, secrets=secrets, account=account, test_mode=test_mode)
+        self._import_set(import_id, secrets=secrets, account=account, test_mode=test_mode,
+                         **_rekeyed(rec))
         return True
 
     async def set_import_window(self, import_id: str, user_id: str,
@@ -834,8 +855,12 @@ class InMemorySessionStore:
             return False
         self._imports[import_id]["deleted_at"] = _now()
         self._imports[import_id]["secrets"] = _enc_secrets({})   # the key goes now
-        for did in rec.tables.values() if with_tables else ():
-            await self.tombstone_dataset(did, user_id)
+        self._import_set(import_id, owner=None)   # a running refresh stops at its next write
+        for did in rec.tables.values():
+            if with_tables:
+                await self.tombstone_dataset(did, user_id)
+            else:   # kept: ordinary datasets from now on (no refresh files into them)
+                self._datasets[did]["kind"] = "upload"
         return True
 
     async def add_import_version(self, user_id: str, dataset_id: str, *, content_hash: str,
@@ -1285,6 +1310,7 @@ class SessionStore:
         async with self._session_factory() as db:
             rows = (await db.execute(text(
                 "SELECT d.id, d.user_id FROM datasets d WHERE d.deleted_at IS NULL "
+                "AND d.kind <> 'import' "   # an import's table lives as long as its import
                 "AND coalesce((SELECT max(v.created_at) FROM dataset_versions v "
                 "              WHERE v.dataset_id = d.id), d.created_at) < :before "
                 "AND NOT EXISTS (SELECT 1 FROM analysis_sessions s WHERE s.dataset_id = d.id)"),
@@ -1401,11 +1427,16 @@ class SessionStore:
     async def replace_import_key(self, import_id: str, user_id: str, *, secrets: dict,
                                  account: str, test_mode: bool) -> bool:
         async with self._session_factory() as db:
-            done = await db.execute(update(ImportRow).where(*self._live_import(import_id, user_id))
-                                    .values(secrets=_enc_secrets(secrets), account=account,
-                                            test_mode=test_mode))
+            row = await self._locked_import(db, import_id, user_id)
+            if row is None:
+                return False
+            fields = _rekeyed(_import(row))
+            fields["status"] = json.dumps(fields["status"])
+            for k, v in {**fields, "secrets": _enc_secrets(secrets), "account": account,
+                         "test_mode": test_mode}.items():
+                setattr(row, k, v)
             await db.commit()
-            return done.rowcount == 1
+            return True
 
     async def set_import_window(self, import_id: str, user_id: str,
                                 window_from: str | None) -> bool:
@@ -1419,8 +1450,13 @@ class SessionStore:
         async with self._session_factory() as db:
             tables = (await db.execute(
                 update(ImportRow).where(*self._live_import(import_id, user_id))
-                .values(deleted_at=_now(), secrets=_enc_secrets({}))   # the key goes now
+                .values(deleted_at=_now(), secrets=_enc_secrets({}),   # the key goes now
+                        owner=None)   # a running refresh stops at its next write
                 .returning(ImportRow.tables))).scalars().first()
+            if tables is not None and not with_tables:   # kept: ordinary datasets from now on
+                await db.execute(update(DatasetRow).where(
+                    DatasetRow.id.in_(list(json.loads(tables).values())),
+                    DatasetRow.user_id == user_id).values(kind="upload"))
             await db.commit()
         if tables is None:
             return False
@@ -1446,7 +1482,7 @@ class SessionStore:
             path = await asyncio.to_thread(write_file)
             try:
                 v = DatasetVersion(id=str(uuid.uuid4()), dataset_id=dataset_id,
-                                   version=len(versions) + 1,
+                                   version=_next_version(versions),
                                    content_hash=_version_hash(versions, content_hash),
                                    file_path=path, rows=rows, columns=list(columns),
                                    created_at=_now())

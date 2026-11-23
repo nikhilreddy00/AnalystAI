@@ -196,6 +196,51 @@ async def test_replace_key_keeps_the_tables_and_delete_takes_the_key_now(store, 
     assert [i.id for i in await store.list_imports("u1")] == []
 
 
+async def test_a_delete_or_a_new_key_ends_the_running_refreshs_hold(store, uploads):
+    """Audit 1 (four reviewers): a refresh kept paging with a deleted import's key and filed into
+    its kept tables; a new key stayed locked out an hour behind the old key's failures."""
+    kept = await _stripe(store)
+    assert await store.claim_refresh(kept.id, "u1", "t1", T0) == "claimed"
+    assert await store.delete_import(kept.id, "u1", with_tables=False)
+    assert not await store.save_refresh(kept.id, "t1", progress={"table": 1})
+    assert {(await store.get_dataset(d, "u1")).kind for d in kept.tables.values()} == {"upload"}
+    imp = await _stripe(store)
+    for i in range(3):
+        await store.claim_refresh(imp.id, "u1", f"t{i}", T0 + timedelta(minutes=i))
+        await store.save_refresh(imp.id, f"t{i}", status={"subscriptions": {
+            "as_of": "2026-01-01", "error": {"code": "bad_key", "what": ""}}}, state="failed")
+    assert await store.claim_refresh(imp.id, "u1", "t4", T0 + timedelta(minutes=4)) == "too_many"
+    await store.replace_import_key(imp.id, "u1", secrets={"key": "rk_test_NEWKEY123"},
+                                   account="Acme", test_mode=True)
+    got = await store.get_import(imp.id, "u1")
+    assert got.state == "idle" and got.status["subscriptions"] == {"as_of": "2026-01-01",
+                                                                   "error": None}
+    assert await store.claim_refresh(imp.id, "u1", "t5", T0 + timedelta(minutes=5)) == "claimed"
+    await store.replace_import_key(imp.id, "u1", secrets={"key": "rk_test_NEWKEY456"},
+                                   account="Acme", test_mode=True)
+    assert not await store.save_refresh(imp.id, "t5", progress={"table": 1})
+
+
+async def test_an_imports_tables_are_never_swept_as_idle(store, uploads):
+    """Audit 1: a refresh that finds nothing new files no version, so a table refreshed daily
+    read as idle and the retention sweep deleted it under its live import."""
+    imp = await _stripe(store)
+    far = datetime(2100, 1, 1, tzinfo=timezone.utc)
+    assert not set(imp.tables.values()) & {d for d, _ in await store.idle_datasets(far)}
+    await store.delete_import(imp.id, "u1", with_tables=False)   # kept: ordinary datasets now
+    assert set(imp.tables.values()) <= {d for d, _ in await store.idle_datasets(far)}
+
+
+async def test_the_hourly_attempts_start_again_after_the_hour(store):
+    """Test analysis: the claim at +61 min passed whether or not the count restarted."""
+    imp = await _stripe(store)
+    for m in (0, 1, 2, 61, 62, 63):
+        assert await store.claim_refresh(imp.id, "u1", f"t{m}", T0 + timedelta(minutes=m)) \
+            == "claimed", m
+        await store.save_refresh(imp.id, f"t{m}", state="failed")
+    assert await store.claim_refresh(imp.id, "u1", "x", T0 + timedelta(minutes=64)) == "too_many"
+
+
 async def test_the_window_is_the_users_choice(store):
     imp = await _stripe(store)
     assert await store.set_import_window(imp.id, "u1", "2025-11-22")

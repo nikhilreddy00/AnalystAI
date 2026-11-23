@@ -349,24 +349,30 @@ One row per audit, gate, browser or retro finding, so recurrences per class can 
 | P58-46 | C1 | 5.8c | Paid e2e-105: Stripe's subscription export is one row per subscription item; the built-in count read 8 active rows for 7 active subscriptions | Open: follow-up fix PR before 5.8d (user, 2026-11-23) | `tests/test_import_answers.py::test_active_subscriptions_are_counted_as_subscriptions_never_item_rows` | 0 |
 | P58-47 | C1 | 5.8c | Paid e2e-107: asked for paid invoices' total in USD, the built-in segment answer grouped by Paid and summed every currency (3,915.20 for 415.20) | Open: follow-up fix PR before 5.8d (user, 2026-11-23) | `tests/test_import_answers.py::test_money_is_never_summed_across_currencies` | 0 |
 | P58-48 | C0 | 5.8c | The recording aid's export scrub: the first rule wiped Shopify's order number and product name; the second, narrowed, let Billing City through (security review) | Fail-closed: a header is kept only on an allow list of headers that hold no person; any other header whose words may name a person or place is scrubbed; emails hashed to idempotent placeholders | `tests/test_record_import.py::test_an_unknown_header_that_may_be_a_person_is_scrubbed`; `tests/test_record_import.py::test_an_export_keeps_its_data_and_loses_its_people` | 0 |
-| P58-49 | B | 5.8c | The eval harness read a case's truth three ways (the run, its lint, the well-formed test): the import cases' truth passed the test and broke the paid run twice ($0, then $0.03); e2e-106's check wanted '15 units' and failed the right answer 'STK-001 = 15.00' (rescored, $0) | One `case_truth` for the run, the PII canary, the lint and the test; e2e-106 reads the SKU and its units together | `tests/test_evals.py::test_every_case_is_well_formed` | 0 |
+| P58-49 | B | 5.8c | The eval harness read a case's truth three ways (the run, its lint, the well-formed test): the import cases' truth passed the test and broke the paid run twice ($0, then $0.03); e2e-106's check wanted '15 units' and failed the right answer 'STK-001 = 15.00' (rescored, $0) | One `case_truth` for the run, the PII canary, the lint and the test; e2e-106 reads the SKU and its units together; audit 1: the domain-cases test and the golden snapshot were a fourth and fifth reader (the full suite red on both): the test reads `case_truth`, the golden skips a live vendor's table | `tests/test_evals.py::test_every_case_is_well_formed`; `tests/test_domain_datasets.py::test_every_domain_case_resolves_and_names_its_domain` | 1 |
+| P58-50 | C0 | 5.8c | Audit 1 (senior audit, code review, silent-failure hunt, test and security reviews): a refresh held no check that it still owned its import: after a delete it kept paging with the deleted key and filed into the kept tables; a new key ran beside the old key's refresh, and stayed refused an hour behind the old key's tries with "rejected the key" still shown | Every refresh write is conditional on its token and the refresh stops when one isn't taken (`_Lost`); delete and a new key take the row (`owner` cleared); a new key resets the hour's tries and the key's failures (`_rekeyed`, both stores) and is refused while a refresh runs; kept tables become ordinary datasets | `tests/test_imports_audit.py::test_a_deleted_import_files_nothing_more_and_reads_no_more`; `tests/test_imports_store.py::test_a_delete_or_a_new_key_ends_the_running_refreshs_hold`; `tests/test_imports_audit.py::test_a_new_key_clears_the_old_keys_failure_and_its_lockout`; `tests/test_imports_audit.py::test_a_new_key_while_a_refresh_runs_is_refused` | 0 |
+| P58-51 | C5 | 5.8c | Audit 1 (senior audit M2, m3) and the plan's own red-team line: what an import's card says of a table (stale after a failed refresh, cut at the row cap, empty after a refresh that found nothing) never reaches the dataset an analysis reads, so answers read the last good copy as current and complete | Open: follow-up fix PR before 5.8d, with P58-46/47 | `tests/test_import_answers.py::test_a_dataset_read_from_an_import_says_what_its_card_says` | 0 |
+| P58-52 | C0 | 5.8c | Audit 1 (senior audit M1, code review 1-2): an import's table was deleted by the retention sweep (a refresh finding nothing new files no version, so a table refreshed daily read as idle), or deleted or split in the Datasets view: every later refresh failed "unexpected"; Postgres numbered a version after a split as the count, a duplicate | Import datasets are never idle; the Datasets view refuses to delete or split them (409, said); a version is numbered after the highest (`_next_version`, both stores) | `tests/test_imports_store.py::test_an_imports_tables_are_never_swept_as_idle`; `tests/test_imports_audit.py::test_an_imports_table_is_changed_through_its_import_only` | 0 |
+| P58-53 | C0 | 5.8c | Audit 1 (silent-failure hunt, type review, senior audit m4): an error outside the reason codes in one table marked every later table "unexpected", unfetched; a failed table kept its last run's "no changes" filing; a vendor answer that was JSON but no object was a bare 500 at connect; an exception escaping the refresh task and a failed last write were lost unlogged; shutdown closed the store under running refreshes; the page polled a dead server forever and closed the new-key form on a refused key | Per-table catch with a log; `fail` drops `filed`; `get_json` takes objects only and the key test says any error; the task's exception and `_end`'s failure are logged; shutdown cancels refreshes before the store closes; the page stops after three missed polls and says so, keeps the form on a refusal | `tests/test_imports_audit.py::test_one_tables_unexpected_error_leaves_the_next_table_its_refresh`; `tests/test_imports_audit.py::test_a_failed_table_says_its_failure_never_its_last_runs_filing`; `tests/test_imports_audit.py::test_an_answer_that_isnt_an_object_is_said_in_words` | 0 |
+| P58-54 | C2 | 5.8c | Senior audit m2: "the last 12 months" was stored as a date once, so a year on the import fetched two years under the same words | The window's first day is worked out at each refresh and stored for the card | `tests/test_imports_audit.py::test_last_12_months_moves_with_each_refresh` | 0 |
+| P58-55 | C0 | 5.8c | Security review 1: a user could start any number of imports, each a refresh holding up to the row cap in memory: one test account seeded large could exhaust the API process for every tenant | At most five imports per user (said); a process-wide refresh queue goes to Phase 6 with the memory structural fix | `tests/test_imports_audit.py::test_a_user_has_at_most_five_imports` | 0 |
 
 ## Majors per class (the 5.7b class baseline)
 
 | class | rows | unenforced | recurrences |
 |---|---|---|---|
-| C0 | 133 | 40 | 40 |
+| C0 | 137 | 40 | 40 |
 | C1 | 38 | 8 | 23 |
-| C2 | 32 | 6 | 5 |
+| C2 | 33 | 6 | 5 |
 | C3 | 3 | 0 | 0 |
 | C4 | 2 | 0 | 1 |
-| C5 | 20 | 4 | 10 |
+| C5 | 21 | 4 | 10 |
 | C6 | 18 | 4 | 12 |
 | C7 | 13 | 4 | 5 |
 | C8 | 4 | 0 | 3 |
 | C9 | 3 | 0 | 3 |
 | A | 4 | 1 | 9 |
-| B | 20 | 3 | 20 |
+| B | 20 | 3 | 21 |
 | C | 13 | 3 | 3 |
 | D | 4 | 1 | 8 |
 | E | 3 | 0 | 5 |

@@ -69,11 +69,22 @@ async def rename_dataset(request: Request, dataset_id: str, body: DatasetPatch,
     return (await store.get_dataset(dataset_id, current_user.uid)).public()
 
 
+def _not_an_imports(ds) -> None:
+    """An import's table changes through its import only (audit 1: deleted or split here, the
+    import failed every refresh after)."""
+    if ds.kind == "import":
+        vendor = ds.name.split(" · ")[0]
+        raise HTTPException(status_code=409, detail=f"This table belongs to your {vendor} "
+                            "import: delete the import (with its tables) under Stripe / Shopify.")
+
+
 @router.post("/versions/{version_id}/split")
 @limiter.limit("30/minute")
 async def split_version(request: Request, version_id: str,
                         current_user: UserProfile = Depends(get_current_user)):
     """"Keep as a separate dataset": undo an automatic new version while it has no analyses."""
+    if got := await _store(request).get_version(version_id, current_user.uid):
+        _not_an_imports(got[0])
     try:
         ds = await _store(request).split_version(version_id, current_user.uid)
     except DatasetConflict:
@@ -88,6 +99,8 @@ async def split_version(request: Request, version_id: str,
 @limiter.limit("30/minute")
 async def delete_dataset(request: Request, dataset_id: str,
                          current_user: UserProfile = Depends(get_current_user)):
+    if ds := await _store(request).get_dataset(dataset_id, current_user.uid):
+        _not_an_imports(ds)
     threads = await _store(request).tombstone_dataset(dataset_id, current_user.uid)
     if threads is None:
         raise HTTPException(status_code=404, detail="Dataset not found")
