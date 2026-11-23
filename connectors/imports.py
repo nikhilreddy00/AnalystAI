@@ -147,9 +147,10 @@ def need(record: dict, *path: str):
 
 
 def instant(unix: int | None) -> dt.datetime | None:
-    """A Unix time as the export writes it: the UTC wall time (Stripe's exports are UTC)."""
-    return None if unix is None else dt.datetime.fromtimestamp(unix, dt.timezone.utc).replace(
-        tzinfo=None)
+    """A Unix time as Stripe's exports write it: the UTC wall time, to the minute
+    (`2026-11-23 15:17`: a second's difference never makes the import and the export differ)."""
+    return None if unix is None else dt.datetime.fromtimestamp(
+        unix - unix % 60, dt.timezone.utc).replace(tzinfo=None)
 
 
 @dataclass(frozen=True)
@@ -305,9 +306,10 @@ async def _stripe_auth(client, secrets: dict) -> dict:
 
 async def _stripe_list(client, headers: dict, path: str, *, what: str, params: dict,
                        keep: Callable[[dict], bool] = lambda o: True,
-                       cap: int = ROW_CAP) -> tuple[list[dict], bool]:
+                       cap: int | None = None) -> tuple[list[dict], bool]:
     """A Stripe list, newest first, page by page on `starting_after` (only the cursor is read):
-    (objects, cut). Stops at `cap` objects kept."""
+    (objects, cut). Stops at `cap` objects kept (ROW_CAP, read when called)."""
+    cap = ROW_CAP if cap is None else cap
     out, after = [], None
     while True:
         page = await get_json(client, f"{STRIPE_API}{path}", what=what, headers=headers,
@@ -332,25 +334,31 @@ def _cut_date(objects: list[dict], cut: bool, field_name: str = "created") -> st
     return instant(objects[-1][field_name]).date().isoformat() if cut and objects else None
 
 
-# Each table's list request, read by its fetch and by the key test alike: the test sends the very
-# request the table will (recorded session: the test read /subscriptions bare, the table expands
-# the customer, which needs Customers too, and only the refresh found it)
+# Each list request a table makes, read by its fetch and by the key test alike: the test sends the
+# very request the table will (recorded session: the test read /subscriptions bare, the table
+# expands the customer, which needs Customers too, and only the refresh found it)
 _STRIPE_FIRST = {
     "subscriptions": ("/subscriptions", "Subscriptions and Customers",
                       {"status": "all", "expand[]": "data.customer"}),
-    "invoice_lines": ("/invoices", "Invoices", {}),
+    "products": ("/products", "Products", {}),
+    "invoices": ("/invoices", "Invoices", {}),
 }
 
 
 async def _stripe_subscriptions(client, headers, window_from) -> tuple[list[dict], str | None]:
-    """One row per subscription item (a subscription with two prices is two rows: red-team 11),
-    every status (the API's default leaves canceled ones out: churn would read 0). A window keeps
-    subscriptions in force at some time inside it, whenever they started (red-team 1)."""
+    """One row per subscription item, as Stripe's own export (a subscription with two prices is
+    two rows), every status (the API's default leaves canceled ones out: churn would read 0), the
+    product by its name (the export's Product: its id is too deep to expand, so one product list).
+    A window keeps subscriptions in force at some time inside it, whenever they started
+    (red-team 1)."""
     since = _since(window_from)
     path, what, params = _STRIPE_FIRST["subscriptions"]
     subs, cut = await _stripe_list(
         client, headers, path, what=what, params=params,
         keep=lambda s: since is None or s.get("ended_at") is None or s["ended_at"] >= since)
+    path, what, params = _STRIPE_FIRST["products"]
+    products, _ = await _stripe_list(client, headers, path, what=what, params=params)
+    names = {p["id"]: p.get("name") for p in products}
     rows = []
     for s in subs:
         items = need(s, "items", "data")
@@ -358,7 +366,7 @@ async def _stripe_subscriptions(client, headers, window_from) -> tuple[list[dict
             items, _ = await _stripe_list(client, headers, "/subscription_items",
                                           what="Subscriptions", params={"subscription": s["id"]},
                                           cap=ROW_CAP - len(rows))
-        rows += [{"sub": s, "item": it} for it in items]
+        rows += [{"sub": s, "item": it, "names": names} for it in items]
         if len(rows) >= ROW_CAP:   # the cap is on rows, never on subscriptions (review)
             return rows[:ROW_CAP], _cut_date([s], True)
     return rows, _cut_date(subs, cut)
@@ -374,9 +382,19 @@ def _percent_off(sub: dict):
     return (d or {}).get("coupon", {}).get("percent_off") if isinstance(d, dict) else None
 
 
+def _coupon(sub: dict):
+    d = sub.get("discount")
+    return (d or {}).get("coupon", {}).get("id") if isinstance(d, dict) else None
+
+
 _SUB = lambda r, *p: need(r["sub"], *p)    # noqa: E731
 _ITEM = lambda r, *p: need(r["item"], *p)  # noqa: E731
+_RECURRING = lambda r: _ITEM(r, "price", "recurring") or {}   # noqa: E731
 
+# Stripe's Subscriptions export (Billing → Subscriptions → Export, all columns), its own names and
+# order (tests/fixtures/imports/stripe/export_subscriptions.csv); its people (Customer Name,
+# Customer Description) left out, and Percent Off added: the export names a coupon only by its id,
+# so MRR read from it can't take the discount off.
 STRIPE_SUBSCRIPTIONS = Table(
     name="subscriptions", label="Stripe · Subscriptions", what="Subscriptions",
     fetch=_stripe_subscriptions,
@@ -385,69 +403,90 @@ STRIPE_SUBSCRIPTIONS = Table(
         Column("id", lambda r: _SUB(r, "id")),
         Column("Customer ID", lambda r: _customer(r["sub"], "id")),
         Column("Customer Email", lambda r: _customer(r["sub"], "email")),
-        Column("Status", lambda r: _SUB(r, "status")),
-        Column("Product", lambda r: _ITEM(r, "price", "product")
-               if isinstance(_ITEM(r, "price", "product"), str) else None),
-        Column("Plan", lambda r: _ITEM(r, "price", "nickname") or _ITEM(r, "price", "id")),
+        Column("Plan", lambda r: _ITEM(r, "price", "id")),
+        Column("Product", lambda r: r["names"].get(_ITEM(r, "price", "product"))),
+        Column("Product ID", lambda r: _ITEM(r, "price", "product")),
         Column("Quantity", lambda r: _ITEM(r, "quantity")),
-        Column("Interval", lambda r: (_ITEM(r, "price", "recurring") or {}).get("interval")),
-        Column("Interval Count",
-               lambda r: (_ITEM(r, "price", "recurring") or {}).get("interval_count")),
+        Column("Currency", lambda r: _ITEM(r, "price", "currency")),
+        Column("Cancellation Reason",
+               lambda r: (r["sub"].get("cancellation_details") or {}).get("reason")),
+        Column("Cancellation Feedback",
+               lambda r: (r["sub"].get("cancellation_details") or {}).get("feedback")),
+        Column("Interval", lambda r: _RECURRING(r).get("interval")),
         Column("Amount", lambda r: stripe_money(_ITEM(r, "price", "unit_amount"),
                                                 _ITEM(r, "price", "currency"))),
-        Column("Currency", lambda r: _ITEM(r, "price", "currency")),
-        Column("Percent Off", lambda r: _percent_off(r["sub"])),
+        Column("Status", lambda r: _SUB(r, "status")),
         Column("Created (UTC)", lambda r: instant(_SUB(r, "created"))),
         Column("Start Date (UTC)", lambda r: instant(_SUB(r, "start_date"))),
+        Column("Current Period Start (UTC)",
+               lambda r: instant(r["item"].get("current_period_start")
+                                 or r["sub"].get("current_period_start"))),
+        Column("Current Period End (UTC)",
+               lambda r: instant(r["item"].get("current_period_end")
+                                 or r["sub"].get("current_period_end"))),
+        Column("Trial Start (UTC)", lambda r: instant(_SUB(r, "trial_start"))),
         Column("Trial End (UTC)", lambda r: instant(_SUB(r, "trial_end"))),
-        Column("Cancel At (UTC)", lambda r: instant(_SUB(r, "cancel_at"))),
+        Column("Coupon", lambda r: _coupon(r["sub"])),
         Column("Canceled At (UTC)", lambda r: instant(_SUB(r, "canceled_at"))),
+        Column("Cancel At Period End", lambda r: _SUB(r, "cancel_at_period_end")),
         Column("Ended At (UTC)", lambda r: instant(_SUB(r, "ended_at"))),
+        Column("Percent Off", lambda r: _percent_off(r["sub"])),
     ])
 
 
-async def _stripe_invoice_lines(client, headers, window_from) -> tuple[list[dict], str | None]:
-    """One row per invoice line; an invoice's lines past the embedded ones paged on their own
-    endpoint (red-team 11: never the first handful only)."""
+async def _stripe_invoices(client, headers, window_from) -> tuple[list[dict], str | None]:
+    """One row per invoice, as Stripe's Invoices export: its totals are the invoice's own, so no
+    line is fetched (an invoice's lines past the embedded handful never leave a total short)."""
     since = _since(window_from)
-    path, what, params = _STRIPE_FIRST["invoice_lines"]
+    path, what, params = _STRIPE_FIRST["invoices"]
     invoices, cut = await _stripe_list(
         client, headers, path, what=what,
         params={**params, **({"created[gte]": since} if since else {})})
-    rows = []
-    for inv in invoices:
-        lines = need(inv, "lines", "data")
-        if need(inv, "lines", "has_more"):
-            lines, _ = await _stripe_list(client, headers, f"/invoices/{need(inv, 'id')}/lines",
-                                          what="Invoices", params={}, cap=ROW_CAP - len(rows))
-        rows += [{"inv": inv, "line": ln} for ln in lines]
-        if len(rows) >= ROW_CAP:
-            return rows[:ROW_CAP], _cut_date([inv], True)
-    return rows, _cut_date(invoices, cut)
+    return invoices, _cut_date(invoices, cut)
 
 
-_INV = lambda r, *p: need(r["inv"], *p)    # noqa: E731
-_LINE = lambda r, *p: need(r["line"], *p)  # noqa: E731
+def _inv_money(field_name: str):
+    return lambda i: stripe_money(need(i, field_name), need(i, "currency"))
 
-STRIPE_INVOICE_LINES = Table(
-    name="invoice_lines", label="Stripe · Invoice lines", what="Invoices",
-    fetch=_stripe_invoice_lines,
-    key=lambda r: (r["inv"]["id"], r["line"]["id"]),
+
+def _transition(i: dict, key: str):
+    return instant((i.get("status_transitions") or {}).get(key))
+
+
+# Stripe's Invoices export (Billing → Invoices → Export, all columns): the columns it fills, its
+# names and order (tests/fixtures/imports/stripe/export_invoices.csv); the customer's name and
+# address left out.
+STRIPE_INVOICES = Table(
+    name="invoices", label="Stripe · Invoices", what="Invoices",
+    fetch=_stripe_invoices,
+    key=lambda i: (i["id"],),
     columns=[
-        Column("Invoice ID", lambda r: _INV(r, "id")),
-        Column("Invoice Number", lambda r: _INV(r, "number")),
-        Column("Customer ID", lambda r: _INV(r, "customer")),
-        Column("Customer Email", lambda r: _INV(r, "customer_email")),
-        Column("Invoice Status", lambda r: _INV(r, "status")),
-        Column("Invoice Date (UTC)", lambda r: instant(_INV(r, "created"))),
-        Column("Line ID", lambda r: _LINE(r, "id")),
-        Column("Description", lambda r: _LINE(r, "description")),
-        Column("Subscription ID", lambda r: r["line"].get("subscription")),
-        Column("Quantity", lambda r: _LINE(r, "quantity")),
-        Column("Amount", lambda r: stripe_money(_LINE(r, "amount"), _LINE(r, "currency"))),
-        Column("Currency", lambda r: _LINE(r, "currency")),
-        Column("Period Start (UTC)", lambda r: instant(_LINE(r, "period", "start"))),
-        Column("Period End (UTC)", lambda r: instant(_LINE(r, "period", "end"))),
+        Column("id", lambda i: need(i, "id")),
+        Column("Amount Due", _inv_money("amount_due")),
+        Column("Billing", lambda i: need(i, "collection_method")),
+        Column("Charge", lambda i: i.get("charge")),
+        Column("Currency", lambda i: need(i, "currency")),
+        Column("Customer", lambda i: need(i, "customer")),
+        Column("Date (UTC)", lambda i: instant(need(i, "created"))),
+        Column("Due Date (UTC)", lambda i: instant(i.get("due_date"))),
+        Column("Ending Balance", _inv_money("ending_balance")),
+        Column("Number", lambda i: need(i, "number")),
+        Column("Paid", lambda i: need(i, "status") == "paid"),
+        Column("Paid At (UTC)", lambda i: _transition(i, "paid_at")),
+        Column("Finalized At (UTC)", lambda i: _transition(i, "finalized_at")),
+        Column("Period Start (UTC)", lambda i: instant(need(i, "period_start"))),
+        Column("Period End (UTC)", lambda i: instant(need(i, "period_end"))),
+        Column("Starting Balance", _inv_money("starting_balance")),
+        Column("Subscription", lambda i: i.get("subscription")),
+        Column("Subtotal", _inv_money("subtotal")),
+        Column("Total Discount Amount",
+               lambda i: stripe_money(sum(d.get("amount", 0) for d in
+                                          i.get("total_discount_amounts") or []),
+                                      need(i, "currency"))),
+        Column("Total", _inv_money("total")),
+        Column("Customer Email", lambda i: i.get("customer_email")),
+        Column("Amount Paid", _inv_money("amount_paid")),
+        Column("Status", lambda i: need(i, "status")),
     ])
 
 
@@ -459,8 +498,8 @@ async def _stripe_test(client, secrets: dict) -> tuple[str, bool]:
     for path, what, params in _STRIPE_FIRST.values():
         page = await get_json(client, f"{STRIPE_API}{path}", what=what, headers=headers,
                               params={**params, "limit": 1})
-        if need(page, "data"):
-            live = bool(page["data"][0].get("livemode"))
+        if need(page, "data") and "livemode" in page["data"][0]:
+            live = bool(page["data"][0]["livemode"])
     name = "Stripe account"
     try:
         acct = await get_json(client, f"{STRIPE_API}/account", what="Account", headers=headers)
@@ -477,4 +516,4 @@ async def _stripe_test(client, secrets: dict) -> tuple[str, bool]:
 VENDORS["stripe"] = Vendor(
     name="stripe", label="Stripe", hosts=lambda s: frozenset({"api.stripe.com"}),
     check=_stripe_check, test=_stripe_test, auth=_stripe_auth,
-    tables=[STRIPE_SUBSCRIPTIONS, STRIPE_INVOICE_LINES])
+    tables=[STRIPE_SUBSCRIPTIONS, STRIPE_INVOICES])

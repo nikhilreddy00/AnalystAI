@@ -50,8 +50,10 @@ def _sub(i: int, *, status="active", ended=None, currency="usd", amount=2900, it
             "customer": customer or {"id": f"cus_{i:04d}", "email": f"c{i}@example.com",
                                      "name": "Ann Example"},
             "created": created or T - i * 86400, "start_date": created or T - i * 86400,
-            "trial_end": None, "cancel_at": None, "canceled_at": ended, "ended_at": ended,
-            "discount": None,
+            "trial_start": None, "trial_end": None, "cancel_at": None, "canceled_at": ended,
+            "ended_at": ended, "cancel_at_period_end": False, "discount": None,
+            "cancellation_details": {"reason": "cancellation_requested" if ended else None,
+                                     "feedback": None},
             "items": {"object": "list", "has_more": False, "data": [
                 {"id": f"si_{i:04d}_{k}", "quantity": 1 + k,
                  "price": {"id": f"price_{k}", "nickname": ["Pro", "Seats"][k % 2],
@@ -60,22 +62,28 @@ def _sub(i: int, *, status="active", ended=None, currency="usd", amount=2900, it
                 for k in range(items)]}}
 
 
-def _inv(i: int, *, lines=1, has_more=False, currency="usd"):
-    data = [{"id": f"il_{i:04d}_{k}", "description": f"Pro × {k + 1}", "subscription": f"sub_{i:04d}",
-             "quantity": k + 1, "amount": 2900 * (k + 1), "currency": currency,
-             "period": {"start": T - 30 * 86400, "end": T}} for k in range(lines)]
+PRODUCTS = [{"id": "prod_0", "name": "Pro"}, {"id": "prod_1", "name": "Seats"}]
+
+
+def _inv(i: int, *, amount=2900, currency="usd", discount=0):
     return {"id": f"in_{i:04d}", "number": f"INV-{i:04d}", "customer": f"cus_{i:04d}",
-            "customer_email": f"c{i}@example.com", "status": "paid", "created": T - i * 3600,
-            "lines": {"object": "list", "has_more": has_more, "data": data}}
+            "customer_email": f"c{i}@example.com", "customer_name": "Ann Example",
+            "status": "paid", "created": T - i * 3600, "currency": currency,
+            "collection_method": "charge_automatically", "charge": f"ch_{i:04d}",
+            "due_date": None, "period_start": T - i * 3600, "period_end": T - i * 3600,
+            "subscription": f"sub_{i:04d}", "subtotal": amount, "total": amount - discount,
+            "total_discount_amounts": [{"amount": discount}] if discount else [],
+            "amount_due": amount - discount, "amount_paid": amount - discount,
+            "starting_balance": 0, "ending_balance": 0,
+            "status_transitions": {"paid_at": T - i * 3600, "finalized_at": T - i * 3600}}
 
 
 class Stripe:
     """The objects, newest first, paged on starting_after as Stripe does. `fail`: path → status."""
 
-    def __init__(self, subs=(), invoices=(), *, key=KEY, fail=None, more_lines=None,
-                 customers=True):
+    def __init__(self, subs=(), invoices=(), *, key=KEY, fail=None, customers=True):
         self.subs, self.invoices, self.key = list(subs), list(invoices), key
-        self.fail, self.more_lines, self.seen = dict(fail or {}), more_lines or {}, []
+        self.fail, self.seen = dict(fail or {}), []
         self.customers = customers   # the key may read Customers (an expanded customer needs it)
 
     def __call__(self, request: httpx.Request) -> httpx.Response:
@@ -98,8 +106,8 @@ class Stripe:
         elif url.path == "/v1/invoices":
             since = int(q.get("created[gte]", 0))
             objs = [i for i in self.invoices if i["created"] >= since]
-        elif url.path.endswith("/lines"):
-            objs = self.more_lines[url.path.split("/")[3]]
+        elif url.path == "/v1/products":
+            objs = PRODUCTS
         else:
             return httpx.Response(404, json={})
         start = 0
@@ -137,29 +145,102 @@ def _tables(body) -> dict:
     return {t["name"]: t for t in body["tables"]}
 
 
+FIXTURES = __import__("pathlib").Path(__file__).parent / "fixtures" / "imports"
+
+
+def recorded(vendor: str):
+    """A vendor answering with its recorded real pages (scripts/record_import.py), each by its
+    exact path and query: a request the recording never made is a 404, so a changed fetcher fails
+    here instead of passing on pages it no longer asks for."""
+    pages = json.loads((FIXTURES / vendor / "pages.json").read_text())["pages"]
+    by = {(p["path"], tuple(map(tuple, p["query"]))): p for p in pages}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        page = by.get((request.url.path, tuple(sorted(request.url.params.multi_items()))))
+        if page is None:
+            return httpx.Response(404, json={"error": {"message": "not in the recording"}})
+        return httpx.Response(page["status"], json=page["body"], headers=page["headers"])
+    return handler
+
+
+# ── the recorded real account first (D1-38: normal pages before attacks) ───────────────────────
+
+async def _recorded_import(client, monkeypatch) -> dict:
+    serve(monkeypatch, recorded("stripe"))
+    r = await _connect(client)
+    assert r.status_code == 201, r.text
+    body = (await client.get(f"/api/imports/{r.json()['id']}")).json()
+    assert body["state"] == "idle" and body["test_mode"] and body["account"] == "Retail sandbox"
+    return {name: await _frame(client, t["dataset_id"]) for name, t in _tables(body).items()}
+
+
+async def test_every_recorded_normal_page_imports(client, monkeypatch):
+    """Stripe test mode, recorded 2026-11-23 (scripts/seed_stripe_test.py): every status,
+    a two-price subscription, a 20% coupon, USD/EUR/JPY/ISK/HUF, an invoice of 12 lines."""
+    got = await _recorded_import(client, monkeypatch)
+    subs, invoices = got["subscriptions"], got["invoices"]
+    assert (len(subs), len(invoices)) == (10, 10)
+    assert set(subs["Status"]) == {"active", "canceled", "trialing"}
+    amounts = {(c, a) for c, a in zip(subs["Currency"], subs["Amount"])}
+    # Stripe's currency list: JPY none; ISK and HUF two decimals (ISK's always 00)
+    assert {("jpy", 500), ("isk", 500), ("huf", 2500), ("usd", 290), ("usd", 29),
+            ("usd", 15), ("eur", 99)} == amounts
+    assert subs["Percent Off"].dropna().tolist() == [20.0]
+    assert subs["id"].value_counts().max() == 2            # the two-price subscription: 2 rows
+    assert subs["Customer Email"].str.fullmatch(r"customer[0-9a-f]{8}@mail\.invalid").all()
+    assert invoices["Total"].max() == 290 and 78 in invoices["Total"].tolist()   # 12 lines' total
+
+
+@pytest.mark.parametrize(("table", "export"), [("subscriptions", "export_subscriptions.csv"),
+                                               ("invoices", "export_invoices.csv")])
+async def test_the_import_reads_as_stripes_own_export(client, monkeypatch, table, export):
+    """The source oracle for an import (ADR-0010: the same table from every source reads the
+    same): the recorded import and Stripe's own export of the same account, through the one file
+    reader, give the same values in every column both have, and the same SaaS roles. Percent Off
+    is the import's own (the export has only the coupon's id)."""
+    from connectors.csv_connector import _read_bytes
+    from domain_pack.detect import detect
+    got = (await _recorded_import(client, monkeypatch))[table]
+    want, _ = _read_bytes((FIXTURES / "stripe" / export).read_bytes(), ".csv")
+    shared = [c for c in got.columns if c in want.columns]
+    assert set(got.columns) - set(shared) <= {"Percent Off"}
+    key = ["id", "Plan"] if table == "subscriptions" else ["id"]
+    a = got[shared].sort_values(key).reset_index(drop=True)
+    b = want[shared].sort_values(key).reset_index(drop=True)
+    pd.testing.assert_frame_equal(a, b, check_dtype=False)
+    dates = lambda f: {c for c in f.columns if "(UTC)" in c}   # noqa: E731
+    gd, groles, _ = detect(got, dates(got))
+    wd, wroles, _ = detect(want, dates(want))
+    assert gd == wd == "saas"
+    assert {r: c for r, c in groles.items() if r != "discount_pct"} == wroles
+
+
 # ── normal accounts first (D1-38) ──────────────────────────────────────────────────────────────
 
 async def test_a_stripe_account_imports_as_two_tables(client, monkeypatch):
     stripe = Stripe([_sub(1), _sub(2, status="canceled", ended=T - 86400), _sub(3, items=2)],
-                    [_inv(1), _inv(2, lines=2)])
+                    [_inv(1), _inv(2, amount=5800, discount=580)])
     serve(monkeypatch, stripe)
     r = await _connect(client)
     assert r.status_code == 201, r.text
     body = (await client.get(f"/api/imports/{r.json()['id']}")).json()
     assert body["account"] == "Acme" and body["test_mode"] and body["state"] == "idle"
     t = _tables(body)
-    assert t["subscriptions"]["rows"] == 4 and t["invoice_lines"]["rows"] == 3
+    assert t["subscriptions"]["rows"] == 4 and t["invoices"]["rows"] == 2
     assert t["subscriptions"]["error"] is None and t["subscriptions"]["filed"] == "new_version"
     subs = await _frame(client, t["subscriptions"]["dataset_id"])
     # every status: the API's default leaves canceled ones out (churn would read 0)
     assert sorted(subs["Status"].unique()) == ["active", "canceled"]
     assert subs["Amount"].tolist() == [29.0] * 4            # minor units → the export's dollars
     assert pd.api.types.is_datetime64_any_dtype(subs["Created (UTC)"])
-    assert subs["Created (UTC)"].iloc[0] == pd.Timestamp("2024-11-06 17:20:00")   # UTC wall time
+    assert subs["Created (UTC)"].iloc[0] == pd.Timestamp("2024-11-06 17:20:00")   # UTC, minutes
     assert (subs["id"] == "sub_0003").sum() == 2            # one row a subscription item
+    assert set(subs["Product"]) == {"Pro", "Seats"}         # the product's name, as exported
     assert "Ann Example" not in subs.to_csv()               # the customer's name isn't imported
-    lines = await _frame(client, t["invoice_lines"]["dataset_id"])
-    assert lines["Amount"].tolist() == [29.0, 29.0, 58.0]
+    inv = await _frame(client, t["invoices"]["dataset_id"])
+    assert sorted(zip(inv["Subtotal"], inv["Total Discount Amount"], inv["Total"])) == [
+        (29.0, 0.0, 29.0), (58.0, 5.8, 52.2)]
+    assert "Ann Example" not in inv.to_csv()
     ds = (await client.get(f"/api/datasets/{t['subscriptions']['dataset_id']}")).json()
     assert ds["kind"] == "import" and ds["name"] == "Stripe · Subscriptions"
 
@@ -176,29 +257,17 @@ async def test_amounts_are_the_major_unit_by_stripes_own_currency_list(client, m
     assert t
 
 
-async def test_an_invoices_lines_past_the_embedded_ones_are_paged(client, monkeypatch):
-    """Red-team 11: an invoice embeds a handful of lines; the rest are on their own endpoint."""
-    extra = [{"id": f"il_x_{k}", "description": "Seat", "subscription": None, "quantity": 1,
-              "amount": 100, "currency": "usd", "period": {"start": T, "end": T}}
-             for k in range(12)]
-    serve(monkeypatch, Stripe([_sub(1)], [_inv(1, lines=1, has_more=True)],
-                              more_lines={"in_0001": extra}))
-    body = (await _connect(client)).json()
-    body = (await client.get(f"/api/imports/{body['id']}")).json()
-    assert _tables(body)["invoice_lines"]["rows"] == 12
-
-
 async def test_the_row_cap_counts_rows_and_says_where_it_cut(client, monkeypatch):
     """The cap is on the table's rows (a subscription with three items is three), newest kept,
     the first day kept said (review: the cap counted subscriptions, not their rows)."""
     import connectors.imports as imports
     monkeypatch.setattr(imports, "ROW_CAP", 5)
     serve(monkeypatch, Stripe([_sub(i, items=3) for i in range(1, 6)],
-                              [_inv(i, lines=2) for i in range(1, 6)]))
+                              [_inv(i) for i in range(1, 8)]))
     body = (await _connect(client)).json()
     t = _tables((await client.get(f"/api/imports/{body['id']}")).json())
-    assert t["subscriptions"]["rows"] == 5 and t["invoice_lines"]["rows"] == 5
-    assert t["subscriptions"]["cut_from"] == "2024-11-05" and t["invoice_lines"]["cut_from"]
+    assert t["subscriptions"]["rows"] == 5 and t["invoices"]["rows"] == 5
+    assert t["subscriptions"]["cut_from"] == "2024-11-05" and t["invoices"]["cut_from"]
 
 
 async def test_an_account_with_no_subscriptions_says_so_and_isnt_a_failure(client, monkeypatch):
@@ -207,7 +276,7 @@ async def test_an_account_with_no_subscriptions_says_so_and_isnt_a_failure(clien
     body = (await client.get(f"/api/imports/{body['id']}")).json()
     t = _tables(body)
     assert body["state"] == "idle" and t["subscriptions"]["rows"] == 0
-    assert t["subscriptions"]["filed"] == "empty" and t["invoice_lines"]["rows"] == 1
+    assert t["subscriptions"]["filed"] == "empty" and t["invoices"]["rows"] == 1
 
 
 async def test_a_window_keeps_subscriptions_in_force_whenever_they_started(client, monkeypatch):
@@ -287,9 +356,9 @@ async def _good_then(client, monkeypatch, stripe_after: Stripe):
 async def test_a_revoked_key_keeps_every_last_good_copy_and_says_why(client, monkeypatch):
     after, kept = await _good_then(client, monkeypatch, Stripe([_sub(1)], [_inv(1)], key="other"))
     t = _tables(after)
-    assert after["state"] == "failed" and kept == {"subscriptions": True, "invoice_lines": True}
+    assert after["state"] == "failed" and kept == {"subscriptions": True, "invoices": True}
     assert t["subscriptions"]["error"]["code"] == "bad_key"
-    assert "rejected the key" in t["invoice_lines"]["said"]
+    assert "rejected the key" in t["invoices"]["said"]
     assert t["subscriptions"]["as_of"]   # the last good copy's time, still shown
 
 
@@ -300,7 +369,7 @@ async def test_a_vendor_error_mid_pagination_fails_that_table_only(client, monke
     t = _tables(after)
     assert after["state"] == "failed"
     assert t["subscriptions"]["error"] == {"code": "vendor_down", "what": "HTTP 500"}
-    assert kept["subscriptions"] and not kept["invoice_lines"]   # the other table is fresh
+    assert kept["subscriptions"] and not kept["invoices"]   # the other table is fresh
 
 
 async def test_a_refresh_past_its_deadline_files_nothing_and_says_so(client, monkeypatch):
@@ -319,7 +388,7 @@ async def test_a_refresh_past_its_deadline_files_nothing_and_says_so(client, mon
 
 async def test_nothing_new_is_said_as_unchanged(client, monkeypatch):
     after, kept = await _good_then(client, monkeypatch, Stripe([_sub(1)], [_inv(1)]))
-    assert after["state"] == "idle" and kept == {"subscriptions": True, "invoice_lines": True}
+    assert after["state"] == "idle" and kept == {"subscriptions": True, "invoices": True}
     assert {t["filed"] for t in after["tables"]} == {"unchanged"}
 
 
