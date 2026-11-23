@@ -116,7 +116,10 @@ also_copy = ["agents/", "api/", "connectors/", "domain_packs/", "evals/", "llm/"
              # 5.8c: a --record runs every caller's test file, found by name: generic names
              # (said, fetch, refresh) reach the tests that read the ledger, the notes, the
              # steering files, the hooks and CI; without them the gate's baseline can't pass
-             "docs/", "CLAUDE.md", "CODING_STANDARDS.md", ".githooks/", ".github/"]
+             "docs/", "CLAUDE.md", "CODING_STANDARDS.md", ".githooks/", ".github/",
+             # the ledger's checks name frontend specs, the gitleaks config and this file
+             "frontend/src/", "frontend/e2e/", "pyproject.toml", ".gitleaks.toml",
+             ".gitleaksignore"]
 
 [tool.importlinter]
 # The domain_pack layers (Phase 5.7b-1): a module imports only the layers below it, so a rule
