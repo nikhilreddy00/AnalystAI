@@ -25,6 +25,7 @@ log = logging.getLogger(__name__)
 KEY_TEST_S = 60   # a key's test answers within it, or is said too slow
 
 MAX_IMPORTS = 5   # each refresh holds up to its row cap in memory (security review 1)
+_TOO_MANY_IMPORTS = "You have five imports, the most there can be: delete one to add another."
 _BUSY = {
     "running": "A refresh is already running. It shows here when it ends.",
     "too_soon": "The data was updated less than 30 minutes ago. Try again a little later.",
@@ -143,10 +144,14 @@ async def create_import(request: Request, body: ImportKey,
     vendor = _vendor(body.vendor)
     store = request.app.state.session_store
     if len(await store.list_imports(current_user.uid)) >= MAX_IMPORTS:
-        raise HTTPException(status_code=409, detail="You have five imports, the most there can "
-                            "be: delete one to add another.")
+        raise HTTPException(status_code=409, detail=_TOO_MANY_IMPORTS)
     secrets = _secrets(body)
     account, test_mode = await _tested(vendor, secrets)
+    # again after the key test (security review): two creates at once can't both pass the check
+    # made before it. ponytail: a check, not a lock; a per-user lock if more than a create or
+    # two at once ever matters (the route allows 10 a minute)
+    if len(await store.list_imports(current_user.uid)) >= MAX_IMPORTS:
+        raise HTTPException(status_code=409, detail=_TOO_MANY_IMPORTS)
     rec = await store.create_import(current_user.uid, vendor=vendor.name, account=account,
                                     test_mode=test_mode, secrets=secrets,
                                     tables={t.name: t.label for t in vendor.tables})

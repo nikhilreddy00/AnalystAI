@@ -260,14 +260,18 @@ def _claimed(rec: ImportRecord, token: str, now: datetime) -> dict:
 _KEY_FAILURES = {"bad_key", "permission", "protected_data"}   # what a new key can mend
 
 
-def _rekeyed(rec: ImportRecord) -> dict:
+def _rekeyed(rec: ImportRecord, secrets: dict) -> dict:
     """The fields a new key resets (both stores; audit 1): the running refresh loses the row
-    (it held the old key), the old key's failures and its hourly tries go with it."""
+    (it held the old key), the old key's failures and its hourly tries go with it. The same key
+    saved again resets no tries (security review: else the hour's limit is a re-save away)."""
+    fields: dict = {"owner": None, "progress": None}
+    if secrets == rec.secrets:
+        return fields
     status = {t: {**s, "error": None} if (s.get("error") or {}).get("code") in _KEY_FAILURES
               else s for t, s in rec.status.items()}
     failed = any(s.get("error") for s in status.values())
-    return {"owner": None, "progress": None, "status": status, "attempts": 0,
-            "attempts_since": None, "state": "failed" if failed else "idle"}
+    return {**fields, "status": status, "attempts": 0, "attempts_since": None,
+            "state": "failed" if failed else "idle"}
 
 
 def _enc_secrets(secrets: dict) -> str:
@@ -838,7 +842,7 @@ class InMemorySessionStore:
         if rec is None:
             return False
         self._import_set(import_id, secrets=secrets, account=account, test_mode=test_mode,
-                         **_rekeyed(rec))
+                         **_rekeyed(rec, secrets))
         return True
 
     async def set_import_window(self, import_id: str, user_id: str,
@@ -1430,8 +1434,9 @@ class SessionStore:
             row = await self._locked_import(db, import_id, user_id)
             if row is None:
                 return False
-            fields = _rekeyed(_import(row))
-            fields["status"] = json.dumps(fields["status"])
+            fields = _rekeyed(_import(row), secrets)
+            if "status" in fields:
+                fields["status"] = json.dumps(fields["status"])
             for k, v in {**fields, "secrets": _enc_secrets(secrets), "account": account,
                          "test_mode": test_mode}.items():
                 setattr(row, k, v)
