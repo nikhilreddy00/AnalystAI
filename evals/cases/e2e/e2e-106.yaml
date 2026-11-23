@@ -13,6 +13,8 @@ checks:
 - kind: number_in_answer
   truth_key: top_sku_units
   rel_tol: 0
+  scales:   # a count written with what it counts (a bare 15 could be a day)
+  - [1, unit]
 - kind: must_match
   pattern: STK-001|Sticker
 hard_rules:

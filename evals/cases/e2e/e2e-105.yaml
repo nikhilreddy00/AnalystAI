@@ -13,6 +13,9 @@ checks:
 - kind: number_in_answer
   truth_key: active_subscriptions
   rel_tol: 0
+  scales:   # a count written with what it counts (a bare 7 could be a day)
+  - [1, active]
+  - [1, subscription]
 - kind: must_not_match
   pattern: '\b8 (active )?subscriptions\b'
 hard_rules:

@@ -88,14 +88,22 @@ def dataset(case: dict) -> tuple[pd.DataFrame, dict, str]:
     truth is the case's own, known from the seeded test account. `tile_to_mb`: the table repeated
     until its CSV is that large (a share or a rate is the same; the generator's truth holds)."""
     if case.get("source") in IMPORT_ENV:
-        return pd.DataFrame(), dict(case["truth"]), ""
-    name, seed = case["dataset"]["name"], case["dataset"]["seed"]
-    df, truth = datagen.make(name, seed)
+        return pd.DataFrame(), case_truth(case)[1], ""
+    df, truth = case_truth(case)
     if mb := case["dataset"].get("tile_to_mb"):
         times = max(1, math.ceil(mb * 2**20 / len(df.to_csv(index=False))))
         df = pd.concat([df] * times, ignore_index=True)
     csv = df.to_csv(index=False)
     return pd.read_csv(io.StringIO(csv)), truth, csv
+
+
+def case_truth(case: dict) -> tuple[pd.DataFrame, dict]:
+    """(generated table, truth): THE one reading of a case's truth, by the run, its lint and the
+    well-formed test (5.8c: the run and the test read it two ways, the lint a third). An import's
+    truth is the case's own and its table the vendor's (empty here: no vendor is called)."""
+    if case.get("source") in IMPORT_ENV:
+        return pd.DataFrame(), dict(case["truth"])
+    return datagen.make(case["dataset"]["name"], case["dataset"]["seed"])
 
 
 # An import's test account (5.8c): the vendor's key parts from the environment or .env, never a case
@@ -1376,7 +1384,7 @@ def lint_case(case: dict) -> list[str]:
     known = ANALYSIS_CHECKS if "task" in case else E2E_CHECKS
     problems += [f"unknown check kind {c['kind']!r}" for c in
                  [*checks, *(x for t in case.get("turns", []) for x in t["checks"])] if c["kind"] not in known]
-    df, truth = datagen.make(case["dataset"]["name"], case["dataset"]["seed"])
+    df, truth = case_truth(case)
     if all(c["kind"] in _NEGATIVE or c.get("check") in _NEGATIVE for c in checks):
         problems.append("only negative checks: a silent answer would pass")
     pairs = {frozenset((c.get("a"), c.get("b"))) for c in checks if c["kind"] == "pair_reported"}
