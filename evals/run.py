@@ -215,7 +215,7 @@ async def run_analysis_case(case: dict) -> dict:
     except Exception as exc:   # a loud failure is a failed case, not a crashed run
         error = f"{type(exc).__name__}: {exc}"
 
-    literals = e2e_pii_literals(*datagen.make(case["dataset"]["name"], case["dataset"]["seed"]))
+    literals = e2e_pii_literals(*case_truth(case))
     hits = len(leaked("\n".join(sent), literals))
     model_hits = len(leaked("\n".join(LLM_SENT.get() or []), literals))
     scored = score_analysis(case, findings, error)
@@ -458,7 +458,7 @@ async def run_e2e_case(case: dict) -> dict:
         turn_hard += [{**h, "detail": f"turn {n}: {h['detail']}"} for h in scored_turn["hard"]]
         turn_checks.append({"kind": "turn", "ok": not error, "detail": f"turn {n}: {error or 'answered'}"})
 
-    literals = e2e_pii_literals(*datagen.make(case["dataset"]["name"], case["dataset"]["seed"]))
+    literals = e2e_pii_literals(*case_truth(case))
     hits = len(leaked("\n".join(sent), literals))
     model_hits = len(leaked("\n".join(LLM_SENT.get() or []), literals))
     shown = None
