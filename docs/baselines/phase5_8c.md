@@ -65,7 +65,9 @@ Plan: `~/.claude/plans/phase-5-8c-mighty-wreath.md`. It checks off every plan-mo
 - playwright specs: not done (no import-tab spec yet; the follow-up PR adds it with P58-51's card states)
   The live check's screenshots stand in meanwhile.
 - full suite (`scripts/suite.py`): pending on the final commit
-- mutation gate: pending (two baseline runs failed on a matrix time bound the instrumented run exceeds; fixed)
+- mutation gate: pending (three baseline runs failed on the matrix's stripe-ok: first blamed on load, then on
+  its 10 s bound (efd568a, a wrong diagnosis), then found in mutmut's own copy: the gate ran with a placeholder
+  `ENCRYPTION_KEY` and the matrix, unlike the import tests, read the environment's; b978ba2 gives it its own)
 - store tests on psycopg and asyncpg: 26/26 each
 - CI: pending
 
@@ -145,3 +147,4 @@ first draft committed red (P58-32). Not done: semgrep, zizmor, actionlint (not i
 - Silent failures at the refresh's edges → P58-53 (new)
 - "The last 12 months" was a date stored once → P58-54 (new)
 - No limit on imports per user → P58-55 (new)
+- The gate's baseline failure was fixed twice by guess before it was reproduced in the gate's copy → P58-56 (new)
