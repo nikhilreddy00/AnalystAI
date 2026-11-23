@@ -1,0 +1,1396 @@
+{
+ "meta": {
+  "suite": "e2e",
+  "report": "e2e-20261123T174053Z",
+  "k": 1,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "1c1425f",
+  "started_at": "20261123T174053Z",
+  "only": "e2e-106",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 1,
+  "runs": 1,
+  "pass_rate": 0.0,
+  "case_majority_pass_rate": 0.0,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "hard_rules_na": 2,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 0,
+  "runs_with_prose_rewritten": 0,
+  "runs_with_pii_guard_hit": 0,
+  "cost_per_question_usd": 0.0209,
+  "latency_p50_s": 16.37,
+  "latency_p95_s": 16.37,
+  "by_domain": {
+   "retail": {
+    "cases": 1,
+    "k_min": 1,
+    "k_max": 1,
+    "cases_passed_all_runs": 0,
+    "pass_rate": 0.0,
+    "hard_rule_violations": 0,
+    "hard_rules_na": 2,
+    "builtin_only_cases": [],
+    "model_dependent_passed": 0,
+    "model_dependent_cases": 0
+   }
+  }
+ },
+ "runs": {
+  "e2e-106": [
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": false,
+      "detail": "want \u224815 [(1.0, 'unit')] in answer; saw [1.0, 1.0, 15.0]"
+     },
+     {
+      "kind": "must_match",
+      "ok": true,
+      "detail": "said 'STK-001'"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "charts_lint_clean",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "charts_have_rationale",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     },
+     {
+      "rule": "pii_exits",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     }
+    ],
+    "error": null,
+    "answer": "Top 1 Lineitem sku by sum(Lineitem quantity). Leader: STK-001 = 15.00.",
+    "pii_exits": {
+     "rule": "pii_exits",
+     "ok": true,
+     "na": true,
+     "detail": "n/a: no planted PII"
+    },
+    "pii_canary_hits": 0,
+    "pii_model_hits": 0,
+    "pii_planted": 0,
+    "approvals": [
+     "high_null"
+    ],
+    "output": {
+     "session_id": "3a99c7be-e4d3-401e-aff6-b8e9bb81f86e",
+     "user_id": "default",
+     "conversation_history": [
+      {
+       "role": "user",
+       "content": "Which product SKU sold the most units, and how many units was that?",
+       "timestamp": "2026-11-23T17:41:09.958267Z"
+      },
+      {
+       "role": "user",
+       "content": "Continue with imputation",
+       "timestamp": "2026-11-23T17:41:10.073279Z"
+      },
+      {
+       "role": "assistant",
+       "content": "Top 1 Lineitem sku by sum(Lineitem quantity). Leader: STK-001 = 15.00.",
+       "timestamp": "2026-11-23T17:41:10.138235Z"
+      }
+     ],
+     "connector_config": {
+      "type": "csv",
+      "file_path": "/Users/uvnikhil/Projects/AnalystAI/uploads/evals/shopify-orders-0.parquet",
+      "connection_string": null,
+      "table_name": null,
+      "spreadsheet_id": null,
+      "sheet_name": null,
+      "service_account_json": null,
+      "url": null,
+      "auth_type": null,
+      "auth_value": null,
+      "api_key_header": null,
+      "pagination_key": null
+     },
+     "task_plan": {
+      "raw_query": "Which product SKU sold the most units, and how many units was that?",
+      "target_metrics": [
+       "Lineitem quantity"
+      ],
+      "timeframe": null,
+      "segments": [
+       "Lineitem sku"
+      ],
+      "analysis_types": [
+       "eda"
+      ],
+      "output_format": "both",
+      "resume_from": null,
+      "clarification_needed": false,
+      "clarification_question": null,
+      "question_intent": "top_n",
+      "targeted_params": {
+       "target_columns": [],
+       "metric_column": "Lineitem quantity",
+       "date_column": null,
+       "segment_column": null,
+       "segment_value": null,
+       "group_by": "Lineitem sku",
+       "variant_column": null,
+       "n": 1,
+       "order": "desc",
+       "frequency": null,
+       "test_type": null,
+       "aggregation": "sum",
+       "chart_type": null,
+       "kpi": null,
+       "period_start": null,
+       "period_end": null,
+       "compare": null
+      }
+     },
+     "data_contract": {
+      "source_type": "csv",
+      "row_count": 12,
+      "column_count": 27,
+      "columns": [
+       {
+        "name": "Name",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "#1008",
+         "#1007",
+         "#1007",
+         "#1006",
+         "#1005"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "id: the retail order id",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Financial Status",
+        "dtype": "str",
+        "nullable": true,
+        "sample_values": [
+         "paid",
+         "paid",
+         "paid",
+         "paid",
+         "pending"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 33.33,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Fulfillment Status",
+        "dtype": "str",
+        "nullable": true,
+        "sample_values": [
+         "unfulfilled",
+         "unfulfilled",
+         "unfulfilled",
+         "unfulfilled",
+         "unfulfilled"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 33.33,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Currency",
+        "dtype": "str",
+        "nullable": true,
+        "sample_values": [
+         "USD",
+         "USD",
+         "USD",
+         "USD",
+         "USD"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 33.33,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Subtotal",
+        "dtype": "float64",
+        "nullable": true,
+        "sample_values": [
+         30.0,
+         43.0,
+         20.0,
+         110.0,
+         50.0
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 33.33,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Shipping",
+        "dtype": "float64",
+        "nullable": true,
+        "sample_values": [
+         0.0,
+         0.0,
+         0.0,
+         0.0,
+         0.0
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 33.33,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Taxes",
+        "dtype": "float64",
+        "nullable": true,
+        "sample_values": [
+         0.0,
+         0.0,
+         0.0,
+         0.0,
+         0.0
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 33.33,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Total",
+        "dtype": "float64",
+        "nullable": true,
+        "sample_values": [
+         30.0,
+         43.0,
+         20.0,
+         110.0,
+         50.0
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 33.33,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Discount Code",
+        "dtype": "str",
+        "nullable": true,
+        "sample_values": [
+         "SAVE5"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 91.67,
+        "role_reason": "named as an identifier ('Discount Code')",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Discount Amount",
+        "dtype": "float64",
+        "nullable": true,
+        "sample_values": [
+         0.0,
+         0.0,
+         0.0,
+         0.0,
+         0.0
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 33.33,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Created at",
+        "dtype": "datetime64[us, UTC-05:00]",
+        "nullable": false,
+        "sample_values": [
+         "2026-11-23T11:58:18-05:00",
+         "2026-11-23T11:58:08-05:00",
+         "2026-11-23T11:58:08-05:00",
+         "2026-11-23T11:56:56-05:00",
+         "2026-11-23T11:56:56-05:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Lineitem quantity",
+        "dtype": "int64",
+        "nullable": false,
+        "sample_values": [
+         10,
+         1,
+         2,
+         1,
+         2
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Lineitem name",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Sticker",
+         "Cap",
+         "Mug",
+         "Classic Tee",
+         "Hoodie"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Lineitem price",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         3.0,
+         18.0,
+         12.5,
+         20.0,
+         55.0
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": "mean",
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Lineitem sku",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "STK-001",
+         "CAP-001",
+         "MUG-001",
+         "TEE-001",
+         "HOO-001"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "a code with few distinct values: a label",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Lineitem requires shipping",
+        "dtype": "bool",
+        "nullable": false,
+        "sample_values": [
+         false,
+         false,
+         false,
+         false,
+         false
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "true/false values",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Lineitem taxable",
+        "dtype": "bool",
+        "nullable": false,
+        "sample_values": [
+         true,
+         true,
+         true,
+         true,
+         true
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "true/false values",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Lineitem fulfillment status",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "pending",
+         "pending",
+         "pending",
+         "pending",
+         "pending"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Cancelled at",
+        "dtype": "datetime64[us, UTC-05:00]",
+        "nullable": true,
+        "sample_values": [
+         "2026-11-23T11:58:54-05:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 91.67,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Refunded Amount",
+        "dtype": "float64",
+        "nullable": true,
+        "sample_values": [
+         0.0,
+         0.0,
+         0.0,
+         0.0,
+         0.0
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 33.33,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Vendor",
+        "dtype": "float64",
+        "nullable": true,
+        "sample_values": [],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 100.0,
+        "role_reason": "no values",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Location",
+        "dtype": "float64",
+        "nullable": true,
+        "sample_values": [],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 100.0,
+        "role_reason": "no values",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Id",
+        "dtype": "float64",
+        "nullable": true,
+        "sample_values": [
+         19037070360895.0,
+         19037070098751.0,
+         19037067510079.0,
+         19037067477311.0,
+         19037067411775.0
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 33.33,
+        "role_reason": "whole numbers named as an identifier ('Id')",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Tags",
+        "dtype": "str",
+        "nullable": true,
+        "sample_values": [
+         "seed-5.8c-8",
+         "seed-5.8c-7",
+         "seed-5.8c-6",
+         "seed-5.8c-5",
+         "seed-5.8c-4"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 33.33,
+        "role_reason": "unique codes, one per row",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Source",
+        "dtype": "str",
+        "nullable": true,
+        "sample_values": [
+         "451107586049",
+         "451107586049",
+         "451107586049",
+         "451107586049",
+         "451107586049"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 33.33,
+        "role_reason": "numbers stored as text (currency, %, thousands separators)",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Lineitem discount",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         0.0,
+         0.0,
+         0.0,
+         0.0,
+         0.0
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Test",
+        "dtype": "object",
+        "nullable": true,
+        "sample_values": [
+         false,
+         false,
+         true,
+         false,
+         false
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 33.33,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       }
+      ],
+      "sample_rows": [
+       {
+        "Name": "[REDACTED]",
+        "Financial Status": "paid",
+        "Fulfillment Status": "unfulfilled",
+        "Currency": "USD",
+        "Subtotal": 30.0,
+        "Shipping": 0.0,
+        "Taxes": 0.0,
+        "Total": 30.0,
+        "Discount Code": null,
+        "Discount Amount": 0.0,
+        "Created at": "2026-11-23T11:58:18-05:00",
+        "Lineitem quantity": 10,
+        "Lineitem name": "Sticker",
+        "Lineitem price": 3.0,
+        "Lineitem sku": "STK-001",
+        "Lineitem requires shipping": false,
+        "Lineitem taxable": true,
+        "Lineitem fulfillment status": "pending",
+        "Cancelled at": null,
+        "Refunded Amount": 0.0,
+        "Vendor": null,
+        "Location": null,
+        "Id": 19037070360895.0,
+        "Tags": "seed-5.8c-8",
+        "Source": "451107586049",
+        "Lineitem discount": 0.0,
+        "Test": false
+       },
+       {
+        "Name": "[REDACTED]",
+        "Financial Status": "paid",
+        "Fulfillment Status": "unfulfilled",
+        "Currency": "USD",
+        "Subtotal": 43.0,
+        "Shipping": 0.0,
+        "Taxes": 0.0,
+        "Total": 43.0,
+        "Discount Code": null,
+        "Discount Amount": 0.0,
+        "Created at": "2026-11-23T11:58:08-05:00",
+        "Lineitem quantity": 1,
+        "Lineitem name": "Cap",
+        "Lineitem price": 18.0,
+        "Lineitem sku": "CAP-001",
+        "Lineitem requires shipping": false,
+        "Lineitem taxable": true,
+        "Lineitem fulfillment status": "pending",
+        "Cancelled at": null,
+        "Refunded Amount": 0.0,
+        "Vendor": null,
+        "Location": null,
+        "Id": 19037070098751.0,
+        "Tags": "seed-5.8c-7",
+        "Source": "451107586049",
+        "Lineitem discount": 0.0,
+        "Test": false
+       },
+       {
+        "Name": "[REDACTED]",
+        "Financial Status": null,
+        "Fulfillment Status": null,
+        "Currency": null,
+        "Subtotal": null,
+        "Shipping": null,
+        "Taxes": null,
+        "Total": null,
+        "Discount Code": null,
+        "Discount Amount": null,
+        "Created at": "2026-11-23T11:58:08-05:00",
+        "Lineitem quantity": 2,
+        "Lineitem name": "Mug",
+        "Lineitem price": 12.5,
+        "Lineitem sku": "MUG-001",
+        "Lineitem requires shipping": false,
+        "Lineitem taxable": true,
+        "Lineitem fulfillment status": "pending",
+        "Cancelled at": null,
+        "Refunded Amount": null,
+        "Vendor": null,
+        "Location": null,
+        "Id": null,
+        "Tags": null,
+        "Source": null,
+        "Lineitem discount": 0.0,
+        "Test": null
+       },
+       {
+        "Name": "[REDACTED]",
+        "Financial Status": "paid",
+        "Fulfillment Status": "unfulfilled",
+        "Currency": "USD",
+        "Subtotal": 20.0,
+        "Shipping": 0.0,
+        "Taxes": 0.0,
+        "Total": 20.0,
+        "Discount Code": null,
+        "Discount Amount": 0.0,
+        "Created at": "2026-11-23T11:56:56-05:00",
+        "Lineitem quantity": 1,
+        "Lineitem name": "Classic Tee",
+        "Lineitem price": 20.0,
+        "Lineitem sku": "TEE-001",
+        "Lineitem requires shipping": false,
+        "Lineitem taxable": true,
+        "Lineitem fulfillment status": "pending",
+        "Cancelled at": null,
+        "Refunded Amount": 0.0,
+        "Vendor": null,
+        "Location": null,
+        "Id": 19037067510079.0,
+        "Tags": "seed-5.8c-6",
+        "Source": "451107586049",
+        "Lineitem discount": 0.0,
+        "Test": true
+       },
+       {
+        "Name": "[REDACTED]",
+        "Financial Status": "paid",
+        "Fulfillment Status": "unfulfilled",
+        "Currency": "USD",
+        "Subtotal": 110.0,
+        "Shipping": 0.0,
+        "Taxes": 0.0,
+        "Total": 110.0,
+        "Discount Code": null,
+        "Discount Amount": 0.0,
+        "Created at": "2026-11-23T11:56:56-05:00",
+        "Lineitem quantity": 2,
+        "Lineitem name": "Hoodie",
+        "Lineitem price": 55.0,
+        "Lineitem sku": "HOO-001",
+        "Lineitem requires shipping": false,
+        "Lineitem taxable": true,
+        "Lineitem fulfillment status": "pending",
+        "Cancelled at": "2026-11-23T11:58:54-05:00",
+        "Refunded Amount": 0.0,
+        "Vendor": null,
+        "Location": null,
+        "Id": 19037067477311.0,
+        "Tags": "seed-5.8c-5",
+        "Source": "451107586049",
+        "Lineitem discount": 0.0,
+        "Test": false
+       }
+      ],
+      "date_columns": [
+       "Created at",
+       "Cancelled at"
+      ],
+      "id_columns": [
+       "Name",
+       "Discount Code",
+       "Id",
+       "Tags"
+      ],
+      "metric_columns": [
+       "Subtotal",
+       "Shipping",
+       "Taxes",
+       "Total",
+       "Discount Amount",
+       "Lineitem quantity",
+       "Lineitem price",
+       "Refunded Amount",
+       "Source",
+       "Lineitem discount"
+      ],
+      "schema_summary": "12 rows \u00d7 27 columns. Dates: Created at from 2026-11-23 to 2026-11-23 (a single date). Metrics: Subtotal, Shipping, Taxes, Total, Discount Amount, Lineitem quantity, Lineitem price, Refunded Amount, Source, Lineitem discount. Identifiers: Name, Discount Code, Id, Tags. Categories: Financial Status, Fulfillment Status, Currency, Lineitem name, Lineitem sku, Lineitem requires shipping, Lineitem taxable, Lineitem fulfillment status, Vendor, Location, Test. Missing values: Vendor 100%, Location 100%, Discount Code 91.67%, Cancelled at 91.67%. Blank by the file's layout, not missing (one value per order, on its first line): Financial Status, Fulfillment Status, Currency, Subtotal, Shipping, Taxes, Total, Discount Amount, Refunded Amount, Id, Tags, Source (+1 more).",
+      "source_query": null,
+      "source_evidence": {
+       "id": "source:data",
+       "kind": "source",
+       "claim": "Loaded 12 rows \u00d7 27 columns from a PARQUET file.",
+       "code": "pd.read_parquet(<uploaded file>)",
+       "result_excerpt": "{\"roles\": {\"id\": [\"Name\", \"Discount Code\", \"Id\", \"Tags\"], \"category\": [\"Financial Status\", \"Fulfillment Status\", \"Currency\", \"Lineitem name\", \"Lineitem sku\", \"Lineitem requires shipping\", \"Lineitem taxable\", \"Lineitem fulfillment status\", \"Vendor\", \"Location\", \"Test\"], \"metric\": [\"Subtotal\", \"Shipping\", \"Taxes\", \"Total\", \"Discount Amount\", \"Lineitem quantity\", \"Lineitem price\", \"Refunded Amount\", \"Source\", \"Lineitem discount\"], \"date\": [\"Created at\", \"Cancelled at\"]}, \"personal_data\": {}, \"finge",
+       "row_count": 12,
+       "confidence": "high",
+       "confidence_reason": "Read as-is: no layout guessing was needed.",
+       "assumptions": []
+      },
+      "fingerprint": "f009d56414df35847706bf6a090afaa3c47a18f323df89624a3926a7be106de3",
+      "pii_columns": [],
+      "phi": false,
+      "deidentification": [],
+      "deidentified": false,
+      "domain": "retail",
+      "roles": {
+       "refunded_amount": "Refunded Amount",
+       "order_total": "Subtotal",
+       "quantity": "Lineitem quantity",
+       "unit_price": "Lineitem price",
+       "discount": "Discount Amount",
+       "order_id": "Name",
+       "sku": "Lineitem sku",
+       "product": "Lineitem name",
+       "status": "Financial Status",
+       "currency": "Currency",
+       "date": "Created at"
+      },
+      "domain_confidence": "strong"
+     },
+     "cleaning_audit": {
+      "decisions": [
+       {
+        "column": "Source",
+        "operation": "type_coerce",
+        "strategy": "to_numeric",
+        "reason": "Parsed as numeric.",
+        "rows_affected": 8,
+        "before_null_pct": 33.3,
+        "after_null_pct": 33.3,
+        "rows_removed": 0
+       },
+       {
+        "column": "Financial Status",
+        "operation": "fill_within_order",
+        "strategy": "order_value",
+        "reason": "4 lines took their order's own status (the export writes it on an order's first line only).",
+        "rows_affected": 4,
+        "before_null_pct": 33.3,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "Currency",
+        "operation": "fill_within_order",
+        "strategy": "order_value",
+        "reason": "4 lines took their order's own currency (the export writes it on an order's first line only).",
+        "rows_affected": 4,
+        "before_null_pct": 33.3,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "Fulfillment Status",
+        "operation": "keep",
+        "strategy": "order_level",
+        "reason": "Written on each order's first line only, so later lines are blank by the export's layout; 0% of orders have no value. An order-level field, kept as it is.",
+        "rows_affected": 0,
+        "before_null_pct": 33.3,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "Subtotal",
+        "operation": "keep",
+        "strategy": "order_level",
+        "reason": "Written on each order's first line only, so later lines are blank by the export's layout; 0% of orders have no value. An order-level field, kept as it is.",
+        "rows_affected": 0,
+        "before_null_pct": 33.3,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "Shipping",
+        "operation": "keep",
+        "strategy": "order_level",
+        "reason": "Written on each order's first line only, so later lines are blank by the export's layout; 0% of orders have no value. An order-level field, kept as it is.",
+        "rows_affected": 0,
+        "before_null_pct": 33.3,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "Taxes",
+        "operation": "keep",
+        "strategy": "order_level",
+        "reason": "Written on each order's first line only, so later lines are blank by the export's layout; 0% of orders have no value. An order-level field, kept as it is.",
+        "rows_affected": 0,
+        "before_null_pct": 33.3,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "Total",
+        "operation": "keep",
+        "strategy": "order_level",
+        "reason": "Written on each order's first line only, so later lines are blank by the export's layout; 0% of orders have no value. An order-level field, kept as it is.",
+        "rows_affected": 0,
+        "before_null_pct": 33.3,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "Discount Code",
+        "operation": "keep",
+        "strategy": "high_null",
+        "reason": "11 of 12 values missing (91.7%): too empty to use with confidence; left as missing.",
+        "rows_affected": 0,
+        "before_null_pct": 91.7,
+        "after_null_pct": 91.7,
+        "rows_removed": 0
+       },
+       {
+        "column": "Discount Amount",
+        "operation": "keep",
+        "strategy": "order_level",
+        "reason": "Written on each order's first line only, so later lines are blank by the export's layout; 0% of orders have no value. An order-level field, kept as it is.",
+        "rows_affected": 0,
+        "before_null_pct": 33.3,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "Cancelled at",
+        "operation": "keep",
+        "strategy": "high_null",
+        "reason": "11 of 12 values missing (91.7%): too empty to use with confidence; left as missing.",
+        "rows_affected": 0,
+        "before_null_pct": 91.7,
+        "after_null_pct": 91.7,
+        "rows_removed": 0
+       },
+       {
+        "column": "Refunded Amount",
+        "operation": "keep",
+        "strategy": "order_level",
+        "reason": "Written on each order's first line only, so later lines are blank by the export's layout; 0% of orders have no value. An order-level field, kept as it is.",
+        "rows_affected": 0,
+        "before_null_pct": 33.3,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "Vendor",
+        "operation": "keep",
+        "strategy": "high_null",
+        "reason": "12 of 12 values missing (100%): too empty to use with confidence; left as missing.",
+        "rows_affected": 0,
+        "before_null_pct": 100.0,
+        "after_null_pct": 100.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "Location",
+        "operation": "keep",
+        "strategy": "high_null",
+        "reason": "12 of 12 values missing (100%): too empty to use with confidence; left as missing.",
+        "rows_affected": 0,
+        "before_null_pct": 100.0,
+        "after_null_pct": 100.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "Id",
+        "operation": "keep",
+        "strategy": "order_level",
+        "reason": "Written on each order's first line only, so later lines are blank by the export's layout; 0% of orders have no value. An order-level field, kept as it is.",
+        "rows_affected": 0,
+        "before_null_pct": 33.3,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "Tags",
+        "operation": "keep",
+        "strategy": "order_level",
+        "reason": "Written on each order's first line only, so later lines are blank by the export's layout; 0% of orders have no value. An order-level field, kept as it is.",
+        "rows_affected": 0,
+        "before_null_pct": 33.3,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "Source",
+        "operation": "keep",
+        "strategy": "order_level",
+        "reason": "Written on each order's first line only, so later lines are blank by the export's layout; 0% of orders have no value. An order-level field, kept as it is.",
+        "rows_affected": 0,
+        "before_null_pct": 33.3,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "Test",
+        "operation": "keep",
+        "strategy": "order_level",
+        "reason": "Written on each order's first line only, so later lines are blank by the export's layout; 0% of orders have no value. An order-level field, kept as it is.",
+        "rows_affected": 0,
+        "before_null_pct": 33.3,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       }
+      ],
+      "rows_before": 12,
+      "rows_after": 12,
+      "columns_coerced": [
+       "Source"
+      ],
+      "duplicates_removed": 0,
+      "outliers_flagged": [
+       "1 mild outlier in Subtotal (threshold: values outside [-27.75, 129.75]) \u2014 see analyst tab",
+       "1 mild outlier in Total (threshold: values outside [-27.75, 129.75]) \u2014 see analyst tab"
+      ],
+      "high_null_columns": [
+       "Discount Code",
+       "Cancelled at",
+       "Vendor",
+       "Location"
+      ],
+      "summary": "Parsed numbers or dates in 1 column(s). Outliers flagged (kept) in: Subtotal, Total. More than 40% missing in: Discount Code, Cancelled at, Vendor, Location \u2014 review recommended. Final dataset: 12 rows (started with 12).",
+      "anomaly_report": {
+       "flags": [
+        {
+         "column": "Subtotal",
+         "extreme_count": 0,
+         "mild_count": 1,
+         "extreme_pct": 0.0,
+         "lower_bound": -27.75,
+         "upper_bound": 129.75,
+         "mild_lower_bound": 6.0,
+         "mild_upper_bound": 96.0,
+         "used_log_transform": false,
+         "heavy_tailed": false,
+         "message": "1 mild outlier in Subtotal (threshold: values outside [-27.75, 129.75]) \u2014 see analyst tab"
+        },
+        {
+         "column": "Total",
+         "extreme_count": 0,
+         "mild_count": 1,
+         "extreme_pct": 0.0,
+         "lower_bound": -27.75,
+         "upper_bound": 129.75,
+         "mild_lower_bound": 6.0,
+         "mild_upper_bound": 96.0,
+         "used_log_transform": false,
+         "heavy_tailed": false,
+         "message": "1 mild outlier in Total (threshold: values outside [-27.75, 129.75]) \u2014 see analyst tab"
+        }
+       ],
+       "methodology_note": "",
+       "eligible_columns": [
+        "Subtotal",
+        "Total",
+        "Lineitem quantity"
+       ],
+       "skipped_columns": {
+        "Name": "non-numeric",
+        "Financial Status": "binary column (only 2 values)",
+        "Fulfillment Status": "constant or unsupported",
+        "Currency": "constant or unsupported",
+        "Shipping": "constant or unsupported",
+        "Taxes": "constant or unsupported",
+        "Discount Code": "constant or unsupported",
+        "Discount Amount": "binary column (only 2 values)",
+        "Created at": "datetime column",
+        "Lineitem name": "non-numeric",
+        "Lineitem price": "ordinal (low-cardinality numeric, e.g. Likert/class)",
+        "Lineitem sku": "non-numeric",
+        "Lineitem requires shipping": "constant or unsupported",
+        "Lineitem taxable": "constant or unsupported",
+        "Lineitem fulfillment status": "constant or unsupported",
+        "Cancelled at": "constant or unsupported",
+        "Refunded Amount": "constant or unsupported",
+        "Vendor": "constant or unsupported",
+        "Location": "constant or unsupported",
+        "Id": "id column",
+        "Tags": "non-numeric",
+        "Source": "constant or unsupported",
+        "Lineitem discount": "constant or unsupported",
+        "Test": "binary column (only 2 values)"
+       }
+      },
+      "skipped_columns": [],
+      "date_ranges": {
+       "Created at": [
+        "2026-11-23",
+        "2026-11-23",
+        1
+       ],
+       "Cancelled at": [
+        "2026-11-23",
+        "2026-11-23",
+        1
+       ]
+      },
+      "grain": "line",
+      "partial_months": {},
+      "main_currency": null,
+      "spell_story": [],
+      "window_span": {}
+     },
+     "analysis_findings": null,
+     "chart_configs": [],
+     "insight_report": null,
+     "targeted_response": {
+      "intent": "top_n",
+      "answer_text": "Top 1 Lineitem sku by sum(Lineitem quantity). Leader: STK-001 = 15.00.",
+      "chart_configs": [
+       {
+        "id": "de99e8f1-93dd-4ef9-ba61-0215c8bf7be9",
+        "chart_type": "HorizontalBarChart",
+        "title": "Top 1 Lineitem sku by sum(Lineitem quantity)",
+        "data": [
+         {
+          "Lineitem sku": "STK-001",
+          "Lineitem quantity": 15.0
+         }
+        ],
+        "x_key": "Lineitem sku",
+        "y_keys": [
+         "Lineitem quantity"
+        ],
+        "colors": [],
+        "x_label": "Lineitem sku",
+        "y_label": "sum(Lineitem quantity)",
+        "show_legend": true,
+        "show_grid": true,
+        "source_finding": "top_n",
+        "value_format": "number",
+        "layout_hint": "half_width",
+        "rationale": {
+         "rule": "targeted:top_n\u2192ranked bars",
+         "reason": "Ranks Lineitem sku by sum Lineitem quantity, highest first.",
+         "x": "Lineitem sku",
+         "y": "Lineitem quantity",
+         "split": null,
+         "aggregation": "sum",
+         "n_rows": 12,
+         "evidence_ids": [],
+         "code": "df.groupby('Lineitem sku')['Lineitem quantity'].sum().sort_index(kind='stable').sort_values(ascending=False, kind='stable').head(1)",
+         "confidence": null
+        },
+        "placement": "summary",
+        "lint_warnings": [],
+        "error_key": null,
+        "split_key": null,
+        "reference_lines": []
+       }
+      ],
+      "table_data": [],
+      "table_columns": [],
+      "suggestions": [],
+      "unanswerable_reason": null,
+      "generated_at": "2026-11-23T17:41:10.138162Z"
+     },
+     "expert_review": null,
+     "narrative": {
+      "column_display_names": {
+       "Name": "Order Number",
+       "Financial Status": "Financial Status",
+       "Fulfillment Status": "Fulfillment Status",
+       "Currency": "Currency",
+       "Subtotal": "Subtotal",
+       "Shipping": "Shipping",
+       "Taxes": "Taxes",
+       "Total": "Total",
+       "Discount Code": "Discount Code",
+       "Discount Amount": "Discount Amount",
+       "Created at": "Created At",
+       "Lineitem quantity": "Line Item Quantity",
+       "Lineitem name": "Line Item Name",
+       "Lineitem price": "Line Item Price",
+       "Lineitem sku": "Line Item SKU",
+       "Lineitem requires shipping": "Requires Shipping",
+       "Lineitem taxable": "Taxable",
+       "Lineitem fulfillment status": "Line Item Fulfillment Status",
+       "Cancelled at": "Cancelled At",
+       "Refunded Amount": "Refunded Amount",
+       "Vendor": "Vendor",
+       "Location": "Location",
+       "Id": "Order ID",
+       "Tags": "Tags",
+       "Source": "Source",
+       "Lineitem discount": "Line Item Discount",
+       "Test": "Test Order"
+      },
+      "entity_singular": "order line item",
+      "entity_plural": "order line items"
+     },
+     "iteration": 1,
+     "quality_check_attempts": 0,
+     "high_null_answer": "continue",
+     "prior_pii": [],
+     "error_retryable": true,
+     "error_reask": true,
+     "overview_done": true,
+     "dataset_name": null,
+     "file_hash": null,
+     "dataset_id": null,
+     "dataset_version_id": null,
+     "status": "completed",
+     "cleaned_data_path": "/Users/uvnikhil/Projects/AnalystAI/session_data/3a99c7be-e4d3-401e-aff6-b8e9bb81f86e/cleaned_data.parquet",
+     "error_message": null,
+     "created_at": "2026-11-23T17:40:55.002266Z",
+     "updated_at": "2026-11-23T17:41:10.138236Z"
+    },
+    "domain": "retail",
+    "latency_s": 16.37,
+    "cost_usd": 0.02092,
+    "llm_calls": 3,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "[\"Which Lineitem name products account for the largest share of Total revenue, and what is the average Lineitem price and Lineitem quantity sold per product?\", \"What is the average order Total (order-level Subtotal plus Shipping plus Taxes), and are there any orders where the Refunded Amount represents a significant portion of that Total?\", \"How do orders with a Discount Code compare to those without one in terms of Total order value and Discount Amount applied \u2014 are discounts driving meaningful volume or margin loss?\", \"Which orders have a Lineitem fulfillment status that is unfulfilled or pending, and do any of those correspond to orders where Cancelled at is populated, suggesting a fulfillment-to-cancellation problem?\", \"Given that Vendor and Location are 100% missing, are there any other columns \u2014 such as Lineitem sku, Source, or Tags \u2014 that could serve as proxies to segment orders by channel or product origin for performance analysis?\"]",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "{\n  \"column_display_names\": {\n    \"Name\": \"Order Number\",\n    \"Financial Status\": \"Financial Status\",\n    \"Fulfillment Status\": \"Fulfillment Status\",\n    \"Currency\": \"Currency\",\n    \"Subtotal\": \"Subtotal\",\n    \"Shipping\": \"Shipping\",\n    \"Taxes\": \"Taxes\",\n    \"Total\": \"Total\",\n    \"Discount Code\": \"Discount Code\",\n    \"Discount Amount\": \"Discount Amount\",\n    \"Created at\": \"Created At\",\n    \"Lineitem quantity\": \"Line Item Quantity\",\n    \"Lineitem name\": \"Line Item Name\",\n    \"Lineitem price\": \"Line Item Price\",\n    \"Lineitem sku\": \"Line Item SKU\",\n    \"Lineitem requires shipping\": \"Requires Shipping\",\n    \"Lineitem taxable\": \"Taxable\",\n    \"Lineitem fulfillment status\": \"Line Item Fulfillment Status\",\n    \"Cancelled at\": \"Cancelled At\",\n    \"Refunded Amount\": \"Refunded Amount\",\n    \"Vendor\": \"Vendor\",\n    \"Location\": \"Location\",\n    \"Id\": \"Order ID\",\n    \"Tags\": \"Tags\",\n    \"Source\": \"Source\",\n    \"Lineitem discount\": \"Line Item Discount\",\n    \"Test\": \"Test Order\"\n  },\n  \"entity_singular\": \"order line item\",\n  \"entity_plural\": \"order line items\"\n}",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "```json\n{\n  \"raw_query\": \"Which product SKU sold the most units, and how many units was that?\",\n  \"target_metrics\": [\"Lineitem quantity\"],\n  \"timeframe\": null,\n  \"segments\": [\"Lineitem sku\"],\n  \"analysis_types\": [\"eda\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"top_n\",\n  \"targeted_params\": {\n    \"target_columns\": [],\n    \"metric_column\": \"Lineitem quantity\",\n    \"date_column\": null,\n    \"segment_column\": null,\n    \"segment_value\": null,\n    \"group_by\": \"Lineitem sku\",\n    \"variant_column\": null,\n    \"n\": 1,\n    \"order\": \"desc\",\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"sum\",\n    \"chart_type\": null\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": false
+   }
+  ]
+ }
+}

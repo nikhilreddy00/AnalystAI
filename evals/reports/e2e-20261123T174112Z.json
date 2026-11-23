@@ -1,0 +1,1162 @@
+{
+ "meta": {
+  "suite": "e2e",
+  "report": "e2e-20261123T174112Z",
+  "k": 1,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "1c1425f",
+  "started_at": "20261123T174112Z",
+  "only": "e2e-107",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 1,
+  "runs": 1,
+  "pass_rate": 0.0,
+  "case_majority_pass_rate": 0.0,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "hard_rules_na": 2,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 0,
+  "runs_with_prose_rewritten": 0,
+  "runs_with_pii_guard_hit": 0,
+  "cost_per_question_usd": 0.0201,
+  "latency_p50_s": 15.86,
+  "latency_p95_s": 15.86,
+  "by_domain": {
+   "saas": {
+    "cases": 1,
+    "k_min": 1,
+    "k_max": 1,
+    "cases_passed_all_runs": 0,
+    "pass_rate": 0.0,
+    "hard_rule_violations": 0,
+    "hard_rules_na": 2,
+    "builtin_only_cases": [],
+    "model_dependent_passed": 0,
+    "model_dependent_cases": 0
+   }
+  }
+ },
+ "runs": {
+  "e2e-107": [
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": false,
+      "detail": "want \u2248415.2 [(1.0, None)] in answer; saw [3915.2, 3915.2, 78.0]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "charts_lint_clean",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "charts_have_rationale",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     },
+     {
+      "rule": "pii_exits",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     }
+    ],
+    "error": null,
+    "answer": "sum(Total) for Paid 'True': 3,915.20. sum(Total) by Paid: 'True' leads at 3,915.20; 'False' is lowest at 78.00.",
+    "pii_exits": {
+     "rule": "pii_exits",
+     "ok": true,
+     "na": true,
+     "detail": "n/a: no planted PII"
+    },
+    "pii_canary_hits": 0,
+    "pii_model_hits": 0,
+    "pii_planted": 0,
+    "approvals": [
+     "high_null"
+    ],
+    "output": {
+     "session_id": "acbdf17c-b5e6-4b14-b833-44c3fe35f538",
+     "user_id": "default",
+     "conversation_history": [
+      {
+       "role": "user",
+       "content": "What is the sum of the Total column over the paid invoices in USD?",
+       "timestamp": "2026-11-23T17:41:28.250300Z"
+      },
+      {
+       "role": "user",
+       "content": "Continue with imputation",
+       "timestamp": "2026-11-23T17:41:28.332631Z"
+      },
+      {
+       "role": "assistant",
+       "content": "sum(Total) for Paid 'True': 3,915.20. sum(Total) by Paid: 'True' leads at 3,915.20; 'False' is lowest at 78.00.",
+       "timestamp": "2026-11-23T17:41:28.366982Z"
+      }
+     ],
+     "connector_config": {
+      "type": "csv",
+      "file_path": "/Users/uvnikhil/Projects/AnalystAI/uploads/evals/stripe-invoices-0.parquet",
+      "connection_string": null,
+      "table_name": null,
+      "spreadsheet_id": null,
+      "sheet_name": null,
+      "service_account_json": null,
+      "url": null,
+      "auth_type": null,
+      "auth_value": null,
+      "api_key_header": null,
+      "pagination_key": null
+     },
+     "task_plan": {
+      "raw_query": "What is the sum of the Total column over the paid invoices in USD?",
+      "target_metrics": [
+       "Total"
+      ],
+      "timeframe": null,
+      "segments": [
+       "Paid",
+       "Currency"
+      ],
+      "analysis_types": [
+       "eda",
+       "segmentation"
+      ],
+      "output_format": "both",
+      "resume_from": null,
+      "clarification_needed": false,
+      "clarification_question": null,
+      "question_intent": "segment_compare",
+      "targeted_params": {
+       "target_columns": [
+        "Total",
+        "Paid",
+        "Currency"
+       ],
+       "metric_column": "Total",
+       "date_column": null,
+       "segment_column": "Paid",
+       "segment_value": "true",
+       "group_by": "Currency",
+       "variant_column": null,
+       "n": null,
+       "order": null,
+       "frequency": null,
+       "test_type": null,
+       "aggregation": "sum",
+       "chart_type": null,
+       "kpi": null,
+       "period_start": null,
+       "period_end": null,
+       "compare": null
+      }
+     },
+     "data_contract": {
+      "source_type": "csv",
+      "row_count": 10,
+      "column_count": 23,
+      "columns": [
+       {
+        "name": "id",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "in_1Ueyyh2NGXUMFEe8r2c3W7lh",
+         "in_1Ueyyk2NGXUMFEe8dX6hKQuX",
+         "in_1Ueyym2NGXUMFEe8u77GKs0q",
+         "in_1UeyzJ2NGXUMFEe8RmsWfqPU",
+         "in_1UeyzU2NGXUMFEe8tXdhiGGj"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "named as an identifier ('id')",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Amount Due",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         29.0,
+         0.0,
+         29.0,
+         44.0,
+         23.2
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Billing",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "charge_automatically",
+         "charge_automatically",
+         "charge_automatically",
+         "charge_automatically",
+         "charge_automatically"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Charge",
+        "dtype": "str",
+        "nullable": true,
+        "sample_values": [
+         "ch_3Ueyyh2NGXUMFEe808nnVXhu",
+         "ch_3Ueyym2NGXUMFEe80jaufzgH",
+         "ch_3UeyzJ2NGXUMFEe81W7bWKOf",
+         "ch_3UeyzU2NGXUMFEe803YW57BQ",
+         "ch_3UeyzX2NGXUMFEe81Gb1QnYg"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 20.0,
+        "role_reason": "unique codes, one per row",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Currency",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "usd",
+         "eur",
+         "usd",
+         "usd",
+         "usd"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Customer",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "cus_VgLgmumcofOdwc",
+         "cus_VgLgrFd3qMWAtx",
+         "cus_VgLgigDw7WTKyc",
+         "cus_VgLgsObGf1D9oC",
+         "cus_VgLg5KggEJRsqz"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "id: the saas customer",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Date (UTC)",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2026-11-23T15:16:00",
+         "2026-11-23T15:16:00",
+         "2026-11-23T15:16:00",
+         "2026-11-23T15:17:00",
+         "2026-11-23T15:17:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Due Date (UTC)",
+        "dtype": "float64",
+        "nullable": true,
+        "sample_values": [],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 100.0,
+        "role_reason": "no values",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Ending Balance",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         0.0,
+         0.0,
+         0.0,
+         0.0,
+         0.0
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Number",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "9DW4HKHE-0001",
+         "5WGTIB0X-0001",
+         "U2FRGEBN-0001",
+         "AEDERHCK-0001",
+         "DN0ACKLU-0001"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "named as an identifier ('Number')",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Paid",
+        "dtype": "bool",
+        "nullable": false,
+        "sample_values": [
+         true,
+         true,
+         true,
+         true,
+         true
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "true/false values",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Paid At (UTC)",
+        "dtype": "datetime64[us]",
+        "nullable": true,
+        "sample_values": [
+         "2026-11-23T15:16:00",
+         "2026-11-23T15:16:00",
+         "2026-11-23T15:16:00",
+         "2026-11-23T15:17:00",
+         "2026-11-23T15:17:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 10.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Finalized At (UTC)",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2026-11-23T15:16:00",
+         "2026-11-23T15:16:00",
+         "2026-11-23T15:16:00",
+         "2026-11-23T15:17:00",
+         "2026-11-23T15:17:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Period Start (UTC)",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2026-11-23T15:16:00",
+         "2026-11-23T15:16:00",
+         "2026-11-23T15:16:00",
+         "2026-11-23T15:17:00",
+         "2026-11-23T15:17:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Period End (UTC)",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2026-11-23T15:16:00",
+         "2026-11-23T15:16:00",
+         "2026-11-23T15:16:00",
+         "2026-11-23T15:17:00",
+         "2026-11-23T15:17:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Starting Balance",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         0.0,
+         0.0,
+         0.0,
+         0.0,
+         0.0
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Subscription",
+        "dtype": "str",
+        "nullable": true,
+        "sample_values": [
+         "sub_1Ueyyh2NGXUMFEe8jUK21lHW",
+         "sub_1Ueyyk2NGXUMFEe8YqwTBs9z",
+         "sub_1Ueyym2NGXUMFEe8p0GaLnz2",
+         "sub_1UeyzJ2NGXUMFEe83OV5aN5X",
+         "sub_1UeyzU2NGXUMFEe8brYaNIww"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 10.0,
+        "role_reason": "unique codes, one per row",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Subtotal",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         29.0,
+         0.0,
+         29.0,
+         44.0,
+         29.0
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Total Discount Amount",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         0.0,
+         0.0,
+         0.0,
+         0.0,
+         5.8
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Total",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         29.0,
+         0.0,
+         29.0,
+         44.0,
+         23.2
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Customer Email",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "unique codes, one per row",
+        "pii": "email",
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Amount Paid",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         29.0,
+         0.0,
+         29.0,
+         44.0,
+         23.2
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Status",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "paid",
+         "paid",
+         "paid",
+         "paid",
+         "paid"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       }
+      ],
+      "sample_rows": [
+       {
+        "id": "in_1Ueyyh2NGXUMFEe8r2c3W7lh",
+        "Amount Due": 29.0,
+        "Billing": "charge_automatically",
+        "Charge": "ch_3Ueyyh2NGXUMFEe808nnVXhu",
+        "Currency": "usd",
+        "Customer": "cus_VgLgmumcofOdwc",
+        "Date (UTC)": "2026-11-23T15:16:00",
+        "Due Date (UTC)": null,
+        "Ending Balance": 0.0,
+        "Number": "9DW4HKHE-0001",
+        "Paid": true,
+        "Paid At (UTC)": "2026-11-23T15:16:00",
+        "Finalized At (UTC)": "2026-11-23T15:16:00",
+        "Period Start (UTC)": "2026-11-23T15:16:00",
+        "Period End (UTC)": "2026-11-23T15:16:00",
+        "Starting Balance": 0.0,
+        "Subscription": "sub_1Ueyyh2NGXUMFEe8jUK21lHW",
+        "Subtotal": 29.0,
+        "Total Discount Amount": 0.0,
+        "Total": 29.0,
+        "Customer Email": "[REDACTED]",
+        "Amount Paid": 29.0,
+        "Status": "paid"
+       },
+       {
+        "id": "in_1Ueyyk2NGXUMFEe8dX6hKQuX",
+        "Amount Due": 0.0,
+        "Billing": "charge_automatically",
+        "Charge": null,
+        "Currency": "eur",
+        "Customer": "cus_VgLgrFd3qMWAtx",
+        "Date (UTC)": "2026-11-23T15:16:00",
+        "Due Date (UTC)": null,
+        "Ending Balance": 0.0,
+        "Number": "5WGTIB0X-0001",
+        "Paid": true,
+        "Paid At (UTC)": "2026-11-23T15:16:00",
+        "Finalized At (UTC)": "2026-11-23T15:16:00",
+        "Period Start (UTC)": "2026-11-23T15:16:00",
+        "Period End (UTC)": "2026-11-23T15:16:00",
+        "Starting Balance": 0.0,
+        "Subscription": "sub_1Ueyyk2NGXUMFEe8YqwTBs9z",
+        "Subtotal": 0.0,
+        "Total Discount Amount": 0.0,
+        "Total": 0.0,
+        "Customer Email": "[REDACTED]",
+        "Amount Paid": 0.0,
+        "Status": "paid"
+       },
+       {
+        "id": "in_1Ueyym2NGXUMFEe8u77GKs0q",
+        "Amount Due": 29.0,
+        "Billing": "charge_automatically",
+        "Charge": "ch_3Ueyym2NGXUMFEe80jaufzgH",
+        "Currency": "usd",
+        "Customer": "cus_VgLgigDw7WTKyc",
+        "Date (UTC)": "2026-11-23T15:16:00",
+        "Due Date (UTC)": null,
+        "Ending Balance": 0.0,
+        "Number": "U2FRGEBN-0001",
+        "Paid": true,
+        "Paid At (UTC)": "2026-11-23T15:16:00",
+        "Finalized At (UTC)": "2026-11-23T15:16:00",
+        "Period Start (UTC)": "2026-11-23T15:16:00",
+        "Period End (UTC)": "2026-11-23T15:16:00",
+        "Starting Balance": 0.0,
+        "Subscription": "sub_1Ueyym2NGXUMFEe8p0GaLnz2",
+        "Subtotal": 29.0,
+        "Total Discount Amount": 0.0,
+        "Total": 29.0,
+        "Customer Email": "[REDACTED]",
+        "Amount Paid": 29.0,
+        "Status": "paid"
+       },
+       {
+        "id": "in_1UeyzJ2NGXUMFEe8RmsWfqPU",
+        "Amount Due": 44.0,
+        "Billing": "charge_automatically",
+        "Charge": "ch_3UeyzJ2NGXUMFEe81W7bWKOf",
+        "Currency": "usd",
+        "Customer": "cus_VgLgsObGf1D9oC",
+        "Date (UTC)": "2026-11-23T15:17:00",
+        "Due Date (UTC)": null,
+        "Ending Balance": 0.0,
+        "Number": "AEDERHCK-0001",
+        "Paid": true,
+        "Paid At (UTC)": "2026-11-23T15:17:00",
+        "Finalized At (UTC)": "2026-11-23T15:17:00",
+        "Period Start (UTC)": "2026-11-23T15:17:00",
+        "Period End (UTC)": "2026-11-23T15:17:00",
+        "Starting Balance": 0.0,
+        "Subscription": "sub_1UeyzJ2NGXUMFEe83OV5aN5X",
+        "Subtotal": 44.0,
+        "Total Discount Amount": 0.0,
+        "Total": 44.0,
+        "Customer Email": "[REDACTED]",
+        "Amount Paid": 44.0,
+        "Status": "paid"
+       },
+       {
+        "id": "in_1UeyzU2NGXUMFEe8tXdhiGGj",
+        "Amount Due": 23.2,
+        "Billing": "charge_automatically",
+        "Charge": "ch_3UeyzU2NGXUMFEe803YW57BQ",
+        "Currency": "usd",
+        "Customer": "cus_VgLg5KggEJRsqz",
+        "Date (UTC)": "2026-11-23T15:17:00",
+        "Due Date (UTC)": null,
+        "Ending Balance": 0.0,
+        "Number": "DN0ACKLU-0001",
+        "Paid": true,
+        "Paid At (UTC)": "2026-11-23T15:17:00",
+        "Finalized At (UTC)": "2026-11-23T15:17:00",
+        "Period Start (UTC)": "2026-11-23T15:17:00",
+        "Period End (UTC)": "2026-11-23T15:17:00",
+        "Starting Balance": 0.0,
+        "Subscription": "sub_1UeyzU2NGXUMFEe8brYaNIww",
+        "Subtotal": 29.0,
+        "Total Discount Amount": 5.8,
+        "Total": 23.2,
+        "Customer Email": "[REDACTED]",
+        "Amount Paid": 23.2,
+        "Status": "paid"
+       }
+      ],
+      "date_columns": [
+       "Date (UTC)",
+       "Paid At (UTC)",
+       "Finalized At (UTC)",
+       "Period Start (UTC)",
+       "Period End (UTC)"
+      ],
+      "id_columns": [
+       "id",
+       "Charge",
+       "Customer",
+       "Number",
+       "Subscription",
+       "Customer Email"
+      ],
+      "metric_columns": [
+       "Amount Due",
+       "Ending Balance",
+       "Starting Balance",
+       "Subtotal",
+       "Total Discount Amount",
+       "Total",
+       "Amount Paid"
+      ],
+      "schema_summary": "10 rows \u00d7 23 columns. Dates: Date (UTC) from 2026-11-23 to 2026-11-23 (a single date). Metrics: Amount Due, Ending Balance, Starting Balance, Subtotal, Total Discount Amount, Total, Amount Paid. Identifiers: id, Charge, Customer, Number, Subscription. Categories: Billing, Currency, Due Date (UTC), Paid, Status. Personal data, masked before any model sees it: Customer Email (email). Missing values: Due Date (UTC) 100%, Charge 20%, Paid At (UTC) 10%, Subscription 10%.",
+      "source_query": null,
+      "source_evidence": {
+       "id": "source:data",
+       "kind": "source",
+       "claim": "Loaded 10 rows \u00d7 23 columns from a PARQUET file.",
+       "code": "pd.read_parquet(<uploaded file>)",
+       "result_excerpt": "{\"roles\": {\"id\": [\"id\", \"Charge\", \"Customer\", \"Number\", \"Subscription\", \"Customer Email\"], \"metric\": [\"Amount Due\", \"Ending Balance\", \"Starting Balance\", \"Subtotal\", \"Total Discount Amount\", \"Total\", \"Amount Paid\"], \"category\": [\"Billing\", \"Currency\", \"Due Date (UTC)\", \"Paid\", \"Status\"], \"date\": [\"Date (UTC)\", \"Paid At (UTC)\", \"Finalized At (UTC)\", \"Period Start (UTC)\", \"Period End (UTC)\"]}, \"personal_data\": {\"Customer Email\": \"email\"}, \"fingerprint\": \"29d09df429d1a683\"}",
+       "row_count": 10,
+       "confidence": "high",
+       "confidence_reason": "Read as-is: no layout guessing was needed.",
+       "assumptions": [
+        "1 column hold personal data; their values are masked before any model sees them."
+       ]
+      },
+      "fingerprint": "29d09df429d1a683204df0cafd13d6f694f8c2a6bdf3a10e7d786c67e43c5071",
+      "pii_columns": [
+       "Customer Email"
+      ],
+      "phi": false,
+      "deidentification": [],
+      "deidentified": false,
+      "domain": "saas",
+      "roles": {
+       "invoice_date": "Date (UTC)",
+       "period_start": "Period Start (UTC)",
+       "period_end": "Period End (UTC)",
+       "customer": "Customer",
+       "subscription": "Subscription",
+       "invoice": "id",
+       "amount": "Subtotal",
+       "currency": "Currency",
+       "contact_email": "Customer Email",
+       "status": "Status"
+      },
+      "domain_confidence": "strong"
+     },
+     "cleaning_audit": {
+      "decisions": [
+       {
+        "column": "Charge",
+        "operation": "keep",
+        "strategy": "left_missing",
+        "reason": "2 missing (20%), identifier: left as missing; totals and averages use the 8 known rows.",
+        "rows_affected": 0,
+        "before_null_pct": 20.0,
+        "after_null_pct": 20.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "Due Date (UTC)",
+        "operation": "keep",
+        "strategy": "high_null",
+        "reason": "10 of 10 values missing (100%): too empty to use with confidence; left as missing.",
+        "rows_affected": 0,
+        "before_null_pct": 100.0,
+        "after_null_pct": 100.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "Paid At (UTC)",
+        "operation": "keep",
+        "strategy": "left_missing",
+        "reason": "1 missing (10%), date: left as missing; totals and averages use the 9 known rows.",
+        "rows_affected": 0,
+        "before_null_pct": 10.0,
+        "after_null_pct": 10.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "Subscription",
+        "operation": "keep",
+        "strategy": "left_missing",
+        "reason": "1 missing (10%), identifier: left as missing; totals and averages use the 9 known rows.",
+        "rows_affected": 0,
+        "before_null_pct": 10.0,
+        "after_null_pct": 10.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "*",
+        "operation": "flag",
+        "strategy": "test",
+        "reason": "10 test rows: left out of the figures; kept in the data.",
+        "rows_affected": 10,
+        "before_null_pct": 0.0,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "Currency",
+        "operation": "flag",
+        "strategy": "other_currency",
+        "reason": "4 rows in other currencies than USD; kept, left out of money totals.",
+        "rows_affected": 4,
+        "before_null_pct": 0.0,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       }
+      ],
+      "rows_before": 10,
+      "rows_after": 10,
+      "columns_coerced": [],
+      "duplicates_removed": 0,
+      "outliers_flagged": [],
+      "high_null_columns": [
+       "Due Date (UTC)"
+      ],
+      "summary": "Left missing values as missing in 3 column(s); nothing was imputed. More than 40% missing in: Due Date (UTC) \u2014 review recommended. Final dataset: 10 rows (started with 10).",
+      "anomaly_report": {
+       "flags": [],
+       "methodology_note": "",
+       "eligible_columns": [
+        "Amount Due",
+        "Subtotal",
+        "Total",
+        "Amount Paid"
+       ],
+       "skipped_columns": {
+        "id": "id column",
+        "Billing": "constant or unsupported",
+        "Charge": "non-numeric",
+        "Currency": "non-numeric",
+        "Customer": "non-numeric",
+        "Date (UTC)": "datetime column",
+        "Due Date (UTC)": "constant or unsupported",
+        "Ending Balance": "constant or unsupported",
+        "Number": "non-numeric",
+        "Paid": "binary column (only 2 values)",
+        "Paid At (UTC)": "datetime column",
+        "Finalized At (UTC)": "datetime column",
+        "Period Start (UTC)": "datetime column",
+        "Period End (UTC)": "datetime column",
+        "Starting Balance": "constant or unsupported",
+        "Subscription": "non-numeric",
+        "Total Discount Amount": "binary column (only 2 values)",
+        "Customer Email": "non-numeric",
+        "Status": "binary column (only 2 values)"
+       }
+      },
+      "skipped_columns": [],
+      "date_ranges": {
+       "Date (UTC)": [
+        "2026-11-23",
+        "2026-11-23",
+        1
+       ],
+       "Paid At (UTC)": [
+        "2026-11-23",
+        "2026-11-23",
+        1
+       ],
+       "Finalized At (UTC)": [
+        "2026-11-23",
+        "2026-11-23",
+        1
+       ],
+       "Period Start (UTC)": [
+        "2026-11-23",
+        "2026-11-23",
+        1
+       ],
+       "Period End (UTC)": [
+        "2026-11-23",
+        "2026-11-23",
+        1
+       ]
+      },
+      "grain": "aggregate",
+      "partial_months": {},
+      "main_currency": "USD",
+      "spell_story": [],
+      "window_span": {}
+     },
+     "analysis_findings": null,
+     "chart_configs": [],
+     "insight_report": null,
+     "targeted_response": {
+      "intent": "segment_compare",
+      "answer_text": "sum(Total) for Paid 'True': 3,915.20. sum(Total) by Paid: 'True' leads at 3,915.20; 'False' is lowest at 78.00.",
+      "chart_configs": [
+       {
+        "id": "6784d891-ef4b-490d-b926-179aa9e1a74d",
+        "chart_type": "BarChart",
+        "title": "Total Total by Paid",
+        "data": [
+         {
+          "Paid": "True",
+          "Total": 3915.2,
+          "Total__n": 9
+         },
+         {
+          "Paid": "False",
+          "Total": 78.0,
+          "Total__n": 1
+         }
+        ],
+        "x_key": "Paid",
+        "y_keys": [
+         "Total"
+        ],
+        "colors": [],
+        "x_label": "Paid",
+        "y_label": "Total Total",
+        "show_legend": false,
+        "show_grid": true,
+        "source_finding": "group_bars",
+        "value_format": "number",
+        "layout_hint": "half_width",
+        "rationale": {
+         "rule": "targeted:segment_compare\u2192bars",
+         "reason": "Compares sum Total across Paid.",
+         "x": "Paid",
+         "y": "Total",
+         "split": null,
+         "aggregation": "sum",
+         "n_rows": 10,
+         "evidence_ids": [],
+         "code": "df.groupby('Paid')['Total'].sum()",
+         "confidence": null
+        },
+        "placement": "summary",
+        "lint_warnings": [],
+        "error_key": null,
+        "split_key": null,
+        "reference_lines": []
+       }
+      ],
+      "table_data": [],
+      "table_columns": [],
+      "suggestions": [],
+      "unanswerable_reason": null,
+      "generated_at": "2026-11-23T17:41:28.366923Z"
+     },
+     "expert_review": null,
+     "narrative": {
+      "column_display_names": {
+       "id": "Invoice ID",
+       "Amount Due": "Amount Due",
+       "Billing": "Billing Method",
+       "Charge": "Charge ID",
+       "Currency": "Currency",
+       "Customer": "Customer ID",
+       "Date (UTC)": "Invoice Date",
+       "Due Date (UTC)": "Due Date",
+       "Ending Balance": "Ending Balance",
+       "Number": "Invoice Number",
+       "Paid": "Paid",
+       "Paid At (UTC)": "Paid At",
+       "Finalized At (UTC)": "Finalized At",
+       "Period Start (UTC)": "Period Start",
+       "Period End (UTC)": "Period End",
+       "Starting Balance": "Starting Balance",
+       "Subscription": "Subscription ID",
+       "Subtotal": "Subtotal",
+       "Total Discount Amount": "Discount Amount",
+       "Total": "Total",
+       "Customer Email": "Customer Email",
+       "Amount Paid": "Amount Paid",
+       "Status": "Status"
+      },
+      "entity_singular": "invoice",
+      "entity_plural": "invoices"
+     },
+     "iteration": 1,
+     "quality_check_attempts": 0,
+     "high_null_answer": "continue",
+     "prior_pii": [],
+     "error_retryable": true,
+     "error_reask": true,
+     "overview_done": true,
+     "dataset_name": null,
+     "file_hash": null,
+     "dataset_id": null,
+     "dataset_version_id": null,
+     "status": "completed",
+     "cleaned_data_path": "/Users/uvnikhil/Projects/AnalystAI/session_data/acbdf17c-b5e6-4b14-b833-44c3fe35f538/cleaned_data.parquet",
+     "error_message": null,
+     "created_at": "2026-11-23T17:41:14.317690Z",
+     "updated_at": "2026-11-23T17:41:28.366983Z"
+    },
+    "domain": "saas",
+    "latency_s": 15.86,
+    "cost_usd": 0.02014,
+    "llm_calls": 3,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "[\"What is the breakdown of Total, Total Discount Amount, and Amount Paid by Status across these 10 invoices, and are there any invoices where Amount Due does not equal Amount Paid that remain unpaid?\", \"Which invoices have a non-zero Total Discount Amount, and what percentage of the Subtotal does the discount represent \u2014 are discounts being applied consistently across customers?\", \"Given that Due Date (UTC) is missing for 100% of records and Charge is missing for 20%, which invoices are affected and does the absence of a Charge ID correlate with a Paid status of false or an unresolved Status?\", \"What is the distribution of Ending Balance versus Starting Balance across all invoices, and are there customers whose Ending Balance suggests an outstanding credit or debt that needs follow-up?\", \"Since all 10 invoices share the same Date (UTC) of 2026-11-23, are they all associated with the same billing cycle Period Start (UTC) to Period End (UTC), and how does the Billing category break down across these invoices in terms of Total revenue?\"]",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "{\n  \"column_display_names\": {\n    \"id\": \"Invoice ID\",\n    \"Amount Due\": \"Amount Due\",\n    \"Billing\": \"Billing Method\",\n    \"Charge\": \"Charge ID\",\n    \"Currency\": \"Currency\",\n    \"Customer\": \"Customer ID\",\n    \"Date (UTC)\": \"Invoice Date\",\n    \"Due Date (UTC)\": \"Due Date\",\n    \"Ending Balance\": \"Ending Balance\",\n    \"Number\": \"Invoice Number\",\n    \"Paid\": \"Paid\",\n    \"Paid At (UTC)\": \"Paid At\",\n    \"Finalized At (UTC)\": \"Finalized At\",\n    \"Period Start (UTC)\": \"Period Start\",\n    \"Period End (UTC)\": \"Period End\",\n    \"Starting Balance\": \"Starting Balance\",\n    \"Subscription\": \"Subscription ID\",\n    \"Subtotal\": \"Subtotal\",\n    \"Total Discount Amount\": \"Discount Amount\",\n    \"Total\": \"Total\",\n    \"Customer Email\": \"Customer Email\",\n    \"Amount Paid\": \"Amount Paid\",\n    \"Status\": \"Status\"\n  },\n  \"entity_singular\": \"invoice\",\n  \"entity_plural\": \"invoices\"\n}",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "```json\n{\n  \"raw_query\": \"What is the sum of the Total column over the paid invoices in USD?\",\n  \"target_metrics\": [\"Total\"],\n  \"timeframe\": null,\n  \"segments\": [\"Paid\", \"Currency\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [\"Total\", \"Paid\", \"Currency\"],\n    \"metric_column\": \"Total\",\n    \"date_column\": null,\n    \"segment_column\": \"Paid\",\n    \"segment_value\": \"true\",\n    \"group_by\": \"Currency\",\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"sum\",\n    \"chart_type\": null\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": false
+   }
+  ]
+ }
+}

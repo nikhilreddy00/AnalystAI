@@ -10,13 +10,11 @@ truth:
 question: Which product SKU sold the most units, and how many units was that?
 overview_done: true
 checks:
-- kind: number_in_answer
-  truth_key: top_sku_units
-  rel_tol: 0
-  scales:   # a count written with what it counts (a bare 15 could be a day)
-  - [1, unit]
+# the SKU and its units together ('STK-001 = 15.00', 'Sticker … 15 units'): a bare 15 could be a
+# day, so the number is read beside the SKU (the first run's right answer, 'STK-001 = 15.00',
+# failed a check that wanted '15 units')
 - kind: must_match
-  pattern: STK-001|Sticker
+  pattern: (STK-001|Sticker)\D{0,40}15(\.0+)?\b
 hard_rules:
 - charts_lint_clean
 - charts_have_rationale

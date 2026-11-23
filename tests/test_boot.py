@@ -122,6 +122,8 @@ def test_the_shipped_packs_are_valid_found_from_any_directory_and_in_the_image(t
     monkeypatch.chdir(tmp_path)
     domain_pack.load_packs.cache_clear()
     assert "retail" in [p.domain for p in domain_pack.load_packs()]   # any later pack beside it
+    if not (root / ".dockerignore").exists():   # mutmut's copy holds the Python sources only
+        pytest.skip("no image files in this copy")
     ignored = (root / ".dockerignore").read_text().split()
     assert not {"domain_packs", "domain_packs/", "*.yaml", "domain_pack", "domain_pack/"} & set(ignored)
     assert "COPY . ." in (root / "Dockerfile").read_text()
