@@ -112,7 +112,11 @@ source_paths = ["domain_pack/", "agents/utils.py", "agents/targeted_analysis_age
 also_copy = ["agents/", "api/", "connectors/", "domain_packs/", "evals/", "llm/", "memory/",
              "orchestrator/", "prompts/", "sandbox/", "scripts/", "semantic_layers/", "worker/",
              "semantic_layer.py", "README.md",   # README: tests/test_sources_readme.py
-             "docker-compose.yml"]   # the store's port: test_the_app_store_is_not_published…
+             "docker-compose.yml",   # the store's port: test_the_app_store_is_not_published…
+             # 5.8c: a --record runs every caller's test file, found by name: generic names
+             # (said, fetch, refresh) reach the tests that read the ledger, the notes, the
+             # steering files, the hooks and CI; without them the gate's baseline can't pass
+             "docs/", "CLAUDE.md", "CODING_STANDARDS.md", ".githooks/", ".github/"]
 
 [tool.importlinter]
 # The domain_pack layers (Phase 5.7b-1): a module imports only the layers below it, so a rule
