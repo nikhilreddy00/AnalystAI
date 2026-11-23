@@ -219,11 +219,11 @@ async def test_a_delete_or_a_new_key_ends_the_running_refreshs_hold(store, uploa
     await store.replace_import_key(imp.id, "u1", secrets={"key": "rk_test_NEWKEY456"},
                                    account="Acme", test_mode=True)
     assert not await store.save_refresh(imp.id, "t5", progress={"table": 1})
-    for i in (6, 7, 8):   # the same key saved again resets no tries (security review)
+    for i in (6, 7):   # a working key swapped for another resets no tries (security review)
         assert await store.claim_refresh(imp.id, "u1", f"t{i}", T0 + timedelta(minutes=i)) \
             == "claimed"
         await store.save_refresh(imp.id, f"t{i}", state="failed")
-    await store.replace_import_key(imp.id, "u1", secrets={"key": "rk_test_NEWKEY456"},
+    await store.replace_import_key(imp.id, "u1", secrets={"key": "rk_test_NEWKEY789"},
                                    account="Acme", test_mode=True)
     assert await store.claim_refresh(imp.id, "u1", "t9", T0 + timedelta(minutes=9)) == "too_many"
 

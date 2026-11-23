@@ -263,9 +263,11 @@ _KEY_FAILURES = {"bad_key", "permission", "protected_data"}   # what a new key c
 def _rekeyed(rec: ImportRecord, secrets: dict) -> dict:
     """The fields a new key resets (both stores; audit 1): the running refresh loses the row
     (it held the old key), the old key's failures and its hourly tries go with it. The same key
-    saved again resets no tries (security review: else the hour's limit is a re-save away)."""
+    saved again resets no tries, nor a working key swapped for another: only a key that mends a
+    key's failure does (security review: else the hour's limit is a key swap away)."""
     fields: dict = {"owner": None, "progress": None}
-    if secrets == rec.secrets:
+    mends = any((s.get("error") or {}).get("code") in _KEY_FAILURES for s in rec.status.values())
+    if secrets == rec.secrets or not mends:
         return fields
     status = {t: {**s, "error": None} if (s.get("error") or {}).get("code") in _KEY_FAILURES
               else s for t, s in rec.status.items()}
