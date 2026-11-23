@@ -153,14 +153,25 @@ def recorded(vendor: str):
     exact path and query: a request the recording never made is a 404, so a changed fetcher fails
     here instead of passing on pages it no longer asks for."""
     pages = json.loads((FIXTURES / vendor / "pages.json").read_text())["pages"]
-    by = {(p["path"], tuple(map(tuple, p["query"]))): p for p in pages}
+    by: dict = {}
+    for p in pages:   # a call made twice (a page asked again) is answered in recorded order
+        by.setdefault(_call(p.get("method", "GET"), p["path"], p["query"], p.get("sent")),
+                      []).append(p)
 
     def handler(request: httpx.Request) -> httpx.Response:
-        page = by.get((request.url.path, tuple(sorted(request.url.params.multi_items()))))
-        if page is None:
+        sent = json.loads(request.content) if request.method == "POST" and \
+            not request.url.path.endswith("/oauth/access_token") else None
+        answers = by.get(_call(request.method, request.url.path,
+                               sorted(request.url.params.multi_items()), sent))
+        if not answers:
             return httpx.Response(404, json={"error": {"message": "not in the recording"}})
+        page = answers.pop(0) if len(answers) > 1 else answers[0]
         return httpx.Response(page["status"], json=page["body"], headers=page["headers"])
     return handler
+
+
+def _call(method: str, path: str, query, sent) -> tuple:
+    return method, path, tuple(map(tuple, query)), json.dumps(sent, sort_keys=True)
 
 
 # ── the recorded real account first (D1-38: normal pages before attacks) ───────────────────────
@@ -216,6 +227,75 @@ async def test_the_import_reads_as_stripes_own_export(client, monkeypatch, table
     wd, wroles, _ = detect(want, dates(want))
     assert gd == wd == "saas"
     assert {r: c for r, c in groles.items() if r != "discount_pct"} == wroles
+
+
+SHOP = {"vendor": "shopify", "shop": "analystai-test.myshopify.com", "client_id": "cid-recorded",
+        "key": "shpss_CANARYclientSECRET0000000000"}
+
+
+async def _recorded_shop(client, monkeypatch):
+    serve(monkeypatch, recorded("shopify"))
+    r = await client.post("/api/imports", json=SHOP)
+    assert r.status_code == 201, r.text
+    await _settle(client)
+    body = (await client.get(f"/api/imports/{r.json()['id']}")).json()
+    assert body["state"] == "idle" and body["test_mode"], body
+    return await _frame(client, _tables(body)["orders"]["dataset_id"])
+
+
+async def test_every_recorded_shopify_page_imports(client, monkeypatch):
+    """A development store, recorded 2026-11-23 (scripts/seed_shopify_test.py): 8 orders of 1 to
+    3 lines, one cancelled, one pending, one test, one discounted. Each order's own fields on its
+    first line only (red-team 2: a total on every line multiplied it)."""
+    orders = await _recorded_shop(client, monkeypatch)
+    assert len(orders) == 12 and orders["Name"].nunique() == 8
+    assert orders["Total"].sum() == pytest.approx(444.5)   # each order counted once
+    assert orders["Total"].notna().sum() == 8
+    assert orders["Test"].dropna().tolist().count(True) == 1
+    assert orders["Cancelled at"].notna().sum() == 1
+    assert set(orders["Financial Status"].dropna()) == {"paid", "pending"}
+
+
+async def test_the_shopify_import_reads_as_shopifys_own_export(client, monkeypatch):
+    """The source oracle for an import: the recorded store and Shopify's own Orders export of it,
+    through the one file reader, give the same values in every column both have (the export's
+    Email and people's columns aren't imported; Test is the import's own) and the same retail
+    roles, bar email."""
+    from connectors.csv_connector import _read_bytes
+    from domain_pack.detect import detect
+    got = await _recorded_shop(client, monkeypatch)
+    want, _ = _read_bytes((FIXTURES / "shopify" / "export_orders.csv").read_bytes(), ".csv")
+    shared = [c for c in got.columns if c in want.columns]
+    assert set(got.columns) - set(shared) == {"Test"}
+    # Source is text by Shopify's declaration ("web", "pos", an app's id): the CSV reads an app's
+    # all-digit id as a number. The import keeps the declared type (5.8b root cause 2); the values
+    # are the same as text
+    assert (got["Source"].dropna().tolist()
+            == want["Source"].dropna().astype("int64").astype(str).tolist())
+    same = [c for c in shared if c != "Source"]
+    pd.testing.assert_frame_equal(got[same].reset_index(drop=True),
+                                  want[same].reset_index(drop=True), check_dtype=False)
+    dates = lambda f: {c for c in f.columns if c.endswith(" at")}   # noqa: E731
+    gd, groles, gs = detect(got, dates(got))
+    wd, wroles, _ = detect(want, dates(want))
+    assert (gd, gs) == ("retail", "strong") and wd == "retail"
+    assert groles == {r: c for r, c in wroles.items() if r != "email"}
+
+
+@pytest.mark.parametrize("pasted", ["analystai-test", "AnalystAI-Test.myshopify.com",
+                                    "https://analystai-test.myshopify.com/admin/orders",
+                                    "admin.shopify.com/store/analystai-test"])
+def test_a_store_address_is_read_as_people_paste_it(pasted):
+    from connectors.imports import shop_host
+    assert shop_host(pasted) == "analystai-test.myshopify.com"
+
+
+@pytest.mark.parametrize("pasted", ["shop.example.com", "", "evil.com/x.myshopify.com",
+                                    "a.myshopify.com.evil.com", "my_store.myshopify.com"])
+def test_anything_but_a_store_address_is_refused(pasted):
+    from connectors.imports import ImportFailure, shop_host
+    with pytest.raises(ImportFailure):
+        shop_host(pasted)
 
 
 # ── normal accounts first (D1-38) ──────────────────────────────────────────────────────────────

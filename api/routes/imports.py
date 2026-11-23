@@ -32,8 +32,9 @@ _BUSY = {
 
 class ImportKey(BaseModel):
     vendor: str = Field(max_length=32)
-    key: str = Field(min_length=1, max_length=4096)
+    key: str = Field(min_length=1, max_length=4096)        # Shopify: the app's client secret
     shop: str | None = Field(default=None, max_length=255)
+    client_id: str | None = Field(default=None, max_length=255)
 
 
 class Window(BaseModel):
@@ -41,7 +42,17 @@ class Window(BaseModel):
 
 
 def _secrets(body: ImportKey) -> dict:
-    return {"key": body.key.strip(), **({"shop": body.shop.strip()} if body.shop else {})}
+    """The key's parts; a store's address as its one canonical host (red-team 6), or as typed
+    when it isn't one (the key test then says so in words)."""
+    out = {"key": body.key.strip()}
+    if body.shop:
+        try:
+            out["shop"] = imp.shop_host(body.shop)
+        except imp.ImportFailure:
+            out["shop"] = body.shop.strip()
+    if body.client_id:
+        out["client_id"] = body.client_id.strip()
+    return out
 
 
 def _vendor(name: str) -> imp.Vendor:

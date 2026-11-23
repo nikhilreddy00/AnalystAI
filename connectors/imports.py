@@ -18,6 +18,7 @@ import datetime as dt
 import decimal
 import json
 import logging
+import re
 import uuid
 from dataclasses import dataclass, field
 from typing import Awaitable, Callable
@@ -97,12 +98,23 @@ def vendor_client(hosts: frozenset[str]) -> httpx.AsyncClient:
     return client
 
 
-async def get_json(client: httpx.AsyncClient, url: str, *, what: str, **kw) -> dict:
-    """One answer as JSON, its failure as a reason code. A 429 is waited out once (its
-    Retry-After if any, else RETRY_WAIT_S), never when the vendor says not to retry."""
+async def get_json(client: httpx.AsyncClient, url: str, *, what: str, method: str = "GET",
+                   **kw) -> dict:
+    """One answer as JSON, its failure as a reason code."""
+    body = await fetch(client, url, what=what, method=method, **kw)
+    try:
+        return json.loads(body)
+    except ValueError:
+        raise ImportFailure("vendor_down", "not JSON") from None
+
+
+async def fetch(client: httpx.AsyncClient, url: str, *, what: str, method: str = "GET",
+                cap: int = PAGE_BYTES, **kw) -> bytes:
+    """One answer's body (at most `cap` bytes), its failure as a reason code. A 429 is waited out
+    once (its Retry-After if any, else RETRY_WAIT_S), never when the vendor says not to retry."""
     for attempt in (1, 2):
         try:
-            async with client.stream("GET", url, **kw) as r:
+            async with client.stream(method, url, **kw) as r:
                 if r.status_code == 429 and attempt == 1 and \
                         r.headers.get("stripe-should-retry") != "false":
                     wait = r.headers.get("retry-after", "")
@@ -116,7 +128,7 @@ async def get_json(client: httpx.AsyncClient, url: str, *, what: str, **kw) -> d
                     raise ImportFailure("rate_limited")
                 if r.status_code != 200:
                     raise ImportFailure("vendor_down", f"HTTP {r.status_code}")
-                body = await capped_body(r, PAGE_BYTES)
+                return await capped_body(r, cap)
         except ImportFailure:
             raise
         except RefusedHost:
@@ -126,10 +138,6 @@ async def get_json(client: httpx.AsyncClient, url: str, *, what: str, **kw) -> d
         except (httpx.TransportError, ValueError) as exc:   # ValueError: capped_body's refusals
             raise ImportFailure("network" if isinstance(exc, httpx.TransportError)
                                 else "vendor_down", type(exc).__name__) from None
-        try:
-            return json.loads(body)
-        except ValueError:
-            raise ImportFailure("vendor_down", "not JSON") from None
     raise ImportFailure("rate_limited")
 
 
@@ -193,9 +201,13 @@ class Vendor:
 VENDORS: dict[str, Vendor] = {}
 
 
+_NOT_SECRET = {"shop"}   # a store's address names it, it opens nothing
+
+
 def secret_values(secrets: dict) -> list[str]:
-    """Each part of a stored key (red-team 7: a JSON of parts registered whole masked none)."""
-    return [v for v in secrets.values() if isinstance(v, str) and v]
+    """Each credential part of a stored key, registered one by one (red-team 7: a JSON of parts
+    registered whole masked none)."""
+    return [v for k, v in secrets.items() if k not in _NOT_SECRET and isinstance(v, str) and v]
 
 
 # ── The refresh ────────────────────────────────────────────────────────────────────────────────
@@ -517,3 +529,228 @@ VENDORS["stripe"] = Vendor(
     name="stripe", label="Stripe", hosts=lambda s: frozenset({"api.stripe.com"}),
     check=_stripe_check, test=_stripe_test, auth=_stripe_auth,
     tables=[STRIPE_SUBSCRIPTIONS, STRIPE_INVOICES])
+
+
+# ── Shopify ────────────────────────────────────────────────────────────────────────────────────
+# Docs: research §3; recorded on a development store 2026-11-23. A merchant-owned Dev Dashboard
+# app: its client id and secret mint a 24 h token (client credentials) at every refresh, never
+# stored. Orders are paged with plain GraphQL queries, never a Bulk Operation (recording session: a
+# Dev Dashboard app must switch bulk queries on, and the switch lapses after 31 days without one:
+# a monthly Get latest data would fail for a reason no shop owner could see), so no file host and
+# no signed URL. `read_orders` reaches the last 60 days only (`read_all_orders` couldn't be granted
+# to a Dev Dashboard app), which keeps a small shop's pages few; Shopify's throttle is waited out
+# inside the refresh's deadline. Orders need Shopify's protected customer data access (Level 1).
+# No customer's name, email or address is asked for.
+
+SHOPIFY_API = "2026-01"
+ORDERS_PAGE, LINES_PAGE = 25, 50   # a page's requested cost stays under Shopify's 1,000
+THROTTLE_WAIT_S = 2.0
+_SHOP = re.compile(r"[a-z0-9][a-z0-9-]*")
+
+REASONS.update({
+    "bad_shop": "That isn't a Shopify store address. Use the store's …myshopify.com address "
+                "(Shopify admin → Settings → Domains), not a custom domain.",
+    "protected_data": "Shopify won't share orders with the app yet. In the Dev Dashboard open the "
+                      "app → Settings → Protected customer data access, select Level 1 "
+                      "(reason: Analytics), save, and release the app.",
+})
+
+
+def shop_host(pasted: str) -> str:
+    """A store's …myshopify.com host from what people paste: `mystore`, `MyStore.myshopify.com`,
+    `https://mystore.myshopify.com/admin`, `admin.shopify.com/store/mystore` (red-team 6: one
+    rule, read at save and at every refresh). A custom domain is refused: its host is the
+    user's to name, the API's never."""
+    text = pasted.strip().lower()
+    text = re.sub(r"^[a-z]+://", "", text).split("?")[0].strip("/")
+    if m := re.fullmatch(r"admin\.shopify\.com/store/([^/]+)(?:/.*)?", text):
+        name = m.group(1)
+    else:
+        host = text.split("/")[0]
+        name = host[: -len(".myshopify.com")] if host.endswith(".myshopify.com") else \
+            host if "." not in host else ""
+    if not _SHOP.fullmatch(name) or len(name) > 60:
+        raise ImportFailure("bad_shop")
+    return f"{name}.myshopify.com"
+
+
+def _shopify_check(secrets: dict) -> None:
+    shop_host(secrets.get("shop", ""))
+    if not secrets.get("client_id") or not secrets.get("key"):
+        raise ImportFailure("not_a_key")
+
+
+async def _shopify_auth(client, secrets: dict) -> dict:
+    """A fresh token for this refresh (client credentials), registered as a secret at once."""
+    try:
+        body = await get_json(client, f"https://{shop_host(secrets['shop'])}/admin/oauth/access_token",
+                              what="the app", method="POST",
+                              data={"grant_type": "client_credentials",
+                                    "client_id": secrets["client_id"],
+                                    "client_secret": secrets["key"]})
+    except ImportFailure as f:
+        if f.code in ("permission", "vendor_down") and f.what in ("the app", "HTTP 400"):
+            raise ImportFailure("bad_key") from None
+        raise
+    token = body.get("access_token")
+    if not isinstance(token, str) or not token:
+        raise ImportFailure("bad_key")
+    register_secrets(token)
+    return {"X-Shopify-Access-Token": token, "_shop": shop_host(secrets["shop"])}
+
+
+async def _gql(client, headers: dict, query: str, what: str, **variables) -> dict:
+    """A GraphQL answer's data. Its errors arrive inside a 200: each said as a reason code; a
+    throttle is waited out (the refresh's deadline bounds the waiting)."""
+    shop = headers["_shop"]
+    while True:
+        got = await get_json(client, f"https://{shop}/admin/api/{SHOPIFY_API}/graphql.json",
+                             what=what, method="POST",
+                             headers={k: v for k, v in headers.items() if not k.startswith("_")},
+                             json={"query": query, "variables": variables})
+        codes = [(e.get("extensions") or {}).get("code") for e in got.get("errors") or []]
+        if codes != ["THROTTLED"]:
+            break
+        await asyncio.sleep(THROTTLE_WAIT_S)
+    for e in got.get("errors") or []:
+        ext = e.get("extensions") or {}
+        if ext.get("code") == "ACCESS_DENIED":
+            raise ImportFailure("protected_data" if "protected-customer-data"
+                                in str(ext.get("documentation", "")) else "permission", what)
+        raise ImportFailure("vendor_down", "GraphQL")
+    if not isinstance(got.get("data"), dict):
+        raise ImportFailure("schema", "data")
+    return got["data"]
+
+
+_MONEY = "{ shopMoney { amount } }"
+_LINE = ("id name sku quantity vendor requiresShipping taxable unfulfilledQuantity "
+         f"originalUnitPriceSet {_MONEY} totalDiscountSet {_MONEY}")
+_ORDERS = f"""query($after: String, $q: String) {{
+  orders(first: {ORDERS_PAGE}, after: $after, query: $q, sortKey: CREATED_AT, reverse: true) {{
+    pageInfo {{ hasNextPage endCursor }}
+    edges {{ node {{
+      id name createdAt cancelledAt test currencyCode displayFinancialStatus
+      displayFulfillmentStatus subtotalPriceSet {_MONEY} totalShippingPriceSet {_MONEY}
+      totalTaxSet {_MONEY} totalPriceSet {_MONEY} totalDiscountsSet {_MONEY}
+      totalRefundedSet {_MONEY} totalOutstandingSet {_MONEY}
+      discountCodes tags sourceName retailLocation {{ name }}
+      lineItems(first: {LINES_PAGE}) {{ pageInfo {{ hasNextPage endCursor }}
+                                         edges {{ node {{ {_LINE} }} }} }} }} }} }} }}"""
+_MORE_LINES = f"""query($id: ID!, $after: String) {{ order(id: $id) {{
+  lineItems(first: {LINES_PAGE}, after: $after) {{ pageInfo {{ hasNextPage endCursor }}
+                                                  edges {{ node {{ {_LINE} }} }} }} }} }}"""
+
+
+async def _shopify_orders(client, headers, window_from) -> tuple[list[dict], str | None]:
+    """Every order's lines, newest order first, as the Orders export lays them out (one row a
+    line; the order's own fields on its first line only: red-team 2, a total on every line
+    multiplied it). Paged on Shopify's cursors (only the cursor is read from an answer); an
+    order's lines past the first page paged on their own (never the first page only)."""
+    tz = need(await _gql(client, headers, "{ shop { ianaTimezone } }", "Orders"),
+              "shop", "ianaTimezone")
+    rows, after = [], None
+    while True:
+        page = need(await _gql(client, headers, _ORDERS, "Orders", after=after,
+                               q=f"created_at:>={window_from}" if window_from else None),
+                    "orders")
+        for edge in need(page, "edges"):
+            o = need(edge, "node")
+            lines, more = need(o, "lineItems"), None
+            own = [need(e, "node") for e in need(lines, "edges")]
+            while need(lines, "pageInfo", "hasNextPage"):
+                more = need(lines, "pageInfo", "endCursor")
+                lines = need(await _gql(client, headers, _MORE_LINES, "Orders", id=o["id"],
+                                        after=more), "order", "lineItems")
+                own += [need(e, "node") for e in need(lines, "edges")]
+            rows += [{"order": o, "line": ln, "first": i == 0, "i": i, "tz": tz}
+                     for i, ln in enumerate(own)]
+            if len(rows) >= ROW_CAP:   # newest kept; the first day kept said
+                return rows[:ROW_CAP], dt.datetime.fromisoformat(
+                    o["createdAt"].replace("Z", "+00:00")).date().isoformat()
+        if not need(page, "pageInfo", "hasNextPage"):
+            return rows, None
+        after = need(page, "pageInfo", "endCursor")
+
+
+def _local(r: dict, iso: str | None) -> dt.datetime | None:
+    """A moment as the export writes it: the shop's own zone, with its offset."""
+    if not iso:
+        return None
+    from zoneinfo import ZoneInfo
+    return dt.datetime.fromisoformat(iso.replace("Z", "+00:00")).astimezone(ZoneInfo(r["tz"]))
+
+
+def _amount(obj: dict, field_name: str) -> decimal.Decimal | None:
+    value = need(obj, field_name, "shopMoney", "amount")
+    return None if value is None else decimal.Decimal(value)
+
+
+def _first(get: Callable[[dict], object]) -> Callable[[dict], object]:
+    """An order's own field: on its first line, blank on the rest (the export's layout)."""
+    return lambda r: get(r) if r["first"] else None
+
+
+_O = lambda r, *p: need(r["order"], *p)   # noqa: E731
+_L = lambda r, *p: need(r["line"], *p)    # noqa: E731
+
+# Shopify's Orders export (Orders → Export → All orders, CSV), its names and order
+# (tests/fixtures/imports/shopify/export_orders.csv); no customer's email, name or address, and
+# Test added (the export has no test column: a test order reads as a sale there). Outstanding
+# Balance is left out: the export's isn't the API's (a cancelled order's 110 against 0), and no
+# answer reads it.
+SHOPIFY_ORDERS = Table(
+    name="orders", label="Shopify · Orders", what="Orders",
+    fetch=_shopify_orders,
+    # newest first, as exported: an order made in the same second as another after it by its
+    # id, which only grows (the first oracle run: #1005 before #1006)
+    key=lambda r: (-dt.datetime.fromisoformat(r["order"]["createdAt"].replace("Z", "+00:00"))
+                   .timestamp(), -int(r["order"]["id"].rsplit("/", 1)[1]), r["i"]),
+    columns=[
+        Column("Name", lambda r: _O(r, "name")),
+        Column("Financial Status", _first(lambda r: (_O(r, "displayFinancialStatus") or "").lower()
+                                          or None)),
+        Column("Fulfillment Status", _first(
+            lambda r: (_O(r, "displayFulfillmentStatus") or "").lower() or None)),
+        Column("Currency", _first(lambda r: _O(r, "currencyCode"))),
+        Column("Subtotal", _first(lambda r: _amount(r["order"], "subtotalPriceSet"))),
+        Column("Shipping", _first(lambda r: _amount(r["order"], "totalShippingPriceSet"))),
+        Column("Taxes", _first(lambda r: _amount(r["order"], "totalTaxSet"))),
+        Column("Total", _first(lambda r: _amount(r["order"], "totalPriceSet"))),
+        Column("Discount Code", _first(lambda r: ", ".join(_O(r, "discountCodes")) or None)),
+        Column("Discount Amount", _first(lambda r: _amount(r["order"], "totalDiscountsSet"))),
+        Column("Created at", lambda r: _local(r, _O(r, "createdAt"))),
+        Column("Lineitem quantity", lambda r: _L(r, "quantity")),
+        Column("Lineitem name", lambda r: _L(r, "name")),
+        Column("Lineitem price", lambda r: _amount(r["line"], "originalUnitPriceSet")),
+        Column("Lineitem sku", lambda r: _L(r, "sku")),
+        Column("Lineitem requires shipping", lambda r: _L(r, "requiresShipping")),
+        Column("Lineitem taxable", lambda r: _L(r, "taxable")),
+        Column("Lineitem fulfillment status",
+               lambda r: "pending" if _L(r, "unfulfilledQuantity") or _O(r, "cancelledAt")
+               else "fulfilled"),
+        Column("Cancelled at", _first(lambda r: _local(r, _O(r, "cancelledAt")))),
+        Column("Refunded Amount", _first(lambda r: _amount(r["order"], "totalRefundedSet"))),
+        Column("Vendor", lambda r: _L(r, "vendor") or None),
+        Column("Location", _first(lambda r: (_O(r, "retailLocation") or {}).get("name"))),
+        Column("Id", _first(lambda r: int(_O(r, "id").rsplit("/", 1)[1]))),
+        Column("Tags", _first(lambda r: ", ".join(_O(r, "tags")) or None)),
+        Column("Source", _first(lambda r: _O(r, "sourceName"))),
+        Column("Lineitem discount", lambda r: _amount(r["line"], "totalDiscountSet")),
+        Column("Test", _first(lambda r: _O(r, "test"))),
+    ])
+
+
+async def _shopify_test(client, secrets: dict) -> tuple[str, bool]:
+    """A token minted, then the very first request the table sends; a development store is
+    test data (Shopify's own plan flag)."""
+    headers = await _shopify_auth(client, secrets)
+    data = await _gql(client, headers, """{ shop { name plan { partnerDevelopment } }
+        orders(first: 1) { edges { node { id } } } }""", "Orders")
+    return need(data, "shop", "name"), bool(need(data, "shop", "plan", "partnerDevelopment"))
+
+
+VENDORS["shopify"] = Vendor(
+    name="shopify", label="Shopify",
+    hosts=lambda s: frozenset({shop_host(s.get("shop", ""))}),
+    check=_shopify_check, test=_shopify_test, auth=_shopify_auth, tables=[SHOPIFY_ORDERS])

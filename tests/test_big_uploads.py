@@ -282,7 +282,7 @@ async def test_a_body_declared_past_the_cap_is_refused_unread(client):
 
 async def test_a_streamed_body_past_the_cap_is_refused(client, monkeypatch):
     """No Content-Length (chunked): counted as it arrives, never spooled whole."""
-    monkeypatch.setattr("api.main.MAX_BODY", 4096)
+    monkeypatch.setattr("api.middleware.MAX_BODY", 4096)
     async def chunks():   # a well-formed part whose file runs past the limit
         yield (b'--b\r\nContent-Disposition: form-data; name="file"; filename="a.csv"\r\n'
                b"Content-Type: text/csv\r\n\r\n")

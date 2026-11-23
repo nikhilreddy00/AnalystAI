@@ -1,0 +1,913 @@
+{
+ "account": "[scrubbed]",
+ "pages": [
+  {
+   "body": {
+    "access_token": "[token]",
+    "expires_in": 86391,
+    "scope": "read_products,read_locations,write_orders"
+   },
+   "headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "host": "analystai-test.myshopify.com",
+   "method": "POST",
+   "path": "/admin/oauth/access_token",
+   "query": [],
+   "sent": null,
+   "signed": false,
+   "status": 200
+  },
+  {
+   "body": {
+    "data": {
+     "orders": {
+      "edges": [
+       {
+        "node": {
+         "id": "gid://shopify/Order/19037051224383"
+        }
+       }
+      ]
+     },
+     "shop": {
+      "name": "analystai-test",
+      "plan": {
+       "partnerDevelopment": true
+      }
+     }
+    },
+    "extensions": {
+     "cost": {
+      "actualQueryCost": 5,
+      "requestedQueryCost": 5,
+      "throttleStatus": {
+       "currentlyAvailable": 1995,
+       "maximumAvailable": 2000.0,
+       "restoreRate": 100.0
+      }
+     }
+    }
+   },
+   "headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "host": "analystai-test.myshopify.com",
+   "method": "POST",
+   "path": "/admin/api/2026-01/graphql.json",
+   "query": [],
+   "sent": {
+    "query": "{ shop { name plan { partnerDevelopment } }\n        orders(first: 1) { edges { node { id } } } }",
+    "variables": {}
+   },
+   "signed": false,
+   "status": 200
+  },
+  {
+   "body": {
+    "access_token": "[token]",
+    "expires_in": 86391,
+    "scope": "read_products,read_locations,write_orders"
+   },
+   "headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "host": "analystai-test.myshopify.com",
+   "method": "POST",
+   "path": "/admin/oauth/access_token",
+   "query": [],
+   "sent": null,
+   "signed": false,
+   "status": 200
+  },
+  {
+   "body": {
+    "data": {
+     "shop": {
+      "ianaTimezone": "America/New_York"
+     }
+    },
+    "extensions": {
+     "cost": {
+      "actualQueryCost": 1,
+      "requestedQueryCost": 1,
+      "throttleStatus": {
+       "currentlyAvailable": 1999,
+       "maximumAvailable": 2000.0,
+       "restoreRate": 100.0
+      }
+     }
+    }
+   },
+   "headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "host": "analystai-test.myshopify.com",
+   "method": "POST",
+   "path": "/admin/api/2026-01/graphql.json",
+   "query": [],
+   "sent": {
+    "query": "{ shop { ianaTimezone } }",
+    "variables": {}
+   },
+   "signed": false,
+   "status": 200
+  },
+  {
+   "body": {
+    "data": {
+     "orders": {
+      "edges": [
+       {
+        "node": {
+         "cancelledAt": null,
+         "createdAt": "2026-11-23T16:58:18Z",
+         "currencyCode": "USD",
+         "discountCodes": [],
+         "displayFinancialStatus": "PAID",
+         "displayFulfillmentStatus": "UNFULFILLED",
+         "id": "gid://shopify/Order/19037070360895",
+         "lineItems": {
+          "edges": [
+           {
+            "node": {
+             "id": "gid://shopify/LineItem/51006575640895",
+             "name": "Sticker",
+             "originalUnitPriceSet": {
+              "shopMoney": {
+               "amount": "3.0"
+              }
+             },
+             "quantity": 10,
+             "requiresShipping": false,
+             "sku": "STK-001",
+             "taxable": true,
+             "totalDiscountSet": {
+              "shopMoney": {
+               "amount": "0.0"
+              }
+             },
+             "unfulfilledQuantity": 10,
+             "vendor": null
+            }
+           }
+          ],
+          "pageInfo": {
+           "endCursor": "eyJsYXN0X2lkIjo1MTAwNjU3NTY0MDg5NSwibGFzdF92YWx1ZSI6NTEwMDY1NzU2NDA4OTV9",
+           "hasNextPage": false
+          }
+         },
+         "name": "#1008",
+         "retailLocation": null,
+         "sourceName": "451107586049",
+         "subtotalPriceSet": {
+          "shopMoney": {
+           "amount": "30.0"
+          }
+         },
+         "tags": [
+          "seed-5.8c-8"
+         ],
+         "test": false,
+         "totalDiscountsSet": {
+          "shopMoney": {
+           "amount": "0.0"
+          }
+         },
+         "totalOutstandingSet": {
+          "shopMoney": {
+           "amount": "30.0"
+          }
+         },
+         "totalPriceSet": {
+          "shopMoney": {
+           "amount": "30.0"
+          }
+         },
+         "totalRefundedSet": {
+          "shopMoney": {
+           "amount": "0.0"
+          }
+         },
+         "totalShippingPriceSet": {
+          "shopMoney": {
+           "amount": "0.0"
+          }
+         },
+         "totalTaxSet": {
+          "shopMoney": {
+           "amount": "0.0"
+          }
+         }
+        }
+       },
+       {
+        "node": {
+         "cancelledAt": null,
+         "createdAt": "2026-11-23T16:58:08Z",
+         "currencyCode": "USD",
+         "discountCodes": [],
+         "displayFinancialStatus": "PAID",
+         "displayFulfillmentStatus": "UNFULFILLED",
+         "id": "gid://shopify/Order/19037070098751",
+         "lineItems": {
+          "edges": [
+           {
+            "node": {
+             "id": "gid://shopify/LineItem/51006575247679",
+             "name": "Cap",
+             "originalUnitPriceSet": {
+              "shopMoney": {
+               "amount": "18.0"
+              }
+             },
+             "quantity": 1,
+             "requiresShipping": false,
+             "sku": "CAP-001",
+             "taxable": true,
+             "totalDiscountSet": {
+              "shopMoney": {
+               "amount": "0.0"
+              }
+             },
+             "unfulfilledQuantity": 1,
+             "vendor": null
+            }
+           },
+           {
+            "node": {
+             "id": "gid://shopify/LineItem/51006575280447",
+             "name": "Mug",
+             "originalUnitPriceSet": {
+              "shopMoney": {
+               "amount": "12.5"
+              }
+             },
+             "quantity": 2,
+             "requiresShipping": false,
+             "sku": "MUG-001",
+             "taxable": true,
+             "totalDiscountSet": {
+              "shopMoney": {
+               "amount": "0.0"
+              }
+             },
+             "unfulfilledQuantity": 2,
+             "vendor": null
+            }
+           }
+          ],
+          "pageInfo": {
+           "endCursor": "eyJsYXN0X2lkIjo1MTAwNjU3NTI4MDQ0NywibGFzdF92YWx1ZSI6NTEwMDY1NzUyODA0NDd9",
+           "hasNextPage": false
+          }
+         },
+         "name": "#1007",
+         "retailLocation": null,
+         "sourceName": "451107586049",
+         "subtotalPriceSet": {
+          "shopMoney": {
+           "amount": "43.0"
+          }
+         },
+         "tags": [
+          "seed-5.8c-7"
+         ],
+         "test": false,
+         "totalDiscountsSet": {
+          "shopMoney": {
+           "amount": "0.0"
+          }
+         },
+         "totalOutstandingSet": {
+          "shopMoney": {
+           "amount": "43.0"
+          }
+         },
+         "totalPriceSet": {
+          "shopMoney": {
+           "amount": "43.0"
+          }
+         },
+         "totalRefundedSet": {
+          "shopMoney": {
+           "amount": "0.0"
+          }
+         },
+         "totalShippingPriceSet": {
+          "shopMoney": {
+           "amount": "0.0"
+          }
+         },
+         "totalTaxSet": {
+          "shopMoney": {
+           "amount": "0.0"
+          }
+         }
+        }
+       },
+       {
+        "node": {
+         "cancelledAt": null,
+         "createdAt": "2026-11-23T16:56:56Z",
+         "currencyCode": "USD",
+         "discountCodes": [],
+         "displayFinancialStatus": "PAID",
+         "displayFulfillmentStatus": "UNFULFILLED",
+         "id": "gid://shopify/Order/19037067510079",
+         "lineItems": {
+          "edges": [
+           {
+            "node": {
+             "id": "gid://shopify/LineItem/51006568235327",
+             "name": "Classic Tee",
+             "originalUnitPriceSet": {
+              "shopMoney": {
+               "amount": "20.0"
+              }
+             },
+             "quantity": 1,
+             "requiresShipping": false,
+             "sku": "TEE-001",
+             "taxable": true,
+             "totalDiscountSet": {
+              "shopMoney": {
+               "amount": "0.0"
+              }
+             },
+             "unfulfilledQuantity": 1,
+             "vendor": null
+            }
+           }
+          ],
+          "pageInfo": {
+           "endCursor": "eyJsYXN0X2lkIjo1MTAwNjU2ODIzNTMyNywibGFzdF92YWx1ZSI6NTEwMDY1NjgyMzUzMjd9",
+           "hasNextPage": false
+          }
+         },
+         "name": "#1006",
+         "retailLocation": null,
+         "sourceName": "451107586049",
+         "subtotalPriceSet": {
+          "shopMoney": {
+           "amount": "20.0"
+          }
+         },
+         "tags": [
+          "seed-5.8c-6"
+         ],
+         "test": true,
+         "totalDiscountsSet": {
+          "shopMoney": {
+           "amount": "0.0"
+          }
+         },
+         "totalOutstandingSet": {
+          "shopMoney": {
+           "amount": "20.0"
+          }
+         },
+         "totalPriceSet": {
+          "shopMoney": {
+           "amount": "20.0"
+          }
+         },
+         "totalRefundedSet": {
+          "shopMoney": {
+           "amount": "0.0"
+          }
+         },
+         "totalShippingPriceSet": {
+          "shopMoney": {
+           "amount": "0.0"
+          }
+         },
+         "totalTaxSet": {
+          "shopMoney": {
+           "amount": "0.0"
+          }
+         }
+        }
+       },
+       {
+        "node": {
+         "cancelledAt": "2026-11-23T16:58:54Z",
+         "createdAt": "2026-11-23T16:56:56Z",
+         "currencyCode": "USD",
+         "discountCodes": [],
+         "displayFinancialStatus": "PAID",
+         "displayFulfillmentStatus": "UNFULFILLED",
+         "id": "gid://shopify/Order/19037067477311",
+         "lineItems": {
+          "edges": [
+           {
+            "node": {
+             "id": "gid://shopify/LineItem/51006568137023",
+             "name": "Hoodie",
+             "originalUnitPriceSet": {
+              "shopMoney": {
+               "amount": "55.0"
+              }
+             },
+             "quantity": 2,
+             "requiresShipping": false,
+             "sku": "HOO-001",
+             "taxable": true,
+             "totalDiscountSet": {
+              "shopMoney": {
+               "amount": "0.0"
+              }
+             },
+             "unfulfilledQuantity": 2,
+             "vendor": null
+            }
+           }
+          ],
+          "pageInfo": {
+           "endCursor": "eyJsYXN0X2lkIjo1MTAwNjU2ODEzNzAyMywibGFzdF92YWx1ZSI6NTEwMDY1NjgxMzcwMjN9",
+           "hasNextPage": false
+          }
+         },
+         "name": "#1005",
+         "retailLocation": null,
+         "sourceName": "451107586049",
+         "subtotalPriceSet": {
+          "shopMoney": {
+           "amount": "110.0"
+          }
+         },
+         "tags": [
+          "seed-5.8c-5"
+         ],
+         "test": false,
+         "totalDiscountsSet": {
+          "shopMoney": {
+           "amount": "0.0"
+          }
+         },
+         "totalOutstandingSet": {
+          "shopMoney": {
+           "amount": "0.0"
+          }
+         },
+         "totalPriceSet": {
+          "shopMoney": {
+           "amount": "110.0"
+          }
+         },
+         "totalRefundedSet": {
+          "shopMoney": {
+           "amount": "0.0"
+          }
+         },
+         "totalShippingPriceSet": {
+          "shopMoney": {
+           "amount": "0.0"
+          }
+         },
+         "totalTaxSet": {
+          "shopMoney": {
+           "amount": "0.0"
+          }
+         }
+        }
+       },
+       {
+        "node": {
+         "cancelledAt": null,
+         "createdAt": "2026-11-23T16:56:55Z",
+         "currencyCode": "USD",
+         "discountCodes": [],
+         "displayFinancialStatus": "PENDING",
+         "displayFulfillmentStatus": "UNFULFILLED",
+         "id": "gid://shopify/Order/19037067411775",
+         "lineItems": {
+          "edges": [
+           {
+            "node": {
+             "id": "gid://shopify/LineItem/51006568104255",
+             "name": "Mug",
+             "originalUnitPriceSet": {
+              "shopMoney": {
+               "amount": "12.5"
+              }
+             },
+             "quantity": 4,
+             "requiresShipping": false,
+             "sku": "MUG-001",
+             "taxable": true,
+             "totalDiscountSet": {
+              "shopMoney": {
+               "amount": "0.0"
+              }
+             },
+             "unfulfilledQuantity": 4,
+             "vendor": null
+            }
+           }
+          ],
+          "pageInfo": {
+           "endCursor": "eyJsYXN0X2lkIjo1MTAwNjU2ODEwNDI1NSwibGFzdF92YWx1ZSI6NTEwMDY1NjgxMDQyNTV9",
+           "hasNextPage": false
+          }
+         },
+         "name": "#1004",
+         "retailLocation": null,
+         "sourceName": "451107586049",
+         "subtotalPriceSet": {
+          "shopMoney": {
+           "amount": "50.0"
+          }
+         },
+         "tags": [
+          "seed-5.8c-4"
+         ],
+         "test": false,
+         "totalDiscountsSet": {
+          "shopMoney": {
+           "amount": "0.0"
+          }
+         },
+         "totalOutstandingSet": {
+          "shopMoney": {
+           "amount": "50.0"
+          }
+         },
+         "totalPriceSet": {
+          "shopMoney": {
+           "amount": "50.0"
+          }
+         },
+         "totalRefundedSet": {
+          "shopMoney": {
+           "amount": "0.0"
+          }
+         },
+         "totalShippingPriceSet": {
+          "shopMoney": {
+           "amount": "0.0"
+          }
+         },
+         "totalTaxSet": {
+          "shopMoney": {
+           "amount": "0.0"
+          }
+         }
+        }
+       },
+       {
+        "node": {
+         "cancelledAt": null,
+         "createdAt": "2026-11-23T16:56:54Z",
+         "currencyCode": "USD",
+         "discountCodes": [
+          "SAVE5"
+         ],
+         "displayFinancialStatus": "PAID",
+         "displayFulfillmentStatus": "UNFULFILLED",
+         "id": "gid://shopify/Order/19037067379007",
+         "lineItems": {
+          "edges": [
+           {
+            "node": {
+             "id": "gid://shopify/LineItem/51006567973183",
+             "name": "Classic Tee",
+             "originalUnitPriceSet": {
+              "shopMoney": {
+               "amount": "20.0"
+              }
+             },
+             "quantity": 1,
+             "requiresShipping": false,
+             "sku": "TEE-001",
+             "taxable": true,
+             "totalDiscountSet": {
+              "shopMoney": {
+               "amount": "0.0"
+              }
+             },
+             "unfulfilledQuantity": 1,
+             "vendor": null
+            }
+           },
+           {
+            "node": {
+             "id": "gid://shopify/LineItem/51006568005951",
+             "name": "Cap",
+             "originalUnitPriceSet": {
+              "shopMoney": {
+               "amount": "18.0"
+              }
+             },
+             "quantity": 3,
+             "requiresShipping": false,
+             "sku": "CAP-001",
+             "taxable": true,
+             "totalDiscountSet": {
+              "shopMoney": {
+               "amount": "0.0"
+              }
+             },
+             "unfulfilledQuantity": 3,
+             "vendor": null
+            }
+           },
+           {
+            "node": {
+             "id": "gid://shopify/LineItem/51006568038719",
+             "name": "Sticker",
+             "originalUnitPriceSet": {
+              "shopMoney": {
+               "amount": "3.0"
+              }
+             },
+             "quantity": 5,
+             "requiresShipping": false,
+             "sku": "STK-001",
+             "taxable": true,
+             "totalDiscountSet": {
+              "shopMoney": {
+               "amount": "0.0"
+              }
+             },
+             "unfulfilledQuantity": 5,
+             "vendor": null
+            }
+           }
+          ],
+          "pageInfo": {
+           "endCursor": "eyJsYXN0X2lkIjo1MTAwNjU2ODAzODcxOSwibGFzdF92YWx1ZSI6NTEwMDY1NjgwMzg3MTl9",
+           "hasNextPage": false
+          }
+         },
+         "name": "#1003",
+         "retailLocation": null,
+         "sourceName": "451107586049",
+         "subtotalPriceSet": {
+          "shopMoney": {
+           "amount": "84.0"
+          }
+         },
+         "tags": [
+          "seed-5.8c-3"
+         ],
+         "test": false,
+         "totalDiscountsSet": {
+          "shopMoney": {
+           "amount": "5.0"
+          }
+         },
+         "totalOutstandingSet": {
+          "shopMoney": {
+           "amount": "84.0"
+          }
+         },
+         "totalPriceSet": {
+          "shopMoney": {
+           "amount": "84.0"
+          }
+         },
+         "totalRefundedSet": {
+          "shopMoney": {
+           "amount": "0.0"
+          }
+         },
+         "totalShippingPriceSet": {
+          "shopMoney": {
+           "amount": "0.0"
+          }
+         },
+         "totalTaxSet": {
+          "shopMoney": {
+           "amount": "0.0"
+          }
+         }
+        }
+       },
+       {
+        "node": {
+         "cancelledAt": null,
+         "createdAt": "2026-11-23T16:56:54Z",
+         "currencyCode": "USD",
+         "discountCodes": [],
+         "displayFinancialStatus": "PAID",
+         "displayFulfillmentStatus": "UNFULFILLED",
+         "id": "gid://shopify/Order/19037067313471",
+         "lineItems": {
+          "edges": [
+           {
+            "node": {
+             "id": "gid://shopify/LineItem/51006567940415",
+             "name": "Hoodie",
+             "originalUnitPriceSet": {
+              "shopMoney": {
+               "amount": "55.0"
+              }
+             },
+             "quantity": 1,
+             "requiresShipping": false,
+             "sku": "HOO-001",
+             "taxable": true,
+             "totalDiscountSet": {
+              "shopMoney": {
+               "amount": "0.0"
+              }
+             },
+             "unfulfilledQuantity": 1,
+             "vendor": null
+            }
+           }
+          ],
+          "pageInfo": {
+           "endCursor": "eyJsYXN0X2lkIjo1MTAwNjU2Nzk0MDQxNSwibGFzdF92YWx1ZSI6NTEwMDY1Njc5NDA0MTV9",
+           "hasNextPage": false
+          }
+         },
+         "name": "#1002",
+         "retailLocation": null,
+         "sourceName": "451107586049",
+         "subtotalPriceSet": {
+          "shopMoney": {
+           "amount": "55.0"
+          }
+         },
+         "tags": [
+          "seed-5.8c-2"
+         ],
+         "test": false,
+         "totalDiscountsSet": {
+          "shopMoney": {
+           "amount": "0.0"
+          }
+         },
+         "totalOutstandingSet": {
+          "shopMoney": {
+           "amount": "55.0"
+          }
+         },
+         "totalPriceSet": {
+          "shopMoney": {
+           "amount": "55.0"
+          }
+         },
+         "totalRefundedSet": {
+          "shopMoney": {
+           "amount": "0.0"
+          }
+         },
+         "totalShippingPriceSet": {
+          "shopMoney": {
+           "amount": "0.0"
+          }
+         },
+         "totalTaxSet": {
+          "shopMoney": {
+           "amount": "0.0"
+          }
+         }
+        }
+       },
+       {
+        "node": {
+         "cancelledAt": null,
+         "createdAt": "2026-11-23T16:49:55Z",
+         "currencyCode": "USD",
+         "discountCodes": [],
+         "displayFinancialStatus": "PAID",
+         "displayFulfillmentStatus": "UNFULFILLED",
+         "id": "gid://shopify/Order/19037051224383",
+         "lineItems": {
+          "edges": [
+           {
+            "node": {
+             "id": "gid://shopify/LineItem/51006528979263",
+             "name": "Classic Tee",
+             "originalUnitPriceSet": {
+              "shopMoney": {
+               "amount": "20.0"
+              }
+             },
+             "quantity": 2,
+             "requiresShipping": false,
+             "sku": "TEE-001",
+             "taxable": true,
+             "totalDiscountSet": {
+              "shopMoney": {
+               "amount": "0.0"
+              }
+             },
+             "unfulfilledQuantity": 2,
+             "vendor": null
+            }
+           },
+           {
+            "node": {
+             "id": "gid://shopify/LineItem/51006529012031",
+             "name": "Mug",
+             "originalUnitPriceSet": {
+              "shopMoney": {
+               "amount": "12.5"
+              }
+             },
+             "quantity": 1,
+             "requiresShipping": false,
+             "sku": "MUG-001",
+             "taxable": true,
+             "totalDiscountSet": {
+              "shopMoney": {
+               "amount": "0.0"
+              }
+             },
+             "unfulfilledQuantity": 1,
+             "vendor": null
+            }
+           }
+          ],
+          "pageInfo": {
+           "endCursor": "eyJsYXN0X2lkIjo1MTAwNjUyOTAxMjAzMSwibGFzdF92YWx1ZSI6NTEwMDY1MjkwMTIwMzF9",
+           "hasNextPage": false
+          }
+         },
+         "name": "#1001",
+         "retailLocation": null,
+         "sourceName": "451107586049",
+         "subtotalPriceSet": {
+          "shopMoney": {
+           "amount": "52.5"
+          }
+         },
+         "tags": [
+          "seed-5.8c"
+         ],
+         "test": false,
+         "totalDiscountsSet": {
+          "shopMoney": {
+           "amount": "0.0"
+          }
+         },
+         "totalOutstandingSet": {
+          "shopMoney": {
+           "amount": "52.5"
+          }
+         },
+         "totalPriceSet": {
+          "shopMoney": {
+           "amount": "52.5"
+          }
+         },
+         "totalRefundedSet": {
+          "shopMoney": {
+           "amount": "0.0"
+          }
+         },
+         "totalShippingPriceSet": {
+          "shopMoney": {
+           "amount": "0.0"
+          }
+         },
+         "totalTaxSet": {
+          "shopMoney": {
+           "amount": "0.0"
+          }
+         }
+        }
+       }
+      ],
+      "pageInfo": {
+       "endCursor": "eyJsYXN0X2lkIjoxOTAzNzA1MTIyNDM4MywibGFzdF92YWx1ZSI6IjIwMjYtMTEtMjMgMTY6NDk6NTUuMTEwOTk5In0=",
+       "hasNextPage": false
+      }
+     }
+    },
+    "extensions": {
+     "cost": {
+      "actualQueryCost": 10,
+      "requestedQueryCost": 68,
+      "throttleStatus": {
+       "currentlyAvailable": 1990,
+       "maximumAvailable": 2000.0,
+       "restoreRate": 100.0
+      }
+     }
+    }
+   },
+   "headers": {
+    "content-type": "application/json; charset=utf-8"
+   },
+   "host": "analystai-test.myshopify.com",
+   "method": "POST",
+   "path": "/admin/api/2026-01/graphql.json",
+   "query": [],
+   "sent": {
+    "query": "query($after: String, $q: String) {\n  orders(first: 25, after: $after, query: $q, sortKey: CREATED_AT, reverse: true) {\n    pageInfo { hasNextPage endCursor }\n    edges { node {\n      id name createdAt cancelledAt test currencyCode displayFinancialStatus\n      displayFulfillmentStatus subtotalPriceSet { shopMoney { amount } } totalShippingPriceSet { shopMoney { amount } }\n      totalTaxSet { shopMoney { amount } } totalPriceSet { shopMoney { amount } } totalDiscountsSet { shopMoney { amount } }\n      totalRefundedSet { shopMoney { amount } } totalOutstandingSet { shopMoney { amount } }\n      discountCodes tags sourceName retailLocation { name }\n      lineItems(first: 50) { pageInfo { hasNextPage endCursor }\n                                         edges { node { id name sku quantity vendor requiresShipping taxable unfulfilledQuantity originalUnitPriceSet { shopMoney { amount } } totalDiscountSet { shopMoney { amount } } } } } } } } }",
+    "variables": {
+     "after": null,
+     "q": null
+    }
+   },
+   "signed": false,
+   "status": 200
+  }
+ ],
+ "vendor": "shopify"
+}

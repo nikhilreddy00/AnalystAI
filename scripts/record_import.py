@@ -29,7 +29,7 @@ _PERSONAL = {"name", "phone", "address", "shipping", "line1", "line2", "postal_c
              # an invoice's copy of its customer (the first recording kept customer_name)
              "customer_name", "customer_phone", "customer_address", "customer_shipping",
              "billing_details", "shipping_details"}
-_THINGS = {"product", "coupon", "price", "plan", "account"}   # objects whose `name` is no person
+_PERSON_KEYS = {"email", "phone", "first_name", "last_name", "firstName", "lastName"}
 # an export's header words that may mean a person or where they live
 _PERSON_WORDS = {"name", "phone", "address", "address1", "address2", "street", "zip", "postal",
                  "company", "city", "province", "country", "notes", "note", "description",
@@ -63,9 +63,11 @@ def scrub(value, emails: dict):
     """People out, structure kept: an email becomes its placeholder, a name, phone or address
     `[scrubbed]` (an address's parts too)."""
     if isinstance(value, dict):
-        # a product's or a coupon's name is no person's (the first oracle run: every Product
-        # read "[scrubbed]")
-        personal = _PERSONAL - ({"name"} if value.get("object") in _THINGS else set())
+        # a `name` is a person's only on what looks like a person (an email, a phone, first and
+        # last names): a Stripe product's or a Shopify order's and line's name is no one's (the
+        # first oracle run: every Product read "[scrubbed]")
+        person = value.get("object") == "customer" or bool(value.keys() & _PERSON_KEYS)
+        personal = _PERSONAL - (set() if person else {"name"})
         return {k: ("[scrubbed]" if k in personal and isinstance(v, str) and v
                     else None if k in personal and isinstance(v, dict) else scrub(v, emails))
                 for k, v in value.items()}
@@ -112,15 +114,29 @@ async def record(vendor_name: str) -> Path:
     read = imp.capped_body
 
     async def keep(response: httpx.Response, cap: int) -> bytes:
-        """The production read, then the page as it was read (never a second read of it)."""
+        """The production read, then the page as it was read (never a second read of it). A
+        token mint's request is never kept (it holds the client secret) and its token is a
+        placeholder; a signed download keeps its path only (its query is the credential); a
+        GraphQL call keeps its query, which replay matches on."""
         body = await read(response, cap)
-        url = response.request.url
-        pages.append({"method": response.request.method, "path": url.path,
-                      "query": sorted(url.params.multi_items()), "status": response.status_code,
+        req, url = response.request, response.request.url
+        signed = any(k.lower().startswith("x-goog-") for k, _ in url.params.multi_items())
+        sent = None
+        if req.method == "POST" and not url.path.endswith("/oauth/access_token"):
+            sent = json.loads(req.content)
+        if url.path.endswith("/oauth/access_token"):
+            answer = {**json.loads(body), "access_token": "[token]"}
+        elif signed:   # the bulk file: JSONL, kept as text lines
+            answer = [scrub(json.loads(ln), emails) for ln in body.splitlines() if ln.strip()]
+        else:
+            answer = scrub(json.loads(body), emails) if body else None
+        pages.append({"method": req.method, "host": url.host, "path": url.path,
+                      "query": [] if signed else sorted(url.params.multi_items()),
+                      "sent": sent, "signed": signed, "status": response.status_code,
                       "headers": {k: v for k, v in response.headers.items()
                                   if k.lower() in ("retry-after", "stripe-should-retry",
                                                    "content-type")},
-                      "body": scrub(json.loads(body), emails) if body else None})
+                      "body": answer})
         return body
 
     imp.capped_body = keep
@@ -134,9 +150,16 @@ async def record(vendor_name: str) -> Path:
             counts[table.name] = (len(records), cut)
     if not test_mode:
         sys.exit("refused: a live-mode account. Record a test account only.")
+    for p in pages:   # a signed URL inside an answer (the bulk op's url) keeps its path only
+        if isinstance(p["body"], dict):
+            p["body"] = json.loads(re.sub(r'(https://storage\.googleapis\.com/[^"?]+)\?[^"]*',
+                                          r"\1", json.dumps(p["body"])))
     text = json.dumps({"vendor": vendor_name, "account": "[scrubbed]", "pages": pages}, indent=1,
                       sort_keys=True)
-    if (hit := _TOKENS.search(text)) or any(v and v in text for v in secrets.values()):
+    minted = [v for k, v in headers.items() if k.lower().endswith("token")]
+    keys = [*imp.secret_values(secrets), *minted]   # the product's one rule of what is secret
+    if (hit := _TOKENS.search(text)) or any(v and v in text for v in keys) \
+            or "X-Goog-Signature" in text:
         sys.exit(f"refused: a key or token is in the recording ({hit.group()[:6] if hit else 'key'}…)")
     out = ROOT / "tests/fixtures/imports" / vendor_name / "pages.json"
     out.parent.mkdir(parents=True, exist_ok=True)

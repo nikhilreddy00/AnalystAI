@@ -25,9 +25,10 @@ def _app(deps, uid="u1") -> FastAPI:
     app.dependency_overrides[get_current_user] = lambda: UserProfile(uid=uid)
     # production's own layers (D3-10: 5.8c's body limit sat in api.main only, which no route
     # test went through)
-    from api.main import _BodyLimit, _CredentialScope
-    app.add_middleware(_CredentialScope)
-    app.add_middleware(_BodyLimit)
+    # (from api.middleware, never api.main: importing it installs the process's logging)
+    from api.middleware import BodyLimit, CredentialScope
+    app.add_middleware(CredentialScope)
+    app.add_middleware(BodyLimit)
     return app
 
 
