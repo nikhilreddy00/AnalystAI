@@ -68,7 +68,9 @@ GATED = ("domain_pack/spell.py", "domain_pack/ledger.py", "domain_pack/columns.p
          # 5.8a: the dialect table, the connection-string guard, the result-to-frame rule
          "connectors/sql_connector.py",
          # 5.8b: the share-link download (its hops, cap and refusals)
-         "connectors/link.py")
+         "connectors/link.py",
+         # 5.8c: the import engine (hosts, failures, typing, refresh) and the file reader's bounds
+         "connectors/imports.py", "connectors/csv_connector.py")
 GATE = "docs/mutation/gate.json"
 
 
