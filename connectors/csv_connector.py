@@ -489,8 +489,7 @@ def _read_parquet(content: bytes) -> pd.DataFrame:
                 unpacked += pc.sum(lengths).as_py() or 0
         del packed
         if unpacked > _MAX_PARQUET_UNPACKED:
-            raise IngestionError("parquet too large", "The file unpacks to more than "
-                                 f"{_MAX_PARQUET_UNPACKED // 2**20} MB, past what can be read.")
+            raise IngestionError("parquet too large", _PARQUET_TOO_LARGE)
         df = pd.read_parquet(io.BytesIO(content))
         for f in fields:
             if pa.types.is_nested(f.type):

@@ -172,6 +172,8 @@ def instant(unix: int | None) -> dt.datetime | None:
 class Column:
     name: str
     get: Callable[[dict], object]     # the record → its typed value (raises ImportFailure)
+    first: bool = False   # an order's own field: on its first line, blank on the rest (Shopify's
+    #                       export layout; red-team 2: a total on every line multiplied it)
 
 
 @dataclass
@@ -186,7 +188,8 @@ class Table:
     def frame(self, records: list[dict]) -> pd.DataFrame:
         """The table as its export reads: typed by the catalog, through QueryResult.frame."""
         records = sorted(records, key=self.key)
-        rows = [tuple(c.get(r) for c in self.columns) for r in records]
+        rows = [tuple(None if c.first and not r["first"] else c.get(r) for c in self.columns)
+                for r in records]
         return QueryResult(columns=[c.name for c in self.columns], rows=rows,
                            truncated=False).frame()
 
@@ -504,8 +507,8 @@ async def _stripe_invoices(client, headers, window_from) -> tuple[list[dict], st
     return invoices, _cut_date(invoices, cut)
 
 
-def _inv_money(field_name: str):
-    return lambda i: stripe_money(need(i, field_name), need(i, "currency"))
+def _inv_money(i: dict, field_name: str):
+    return stripe_money(need(i, field_name), need(i, "currency"))
 
 
 def _transition(i: dict, key: str):
@@ -521,30 +524,30 @@ STRIPE_INVOICES = Table(
     key=lambda i: (i["id"],),
     columns=[
         Column("id", lambda i: need(i, "id")),
-        Column("Amount Due", _inv_money("amount_due")),
+        Column("Amount Due", lambda i: _inv_money(i, "amount_due")),
         Column("Billing", lambda i: need(i, "collection_method")),
         Column("Charge", lambda i: i.get("charge")),
         Column("Currency", lambda i: need(i, "currency")),
         Column("Customer", lambda i: need(i, "customer")),
         Column("Date (UTC)", lambda i: instant(need(i, "created"))),
         Column("Due Date (UTC)", lambda i: instant(i.get("due_date"))),
-        Column("Ending Balance", _inv_money("ending_balance")),
+        Column("Ending Balance", lambda i: _inv_money(i, "ending_balance")),
         Column("Number", lambda i: need(i, "number")),
         Column("Paid", lambda i: need(i, "status") == "paid"),
         Column("Paid At (UTC)", lambda i: _transition(i, "paid_at")),
         Column("Finalized At (UTC)", lambda i: _transition(i, "finalized_at")),
         Column("Period Start (UTC)", lambda i: instant(need(i, "period_start"))),
         Column("Period End (UTC)", lambda i: instant(need(i, "period_end"))),
-        Column("Starting Balance", _inv_money("starting_balance")),
+        Column("Starting Balance", lambda i: _inv_money(i, "starting_balance")),
         Column("Subscription", lambda i: i.get("subscription")),
-        Column("Subtotal", _inv_money("subtotal")),
+        Column("Subtotal", lambda i: _inv_money(i, "subtotal")),
         Column("Total Discount Amount",
                lambda i: stripe_money(sum(d.get("amount", 0) for d in
                                           i.get("total_discount_amounts") or []),
                                       need(i, "currency"))),
-        Column("Total", _inv_money("total")),
+        Column("Total", lambda i: _inv_money(i, "total")),
         Column("Customer Email", lambda i: i.get("customer_email")),
-        Column("Amount Paid", _inv_money("amount_paid")),
+        Column("Amount Paid", lambda i: _inv_money(i, "amount_paid")),
         Column("Status", lambda i: need(i, "status")),
     ])
 
@@ -715,8 +718,7 @@ async def _shopify_orders(client, headers, window_from) -> tuple[list[dict], str
             rows += [{"order": o, "line": ln, "first": i == 0, "i": i, "tz": tz}
                      for i, ln in enumerate(own)]
             if len(rows) >= ROW_CAP:   # newest kept; the first day kept said
-                return rows[:ROW_CAP], dt.datetime.fromisoformat(
-                    o["createdAt"].replace("Z", "+00:00")).date().isoformat()
+                return rows[:ROW_CAP], dt.datetime.fromisoformat(o["createdAt"]).date().isoformat()
         if not need(page, "pageInfo", "hasNextPage"):
             return rows, None
         after = need(page, "pageInfo", "endCursor")
@@ -727,17 +729,12 @@ def _local(r: dict, iso: str | None) -> dt.datetime | None:
     if not iso:
         return None
     from zoneinfo import ZoneInfo
-    return dt.datetime.fromisoformat(iso.replace("Z", "+00:00")).astimezone(ZoneInfo(r["tz"]))
+    return dt.datetime.fromisoformat(iso).astimezone(ZoneInfo(r["tz"]))
 
 
 def _amount(obj: dict, field_name: str) -> decimal.Decimal | None:
     value = need(obj, field_name, "shopMoney", "amount")
     return None if value is None else decimal.Decimal(value)
-
-
-def _first(get: Callable[[dict], object]) -> Callable[[dict], object]:
-    """An order's own field: on its first line, blank on the rest (the export's layout)."""
-    return lambda r: get(r) if r["first"] else None
 
 
 _O = lambda r, *p: need(r["order"], *p)   # noqa: E731
@@ -753,21 +750,21 @@ SHOPIFY_ORDERS = Table(
     fetch=_shopify_orders,
     # newest first, as exported: an order made in the same second as another after it by its
     # id, which only grows (the first oracle run: #1005 before #1006)
-    key=lambda r: (-dt.datetime.fromisoformat(r["order"]["createdAt"].replace("Z", "+00:00"))
-                   .timestamp(), -int(r["order"]["id"].rsplit("/", 1)[1]), r["i"]),
+    key=lambda r: (-dt.datetime.fromisoformat(r["order"]["createdAt"]).timestamp(),
+                   -int(r["order"]["id"].rsplit("/", 1)[1]), r["i"]),
     columns=[
         Column("Name", lambda r: _O(r, "name")),
-        Column("Financial Status", _first(lambda r: (_O(r, "displayFinancialStatus") or "").lower()
-                                          or None)),
-        Column("Fulfillment Status", _first(
-            lambda r: (_O(r, "displayFulfillmentStatus") or "").lower() or None)),
-        Column("Currency", _first(lambda r: _O(r, "currencyCode"))),
-        Column("Subtotal", _first(lambda r: _amount(r["order"], "subtotalPriceSet"))),
-        Column("Shipping", _first(lambda r: _amount(r["order"], "totalShippingPriceSet"))),
-        Column("Taxes", _first(lambda r: _amount(r["order"], "totalTaxSet"))),
-        Column("Total", _first(lambda r: _amount(r["order"], "totalPriceSet"))),
-        Column("Discount Code", _first(lambda r: ", ".join(_O(r, "discountCodes")) or None)),
-        Column("Discount Amount", _first(lambda r: _amount(r["order"], "totalDiscountsSet"))),
+        Column("Financial Status",
+               lambda r: (_O(r, "displayFinancialStatus") or "").lower() or None, first=True),
+        Column("Fulfillment Status",
+               lambda r: (_O(r, "displayFulfillmentStatus") or "").lower() or None, first=True),
+        Column("Currency", lambda r: _O(r, "currencyCode"), first=True),
+        Column("Subtotal", lambda r: _amount(r["order"], "subtotalPriceSet"), first=True),
+        Column("Shipping", lambda r: _amount(r["order"], "totalShippingPriceSet"), first=True),
+        Column("Taxes", lambda r: _amount(r["order"], "totalTaxSet"), first=True),
+        Column("Total", lambda r: _amount(r["order"], "totalPriceSet"), first=True),
+        Column("Discount Code", lambda r: ", ".join(_O(r, "discountCodes")) or None, first=True),
+        Column("Discount Amount", lambda r: _amount(r["order"], "totalDiscountsSet"), first=True),
         Column("Created at", lambda r: _local(r, _O(r, "createdAt"))),
         Column("Lineitem quantity", lambda r: _L(r, "quantity")),
         Column("Lineitem name", lambda r: _L(r, "name")),
@@ -778,15 +775,15 @@ SHOPIFY_ORDERS = Table(
         Column("Lineitem fulfillment status",
                lambda r: "pending" if _L(r, "unfulfilledQuantity") or _O(r, "cancelledAt")
                else "fulfilled"),
-        Column("Cancelled at", _first(lambda r: _local(r, _O(r, "cancelledAt")))),
-        Column("Refunded Amount", _first(lambda r: _amount(r["order"], "totalRefundedSet"))),
+        Column("Cancelled at", lambda r: _local(r, _O(r, "cancelledAt")), first=True),
+        Column("Refunded Amount", lambda r: _amount(r["order"], "totalRefundedSet"), first=True),
         Column("Vendor", lambda r: _L(r, "vendor") or None),
-        Column("Location", _first(lambda r: (_O(r, "retailLocation") or {}).get("name"))),
-        Column("Id", _first(lambda r: int(_O(r, "id").rsplit("/", 1)[1]))),
-        Column("Tags", _first(lambda r: ", ".join(_O(r, "tags")) or None)),
-        Column("Source", _first(lambda r: _O(r, "sourceName"))),
+        Column("Location", lambda r: (_O(r, "retailLocation") or {}).get("name"), first=True),
+        Column("Id", lambda r: int(_O(r, "id").rsplit("/", 1)[1]), first=True),
+        Column("Tags", lambda r: ", ".join(_O(r, "tags")) or None, first=True),
+        Column("Source", lambda r: _O(r, "sourceName"), first=True),
         Column("Lineitem discount", lambda r: _amount(r["line"], "totalDiscountSet")),
-        Column("Test", _first(lambda r: _O(r, "test"))),
+        Column("Test", lambda r: _O(r, "test"), first=True),
     ])
 
 
