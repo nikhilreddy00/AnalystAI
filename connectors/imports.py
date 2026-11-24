@@ -120,8 +120,9 @@ async def fetch(client: httpx.AsyncClient, url: str, *, what: str, method: str =
     for attempt in (1, 2):
         try:
             async with client.stream(method, url, **kw) as r:
-                if r.status_code == 429 and attempt == 1 and \
-                        r.headers.get("stripe-should-retry") != "false":
+                if r.status_code == 429:
+                    if attempt == 2 or r.headers.get("stripe-should-retry") == "false":
+                        break
                     wait = r.headers.get("retry-after", "")
                     await asyncio.sleep(min(float(wait) if wait.isdigit() else RETRY_WAIT_S, 60))
                     continue
@@ -129,8 +130,6 @@ async def fetch(client: httpx.AsyncClient, url: str, *, what: str, method: str =
                     raise ImportFailure("bad_key")
                 if r.status_code == 403:
                     raise ImportFailure("permission", what)
-                if r.status_code == 429:
-                    raise ImportFailure("rate_limited")
                 if r.status_code != 200:
                     raise ImportFailure("vendor_down", f"HTTP {r.status_code}")
                 return await capped_body(r, cap)
