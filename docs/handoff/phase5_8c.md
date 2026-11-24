@@ -36,7 +36,13 @@ ROADMAP say "built, finishing in parts" until Part 5.
 
 ## Parts (in order)
 
-### [ ] Part 1a: close the survivors in `connectors/imports.py`
+### [x] Part 1a: close the survivors in `connectors/imports.py`
+Done 2026-11-24 (`8464f10`): 35 survivors → 11 killed by three tests in `tests/test_import_stripe.py`,
+24 named in gate.json; the rerun at 8464f10 says "24, 24 of them named equivalents". Left for Part 2: 6
+timeouts (`_gql` mutmut_39; `_shopify_orders` 92, 99, 124, 175, 181). A `--lines` run passes them, but
+`--record` counts a timeout as unexplained, so `_gql` and `_shopify_orders` won't record until those
+mutants fail fast (`mutmut show` each in the run's worktree while it runs).
+
 - Input: the narrow run started 2026-11-24 ~14:45 (both runs in one background job):
   `/private/tmp/claude-501/-Users-uvnikhil-Projects-AnalystAI/fc4cf7d6-bfe9-4056-9507-1da101118e31/scratchpad/narrowA.log`,
   full output in `.live/mutation-a76d61b-*.log` (newest). If neither exists (reboot), rerun it:
