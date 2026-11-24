@@ -474,7 +474,8 @@
     "old": "f\"in the app); tables {', '.join(t.label.split(' · ')[-1] for t in v.tables)}, \"",
     "reason": "every import table's label holds one ' · ', so its split has two parts and [+1] is [-1]"
    }
-  ]
+  ],
+  "hash": "d732bd35ac94dfd3"
  },
  "connectors/base.py::without_secrets": {
   "equivalents": [],
@@ -488,7 +489,8 @@
     "old": "if len(lines) > n or size >= len(text):",
     "reason": "at size == len(text) the head is the whole text: the mutant takes the next head, text[:4 × size], the same text, and returns the same lines (the heads run far past any text)"
    }
-  ]
+  ],
+  "hash": "1b8887087588f127"
  },
  "connectors/csv_connector.py::_json_records": {
   "equivalents": [
@@ -504,7 +506,8 @@
     "old": "top = [decoder.decode(line.decode(\"utf-8\")) for line in io.BytesIO(content)",
     "reason": "Python's codec names ignore case"
    }
-  ]
+  ],
+  "hash": "eed684d167f42a3b"
  },
  "connectors/csv_connector.py::_layout": {
   "equivalents": [],
@@ -540,7 +543,8 @@
   "hash": "0a0db60e04c9ae9b"
  },
  "connectors/csv_connector.py::_read_parquet": {
-  "equivalents": []
+  "equivalents": [],
+  "hash": "f91c662e5229dd7f"
  },
  "connectors/csv_connector.py::_read_text_table": {
   "equivalents": [
@@ -557,7 +561,7 @@
     "reason": "pandas' parser tests low_memory for truth: None reads as False (5.8c, measured: one type down a 300,000-row column either way; True splits it)"
    }
   ],
-  "hash": "7c1c54215e2aef17"
+  "hash": "a15ae0c329bc3f20"
  },
  "connectors/csv_connector.py::_readable_size": {
   "equivalents": [
@@ -571,7 +575,8 @@
   "hash": "fc7640839db9058c"
  },
  "connectors/imports.py::ImportFailure.__init__": {
-  "equivalents": []
+  "equivalents": [],
+  "hash": "00e44c266cdb04d7"
  },
  "connectors/imports.py::ImportFailure.public": {
   "equivalents": [],
@@ -591,26 +596,36 @@
     "old": "truncated=False).frame()",
     "reason": "QueryResult.frame never reads `truncated` (an import's cut is said by its status' cut_from)"
    }
-  ]
+  ],
+  "hash": "203638fe82fe32b6"
  },
  "connectors/imports.py::Vendor.client": {
   "equivalents": [],
   "hash": "58f345e8b627a578"
  },
  "connectors/imports.py::_amount": {
-  "equivalents": []
+  "equivalents": [],
+  "hash": "effd4d9c819b5dd8"
  },
  "connectors/imports.py::_coupon": {
-  "equivalents": []
+  "equivalents": [],
+  "hash": "046a5c2a73435e77"
+ },
+ "connectors/imports.py::_cursor": {
+  "equivalents": [],
+  "hash": "fa108a12a316a911"
  },
  "connectors/imports.py::_customer": {
-  "equivalents": []
+  "equivalents": [],
+  "hash": "e9fb9ceeced97833"
  },
  "connectors/imports.py::_cut_date": {
-  "equivalents": []
+  "equivalents": [],
+  "hash": "4454c6f8f69411e1"
  },
  "connectors/imports.py::_end": {
-  "equivalents": []
+  "equivalents": [],
+  "hash": "64209dcbb3d8fff2"
  },
  "connectors/imports.py::_gql": {
   "equivalents": [
@@ -638,20 +653,24 @@
     "old": "in str(ext.get(\"documentation\", \"\")) else \"permission\", what)",
     "reason": "a missing documentation reads as 'XXXX', which holds no 'protected-customer-data': 'permission' as with ''"
    }
-  ]
+  ],
+  "hash": "05e397b516689da5"
  },
  "connectors/imports.py::_inv_money": {
-  "equivalents": []
+  "equivalents": [],
+  "hash": "e89d7c26819d14a0"
  },
  "connectors/imports.py::_local": {
-  "equivalents": []
+  "equivalents": [],
+  "hash": "33760aa36b8dcd2c"
  },
  "connectors/imports.py::_now": {
   "equivalents": [],
   "hash": "3b12ee0a5aa762f9"
  },
  "connectors/imports.py::_percent_off": {
-  "equivalents": []
+  "equivalents": [],
+  "hash": "9ee4a0eb2319afd4"
  },
  "connectors/imports.py::_shopify_auth": {
   "equivalents": [
@@ -661,16 +680,20 @@
     "old": "what=\"the app\", method=\"POST\",",
     "reason": "httpx upper-cases a request's method"
    }
-  ]
+  ],
+  "hash": "2e1bb593970ae18f"
  },
  "connectors/imports.py::_shopify_check": {
-  "equivalents": []
+  "equivalents": [],
+  "hash": "ca59a6d0d51cb24b"
  },
  "connectors/imports.py::_shopify_orders": {
-  "equivalents": []
+  "equivalents": [],
+  "hash": "be9f8812fcc877cf"
  },
  "connectors/imports.py::_shopify_test": {
-  "equivalents": []
+  "equivalents": [],
+  "hash": "6f641dcfe84992bc"
  },
  "connectors/imports.py::_since": {
   "equivalents": [],
@@ -702,7 +725,8 @@
     "old": "return {\"Authorization\": f\"Bearer {secrets['key']}\", \"Stripe-Version\": STRIPE_VERSION}",
     "reason": "httpx headers are case-insensitive, sent and read"
    }
-  ]
+  ],
+  "hash": "f86bd780f62030d1"
  },
  "connectors/imports.py::_stripe_check": {
   "equivalents": [
@@ -712,16 +736,20 @@
     "old": "key = secrets.get(\"key\", \"\")",
     "reason": "'XXXX' starts with no key prefix: a missing key is refused not_a_key as '' is"
    }
-  ]
+  ],
+  "hash": "01ab30318d305c3b"
  },
  "connectors/imports.py::_stripe_invoices": {
-  "equivalents": []
+  "equivalents": [],
+  "hash": "fae9d718effc741d"
  },
  "connectors/imports.py::_stripe_list": {
-  "equivalents": []
+  "equivalents": [],
+  "hash": "448ff5cf12a5bf59"
  },
  "connectors/imports.py::_stripe_subscriptions": {
-  "equivalents": []
+  "equivalents": [],
+  "hash": "bf1df888ed987013"
  },
  "connectors/imports.py::_stripe_test": {
   "equivalents": [
@@ -755,7 +783,8 @@
     "old": "acct = await get_json(client, f\"{STRIPE_API}/account\", what=\"Account\", headers=headers)",
     "reason": "a `what` is said only by a 403, and a 403 on /account is caught and dropped (the key may not read the account)"
    }
-  ]
+  ],
+  "hash": "61cebb1d791d7463"
  },
  "connectors/imports.py::_transition": {
   "equivalents": [],
@@ -781,7 +810,8 @@
     "old": "wait = r.headers.get(\"retry-after\", \"\")",
     "reason": "'XXXX' isn't digits, so a missing Retry-After waits RETRY_WAIT_S as '' does"
    }
-  ]
+  ],
+  "hash": "765bc96bc4fa4fc7"
  },
  "connectors/imports.py::get_json": {
   "equivalents": [
@@ -791,14 +821,16 @@
     "old": "async def x_get_json(client: httpx.AsyncClient, url: str, *, what: str, method: str = \"GET\",",
     "reason": "httpx upper-cases a request's method"
    }
-  ]
+  ],
+  "hash": "3399c6a084cf1f66"
  },
  "connectors/imports.py::instant": {
   "equivalents": [],
   "hash": "5c71150e10c6018f"
  },
  "connectors/imports.py::need": {
-  "equivalents": []
+  "equivalents": [],
+  "hash": "35a91cf55d0421d9"
  },
  "connectors/imports.py::refresh": {
   "equivalents": [
@@ -814,16 +846,20 @@
     "old": "lost = False",
     "reason": "`lost` is read only as `not lost`: None and False alike"
    }
-  ]
+  ],
+  "hash": "d3f4c7fdb85b136e"
  },
  "connectors/imports.py::said": {
-  "equivalents": []
+  "equivalents": [],
+  "hash": "3acd61a159640af1"
  },
  "connectors/imports.py::secret_values": {
-  "equivalents": []
+  "equivalents": [],
+  "hash": "205b03c57b03e1a5"
  },
  "connectors/imports.py::shop_host": {
-  "equivalents": []
+  "equivalents": [],
+  "hash": "3d53259c43d1ad60"
  },
  "connectors/imports.py::stripe_money": {
   "equivalents": [
@@ -833,10 +869,12 @@
     "old": "code = (currency or \"\").upper()",
     "reason": "'XXXX' is in neither decimal set: a missing currency has two places as '' does"
    }
-  ]
+  ],
+  "hash": "56b42b44dfc6b08e"
  },
  "connectors/imports.py::vendor_client": {
-  "equivalents": []
+  "equivalents": [],
+  "hash": "483b61b0671ee202"
  },
  "connectors/imports.py::year_back": {
   "equivalents": [],
