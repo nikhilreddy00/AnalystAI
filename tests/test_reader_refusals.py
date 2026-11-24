@@ -211,7 +211,9 @@ def test_codes_keep_their_leading_zeros_in_every_layout(content):
 
 
 def test_a_decimal_comma_reads_as_a_number():
-    assert _read_bytes(b"a;b\n1,5;x\n2,5;y\n", ".csv")[0]["a"].tolist() == [1.5, 2.5]
+    """Whole numbers beside comma-decimals: only the parse's decimal mark reads the column (the
+    pass after it takes a column whose every value is written with a comma)."""
+    assert _read_bytes(b"a;b\n1;x\n2,5;y\n3;z\n", ".csv")[0]["a"].tolist() == [1.0, 2.5, 3.0]
 
 
 def test_a_column_typed_differently_down_the_file_reads_as_one_type():

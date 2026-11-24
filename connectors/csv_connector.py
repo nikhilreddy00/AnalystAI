@@ -263,8 +263,9 @@ def _read_text_table(content: bytes, suffix: str) -> tuple[pd.DataFrame, dict]:
     as_text_needed = long_digits or re.search(rf"(?:^|{re.escape(sep)})\s*\"?0\d", text, re.M)
     del text   # 5.8c: the decoded copy is let go before the parse, not held through it
     # pandas reads the bytes with the codec _decode chose, never io.StringIO(text): StringIO
-    # widens the text to 4 bytes a character (5.8c: +720 MB at a 250 MB file)
-    codec = "utf-8-sig" if encoding == "utf-8" else encoding
+    # widens the text to 4 bytes a character (5.8c: +720 MB at a 250 MB file). A UTF-8 BOM
+    # needs no "utf-8-sig": pandas' parser drops it (the mutation gate: the two read the same)
+    codec = encoding
     try:
         # index_col=False: a trailing delimiter must not turn the first column into the index.
         df = pd.read_csv(io.BytesIO(content), encoding=codec, sep=sep, skiprows=header,
