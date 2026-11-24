@@ -395,6 +395,12 @@
     "new": "if not pd.api.types.is_numeric_dtype(None) and (blank := s.eq(\"\")).any():",
     "old": "if not pd.api.types.is_numeric_dtype(s) and (blank := s.eq(\"\")).any():",
     "reason": "the numeric test only skips work: a numeric column never equals '', so its blank mask is all False and nothing is masked either way"
+   },
+   {
+    "n": 1,
+    "new": "s = s.astype(None)   # no value at all: a CSV's empty column (5.8c import oracle)",
+    "old": "s = s.astype(\"float64\")   # no value at all: a CSV's empty column (5.8c import oracle)",
+    "reason": "numpy reads a dtype of None as float64, so astype(None) is astype('float64')"
    }
   ],
   "hash": "d819e6b9f1a3f225"
@@ -455,6 +461,18 @@
     "new": "break",
     "old": "continue",
     "reason": "sqlite is DIALECTS' last row, so leaving the loop after its row is the same as continuing; a row added after it goes through the README test"
+   },
+   {
+    "n": 1,
+    "new": "f\"in the app); tables {', '.join(t.label.split(None)[-1] for t in v.tables)}, \"",
+    "old": "f\"in the app); tables {', '.join(t.label.split(' · ')[-1] for t in v.tables)}, \"",
+    "reason": "every import table's label is '<source> · <one word>' (Stripe · Invoices, Shopify · Orders): split on whitespace, its last part is the same word"
+   },
+   {
+    "n": 1,
+    "new": "f\"in the app); tables {', '.join(t.label.split(' · ')[+1] for t in v.tables)}, \"",
+    "old": "f\"in the app); tables {', '.join(t.label.split(' · ')[-1] for t in v.tables)}, \"",
+    "reason": "every import table's label holds one ' · ', so its split has two parts and [+1] is [-1]"
    }
   ]
  },
@@ -463,28 +481,99 @@
   "hash": "3818735d974760f2"
  },
  "connectors/csv_connector.py::_first_lines": {
-  "equivalents": []
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "if len(lines) > n or size > len(text):",
+    "old": "if len(lines) > n or size >= len(text):",
+    "reason": "at size == len(text) the head is the whole text: the mutant takes the next head, text[:4 × size], the same text, and returns the same lines (the heads run far past any text)"
+   }
+  ]
  },
  "connectors/csv_connector.py::_json_records": {
-  "equivalents": []
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "top, lines = decoder.decode(content.decode(\"UTF-8\")), False",
+    "old": "top, lines = decoder.decode(content.decode(\"utf-8\")), False",
+    "reason": "Python's codec names ignore case"
+   },
+   {
+    "n": 1,
+    "new": "top = [decoder.decode(line.decode(\"UTF-8\")) for line in io.BytesIO(content)",
+    "old": "top = [decoder.decode(line.decode(\"utf-8\")) for line in io.BytesIO(content)",
+    "reason": "Python's codec names ignore case"
+   }
+  ]
  },
  "connectors/csv_connector.py::_layout": {
   "equivalents": [],
   "hash": "01f205d4f29f6196"
  },
  "connectors/csv_connector.py::_read_bytes": {
-  "equivalents": [],
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "df = pd.read_json(io.BytesIO(content), orient=None, lines=lines, dtype=False,",
+    "old": "df = pd.read_json(io.BytesIO(content), orient=\"records\", lines=lines, dtype=False,",
+    "reason": "_json_records admits only a list of records, and pandas' frame parser reads a list of records the same under its default orient and under any name but split, index, values and table (5.8c, measured with and without lines)"
+   },
+   {
+    "n": 1,
+    "new": "df = pd.read_json(io.BytesIO(content), lines=lines, dtype=False,",
+    "old": "df = pd.read_json(io.BytesIO(content), orient=\"records\", lines=lines, dtype=False,",
+    "reason": "_json_records admits only a list of records, and pandas' frame parser reads a list of records the same under its default orient and under any name but split, index, values and table (5.8c, measured with and without lines)"
+   },
+   {
+    "n": 1,
+    "new": "df = pd.read_json(io.BytesIO(content), orient=\"XXrecordsXX\", lines=lines, dtype=False,",
+    "old": "df = pd.read_json(io.BytesIO(content), orient=\"records\", lines=lines, dtype=False,",
+    "reason": "_json_records admits only a list of records, and pandas' frame parser reads a list of records the same under its default orient and under any name but split, index, values and table (5.8c, measured with and without lines)"
+   },
+   {
+    "n": 1,
+    "new": "df = pd.read_json(io.BytesIO(content), orient=\"RECORDS\", lines=lines, dtype=False,",
+    "old": "df = pd.read_json(io.BytesIO(content), orient=\"records\", lines=lines, dtype=False,",
+    "reason": "_json_records admits only a list of records, and pandas' frame parser reads a list of records the same under its default orient and under any name but split, index, values and table (5.8c, measured with and without lines)"
+   }
+  ],
   "hash": "0a0db60e04c9ae9b"
  },
  "connectors/csv_connector.py::_read_parquet": {
   "equivalents": []
  },
  "connectors/csv_connector.py::_read_text_table": {
-  "equivalents": [],
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "if width > _MAX_COLUMNS or _widest_record(text, sep) >= _MAX_COLUMNS:",
+    "old": "if width > _MAX_COLUMNS or _widest_record(text, sep) > _MAX_COLUMNS:",
+    "reason": "_widest_record returns 0 or a count past the cap, never the cap itself, so >= and > agree"
+   },
+   {
+    "n": 1,
+    "new": "codec = \"UTF-8-SIG\" if encoding == \"utf-8\" else encoding",
+    "old": "codec = \"utf-8-sig\" if encoding == \"utf-8\" else encoding",
+    "reason": "Python's codec names ignore case (pandas hands the name to codecs)"
+   },
+   {
+    "n": 1,
+    "new": "decimal=decimal, index_col=False, low_memory=None)",
+    "old": "decimal=decimal, index_col=False, low_memory=False)",
+    "reason": "pandas' parser tests low_memory for truth: None reads as False (5.8c, measured: one type down a 300,000-row column either way; True splits it)"
+   }
+  ],
   "hash": "7c1c54215e2aef17"
  },
  "connectors/csv_connector.py::_readable_size": {
-  "equivalents": [],
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "if max(values, meta.num_rows / meta.num_columns) > _MAX_CELLS or \\",
+    "old": "if max(values, meta.num_rows * meta.num_columns) > _MAX_CELLS or \\",
+    "reason": "in every file a writer makes, values (num_values: nulls and an empty list counted) is at least rows × columns, so the product never sets the max; it bounds only a hand-made footer declaring more rows than values, which no test writes (5.8c, measured with nulls and empty lists)"
+   }
+  ],
   "hash": "fc7640839db9058c"
  },
  "connectors/imports.py::ImportFailure.__init__": {

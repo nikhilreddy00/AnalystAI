@@ -121,11 +121,103 @@ def test_a_list_of_dates_reads_as_json_text():
 def test_a_corrupt_parquet_file_is_said_as_no_table():
     e = _refused(b"PAR1 not a parquet file PAR1", ".parquet")   # its footer unreadable
     assert e.user_message == cc._NOT_A_TABLE and str(e).startswith("ingestion: parquet: ")
+    assert "NoneType" not in str(e)   # the error's own type named, never None's
     good = _parquet(pa.table({"n": list(range(1000))}))           # its footer good, its data not
     bad = good[:4] + bytes(b ^ 0xFF for b in good[4:200]) + good[200:]
     e = _refused(bad, ".parquet")
     assert e.user_message == cc._NOT_A_TABLE and str(e).startswith("ingestion: parquet: ")
     assert "NoneType" not in str(e)
+
+
+def test_a_parquet_files_cells_are_counted_from_its_footer(monkeypatch):
+    """4 rows × 3 columns, nulls counted: 12 values, before any page is read."""
+    raw = _parquet(pa.table({"a": [1, None, 3, 4], "b": ["x", "y", None, "z"], "c": [1.0] * 4}))
+    monkeypatch.setattr(cc, "_MAX_CELLS", 12)
+    _read_bytes(raw, ".parquet")
+    monkeypatch.setattr(cc, "_MAX_CELLS", 11)
+    e = _refused(raw, ".parquet")
+    assert (str(e), e.user_message) == ("ingestion: too many cells", cc._TOO_MANY_CELLS)
+
+
+def test_values_inside_a_list_column_have_their_own_bound(monkeypatch):
+    """3 values inside the list column, 2 beside it: only the 3 count against the nested bound."""
+    raw = _parquet(pa.table({"l": [[1, 2], [3]], "n": [1, 2]}))
+    monkeypatch.setattr(cc, "_MAX_NESTED_VALUES", 3)
+    _read_bytes(raw, ".parquet")
+    monkeypatch.setattr(cc, "_MAX_NESTED_VALUES", 2)
+    e = _refused(raw, ".parquet")
+    assert (str(e), e.user_message) == ("ingestion: too many cells", cc._TOO_MANY_CELLS)
+
+
+def test_the_footers_unpacked_size_is_read_before_any_page(monkeypatch):
+    """The footer's total (pages, headers and levels) is above the 8,000 bytes 1,000 int64s read
+    to, so at the footer's total the file reads, and one under it the footer refuses it."""
+    raw = _parquet(pa.table({"n": list(range(1000))}))
+    meta = pq.ParquetFile(io.BytesIO(raw)).metadata
+    footer = sum(meta.row_group(i).column(j).total_uncompressed_size
+                 for i in range(meta.num_row_groups) for j in range(meta.num_columns))
+    assert footer > 8_000
+    monkeypatch.setattr(cc, "_MAX_PARQUET_UNPACKED", footer)
+    _read_bytes(raw, ".parquet")
+    monkeypatch.setattr(cc, "_MAX_PARQUET_UNPACKED", footer - 1)
+    e = _refused(raw, ".parquet")
+    assert (str(e), e.user_message) == ("ingestion: parquet too large", cc._PARQUET_TOO_LARGE)
+
+
+# ── JSON: values as written ───────────────────────────────────────────────────────────────────
+
+def test_json_values_keep_the_type_they_were_written_with():
+    assert _read_bytes(_json([{"zip": "02134", "n": 1}]), ".json")[0]["zip"].tolist() == ["02134"]
+
+
+def test_a_number_past_what_pandas_holds_is_said_as_not_records():
+    """JSON allows it, pandas' parser raises on it (past 64 bits): the user is told, never a 500."""
+    e = _refused(b'[{"a": 123456789012345678901234567890}]', ".json")
+    assert (str(e), e.user_message) == ("ingestion: json", cc._NOT_RECORDS)
+
+
+# ── CSV / TSV: bounds counted before the parse, and the text re-read for codes ────────────────
+
+@pytest.mark.parametrize("content, cells", [
+    (b"a,b,c\n1,2,3\n\n\n\n", 15),    # lines × header width, 5 × 3 (the delimiters: 4 + 5)
+    (b"a,b,c\r1,2,3\r\r\r\r", 15),    # an old Mac file: \r ends its lines
+    (b'a,b\n"x,,,,,,",1\n', 10),      # delimiters + lines, 8 + 2 (quoted ones count): above 2 × 2
+])
+def test_a_text_files_cells_are_bounded_at_their_count(monkeypatch, content, cells):
+    monkeypatch.setattr(cc, "_MAX_CELLS", cells)
+    _read_bytes(content, ".csv")
+    monkeypatch.setattr(cc, "_MAX_CELLS", cells - 1)
+    e = _refused(content, ".csv")
+    assert (str(e), e.user_message) == ("ingestion: too many cells", cc._TOO_MANY_CELLS)
+
+
+def test_a_header_at_the_column_cap_reads_and_one_past_is_refused(monkeypatch):
+    monkeypatch.setattr(cc, "_MAX_COLUMNS", 3)
+    assert list(_read_bytes(b"a,b,c\n1,2,3\n", ".csv")[0].columns) == ["a", "b", "c"]
+    assert str(_refused(b"a,b,c,d\n1,2,3,4\n", ".csv")) == "ingestion: too many columns"
+
+
+@pytest.mark.parametrize("content", [
+    b"zip,n\n02134,1\n02139,2\n",                                     # a code at a line's start
+    "zip,city\n02134,Montréal\n02139,Québec\n".encode("latin-1"),     # re-read in the file's codec
+    b"Branch report\n\nzip,n\n02134,1\n02139,2\n",                    # re-read past the title
+    b"zip,n\n02134,1,\n02139,2,\n",                                   # a trailing delimiter
+    b"zip;n\n02134;1,5\n02139;2,5\n",                                 # re-read on its own delimiter
+    b"\xef\xbb\xbfzip,n\n02134,1\n02139,2\n",                         # a byte-order mark
+], ids=["first-column", "latin-1", "title", "trailing-delimiter", "semicolon", "bom"])
+def test_codes_keep_their_leading_zeros_in_every_layout(content):
+    df = _read_bytes(content, ".csv")[0]
+    assert df.columns[0] == "zip" and df["zip"].tolist() == ["02134", "02139"]
+
+
+def test_a_decimal_comma_reads_as_a_number():
+    assert _read_bytes(b"a;b\n1,5;x\n2,5;y\n", ".csv")[0]["a"].tolist() == [1.5, 2.5]
+
+
+def test_a_column_typed_differently_down_the_file_reads_as_one_type():
+    """pandas' low-memory read types each 262,144-row chunk alone: ints above, text below."""
+    df = _read_bytes(b"x,y\n" + b"1,abcdefgh\n" * 300_000 + b"a,b\n", ".csv")[0]
+    assert set(df["x"].map(type)) == {str}
 
 
 # ── the first lines: bounded work, and an end ─────────────────────────────────────────────────
