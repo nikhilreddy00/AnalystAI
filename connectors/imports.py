@@ -611,13 +611,11 @@ def shop_host(pasted: str) -> str:
     rule, read at save and at every refresh). A custom domain is refused: its host is the
     user's to name, the API's never."""
     text = pasted.strip().lower()
-    text = re.sub(r"^[a-z]+://", "", text).split("?")[0].strip("/")
+    text = re.sub(r"^[a-z]+://", "", text).split("?")[0]
     if m := re.fullmatch(r"admin\.shopify\.com/store/([^/]+)(?:/.*)?", text):
         name = m.group(1)
-    else:
-        host = text.split("/")[0]
-        name = host[: -len(".myshopify.com")] if host.endswith(".myshopify.com") else \
-            host if "." not in host else ""
+    else:   # a custom domain keeps its dots, which no store name has
+        name = text.split("/")[0].removesuffix(".myshopify.com")
     if not _SHOP.fullmatch(name) or len(name) > 60:
         raise ImportFailure("bad_shop")
     return f"{name}.myshopify.com"
