@@ -105,16 +105,18 @@ _NOT_A_TABLE = ("This file can't be read as a table. Upload a CSV, TSV, Excel (.
                 "Parquet file.")
 
 
+_HEADS = [1 << k for k in range(16, 64, 2)]   # 64 KiB, then ×4 a time: the last is past any text
+
+
 def _first_lines(text: str, n: int) -> list[str]:
     """`text.splitlines()[:n]` without splitting the whole text (5.8c: 520 MB of line strings
     at 250 MB, to sample 200 lines). A head holding more than n lines has its first n whole,
     whatever its cut splits (a \\r\\n, a character)."""
-    size = 1 << 16
-    while True:
+    for size in _HEADS:   # a fixed list, never a loop that could run on
         lines = text[:size].splitlines()
         if len(lines) > n or size >= len(text):
             return lines[:n]
-        size *= 4
+    return []   # never: the last head is past any text
 
 
 def _layout(text: str) -> tuple[str, int, str]:

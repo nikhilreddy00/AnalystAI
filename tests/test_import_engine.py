@@ -130,7 +130,8 @@ async def test_an_answer_past_its_cap_is_too_large(monkeypatch):
     handler, _ = _answer(httpx.Response(200, content=b"x" * 100))
     serve(monkeypatch, handler)
     async with imp.vendor_client(frozenset({"api.stripe.com"})) as c:
-        assert await _fail(imp.fetch(c, URL, what="x", cap=10)) == {"code": "too_large", "what": ""}
+        assert await _fail(imp.fetch(c, URL, what="x", method="GET", cap=10)) == \
+            {"code": "too_large", "what": ""}
 
 
 async def test_an_answer_in_an_unread_encoding_is_the_vendor_down(monkeypatch):

@@ -119,9 +119,13 @@ def test_a_list_of_dates_reads_as_json_text():
 
 
 def test_a_corrupt_parquet_file_is_said_as_no_table():
-    e = _refused(b"PAR1 not a parquet file PAR1", ".parquet")
+    e = _refused(b"PAR1 not a parquet file PAR1", ".parquet")   # its footer unreadable
     assert e.user_message == cc._NOT_A_TABLE and str(e).startswith("ingestion: parquet: ")
-    assert str(e) != "ingestion: parquet: NoneType"
+    good = _parquet(pa.table({"n": list(range(1000))}))           # its footer good, its data not
+    bad = good[:4] + bytes(b ^ 0xFF for b in good[4:200]) + good[200:]
+    e = _refused(bad, ".parquet")
+    assert e.user_message == cc._NOT_A_TABLE and str(e).startswith("ingestion: parquet: ")
+    assert "NoneType" not in str(e)
 
 
 # ── the first lines: bounded work, and an end ─────────────────────────────────────────────────
@@ -129,7 +133,8 @@ def test_a_corrupt_parquet_file_is_said_as_no_table():
 def test_the_first_lines_end_on_every_size_of_text():
     """Short text, text past the first head, text with fewer lines than asked: each returns (a
     loop that never grows, or never stops at the text's end, would hang the upload)."""
-    texts = [("", 5), ("a\nb", 5), ("a\n" * 10, 3), ("x" * (1 << 17) + "\nb", 5), ("a\n" * 70_000, 2)]
+    texts = [("", 5), ("a\nb", 5), ("a\n" * 10, 3), ("x" * (1 << 17) + "\nb", 5), ("a\n" * 70_000, 2),
+             ("x" * 70_000 + "\nb", 1)]   # the first head holds 1 line, cut: never returned cut
     got = {}
 
     def run():

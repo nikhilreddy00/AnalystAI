@@ -113,7 +113,7 @@ async def get_json(client: httpx.AsyncClient, url: str, *, what: str, method: st
     return got
 
 
-async def fetch(client: httpx.AsyncClient, url: str, *, what: str, method: str = "GET",
+async def fetch(client: httpx.AsyncClient, url: str, *, what: str, method: str,
                 cap: int = PAGE_BYTES, **kw) -> bytes:
     """One answer's body (at most `cap` bytes), its failure as a reason code. A 429 is waited out
     once (its Retry-After if any, else RETRY_WAIT_S), never when the vendor says not to retry."""
