@@ -691,6 +691,16 @@ _MORE_LINES = f"""query($id: ID!, $after: String) {{ order(id: $id) {{
                                                   edges {{ node {{ {_LINE} }} }} }} }} }}"""
 
 
+def _cursor(page: dict, seen: set) -> str:
+    """The next page's cursor, which must be new: a missing or repeated one is a schema failure
+    (a vendor bug re-asking one page forever; the lines loop had no other bound)."""
+    got = need(page, "pageInfo", "endCursor")
+    if not isinstance(got, str) or got in seen:
+        raise ImportFailure("schema", "pageInfo.endCursor")
+    seen.add(got)
+    return got
+
+
 async def _shopify_orders(client, headers, window_from) -> tuple[list[dict], str | None]:
     """Every order's lines, newest order first, as the Orders export lays them out (one row a
     line; the order's own fields on its first line only: red-team 2, a total on every line
@@ -698,17 +708,17 @@ async def _shopify_orders(client, headers, window_from) -> tuple[list[dict], str
     order's lines past the first page paged on their own (never the first page only)."""
     tz = need(await _gql(client, headers, "{ shop { ianaTimezone } }", "Orders"),
               "shop", "ianaTimezone")
-    rows, after = [], None
+    rows, after, seen = [], None, set()
     while True:
         page = need(await _gql(client, headers, _ORDERS, "Orders", after=after,
                                q=f"created_at:>={window_from}" if window_from else None),
                     "orders")
         for edge in need(page, "edges"):
             o = need(edge, "node")
-            lines, more = need(o, "lineItems"), None
+            lines, moved = need(o, "lineItems"), set()
             own = [need(e, "node") for e in need(lines, "edges")]
             while need(lines, "pageInfo", "hasNextPage"):
-                more = need(lines, "pageInfo", "endCursor")
+                more = _cursor(lines, moved)
                 lines = need(await _gql(client, headers, _MORE_LINES, "Orders", id=o["id"],
                                         after=more), "order", "lineItems")
                 own += [need(e, "node") for e in need(lines, "edges")]
@@ -718,7 +728,7 @@ async def _shopify_orders(client, headers, window_from) -> tuple[list[dict], str
                 return rows[:ROW_CAP], dt.datetime.fromisoformat(o["createdAt"]).date().isoformat()
         if not need(page, "pageInfo", "hasNextPage"):
             return rows, None
-        after = need(page, "pageInfo", "endCursor")
+        after = _cursor(page, seen)
 
 
 def _local(r: dict, iso: str | None) -> dt.datetime | None:

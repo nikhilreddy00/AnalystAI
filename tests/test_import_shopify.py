@@ -246,6 +246,41 @@ async def test_an_orders_lines_past_the_first_page_are_paged_on_their_own(monkey
         [("gid://shopify/Order/1", "50"), ("gid://shopify/Order/1", "100")]
 
 
+class Stuck(Shop):
+    """Shopify saying more to come on every page of `where` ("orders" or "lineItems") under one
+    cursor, or none: a vendor bug that, unread, re-asks for one page forever (the lines loop had
+    no other bound). The fake refuses past 40 asks, so a loop that misses it fails, not hangs."""
+
+    def __init__(self, orders, where, cursor):
+        super().__init__(orders)
+        self.where, self.cursor = where, cursor
+
+    def __call__(self, request):
+        assert len(self.asked) < 40, "re-asked for a stuck page"
+        r = super().__call__(request)
+        body = r.json()
+
+        def stick(x):
+            if isinstance(x, dict):
+                for k, v in x.items():
+                    if k == self.where:
+                        v["pageInfo"] = {"hasNextPage": True, "endCursor": self.cursor}
+                    stick(v)
+            elif isinstance(x, list):
+                for v in x:
+                    stick(v)
+        stick(body)
+        return httpx.Response(200, json=body)
+
+
+@pytest.mark.parametrize("where", ["orders", "lineItems"])
+@pytest.mark.parametrize("cursor", ["7", None])
+async def test_a_cursor_that_never_moves_on_is_a_schema_failure(monkeypatch, where, cursor):
+    with pytest.raises(ImportFailure) as e:
+        await _orders(monkeypatch, Stuck([_order(1)], where, cursor))
+    assert e.value.public() == {"code": "schema", "what": "pageInfo.endCursor"}
+
+
 @pytest.mark.parametrize("window, q", [("2025-11-24", "created_at:>=2025-11-24"), (None, None)])
 async def test_a_window_is_asked_of_shopify_as_its_first_day(monkeypatch, window, q):
     shop = Shop([_order(1)])

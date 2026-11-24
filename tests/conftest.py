@@ -214,6 +214,13 @@ def encryption_key(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def no_throttle_wait(monkeypatch):
+    """Shopify's throttle is waited out in no test (5.8c gate: a mutant reading every answer as
+    a throttle slept 2 s × 30 in each test reaching `_gql`, a timeout, not a kill)."""
+    monkeypatch.setattr("connectors.imports.THROTTLE_WAIT_S", 0)
+
+
+@pytest.fixture(autouse=True)
 def mutant_caches():
     """Under mutmut (scripts/mutation.py) each mutant runs in a process forked after the clean
     tests: a result cached then (packs, memoised spell dates, built datasets) was computed by
