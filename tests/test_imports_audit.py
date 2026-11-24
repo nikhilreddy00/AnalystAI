@@ -145,7 +145,7 @@ async def test_last_12_months_moves_with_each_refresh(client, monkeypatch):
     serve(monkeypatch, later)
     await client.post(f"/api/imports/{body['id']}/refresh")
     await _settle(client)
-    year = (dt.date.today() - dt.timedelta(days=365)).isoformat()
+    year = (dt.datetime.now(dt.timezone.utc).date() - dt.timedelta(days=365)).isoformat()   # UTC day
     since = {q.get("created[gte]") for p, q in later.seen if p == "/v1/invoices"}
     assert since == {str(int(dt.datetime.fromisoformat(year).replace(
         tzinfo=dt.timezone.utc).timestamp()))}
@@ -153,10 +153,15 @@ async def test_last_12_months_moves_with_each_refresh(client, monkeypatch):
 
 
 async def test_last_12_months_is_a_year_back_and_off_clears_it(client, monkeypatch):
+    """Retro 5.8c: the route took the local day and the refresh the UTC one, so an evening in
+    New York stored one day and the next refresh another. One rule, by UTC; the clock is set to
+    a moment where the two days differ."""
     import datetime as dt
+    from connectors import imports as imp
+    monkeypatch.setattr(imp, "_now", lambda: dt.datetime(2026, 11, 24, 4, 30, tzinfo=dt.timezone.utc))
     serve(monkeypatch, Stripe([_sub(1)], [_inv(1)]))
     body = (await _connect(client)).json()
     on = await client.put(f"/api/imports/{body['id']}/window", json={"last_12_months": True})
-    assert on.json()["window_from"] == (dt.date.today() - dt.timedelta(days=365)).isoformat()
+    assert on.json()["window_from"] == "2025-11-24"
     off = await client.put(f"/api/imports/{body['id']}/window", json={"last_12_months": False})
     assert off.json()["window_from"] is None

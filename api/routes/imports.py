@@ -216,7 +216,7 @@ async def replace_key(import_id: str, request: Request, body: ImportKey,
 async def set_window(import_id: str, body: Window, request: Request,
                      current_user: UserProfile = Depends(get_current_user)) -> dict:
     await _own(request, import_id, current_user.uid)
-    since = (dt.date.today() - dt.timedelta(days=365)).isoformat() if body.last_12_months else None
+    since = imp.year_back() if body.last_12_months else None
     await request.app.state.session_store.set_import_window(import_id, current_user.uid, since)
     return _public(await _own(request, import_id, current_user.uid), request)
 

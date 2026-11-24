@@ -149,3 +149,5 @@ first draft committed red (P58-32). Not done: semgrep, zizmor, actionlint (not i
 - "The last 12 months" was a date stored once → P58-54 (new)
 - No limit on imports per user → P58-55 (new)
 - The gate's baseline failure was fixed twice by guess before it was reproduced in the gate's copy → P58-56 (new)
+- The window's first day was the local day in the route and the UTC day in the refresh → P58-54 (recurrence: the m2 fix moved the refresh's rule and left the route's)
+- The gate kept its own copy of which functions mutmut mutates and stopped a 2 h record on one it doesn't → P58-57 (new)

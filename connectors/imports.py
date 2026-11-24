@@ -227,6 +227,12 @@ def _now() -> dt.datetime:
     return dt.datetime.now(dt.timezone.utc)
 
 
+def year_back() -> str:
+    """The first day of "the last 12 months", by the UTC day (`_since` reads it as UTC midnight):
+    the one rule for the route that turns it on and each refresh that moves it."""
+    return (_now().date() - dt.timedelta(days=365)).isoformat()
+
+
 async def refresh(store, rec: ImportRecord, token: str, file_table: FileTable) -> None:
     """Fetch every table of `rec` and file each whole one as a new version. Runs as a task
     holding the row (`token`) under its own credential scope: the key masks its own lines only,
@@ -253,8 +259,7 @@ async def refresh(store, rec: ImportRecord, token: str, file_table: FileTable) -
         register_secrets(*secret_values(rec.secrets))
         # the one window there is, "the last 12 months", from this refresh's day: a date stored
         # once would hold two years a year on (senior audit m2); stored, so the card says it
-        window = (started.date() - dt.timedelta(days=365)).isoformat() if rec.window_from \
-            else None
+        window = year_back() if rec.window_from else None
         if window and window != rec.window_from:
             await store.set_import_window(rec.id, rec.user_id, window)
         async with asyncio.timeout(REFRESH_DEADLINE_S):

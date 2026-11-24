@@ -353,9 +353,10 @@ One row per audit, gate, browser or retro finding, so recurrences per class can 
 | P58-51 | C5 | 5.8c | Audit 1 (senior audit M2, m3) and the plan's own red-team line: what an import's card says of a table (stale after a failed refresh, cut at the row cap, empty after a refresh that found nothing) never reaches the dataset an analysis reads, so answers read the last good copy as current and complete | Open: follow-up fix PR before 5.8d, with P58-46/47 | `tests/test_import_answers.py::test_a_dataset_read_from_an_import_says_what_its_card_says` | 0 |
 | P58-52 | C0 | 5.8c | Audit 1 (senior audit M1, code review 1-2): an import's table was deleted by the retention sweep (a refresh finding nothing new files no version, so a table refreshed daily read as idle), or deleted or split in the Datasets view: every later refresh failed "unexpected"; Postgres numbered a version after a split as the count, a duplicate | Import datasets are never idle; the Datasets view refuses to delete or split them (409, said); a version is numbered after the highest (`_next_version`, both stores) | `tests/test_imports_store.py::test_an_imports_tables_are_never_swept_as_idle`; `tests/test_imports_audit.py::test_an_imports_table_is_changed_through_its_import_only` | 0 |
 | P58-53 | C0 | 5.8c | Audit 1 (silent-failure hunt, type review, senior audit m4): an error outside the reason codes in one table marked every later table "unexpected", unfetched; a failed table kept its last run's "no changes" filing; a vendor answer that was JSON but no object was a bare 500 at connect; an exception escaping the refresh task and a failed last write were lost unlogged; shutdown closed the store under running refreshes; the page polled a dead server forever and closed the new-key form on a refused key | Per-table catch with a log; `fail` drops `filed`; `get_json` takes objects only and the key test says any error; the task's exception and `_end`'s failure are logged; shutdown cancels refreshes before the store closes; the page stops after three missed polls and says so, keeps the form on a refusal | `tests/test_imports_audit.py::test_one_tables_unexpected_error_leaves_the_next_table_its_refresh`; `tests/test_imports_audit.py::test_a_failed_table_says_its_failure_never_its_last_runs_filing`; `tests/test_imports_audit.py::test_an_answer_that_isnt_an_object_is_said_in_words` | 0 |
-| P58-54 | C2 | 5.8c | Senior audit m2: "the last 12 months" was stored as a date once, so a year on the import fetched two years under the same words | The window's first day is worked out at each refresh and stored for the card | `tests/test_imports_audit.py::test_last_12_months_moves_with_each_refresh` | 0 |
+| P58-54 | C2 | 5.8c | Senior audit m2: "the last 12 months" was stored as a date once, so a year on the import fetched two years under the same words. Recurred in the same phase: the fix worked the day out in the refresh by UTC while the route that turns the window on kept the local day, so each evening in New York the two stored different days (the gate's baseline caught it at 19:00 EST) | The window's first day is worked out at each refresh and stored for the card, by one rule (`year_back`, the UTC day) for the route and the refresh | `tests/test_imports_audit.py::test_last_12_months_moves_with_each_refresh`; `tests/test_imports_audit.py::test_last_12_months_is_a_year_back_and_off_clears_it` | 1 |
 | P58-56 | G | 5.8c | The mutation gate's baseline failed three times on one matrix case; the first two "fixes" guessed (load, then a 10 s bound, committed as efd568a) before the failure was reproduced in mutmut's own copy, where it showed at once: the gate ran with a placeholder `ENCRYPTION_KEY` and the matrix, unlike the import tests, read the environment's key, so every import case was a 500 | The matrix sets its own key like the import tests; a gate baseline failure is reproduced in the gate's copy (`mutants/`, `MUTANT_UNDER_TEST=stats`) before any fix | `tests/test_connect_matrix.py::test_an_import_connects_or_says_why` | 0 |
 | P58-55 | C0 | 5.8c | Security review 1: a user could start any number of imports, each a refresh holding up to the row cap in memory: one test account seeded large could exhaust the API process for every tenant | At most five imports per user (said); a process-wide refresh queue goes to Phase 6 with the memory structural fix | `tests/test_imports_audit.py::test_a_user_has_at_most_five_imports` | 0 |
+| P58-57 | G | 5.8c | The mutation gate kept its own copy of which functions mutmut mutates (undecorated ones); mutmut makes no mutant of `new_token` (`return uuid.uuid4().hex`), so it got no trampoline and a 2 h 17 min record stopped on "no selected test reaches new_token" | The gate asks mutmut's generator which functions it mutates; `--check` asks only for files changed since the ref | `tests/test_mutation_script.py::test_the_hash_is_the_functions_code_never_its_comments_docstring_or_place` | 0 |
 
 ## Majors per class (the 5.7b class baseline)
 
@@ -363,7 +364,7 @@ One row per audit, gate, browser or retro finding, so recurrences per class can 
 |---|---|---|---|
 | C0 | 137 | 40 | 40 |
 | C1 | 38 | 8 | 23 |
-| C2 | 33 | 6 | 5 |
+| C2 | 33 | 6 | 6 |
 | C3 | 3 | 0 | 0 |
 | C4 | 2 | 0 | 1 |
 | C5 | 21 | 4 | 10 |
@@ -377,7 +378,7 @@ One row per audit, gate, browser or retro finding, so recurrences per class can 
 | D | 4 | 1 | 8 |
 | E | 3 | 0 | 5 |
 | F | 3 | 1 | 4 |
-| G | 21 | 1 | 13 |
+| G | 22 | 1 | 13 |
 
 ## Classes closed (5.7b-2, 5.7b-3)
 
