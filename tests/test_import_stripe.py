@@ -28,8 +28,9 @@ class StripeItems(Stripe):
 
     def __call__(self, request):
         url = urlparse(str(request.url))
-        if url.path != "/v1/subscription_items":
-            return super().__call__(request)
+        if url.path != "/v1/subscription_items" or url.path in self.fail or \
+                request.headers.get("authorization") != f"Bearer {self.key}":
+            return super().__call__(request)   # its key and its refusals as every list's
         q = {k: v[0] for k, v in parse_qs(url.query).items()}
         self.seen.append((url.path, q))
         objs = self.items[q["subscription"]]
@@ -168,6 +169,43 @@ async def test_a_subscriptions_items_are_cut_at_the_rows_left(monkeypatch):
                              StripeItems([first, second], items={"sub_0002": more}))
     assert [r["item"]["id"] for r in rows] == ["si_0001_0", "si_0001_1", "si_y0"]
     assert cut == imp.instant(second["created"]).date().isoformat()
+
+
+async def test_a_subscriptions_items_are_paged_no_further_than_the_rows_left(monkeypatch):
+    """The items list stops at the rows the table has left (its cap), not at the table's cap:
+    a request fewer for each page past it."""
+    monkeypatch.setattr(imp, "ROW_CAP", 150)
+    first, second = _sub(1, items=60), _sub(2)
+    second["items"]["has_more"] = True
+    more = [dict(first["items"]["data"][0], id=f"si_y{n:03d}") for n in range(250)]
+    stripe = StripeItems([first, second], items={"sub_0002": more})
+    rows, _ = await _fetch(monkeypatch, imp.STRIPE_SUBSCRIPTIONS, stripe)
+    assert len(rows) == 150 and rows[-1]["item"]["id"] == "si_y089"
+    assert [p for p, _ in stripe.seen].count("/v1/subscription_items") == 1
+
+
+async def test_a_subscriptions_paged_items_are_asked_with_the_key_and_named_when_refused(
+        monkeypatch):
+    sub = _sub(1)
+    sub["items"]["has_more"] = True
+    with pytest.raises(ImportFailure) as e:
+        await _fetch(monkeypatch, imp.STRIPE_SUBSCRIPTIONS,
+                     StripeItems([sub], items={"sub_0001": []},
+                                 fail={"/v1/subscription_items": 403}))
+    assert e.value.public() == {"code": "permission", "what": "Subscriptions"}
+    rows, _ = await _fetch(monkeypatch, imp.STRIPE_SUBSCRIPTIONS,   # a 401 if sent keyless
+                           StripeItems([sub], items={"sub_0001": sub["items"]["data"]}))
+    assert [r["item"]["id"] for r in rows] == ["si_0001_0"]
+
+
+async def test_a_cut_subscription_list_is_said_cut_when_its_rows_fall_short(monkeypatch):
+    """Subscriptions cut by their own count but fewer rows than the cap (one with no items):
+    still said cut, from the last subscription kept."""
+    monkeypatch.setattr(imp, "ROW_CAP", 2)
+    rows, cut = await _fetch(monkeypatch, imp.STRIPE_SUBSCRIPTIONS,
+                             Stripe([_sub(1, items=0), _sub(2), _sub(3)]))
+    assert [r["sub"]["id"] for r in rows] == ["sub_0002"]
+    assert cut == imp.instant(_sub(2)["created"]).date().isoformat()
 
 
 async def test_subscriptions_are_cut_by_their_own_count_too(monkeypatch):

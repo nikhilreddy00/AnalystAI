@@ -397,7 +397,7 @@
     "reason": "the numeric test only skips work: a numeric column never equals '', so its blank mask is all False and nothing is masked either way"
    }
   ],
-  "hash": "457cb9c5401fbfb6"
+  "hash": "d819e6b9f1a3f225"
  },
  "connectors/base.py::parse_text_dates": {
   "equivalents": [],
@@ -456,12 +456,311 @@
     "old": "continue",
     "reason": "sqlite is DIALECTS' last row, so leaving the loop after its row is the same as continuing; a row added after it goes through the README test"
    }
-  ],
-  "hash": "1f17f397ff525e5e"
+  ]
  },
  "connectors/base.py::without_secrets": {
   "equivalents": [],
   "hash": "3818735d974760f2"
+ },
+ "connectors/csv_connector.py::_first_lines": {
+  "equivalents": []
+ },
+ "connectors/csv_connector.py::_json_records": {
+  "equivalents": []
+ },
+ "connectors/csv_connector.py::_layout": {
+  "equivalents": [],
+  "hash": "01f205d4f29f6196"
+ },
+ "connectors/csv_connector.py::_read_bytes": {
+  "equivalents": [],
+  "hash": "0a0db60e04c9ae9b"
+ },
+ "connectors/csv_connector.py::_read_parquet": {
+  "equivalents": []
+ },
+ "connectors/csv_connector.py::_read_text_table": {
+  "equivalents": [],
+  "hash": "7c1c54215e2aef17"
+ },
+ "connectors/csv_connector.py::_readable_size": {
+  "equivalents": [],
+  "hash": "fc7640839db9058c"
+ },
+ "connectors/imports.py::ImportFailure.__init__": {
+  "equivalents": []
+ },
+ "connectors/imports.py::ImportFailure.public": {
+  "equivalents": [],
+  "hash": "d5238da318f7724a"
+ },
+ "connectors/imports.py::Table.frame": {
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "truncated=None).frame()",
+    "old": "truncated=False).frame()",
+    "reason": "QueryResult.frame never reads `truncated` (an import's cut is said by its status' cut_from)"
+   },
+   {
+    "n": 1,
+    "new": "truncated=True).frame()",
+    "old": "truncated=False).frame()",
+    "reason": "QueryResult.frame never reads `truncated` (an import's cut is said by its status' cut_from)"
+   }
+  ]
+ },
+ "connectors/imports.py::Vendor.client": {
+  "equivalents": [],
+  "hash": "58f345e8b627a578"
+ },
+ "connectors/imports.py::_amount": {
+  "equivalents": []
+ },
+ "connectors/imports.py::_coupon": {
+  "equivalents": []
+ },
+ "connectors/imports.py::_customer": {
+  "equivalents": []
+ },
+ "connectors/imports.py::_cut_date": {
+  "equivalents": []
+ },
+ "connectors/imports.py::_end": {
+  "equivalents": []
+ },
+ "connectors/imports.py::_first": {
+  "equivalents": []
+ },
+ "connectors/imports.py::_gql": {
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "method=\"post\", headers={k: v for k, v in headers.items() if not k.startswith(\"_\")},",
+    "old": "method=\"POST\", headers={k: v for k, v in headers.items() if not k.startswith(\"_\")},",
+    "reason": "httpx upper-cases a request's method"
+   },
+   {
+    "n": 1,
+    "new": "in str(ext.get(\"documentation\", None)) else \"permission\", what)",
+    "old": "in str(ext.get(\"documentation\", \"\")) else \"permission\", what)",
+    "reason": "a missing documentation reads as 'None', which holds no 'protected-customer-data': 'permission' as with ''"
+   },
+   {
+    "n": 1,
+    "new": "in str(ext.get(\"documentation\", )) else \"permission\", what)",
+    "old": "in str(ext.get(\"documentation\", \"\")) else \"permission\", what)",
+    "reason": "a missing documentation reads as 'None', which holds no 'protected-customer-data': 'permission' as with ''"
+   },
+   {
+    "n": 1,
+    "new": "in str(ext.get(\"documentation\", \"XXXX\")) else \"permission\", what)",
+    "old": "in str(ext.get(\"documentation\", \"\")) else \"permission\", what)",
+    "reason": "a missing documentation reads as 'XXXX', which holds no 'protected-customer-data': 'permission' as with ''"
+   }
+  ]
+ },
+ "connectors/imports.py::_inv_money": {
+  "equivalents": []
+ },
+ "connectors/imports.py::_local": {
+  "equivalents": []
+ },
+ "connectors/imports.py::_now": {
+  "equivalents": [],
+  "hash": "3b12ee0a5aa762f9"
+ },
+ "connectors/imports.py::_percent_off": {
+  "equivalents": []
+ },
+ "connectors/imports.py::_shopify_auth": {
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "what=\"the app\", method=\"post\",",
+    "old": "what=\"the app\", method=\"POST\",",
+    "reason": "httpx upper-cases a request's method"
+   }
+  ]
+ },
+ "connectors/imports.py::_shopify_check": {
+  "equivalents": []
+ },
+ "connectors/imports.py::_shopify_orders": {
+  "equivalents": []
+ },
+ "connectors/imports.py::_shopify_test": {
+  "equivalents": []
+ },
+ "connectors/imports.py::_since": {
+  "equivalents": [],
+  "hash": "f8ceed6e65d0ce43"
+ },
+ "connectors/imports.py::_stripe_auth": {
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "return {\"authorization\": f\"Bearer {secrets['key']}\", \"Stripe-Version\": STRIPE_VERSION}",
+    "old": "return {\"Authorization\": f\"Bearer {secrets['key']}\", \"Stripe-Version\": STRIPE_VERSION}",
+    "reason": "httpx headers are case-insensitive, sent and read"
+   },
+   {
+    "n": 1,
+    "new": "return {\"AUTHORIZATION\": f\"Bearer {secrets['key']}\", \"Stripe-Version\": STRIPE_VERSION}",
+    "old": "return {\"Authorization\": f\"Bearer {secrets['key']}\", \"Stripe-Version\": STRIPE_VERSION}",
+    "reason": "httpx headers are case-insensitive, sent and read"
+   },
+   {
+    "n": 1,
+    "new": "return {\"Authorization\": f\"Bearer {secrets['key']}\", \"stripe-version\": STRIPE_VERSION}",
+    "old": "return {\"Authorization\": f\"Bearer {secrets['key']}\", \"Stripe-Version\": STRIPE_VERSION}",
+    "reason": "httpx headers are case-insensitive, sent and read"
+   },
+   {
+    "n": 1,
+    "new": "return {\"Authorization\": f\"Bearer {secrets['key']}\", \"STRIPE-VERSION\": STRIPE_VERSION}",
+    "old": "return {\"Authorization\": f\"Bearer {secrets['key']}\", \"Stripe-Version\": STRIPE_VERSION}",
+    "reason": "httpx headers are case-insensitive, sent and read"
+   }
+  ]
+ },
+ "connectors/imports.py::_stripe_check": {
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "key = secrets.get(\"key\", \"XXXX\")",
+    "old": "key = secrets.get(\"key\", \"\")",
+    "reason": "'XXXX' starts with no key prefix: a missing key is refused not_a_key as '' is"
+   }
+  ]
+ },
+ "connectors/imports.py::_stripe_invoices": {
+  "equivalents": []
+ },
+ "connectors/imports.py::_stripe_list": {
+  "equivalents": []
+ },
+ "connectors/imports.py::_stripe_subscriptions": {
+  "equivalents": []
+ },
+ "connectors/imports.py::_stripe_test": {
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "headers = await _stripe_auth(None, secrets)",
+    "old": "headers = await _stripe_auth(client, secrets)",
+    "reason": "_stripe_auth never reads its client (Shopify's auth mints a token with it)"
+   },
+   {
+    "n": 1,
+    "new": "acct = await get_json(client, f\"{STRIPE_API}/account\", what=None, headers=headers)",
+    "old": "acct = await get_json(client, f\"{STRIPE_API}/account\", what=\"Account\", headers=headers)",
+    "reason": "a `what` is said only by a 403, and a 403 on /account is caught and dropped (the key may not read the account)"
+   },
+   {
+    "n": 1,
+    "new": "acct = await get_json(client, f\"{STRIPE_API}/account\", what=\"XXAccountXX\", headers=headers)",
+    "old": "acct = await get_json(client, f\"{STRIPE_API}/account\", what=\"Account\", headers=headers)",
+    "reason": "a `what` is said only by a 403, and a 403 on /account is caught and dropped (the key may not read the account)"
+   },
+   {
+    "n": 1,
+    "new": "acct = await get_json(client, f\"{STRIPE_API}/account\", what=\"account\", headers=headers)",
+    "old": "acct = await get_json(client, f\"{STRIPE_API}/account\", what=\"Account\", headers=headers)",
+    "reason": "a `what` is said only by a 403, and a 403 on /account is caught and dropped (the key may not read the account)"
+   },
+   {
+    "n": 1,
+    "new": "acct = await get_json(client, f\"{STRIPE_API}/account\", what=\"ACCOUNT\", headers=headers)",
+    "old": "acct = await get_json(client, f\"{STRIPE_API}/account\", what=\"Account\", headers=headers)",
+    "reason": "a `what` is said only by a 403, and a 403 on /account is caught and dropped (the key may not read the account)"
+   }
+  ]
+ },
+ "connectors/imports.py::_transition": {
+  "equivalents": [],
+  "hash": "653f170c780abe44"
+ },
+ "connectors/imports.py::fetch": {
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "if attempt == 2 or r.headers.get(\"STRIPE-SHOULD-RETRY\") == \"false\":",
+    "old": "if attempt == 2 or r.headers.get(\"stripe-should-retry\") == \"false\":",
+    "reason": "httpx headers are case-insensitive, sent and read"
+   },
+   {
+    "n": 1,
+    "new": "wait = r.headers.get(\"RETRY-AFTER\", \"\")",
+    "old": "wait = r.headers.get(\"retry-after\", \"\")",
+    "reason": "httpx headers are case-insensitive, sent and read"
+   },
+   {
+    "n": 1,
+    "new": "wait = r.headers.get(\"retry-after\", \"XXXX\")",
+    "old": "wait = r.headers.get(\"retry-after\", \"\")",
+    "reason": "'XXXX' isn't digits, so a missing Retry-After waits RETRY_WAIT_S as '' does"
+   }
+  ]
+ },
+ "connectors/imports.py::get_json": {
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "async def x_get_json(client: httpx.AsyncClient, url: str, *, what: str, method: str = \"get\",",
+    "old": "async def x_get_json(client: httpx.AsyncClient, url: str, *, what: str, method: str = \"GET\",",
+    "reason": "httpx upper-cases a request's method"
+   }
+  ]
+ },
+ "connectors/imports.py::instant": {
+  "equivalents": [],
+  "hash": "5c71150e10c6018f"
+ },
+ "connectors/imports.py::need": {
+  "equivalents": []
+ },
+ "connectors/imports.py::refresh": {
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "return",
+    "old": "break",
+    "reason": "the table loop is the try's last statement and refresh returns None: return leaves it as break does, through the same finally"
+   },
+   {
+    "n": 1,
+    "new": "lost = None",
+    "old": "lost = False",
+    "reason": "`lost` is read only as `not lost`: None and False alike"
+   }
+  ]
+ },
+ "connectors/imports.py::said": {
+  "equivalents": []
+ },
+ "connectors/imports.py::secret_values": {
+  "equivalents": []
+ },
+ "connectors/imports.py::shop_host": {
+  "equivalents": []
+ },
+ "connectors/imports.py::stripe_money": {
+  "equivalents": [
+   {
+    "n": 1,
+    "new": "code = (currency or \"XXXX\").upper()",
+    "old": "code = (currency or \"\").upper()",
+    "reason": "'XXXX' is in neither decimal set: a missing currency has two places as '' does"
+   }
+  ]
+ },
+ "connectors/imports.py::vendor_client": {
+  "equivalents": []
+ },
+ "connectors/imports.py::year_back": {
+  "equivalents": [],
+  "hash": "ac7463dbbf15e390"
  },
  "connectors/link.py::_capped": {
   "equivalents": [],
