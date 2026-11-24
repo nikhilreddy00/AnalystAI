@@ -55,7 +55,13 @@ mutants fail fast (`mutmut show` each in the run's worktree while it runs).
   `_stripe_check` and `stripe_money` "XXXX" defaults. Check each against the new log; never name one unread.
 - Done when: a narrow rerun of the same functions shows 0 unexplained survivors; committed.
 
-### [ ] Part 1b: close the survivors in the reader (`connectors/csv_connector.py`, `connectors/base.py`)
+### [x] Part 1b: close the survivors in the reader (`connectors/csv_connector.py`, `connectors/base.py`)
+Done 2026-11-24 (`87ad07e`, `84848f3`): 64 survivors → 47 killed by tests in `tests/test_reader_refusals.py`
+(CSV and parquet cell bounds, the parquet footer's unpacked size, the nested bound, leading zeros re-read in
+six layouts, the decimal mark, low_memory, JSON dtype and its ValueError), 3 gone with the dead `utf-8-sig`
+codec line (pandas drops a BOM itself), 13 named in gate.json (a 14th, on the codec line, went with it).
+The rerun at 84848f3 says "13, 13 of them named equivalents", 0 timeouts. Hashes for
+`_read_text_table` are stale after that line's change: Part 2's `--record` rewrites them.
 - Input: `narrowB.log` beside `narrowA.log` (same job, runs second). Rerun command as 1a with the reader
   names (`normalize_frame sources_table _first_lines _layout _read_text_table _json_records _readable_size
   _read_parquet _read_bytes`) and `--tests tests/test_reader_refusals.py tests/test_connectors_sources.py

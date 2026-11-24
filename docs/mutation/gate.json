@@ -552,12 +552,6 @@
    },
    {
     "n": 1,
-    "new": "codec = \"UTF-8-SIG\" if encoding == \"utf-8\" else encoding",
-    "old": "codec = \"utf-8-sig\" if encoding == \"utf-8\" else encoding",
-    "reason": "Python's codec names ignore case (pandas hands the name to codecs)"
-   },
-   {
-    "n": 1,
     "new": "decimal=decimal, index_col=False, low_memory=None)",
     "old": "decimal=decimal, index_col=False, low_memory=False)",
     "reason": "pandas' parser tests low_memory for truth: None reads as False (5.8c, measured: one type down a 300,000-row column either way; True splits it)"
