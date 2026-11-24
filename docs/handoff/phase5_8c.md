@@ -71,7 +71,13 @@ The rerun at 84848f3 says "13, 13 of them named equivalents", 0 timeouts. Hashes
   `split(None)`; `_first_lines` head-size / `size > len(text)` mutants if they still survive.
 - Done when: as 1a; committed.
 
-### [ ] Part 2: the full gate, recorded
+### [x] Part 2: the full gate, recorded
+Done 2026-11-24 (`9e6051b`, `716acd2`, `7d5f055`): Part 1a's 6 timeouts were loops. 5 `_shopify_orders`
+mutants re-asked one page forever (a real hang: a vendor repeating or dropping a cursor, the lines loop
+unbounded) → `_cursor` refuses a missing or repeated cursor as `schema` (4 red-first tests); `_gql`'s
+inverted throttle check slept 2 s × 30 per test → the conftest sets `THROTTLE_WAIT_S` to 0. The dead
+`_first` row left gate.json. Full `--record` at 716acd2 (1 h 53 min): 1586 mutants, 28 survivors, all 28
+named, 0 timeouts, 0 no_tests, 36 functions recorded; `--check main` passes. Nothing new from the oracle.
 - `uv run python scripts/mutation.py --check main` → copy its `run:` line; run it with `--record`, no
   `--tests`, under `LIVE_MAX_MINUTES=600 ENCRYPTION_KEY=x caffeinate -i` in the background (~6 h, overnight).
 - Survivors the narrow runs missed (reached only by the oracle or the full suite): close them as in Part 1,
