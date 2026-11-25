@@ -544,7 +544,7 @@
  },
  "connectors/csv_connector.py::_read_parquet": {
   "equivalents": [],
-  "hash": "f91c662e5229dd7f"
+  "hash": "67a920de73b51670"
  },
  "connectors/csv_connector.py::_read_text_table": {
   "equivalents": [
@@ -572,7 +572,7 @@
     "reason": "in every file a writer makes, values (num_values: nulls and an empty list counted) is at least rows × columns, so the product never sets the max; it bounds only a hand-made footer declaring more rows than values, which no test writes (5.8c, measured with nulls and empty lists)"
    }
   ],
-  "hash": "fc7640839db9058c"
+  "hash": "b1263c075ecf5c2e"
  },
  "connectors/imports.py::ImportFailure.__init__": {
   "equivalents": [],
