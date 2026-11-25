@@ -159,7 +159,10 @@ def test_the_cap_is_the_measured_one_everywhere():
 
 def _in_a_child(body: str) -> list[str]:
     from tests.conftest import PEAK_MB
-    out = subprocess.run([sys.executable, "-c", PEAK_MB + body], capture_output=True, text=True,
+    # faulthandler: a C++ abort prints the Python stacks (CI 5.8c: Linux aborted after "refused"
+    # printed, 1 of 2 runs; not reproduced in 160 local Linux runs)
+    out = subprocess.run([sys.executable, "-X", "faulthandler", "-c", PEAK_MB + body],
+                         capture_output=True, text=True,
                          timeout=300, cwd=str(ROOT))
     # stdout too: a crash after the read printed is an exit fault, not the reader's
     assert out.returncode == 0, (out.returncode, out.stdout[-500:], out.stderr[-2000:])

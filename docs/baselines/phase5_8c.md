@@ -1,8 +1,8 @@
 # Phase 5.8c — Stripe and Shopify imports, 100 MB uploads (2026-11-23)
 
-Wall clock: about 30 h, three times the 10 h budget (first commit 2026-11-22 14:41; past 20 h in one session
-by 2026-11-24 14:55, when the user split the rest into parts; Parts 1–3 to 23:55 that day, 9 h with a 1 h 53 min
-gate record; Part 4 on 2026-11-25; the PR's number added at merge). The breaker (5 h before the paid step) was not
+Wall clock: 30 h (first commit 2026-11-22 14:41 → merge pending, PR #33), about three times the 10 h budget:
+past 20 h in one session by 2026-11-24 14:55, when the user split the rest into parts; Parts 1–3 to 23:55 that
+day, 9 h with a 1 h 53 min gate record; Part 4 on 2026-11-25. The breaker (5 h before the paid step) was not
 tripped: the paid E2E ran at about 5.9 h, after the user cut HubSpot for time. The overrun came after it: audit
 pass 1 (six reviewers) and its fixes, the live check, then the gates (three failed mutation baselines, P58-56/57;
 the survivors closed in Parts 1–2; CI's first findings in Part 3).
@@ -158,7 +158,5 @@ first draft committed red (P58-32). Not done: semgrep, zizmor, actionlint (not i
 - The gate's baseline failure was fixed twice by guess before it was reproduced in the gate's copy → P58-56 (new)
 - The window's first day was the local day in the route and the UTC day in the refresh → P58-54 (recurrence: the m2 fix moved the refresh's rule and left the route's)
 - The gate kept its own copy of which functions mutmut mutates and stopped a 2 h record on one it doesn't → P58-57 (new)
-- Gate runs lost hours to idle sleep, to `caffeinate` as a wrapper (it strips `DYLD_LIBRARY_PATH`) and to the
-  oracle in a narrow run that never finished → P58-58 (new: `live()` holds the Mac awake beside the run)
-- The suite ran without the test databases, so two failures showed first in CI → P58-21 (recurrence:
-  `test_dbs.sh` starts them only when asked; `suite.py` now names each unset URL)
+- Gate runs lost hours to idle sleep, to `caffeinate` as a wrapper (it strips `DYLD_LIBRARY_PATH`) and to the oracle in a narrow run that never finished → P58-58 (new)
+- The suite ran without the test databases, so two failures showed first in CI → P58-21 (recurrence: `test_dbs.sh` starts them only when asked; `suite.py` now names each unset URL)
