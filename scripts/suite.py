@@ -25,6 +25,14 @@ def linked_worktree(path: Path) -> bool:
     return Path(path, git("--git-dir")).resolve() != Path(path, git("--git-common-dir")).resolve()
 
 
+DB_URLS = ("TEST_PG_URL", "TEST_MYSQL_URL", "TEST_MARIADB_URL", "TEST_MSSQL_URL")
+
+
+def missing_dbs() -> list[str]:
+    """The database URLs unset here: their tests skip (retro 5.8c: two failures only CI saw)."""
+    return [v for v in DB_URLS if not os.environ.get(v)]
+
+
 def main(args: list[str]) -> int:
     if linked_worktree(ROOT):
         print("suite.py makes its own worktree of HEAD: run it from the main checkout "
@@ -34,6 +42,9 @@ def main(args: list[str]) -> int:
                            capture_output=True, text=True, check=True).stdout.split("\n")
     if dirty := [ln[3:] for ln in dirty if ln]:
         print("not measured (uncommitted): " + " ".join(dirty), file=sys.stderr)
+    if missing := missing_dbs():
+        print(f"skipped, unset: {' '.join(missing)} (eval \"$(scripts/test_dbs.sh up)\" first)",
+              file=sys.stderr)
     with worktree() as wt, live("suite", minutes=40):   # every failure line in .live/, 40 min
         (wt / ".venv").symlink_to(ROOT / ".venv")   # scripts and tests call <root>/.venv/bin/…
         print(f"suite in {wt}", flush=True)

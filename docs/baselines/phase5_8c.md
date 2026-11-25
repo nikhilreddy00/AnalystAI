@@ -1,9 +1,11 @@
 # Phase 5.8c — Stripe and Shopify imports, 100 MB uploads (2026-11-23)
 
-Wall clock: 8.0 h (first commit 2026-11-22 14:41 → merge pending, the PR's number added at merge). Inside the
-10 h budget so far; the breaker (5 h before the paid step) was not tripped: the paid E2E ran at about 5.9 h, after
-the user cut HubSpot for time. After the paid step: audit pass 1 (six reviewers), its fixes, the live check, the
-gates.
+Wall clock: about 30 h, three times the 10 h budget (first commit 2026-11-22 14:41; past 20 h in one session
+by 2026-11-24 14:55, when the user split the rest into parts; Parts 1–3 to 23:55 that day, 9 h with a 1 h 53 min
+gate record; Part 4 on 2026-11-25; the PR's number added at merge). The breaker (5 h before the paid step) was not
+tripped: the paid E2E ran at about 5.9 h, after the user cut HubSpot for time. The overrun came after it: audit
+pass 1 (six reviewers) and its fixes, the live check, then the gates (three failed mutation baselines, P58-56/57;
+the survivors closed in Parts 1–2; CI's first findings in Part 3).
 
 Plan: `~/.claude/plans/phase-5-8c-mighty-wreath.md`. It checks off every plan-mode step by name:
 - **brainstorming:** the brief and an engineer ↔ challenger debate on Q1–Q14 (the user delegated them);
@@ -64,12 +66,17 @@ Plan: `~/.claude/plans/phase-5-8c-mighty-wreath.md`. It checks off every plan-mo
   golden: a live vendor's table has no offline input; the imports' built-in answers: P58-46/47 pinned Open)
 - playwright specs: not done (no import-tab spec yet; the follow-up PR adds it with P58-51's card states)
   The live check's screenshots stand in meanwhile.
-- full suite (`scripts/suite.py`): pending on the final commit
-- mutation gate: pending (three baseline runs failed on the matrix's stripe-ok: first blamed on load, then on
-  its 10 s bound (efd568a, a wrong diagnosis), then found in mutmut's own copy: the gate ran with a placeholder
-  `ENCRYPTION_KEY` and the matrix, unlike the import tests, read the environment's; b978ba2 gives it its own)
+- full suite (`scripts/suite.py`) at a13582e with every test database up: 5008 passed, 10 xfailed, 0 failed.
+  The first suite and CI found five things, each fixed at its cause (Part 3 of `docs/handoff/phase5_8c.md`)
+- mutation gate: recorded. The full `--record` at 716acd2 (1 h 53 min): 1586 mutants, 28 survivors, all 28
+  named equivalents, 0 timeouts, 0 no_tests, 36 functions; `_readable_size` and `_read_parquet` re-recorded at
+  e6313b8 (106 mutants, 1 survivor, named); `--check main` passes on this branch's head. Before it: three
+  baseline runs failed on the matrix's stripe-ok (P58-56), a 2 h 17 min record stopped on a function mutmut
+  doesn't mutate (P58-57); the narrow runs' 99 survivors → 58 killed by tests, 37 named, 4 gone with a dead
+  codec line; 6 timeouts were 5 real infinite loops on a repeated or missing Shopify cursor
+  (now refused as `schema`) and one throttle wait (0 in tests)
 - store tests on psycopg and asyncpg: 26/26 each
-- CI: pending
+- CI: green on a13582e (run 45547570417, dispatched); on the PR: see the PR
 
 ## Spend: $0.10 of $2.50 (ask $2.20, stop $2.35)
 E2E k=1: e2e-105 $0.03 (a harness error) + $0.021, e2e-106 $0.021, e2e-107 $0.020, e2e-108 $0.011. The live
@@ -151,3 +158,7 @@ first draft committed red (P58-32). Not done: semgrep, zizmor, actionlint (not i
 - The gate's baseline failure was fixed twice by guess before it was reproduced in the gate's copy → P58-56 (new)
 - The window's first day was the local day in the route and the UTC day in the refresh → P58-54 (recurrence: the m2 fix moved the refresh's rule and left the route's)
 - The gate kept its own copy of which functions mutmut mutates and stopped a 2 h record on one it doesn't → P58-57 (new)
+- Gate runs lost hours to idle sleep, to `caffeinate` as a wrapper (it strips `DYLD_LIBRARY_PATH`) and to the
+  oracle in a narrow run that never finished → P58-58 (new: `live()` holds the Mac awake beside the run)
+- The suite ran without the test databases, so two failures showed first in CI → P58-21 (recurrence:
+  `test_dbs.sh` starts them only when asked; `suite.py` now names each unset URL)
