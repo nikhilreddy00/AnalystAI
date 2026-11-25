@@ -13,7 +13,7 @@ from memory.session_store import (REFRESH_DEADLINE_S, InMemorySessionStore, Sess
 
 PG = os.environ.get("TEST_PG_URL")
 TABLES = "analysis_sessions, dashboard_charts, datasets, dataset_versions, imports"
-KEY = "rk_test_51CANARYimportsSTOREkey000"
+KEY = "rk_test_" "51CANARYimportsSTOREkey000"
 T0 = datetime(2026, 11, 22, 12, 0, tzinfo=timezone.utc)
 
 

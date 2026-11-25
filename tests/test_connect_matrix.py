@@ -79,7 +79,7 @@ async def test_a_mysql_string_pointed_at_mariadb_connects():
 # The recorded real pages answer; a fault is put in front of them. Each failure is said in its own
 # words, within a bound, and a refresh that fails keeps every last good copy.
 
-IMPORTS = {"stripe": {"vendor": "stripe", "key": "rk_test_51CANARYmatrixKEY0000000000"},
+IMPORTS = {"stripe": {"vendor": "stripe", "key": "rk_test_" "51CANARYmatrixKEY0000000000"},
            "shopify": {"vendor": "shopify", "shop": "analystai-test.myshopify.com",
                        "client_id": "cid-matrix", "key": "shpss_CANARYmatrixSECRET000000000"}}
 

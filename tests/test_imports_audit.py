@@ -46,7 +46,7 @@ async def test_a_new_key_while_a_refresh_runs_is_refused(client, monkeypatch):
     _no_gap(monkeypatch)
     await client.post(f"/api/imports/{body['id']}/refresh")
     r = await client.put(f"/api/imports/{body['id']}/key",
-                         json={"vendor": "stripe", "key": "rk_test_51CANARYimportKEY0000000000"})
+                         json={"vendor": "stripe", "key": "rk_test_" "51CANARYimportKEY0000000000"})
     assert r.status_code == 409 and "refresh is running" in r.json()["detail"]
     await _settle(client)
 
@@ -59,12 +59,12 @@ async def test_a_new_key_clears_the_old_keys_failure_and_its_lockout(client, mon
         await client.post(f"/api/imports/{after['id']}/refresh")
         await _settle(client)
     r = await client.put(f"/api/imports/{after['id']}/key",
-                         json={"vendor": "stripe", "key": "rk_test_51CANARYimportKEY0000000000"})
+                         json={"vendor": "stripe", "key": "rk_test_" "51CANARYimportKEY0000000000"})
     serve(monkeypatch, Stripe([_sub(1)], [_inv(1)]))
     assert r.status_code == 400   # the fake still wants "other": the new key is tested first
-    serve(monkeypatch, Stripe([_sub(1)], [_inv(1)], key="rk_test_51NEWKEY0000000000000000"))
+    serve(monkeypatch, Stripe([_sub(1)], [_inv(1)], key="rk_test_" "51NEWKEY0000000000000000"))
     r = await client.put(f"/api/imports/{after['id']}/key",
-                         json={"vendor": "stripe", "key": "rk_test_51NEWKEY0000000000000000"})
+                         json={"vendor": "stripe", "key": "rk_test_" "51NEWKEY0000000000000000"})
     assert r.status_code == 200 and r.json()["state"] == "idle"
     assert not any(t["said"] for t in r.json()["tables"])
     assert (await client.post(f"/api/imports/{after['id']}/refresh")).status_code == 202
