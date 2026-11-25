@@ -84,7 +84,24 @@ named, 0 timeouts, 0 no_tests, 36 functions recorded; `--check main` passes. Not
   then record again.
 - Done when: the record is committed and `--check main` passes.
 
-### [ ] Part 3: full suite, push, CI
+### [x] Part 3: full suite, push, CI
+Done 2026-11-24 (`14f4020`..`a13582e`): suite at a13582e with every test database up: 5008 passed,
+10 xfailed, 0 failed; CI run 45547570417 (dispatched: CI runs on PRs and main only) green on a13582e.
+The first suite and CI found five things, each fixed at its cause:
+- the CLAUDE.md 5.8 row past the 160-character cap (`test_steering_size`);
+- GitHub push protection and CI's full-history gitleaks read the tests' fake `rk_test_` canaries as
+  keys: the user allowed them on GitHub; literals split at the prefix (`3607cf0`); the 13 old
+  fingerprints in `.gitleaksignore` (`33f7b15`);
+- a deleted import's row was never purged (`imports` outside PURGE_TABLES; the Postgres test is
+  skipped without `TEST_PG_URL`, so only CI saw it): `purge_imports` in the sweep (`ead801a`);
+- the "parquet long strings" bound test's reader child died on Linux with a C++ `terminate called
+  without an active exception` (macOS passes): parquet now read from `pa.BufferReader`, not
+  `io.BytesIO`; the child's failure prints its stdout too (`e6313b8`). A hypothesis CI's pass
+  supports, not a reproduced cause: if it recurs, the stdout says read or exit.
+- Mutation gate re-recorded for `_readable_size` and `_read_parquet` (106 mutants, 1 named survivor).
+- Lessons for Part 4's retro line: run the suite with `scripts/test_dbs.sh up` (both misses above were
+  skipped locally); `caffeinate` (a SIP binary) strips `DYLD_LIBRARY_PATH`, so a suite under it with
+  the test DBs exits 4 on SQL Server's OpenSSL: run that suite without `caffeinate`.
 - `uv run python scripts/suite.py` on the final commit (worktree, background, ~12 min); push (pre-push hook);
   `gh run list --branch 5.8c-imports` until green; read a red by job (`gh run view <id> --json jobs`).
 - Done when: the suite passes on the final commit and CI is green.
