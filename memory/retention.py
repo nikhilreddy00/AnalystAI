@@ -44,6 +44,7 @@ PURGE_TABLES = {
     "checkpoints": "checkpointer.adelete_thread(run_id)",
     "checkpoint_blobs": "checkpointer.adelete_thread(run_id)",
     "checkpoint_writes": "checkpointer.adelete_thread(run_id)",
+    "imports": "session_store.purge_imports (a deleted import's row; its tables as datasets)",
 }
 # Tables with an id-like column but no user data.
 NOT_USER_DATA = {"checkpoint_migrations"}
@@ -161,6 +162,10 @@ async def sweep(deps, *, now: datetime | None = None, grace_s: float = LEASE_S,
             await store.purge_dataset(did)
         except Exception:
             logger.error("purge of dataset %s failed; retrying next sweep", did, exc_info=True)
+    try:   # after the grace: a refresh that held it has seen owner=None at its next write
+        await store.purge_imports(now - timedelta(seconds=grace_s))
+    except Exception:
+        logger.error("purge of deleted imports failed; retrying next sweep", exc_info=True)
     if not deps.persistent:
         return   # in memory, "no thread" only means the process restarted
     try:

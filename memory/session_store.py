@@ -854,6 +854,11 @@ class InMemorySessionStore:
         self._import_set(import_id, window_from=window_from)
         return True
 
+    async def purge_imports(self, before: datetime) -> None:
+        """The sweep: imports deleted before `before` leave no row (their tables went as asked)."""
+        for i in [i for i, s in self._imports.items() if s["deleted_at"] and s["deleted_at"] < before]:
+            del self._imports[i]
+
     async def delete_import(self, import_id: str, user_id: str, with_tables: bool) -> bool:
         """The import and its key go now; its tables too when asked (then as any dataset)."""
         rec = self._import_rec(import_id, user_id)
@@ -1452,6 +1457,11 @@ class SessionStore:
                                     .values(window_from=window_from))
             await db.commit()
             return done.rowcount == 1
+
+    async def purge_imports(self, before: datetime) -> None:
+        async with self._session_factory() as db:
+            await db.execute(delete(ImportRow).where(ImportRow.deleted_at < before))
+            await db.commit()
 
     async def delete_import(self, import_id: str, user_id: str, with_tables: bool) -> bool:
         async with self._session_factory() as db:
