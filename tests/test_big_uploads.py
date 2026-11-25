@@ -161,7 +161,8 @@ def _in_a_child(body: str) -> list[str]:
     from tests.conftest import PEAK_MB
     out = subprocess.run([sys.executable, "-c", PEAK_MB + body], capture_output=True, text=True,
                          timeout=300, cwd=str(ROOT))
-    assert out.returncode == 0, out.stderr[-2000:]
+    # stdout too: a crash after the read printed is an exit fault, not the reader's
+    assert out.returncode == 0, (out.returncode, out.stdout[-500:], out.stderr[-2000:])
     print(out.stdout)
     return out.stdout.split()
 

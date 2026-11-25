@@ -443,9 +443,10 @@ def _readable_size(content: bytes, suffix: str) -> None:
             raise IngestionError("workbook parts", "The workbook's parts aren't an Excel "
                                  "workbook's. Save it again from Excel and upload that.")
     if suffix == ".parquet":   # its footer declares rows and columns: read before any data
+        import pyarrow as pa
         import pyarrow.parquet as pq
         try:
-            meta = pq.ParquetFile(io.BytesIO(content)).metadata
+            meta = pq.ParquetFile(pa.BufferReader(content)).metadata
         except Exception as exc:   # pyarrow raises its own types for a corrupt file
             raise IngestionError(f"parquet: {type(exc).__name__}", _NOT_A_TABLE) from exc
         groups = [meta.row_group(i) for i in range(meta.num_row_groups)]
@@ -480,11 +481,13 @@ def _read_parquet(content: bytes) -> pd.DataFrame:
     import pyarrow.compute as pc
     import pyarrow.parquet as pq
     try:
-        pf = pq.ParquetFile(io.BytesIO(content))
+        # Arrow's own buffer, never io.BytesIO: Arrow's I/O threads then never call back into
+        # Python (CI 5.8c: the long-strings read aborted with a C++ terminate on Linux)
+        pf = pq.ParquetFile(pa.BufferReader(content))
         fields = pf.schema_arrow
         text = [f.name for f in fields if pa.types.is_string(f.type) or pa.types.is_binary(f.type)
                 or pa.types.is_large_string(f.type) or pa.types.is_large_binary(f.type)]
-        packed = pq.ParquetFile(io.BytesIO(content), read_dictionary=text).read()
+        packed = pq.ParquetFile(pa.BufferReader(content), read_dictionary=text).read()
         unpacked = sum(packed.column(n).nbytes for n in packed.column_names if n not in text)
         for name in text:
             for chunk in packed.column(name).chunks:
@@ -493,7 +496,7 @@ def _read_parquet(content: bytes) -> pd.DataFrame:
         del packed
         if unpacked > _MAX_PARQUET_UNPACKED:
             raise IngestionError("parquet too large", _PARQUET_TOO_LARGE)
-        df = pd.read_parquet(io.BytesIO(content))
+        df = pd.read_parquet(pa.BufferReader(content))
         for f in fields:
             if pa.types.is_nested(f.type):
                 df[f.name] = [None if v is None else json.dumps(v, default=str)
