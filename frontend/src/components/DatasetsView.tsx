@@ -55,7 +55,7 @@ function DatasetList() {
             </span>
             <span className="mt-1 block text-xs text-muted-foreground">{shape(ds)}</span>
             <span className="mt-1 block text-xs text-muted-foreground">
-              {ds.kind === "upload" && ds.latest && <>Version {ds.latest.version} · {ds.latest.content_hash.slice(0, 8)} · </>}
+              {ds.kind !== "live" && ds.latest && <>Version {ds.latest.version} · {ds.latest.content_hash.slice(0, 8)} · </>}
               {day(ds.created_at)} · {ds.analyses} {ds.analyses === 1 ? "analysis" : "analyses"}
             </span>
           </Link>
@@ -160,7 +160,7 @@ function DatasetPage({ id }: { id: string }) {
         {failed && <p role="alert" className="text-sm text-destructive">Couldn&apos;t refresh this dataset. What you see may be out of date.</p>}
       </div>
 
-      {ds.kind === "upload" && (
+      {ds.kind !== "live" && (   /* an import's refreshes are versions too (5.8c) */
         <section aria-label="Versions" className="space-y-2">
           <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Versions</h2>
           <div className="overflow-x-auto rounded-lg border border-border">

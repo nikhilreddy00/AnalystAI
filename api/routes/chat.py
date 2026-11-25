@@ -79,7 +79,7 @@ async def _source(body: ChatRequest, uid: str, store) -> _Source | None:
         else:
             ds = await store.get_dataset(body.dataset_id, uid)
             version = ds.latest if ds else None
-        if ds is None or (ds.kind == "upload" and version is None):
+        if ds is None or (ds.kind != "live" and version is None):   # an upload's or import's
             raise HTTPException(status_code=404, detail="Dataset not found")
         if ds.kind == "live":
             return _Source(config=ds.config, dataset_id=ds.id, name=ds.name)

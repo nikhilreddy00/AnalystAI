@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from api.auth import UserProfile, get_current_user
 from api.config import settings
 from api.rate_limit import limiter
-from api.routes import chat, connectors, dashboard, datasets, runs, sessions
+from api.routes import chat, connectors, dashboard, datasets, imports, runs, sessions
 from orchestrator.runner import in_memory_deps
 from tests.test_durable_runs import replay  # noqa: F401  (the recorded-run fixture)
 
@@ -20,9 +20,15 @@ def _app(deps, uid="u1") -> FastAPI:
     app.state.session_store, app.state.vector_store = deps.session_store, deps.vector_store
     for r, prefix in ((chat, "/chat"), (runs, "/runs"), (connectors, "/connectors"),
                       (sessions, "/api/sessions"), (datasets, "/api/datasets"),
-                      (dashboard, "/dashboard")):
+                      (dashboard, "/dashboard"), (imports, "/api/imports")):
         app.include_router(r.router, prefix=prefix)
     app.dependency_overrides[get_current_user] = lambda: UserProfile(uid=uid)
+    # production's own layers (D3-10: 5.8c's body limit sat in api.main only, which no route
+    # test went through)
+    # (from api.middleware, never api.main: importing it installs the process's logging)
+    from api.middleware import BodyLimit, CredentialScope
+    app.add_middleware(CredentialScope)
+    app.add_middleware(BodyLimit)
     return app
 
 

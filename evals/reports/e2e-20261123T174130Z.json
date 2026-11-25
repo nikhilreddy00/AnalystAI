@@ -1,0 +1,539 @@
+{
+ "meta": {
+  "suite": "e2e",
+  "report": "e2e-20261123T174130Z",
+  "k": 1,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "1c1425f",
+  "started_at": "20261123T174130Z",
+  "only": "e2e-108",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 1,
+  "runs": 1,
+  "pass_rate": 1.0,
+  "case_majority_pass_rate": 1.0,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "hard_rules_na": 2,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 0,
+  "runs_with_prose_rewritten": 0,
+  "runs_with_pii_guard_hit": 0,
+  "cost_per_question_usd": 0.0111,
+  "latency_p50_s": 52.19,
+  "latency_p95_s": 52.19,
+  "by_domain": {
+   "retail": {
+    "cases": 1,
+    "k_min": 1,
+    "k_max": 1,
+    "cases_passed_all_runs": 1,
+    "pass_rate": 1.0,
+    "hard_rule_violations": 0,
+    "hard_rules_na": 2,
+    "builtin_only_cases": [],
+    "model_dependent_passed": 0,
+    "model_dependent_cases": 0
+   }
+  }
+ },
+ "runs": {
+  "e2e-108": [
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": true,
+      "detail": "want \u22480.4 [(1.0, None), (100.0, None)] in answer; saw [0.6, 0.4]"
+     },
+     {
+      "kind": "number_in_answer",
+      "ok": true,
+      "detail": "want \u22480.6 [(1.0, None), (100.0, None)] in answer; saw [0.6, 0.4]"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "charts_lint_clean",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "charts_have_rationale",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     },
+     {
+      "rule": "pii_exits",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     }
+    ],
+    "error": null,
+    "answer": "mean(converted) by group: 'control' leads at 0.6000; 'treatment' is lowest at 0.4000.",
+    "pii_exits": {
+     "rule": "pii_exits",
+     "ok": true,
+     "na": true,
+     "detail": "n/a: no planted PII"
+    },
+    "pii_canary_hits": 0,
+    "pii_model_hits": 0,
+    "pii_planted": 0,
+    "approvals": [],
+    "output": {
+     "session_id": "f47f4192-61dd-4460-8b39-286723578e0e",
+     "user_id": "default",
+     "conversation_history": [
+      {
+       "role": "user",
+       "content": "What is the conversion rate of the treatment group versus control?",
+       "timestamp": "2026-11-23T17:42:00.611036Z"
+      },
+      {
+       "role": "assistant",
+       "content": "mean(converted) by group: 'control' leads at 0.6000; 'treatment' is lowest at 0.4000.",
+       "timestamp": "2026-11-23T17:42:19.522712Z"
+      }
+     ],
+     "connector_config": {
+      "type": "csv",
+      "file_path": "/Users/uvnikhil/Projects/AnalystAI/uploads/evals/simpson-1.csv",
+      "connection_string": null,
+      "table_name": null,
+      "spreadsheet_id": null,
+      "sheet_name": null,
+      "service_account_json": null,
+      "url": null,
+      "auth_type": null,
+      "auth_value": null,
+      "api_key_header": null,
+      "pagination_key": null
+     },
+     "task_plan": {
+      "raw_query": "What is the conversion rate of the treatment group versus control?",
+      "target_metrics": [
+       "converted"
+      ],
+      "timeframe": null,
+      "segments": [
+       "group"
+      ],
+      "analysis_types": [
+       "eda",
+       "segmentation"
+      ],
+      "output_format": "both",
+      "resume_from": null,
+      "clarification_needed": false,
+      "clarification_question": null,
+      "question_intent": "segment_compare",
+      "targeted_params": {
+       "target_columns": [
+        "converted",
+        "group"
+       ],
+       "metric_column": "converted",
+       "date_column": null,
+       "segment_column": "group",
+       "segment_value": null,
+       "group_by": "group",
+       "variant_column": null,
+       "n": null,
+       "order": null,
+       "frequency": null,
+       "test_type": null,
+       "aggregation": "mean",
+       "chart_type": null,
+       "kpi": null,
+       "period_start": null,
+       "period_end": null,
+       "compare": null
+      }
+     },
+     "data_contract": {
+      "source_type": "csv",
+      "row_count": 3990000,
+      "column_count": 5,
+      "columns": [
+       {
+        "name": "visitor_id",
+        "dtype": "int64",
+        "nullable": false,
+        "sample_values": [
+         1,
+         2,
+         3,
+         4,
+         5
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "whole numbers named as an identifier ('visitor_id')",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "department",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Easy",
+         "Hard",
+         "Hard",
+         "Hard",
+         "Hard"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "group",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "control",
+         "treatment",
+         "treatment",
+         "treatment",
+         "treatment"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "converted",
+        "dtype": "int64",
+        "nullable": false,
+        "sample_values": [
+         1,
+         0,
+         1,
+         1,
+         0
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "session_minutes",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         24.8,
+         3.8,
+         1.2,
+         7.2,
+         4.7
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       }
+      ],
+      "sample_rows": [
+       {
+        "visitor_id": 1,
+        "department": "Easy",
+        "group": "control",
+        "converted": 1,
+        "session_minutes": 24.8
+       },
+       {
+        "visitor_id": 2,
+        "department": "Hard",
+        "group": "treatment",
+        "converted": 0,
+        "session_minutes": 3.8
+       },
+       {
+        "visitor_id": 3,
+        "department": "Hard",
+        "group": "treatment",
+        "converted": 1,
+        "session_minutes": 1.2
+       },
+       {
+        "visitor_id": 4,
+        "department": "Hard",
+        "group": "treatment",
+        "converted": 1,
+        "session_minutes": 7.2
+       },
+       {
+        "visitor_id": 5,
+        "department": "Hard",
+        "group": "treatment",
+        "converted": 0,
+        "session_minutes": 4.7
+       }
+      ],
+      "date_columns": [],
+      "id_columns": [
+       "visitor_id"
+      ],
+      "metric_columns": [
+       "converted",
+       "session_minutes"
+      ],
+      "schema_summary": "3,990,000 rows \u00d7 5 columns. Metrics: converted, session_minutes. Identifiers: visitor_id. Categories: department, group.",
+      "source_query": null,
+      "source_evidence": {
+       "id": "source:data",
+       "kind": "source",
+       "claim": "Loaded 3,990,000 rows \u00d7 5 columns from a CSV file.",
+       "code": "pd.read_csv(<uploaded file>, encoding='utf-8', sep=',')",
+       "result_excerpt": "{\"roles\": {\"id\": [\"visitor_id\"], \"category\": [\"department\", \"group\"], \"metric\": [\"converted\", \"session_minutes\"]}, \"personal_data\": {}, \"fingerprint\": \"e3a457bab8137168\"}",
+       "row_count": 3990000,
+       "confidence": "high",
+       "confidence_reason": "Read as-is: no layout guessing was needed.",
+       "assumptions": []
+      },
+      "fingerprint": "e3a457bab8137168c2bc5b0f267654a249caecf24bb981b26d6acdb396689c0a",
+      "pii_columns": [],
+      "phi": false,
+      "deidentification": [],
+      "deidentified": false,
+      "domain": null,
+      "roles": {},
+      "domain_confidence": null
+     },
+     "cleaning_audit": {
+      "decisions": [
+       {
+        "column": "*",
+        "operation": "flag",
+        "strategy": "repeated_rows",
+        "reason": "3988000 rows repeat another row exactly; kept, as there is no ID column to tell a copy from a repeated record.",
+        "rows_affected": 3988000,
+        "before_null_pct": 0.0,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       }
+      ],
+      "rows_before": 3990000,
+      "rows_after": 3990000,
+      "columns_coerced": [],
+      "duplicates_removed": 0,
+      "outliers_flagged": [
+       "13965 extreme outliers in session_minutes (0.4% of data, threshold: values > 46.60)"
+      ],
+      "high_null_columns": [],
+      "summary": "Outliers flagged (kept) in: session_minutes. Final dataset: 3990000 rows (started with 3990000).",
+      "anomaly_report": {
+       "flags": [
+        {
+         "column": "session_minutes",
+         "extreme_count": 13965,
+         "mild_count": 123690,
+         "extreme_pct": 0.35000000000000003,
+         "lower_bound": -24.799999999999997,
+         "upper_bound": 46.599999999999994,
+         "mild_lower_bound": -9.5,
+         "mild_upper_bound": 31.299999999999997,
+         "used_log_transform": false,
+         "heavy_tailed": false,
+         "message": "13965 extreme outliers in session_minutes (0.4% of data, threshold: values > 46.60)"
+        }
+       ],
+       "methodology_note": "",
+       "eligible_columns": [
+        "session_minutes"
+       ],
+       "skipped_columns": {
+        "visitor_id": "id column",
+        "department": "binary column (only 2 values)",
+        "group": "binary column (only 2 values)",
+        "converted": "binary column (only 2 values)"
+       }
+      },
+      "skipped_columns": [],
+      "date_ranges": {},
+      "grain": null,
+      "partial_months": {},
+      "main_currency": null,
+      "spell_story": [],
+      "window_span": {}
+     },
+     "analysis_findings": null,
+     "chart_configs": [],
+     "insight_report": null,
+     "targeted_response": {
+      "intent": "segment_compare",
+      "answer_text": "mean(converted) by group: 'control' leads at 0.6000; 'treatment' is lowest at 0.4000.",
+      "chart_configs": [
+       {
+        "id": "8b891023-0f41-4567-8bba-60bc1fbc5db9",
+        "chart_type": "BarChart",
+        "title": "Conversion Rate by Test Group",
+        "data": [
+         {
+          "group": "control",
+          "converted": 60.0,
+          "converted__n": 1995000,
+          "converted__ci": [
+           0.068,
+           0.068
+          ]
+         },
+         {
+          "group": "treatment",
+          "converted": 40.0,
+          "converted__n": 1995000,
+          "converted__ci": [
+           0.068,
+           0.068
+          ]
+         }
+        ],
+        "x_key": "group",
+        "y_keys": [
+         "converted"
+        ],
+        "colors": [],
+        "x_label": "Test Group",
+        "y_label": "Conversion Rate (%)",
+        "show_legend": false,
+        "show_grid": true,
+        "source_finding": "group_bars",
+        "value_format": "percent",
+        "layout_hint": "half_width",
+        "rationale": {
+         "rule": "targeted:segment_compare\u2192bars",
+         "reason": "Compares mean converted across group; whiskers are 95% confidence intervals.",
+         "x": "group",
+         "y": "converted",
+         "split": null,
+         "aggregation": "mean",
+         "n_rows": 3990000,
+         "evidence_ids": [],
+         "code": "df.groupby('group')['converted'].mean()",
+         "confidence": null
+        },
+        "placement": "summary",
+        "lint_warnings": [],
+        "error_key": "__ci",
+        "split_key": null,
+        "reference_lines": []
+       }
+      ],
+      "table_data": [],
+      "table_columns": [],
+      "suggestions": [],
+      "unanswerable_reason": null,
+      "generated_at": "2026-11-23T17:42:19.522580Z"
+     },
+     "expert_review": null,
+     "narrative": {
+      "column_display_names": {
+       "visitor_id": "Visitor ID",
+       "department": "Department",
+       "group": "Test Group",
+       "converted": "Converted",
+       "session_minutes": "Session Minutes"
+      },
+      "entity_singular": "visitor",
+      "entity_plural": "visitors"
+     },
+     "iteration": 1,
+     "quality_check_attempts": 0,
+     "high_null_answer": null,
+     "prior_pii": [],
+     "error_retryable": true,
+     "error_reask": true,
+     "overview_done": true,
+     "dataset_name": null,
+     "file_hash": null,
+     "dataset_id": null,
+     "dataset_version_id": null,
+     "status": "completed",
+     "cleaned_data_path": "/Users/uvnikhil/Projects/AnalystAI/session_data/f47f4192-61dd-4460-8b39-286723578e0e/cleaned_data.parquet",
+     "error_message": null,
+     "created_at": "2026-11-23T17:41:33.949177Z",
+     "updated_at": "2026-11-23T17:42:19.522713Z"
+    },
+    "domain": "retail",
+    "latency_s": 52.19,
+    "cost_usd": 0.0111,
+    "llm_calls": 3,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "[\"What is the overall conversion rate across all visitors, and how does it vary by department and group?\", \"Which department has the highest average session_minutes, and does longer session time correlate with a higher likelihood of converted being true?\", \"Is there a statistically significant difference in conversion rates between the distinct values of group, suggesting one group outperforms another in an A/B or segmentation context?\", \"Are there any departments where visitors show unusually low session_minutes yet still achieve high converted rates, potentially indicating friction-free or impulsive conversion behavior?\", \"What percentage of visitors who converted spent more than the median session_minutes, and does this relationship hold consistently across all departments?\"]",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "{\n  \"column_display_names\": {\n    \"visitor_id\": \"Visitor ID\",\n    \"department\": \"Department\",\n    \"group\": \"Test Group\",\n    \"converted\": \"Converted\",\n    \"session_minutes\": \"Session Minutes\"\n  },\n  \"entity_singular\": \"visitor\",\n  \"entity_plural\": \"visitors\"\n}",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "```json\n{\n  \"raw_query\": \"What is the conversion rate of the treatment group versus control?\",\n  \"target_metrics\": [\"converted\"],\n  \"timeframe\": null,\n  \"segments\": [\"group\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"segment_compare\",\n  \"targeted_params\": {\n    \"target_columns\": [\"converted\", \"group\"],\n    \"metric_column\": \"converted\",\n    \"date_column\": null,\n    \"segment_column\": \"group\",\n    \"segment_value\": null,\n    \"group_by\": \"group\",\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": null,\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"mean\",\n    \"chart_type\": null\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": true
+   }
+  ]
+ }
+}

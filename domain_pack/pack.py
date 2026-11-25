@@ -79,6 +79,10 @@ class Role(_Strict):
     # percent (20 = 20%, 0.5 = 0.5%). Read at that scale, never guessed (columns.rate_values);
     # an undeclared header is guessed from its values only when that is unambiguous.
     scales: dict[str, Literal["percent", "fraction"]] = Field(default_factory=dict)
+    # Headers that mean this role only beside another header (5.8c: Stripe's subscription
+    # export's `Amount` is the price per `Interval`, billed money elsewhere; its `id` is the
+    # subscription's). Header → the headers one of which the file must also have.
+    when: dict[str, list[str]] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def _weak_are_headers(self):
@@ -86,7 +90,13 @@ class Role(_Strict):
             raise ValueError(f"weak_headers {self.weak_headers} must be among headers")
         if not set(self.scales) <= set(self.headers):
             raise ValueError(f"scales {sorted(self.scales)} must be among headers")
+        if not set(self.when) <= set(self.headers):
+            raise ValueError(f"when {sorted(self.when)} must be among headers")
         return self
+
+    def reads(self, header: str, file_headers: set[str]) -> bool:
+        """Whether `header` means this role in a file of these (normalized) headers."""
+        return header not in self.when or bool(file_headers & set(self.when[header]))
 
 
 class Invalid(_Strict):
@@ -568,8 +578,10 @@ class Pack(_Strict):
                 elif expand_header(h, self) != h:   # never matched: headers are expanded first
                     errors.append(f"role {role}: header {h!r} is abbreviated "
                                   f"(write {expand_header(h, self)!r})")
-                # one header may serve two roles only if their value checks tell them apart
-                if (other := seen.get(h)) and self.roles[other].kind == r.kind:
+                # one header may serve two roles only if their value checks tell them apart, or
+                # one of them reads it only beside another header (Role.when)
+                if (other := seen.get(h)) and self.roles[other].kind == r.kind and \
+                        h not in r.when and h not in self.roles[other].when:
                     errors.append(f"header {h!r} is in roles {other} and {role} of the same kind")
                 seen.setdefault(h, role)
         errors += [f"invalid_when {f}: unknown role {r}" for f, rule in self.invalid_when.items()

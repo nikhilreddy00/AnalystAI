@@ -207,6 +207,11 @@ def test_the_hash_is_the_functions_code_never_its_comments_docstring_or_place():
     assert "f" not in function_hashes(BASE.replace("def f", "@cache\ndef f"))
     assert "W.m" not in function_hashes(BASE.replace("    def m", "    @property\n    def m"))
     assert "W.m" in function_hashes(BASE.replace("    def m(self)", "    @staticmethod\n    def m()"))
+    # retro 5.8c: a function mutmut finds nothing to mutate in (`return uuid.uuid4().hex`) got no
+    # trampoline, so the record called it unreached after a 2 h baseline; mutmut decides, not a copy
+    plain = "import uuid\n\ndef new_token() -> str:\n    return uuid.uuid4().hex\n"
+    assert function_hashes(plain) == {}
+    assert functions_touching(plain, {4}) == []
 
 
 def test_the_gate_refuses_an_unrecorded_change_to_a_gated_function_and_passes_a_recorded_one(tmp_path):
@@ -292,6 +297,14 @@ def test_the_gates_rerun_command_names_only_the_functions_it_refused():
     assert rerun(problems[2:], "abc") is None     # an orphan is fixed in gate.json, not by a run
 
 
+# caller_tests finds files with `git grep`: mutmut's copy is an untracked folder (5.8c: the gate's
+# own baseline failed here, the search finding nothing in it)
+_IN_GIT = subprocess.run(["git", "-C", str(ROOT), "ls-files", "--error-unmatch",
+                          "scripts/mutation.py"], capture_output=True).returncode == 0
+needs_git = pytest.mark.skipif(not _IN_GIT, reason="the caller search reads git; this copy isn't")
+
+
+@needs_git
 def test_the_gates_rerun_command_runs_as_printed():
     """Retro Domain 8: the hint said '--tests <each function's callers' test files>' and the
     hand-picked list missed test_second_pack.py. The printed run picks them itself (no --tests):
@@ -304,6 +317,7 @@ def test_the_gates_rerun_command_runs_as_printed():
     assert all(t.startswith("tests/") and t.endswith(".py") for t in tests)
 
 
+@needs_git
 def test_a_record_runs_every_callers_tests_never_a_hand_picked_few():
     """Retro 5.8b hardening (PR9-02's third time): the hint printed the callers' tests, but main
     still required --tests, so each re-record ran a shorter hand-picked list and showed a

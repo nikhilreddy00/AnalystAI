@@ -12,6 +12,7 @@ import asyncio
 import io
 import json
 import re
+import sys
 import zipfile
 from collections import Counter
 from pathlib import Path
@@ -95,11 +96,27 @@ def _decode(content: bytes) -> tuple[str, str]:
 
 
 UPLOAD_SUFFIXES = {".csv", ".xlsx", ".tsv", ".json", ".jsonl", ".parquet"}   # .xls: XLS_REFUSAL
-MAX_UPLOAD_MB = 50
+# 5.8c, measured as the process: a 100 MB long-narrow CSV peaks at 1.3 GB and reads in ~5 s;
+# 150 MB needs 1.8 GB. With _MAX_CELLS, every read stays under the 1.5 GB budget a 4 GB host allows.
+MAX_UPLOAD_MB = 100
 XLS_REFUSAL = ("Old .xls workbooks aren't supported. Save the file as .xlsx (Excel → Save As) "
                "and upload it again.")
 _NOT_A_TABLE = ("This file can't be read as a table. Upload a CSV, TSV, Excel (.xlsx), JSON or "
                 "Parquet file.")
+
+
+_HEADS = [1 << k for k in range(16, 64, 2)]   # 64 KiB, then ×4 a time: the last is past any text
+
+
+def _first_lines(text: str, n: int) -> list[str]:
+    """`text.splitlines()[:n]` without splitting the whole text (5.8c: 520 MB of line strings
+    at 250 MB, to sample 200 lines). A head holding more than n lines has its first n whole,
+    whatever its cut splits (a \\r\\n, a character)."""
+    for size in _HEADS:   # a fixed list, never a loop that could run on
+        lines = text[:size].splitlines()
+        if len(lines) > n or size >= len(text):
+            return lines[:n]
+    return []   # never: the last head is past any text
 
 
 def _layout(text: str) -> tuple[str, int, str]:
@@ -111,7 +128,7 @@ def _layout(text: str) -> tuple[str, int, str]:
     # each sampled line cut at a width no real table reaches: csv.reader builds every field of a
     # row, five times (one per delimiter), so a 50 MB line was 25M strings before any check
     # (automated security review of the hardening push)
-    sample = "\n".join(line[:_SAMPLE_LINE_CHARS] for line in text.splitlines()[:_SAMPLE_LINES])
+    sample = "\n".join(line[:_SAMPLE_LINE_CHARS] for line in _first_lines(text, _SAMPLE_LINES))
     best: tuple = (False, 0.0, 0)
     sep, rows = ",", []
     for d in _DELIMITERS:
@@ -230,13 +247,29 @@ def _read_text_table(content: bytes, suffix: str) -> tuple[pd.DataFrame, dict]:
     # the header the read below will take (its delimiter, past its preamble, quotes honoured),
     # counted first, stopping at the cap: millions of columns would exhaust memory in the full
     # read (5.8b), and a header read with pandas built them all before the count (hardening)
-    if _header_fields(text, sep, header) > _MAX_COLUMNS or _widest_record(text, sep) > _MAX_COLUMNS:
+    width = _header_fields(text, sep, header)
+    if width > _MAX_COLUMNS or _widest_record(text, sep) > _MAX_COLUMNS:
         raise IngestionError("too many columns", f"The file has more than {_MAX_COLUMNS:,} "
                              "columns, past what can be read.")
+    # lines × header width, or the delimiters (a row wider than its header): at least the cells
+    # the parse builds (a quoted newline or delimiter only adds to the count)
+    lines = max(text.count("\n"), text.count("\r"))
+    if max(lines * width, text.count(sep) + lines) > _MAX_CELLS:
+        raise IngestionError("too many cells", _TOO_MANY_CELLS)
+    # Codes written with a leading zero (ZIP 02134, account 00731) are text: read as numbers they
+    # lose the zero for good; and long whole numbers (ids past 2**53) a blank turns into rounded
+    # floats. Only when the file has either, the columns are re-read as text (below).
+    long_digits = re.search(r"\d{16,}", text) is not None
+    as_text_needed = long_digits or re.search(rf"(?:^|{re.escape(sep)})\s*\"?0\d", text, re.M)
+    del text   # 5.8c: the decoded copy is let go before the parse, not held through it
+    # pandas reads the bytes with the codec _decode chose, never io.StringIO(text): StringIO
+    # widens the text to 4 bytes a character (5.8c: +720 MB at a 250 MB file). A UTF-8 BOM
+    # needs no "utf-8-sig": pandas' parser drops it (the mutation gate: the two read the same)
+    codec = encoding
     try:
         # index_col=False: a trailing delimiter must not turn the first column into the index.
-        df = pd.read_csv(io.StringIO(text), sep=sep, skiprows=header, decimal=decimal,
-                         index_col=False, low_memory=False)
+        df = pd.read_csv(io.BytesIO(content), encoding=codec, sep=sep, skiprows=header,
+                         decimal=decimal, index_col=False, low_memory=False)
     except pd.errors.ParserError as exc:
         raise IngestionError(f"parse error: {exc}",
                              "The file's rows don't line up into columns. Check that it is a plain "
@@ -245,13 +278,10 @@ def _read_text_table(content: bytes, suffix: str) -> tuple[pd.DataFrame, dict]:
         raise IngestionError("no columns", "The file is empty.") from exc
     info = {"format": suffix.lstrip("."), "encoding": encoding, "delimiter": sep,
             "decimal": decimal, "header_line": header + 1, "notes": []}
-    # Codes written with a leading zero (ZIP 02134, account 00731) are text: read as numbers they
-    # lose the zero for good; and long whole numbers (ids past 2**53) a blank turns into rounded
-    # floats. Only when the file has either, re-read the columns as text.
-    long_digits = re.search(r"\d{16,}", text) is not None
-    if long_digits or re.search(rf"(?:^|{re.escape(sep)})\s*\"?0\d", text, re.M):
+    if as_text_needed:
         try:
-            as_text = pd.read_csv(io.StringIO(text), sep=sep, skiprows=header, index_col=False,
+            as_text = pd.read_csv(io.BytesIO(content), encoding=codec, sep=sep, skiprows=header,
+                                  index_col=False,
                                   dtype=str, low_memory=False)
         except (pd.errors.ParserError, ValueError):   # the first read worked: keep its types
             as_text = pd.DataFrame(columns=df.columns)
@@ -299,9 +329,95 @@ def _read_text_table(content: bytes, suffix: str) -> tuple[pd.DataFrame, dict]:
 # openpyxl unpacks whole, so a 50 MB upload could declare gigabytes; a CSV header could name
 # millions of columns. zipfile never unpacks a part past its declared size, so the declared
 # sizes are a real bound.
-# Unpacked: 20 times the upload cap (sheet XML packs 5 to 10 times: a real 50 MB workbook fits;
-# 5.8b review: 150 MB refused 20-30 MB workbooks); a bomb packs a thousand times
-_MAX_UNPACKED, _MAX_PARTS, _MAX_COLUMNS = 20 * MAX_UPLOAD_MB * 2**20, 10_000, 10_000
+# Unpacked: 1000 MB (sheet XML packs 5 to 10 times: Excel's 1,048,576 rows of 8 columns is a 49 MB
+# workbook unpacking to 419 MB, read in 35 s at 1.0 GB, measured 5.8c; 5.8b review: 150 MB refused
+# 20-30 MB workbooks); a bomb packs a thousand times. Its own number, never a multiple of the
+# upload cap: 5.8c's cap rise would have let a bomb declare 2 GB (red-team).
+_MAX_UNPACKED, _MAX_PARTS, _MAX_COLUMNS = 1000 * 2**20, 10_000, 10_000
+# Cells (rows × columns) a read may build: the bytes cap alone doesn't bound one (5.8c measured: a
+# 100 MB CSV of single digits is 52M cells and peaked at 2.49 GB; 25M cells stays near 1.2 GB)
+_MAX_CELLS = 25_000_000
+_TOO_MANY_CELLS = (f"The file has more than {_MAX_CELLS // 1_000_000} million cells (rows × "
+                   "columns), past what can be read. Upload fewer rows or columns.")
+# JSON costs ~170 bytes a cell (a dict a record): 8M cells ≈ 1.35 GB (5.8c measured)
+_MAX_JSON_CELLS = 8_000_000
+_TOO_MANY_JSON_CELLS = _TOO_MANY_CELLS.replace(f"{_MAX_CELLS // 1_000_000} million",
+                                               f"{_MAX_JSON_CELLS // 1_000_000} million")
+# a parquet file's decoded data (5.8c measured: its 4M-row, 8-column file decodes to ~280 MB and
+# peaks at 1.3 GB read; 30 strings of 10 MB, 300 MB, peaked at 1.05 GB)
+_MAX_PARQUET_UNPACKED = 400 * 2**20
+_PARQUET_TOO_LARGE = (f"The file unpacks to more than {_MAX_PARQUET_UNPACKED // 2**20} MB, past "
+                      "what can be read.")
+_MAX_NESTED_VALUES = 2_000_000   # values inside list or struct columns (3M read at 431 MB)
+
+
+class _TooWide(Exception):
+    pass
+
+
+_NOT_RECORDS = "The JSON isn't a list of records (one object per row, or one per line)."
+_MAX_PATH = 1024   # a flattened JSON column name (a_b_c), in characters
+
+
+def _json_records(content: bytes) -> bool:
+    """Whether a JSON file is JSON Lines (else one array), once it is known to be records, the
+    only shape read (an allow list, 5.8c: three review passes each found a shape past the last
+    count, a dict of columns and arrays of arrays among them): a top-level array of objects, or
+    one object a line. Its cells are counted first, records × columns (a frame has a column per
+    flattened path any record has: 20k one-key records were 20k × 20k, 78 s and 4 GB). Each
+    object becomes the set of its flattened paths (a nested {"x": 1} under "a" is a_x: review 4,
+    bare names undercounted), interned so equal records share one; every object's paths join
+    one set, a bound above the columns. Anything else is refused here, never left to a reader
+    that accepts more than was counted."""
+    paths: set[str] = set()
+    interned: dict[frozenset, frozenset] = {}
+
+    def hook(pairs):
+        own = set()
+        for k, v in pairs:
+            for p in ([f"{k}_{c}" for c in v] if isinstance(v, frozenset) else [k]):
+                # a column name, never a paragraph: long keys nested deep grew each path with
+                # its depth (security review 5); the same name shared, never built again
+                if len(p) > _MAX_PATH:
+                    raise _TooWide
+                p = sys.intern(p)
+                own.add(p)
+                paths.add(p)   # the cap as each path is added, never after (review 6)
+                if len(paths) > _MAX_COLUMNS:
+                    raise _TooWide
+        own = frozenset(own)
+        return interned.setdefault(own, own)
+
+    if max(content.count(b":"), content.count(b",")) + 1 > _MAX_JSON_CELLS:
+        # each value is a key's (:) or follows a comma: at least the values pandas builds, a
+        # dict a record (5.8c measured: 4M cells of tiny records peaked at 678 MB)
+        raise IngestionError("too many cells", _TOO_MANY_JSON_CELLS)
+    decoder = json.JSONDecoder(object_pairs_hook=hook)
+    try:
+        try:
+            top, lines = decoder.decode(content.decode("utf-8")), False
+            if isinstance(top, frozenset):   # one object: a JSON Lines file of one record
+                top, lines = [top], True
+            elif not isinstance(top, list):
+                raise IngestionError("json shape", _NOT_RECORDS)
+        except ValueError:   # JSON Lines: one record a line, read a line at a time
+            top = [decoder.decode(line.decode("utf-8")) for line in io.BytesIO(content)
+                   if line.strip()]
+            lines = True
+    except _TooWide:
+        raise IngestionError("too many columns", f"The file has more than {_MAX_COLUMNS:,} "
+                             f"columns, or a column name over {_MAX_PATH:,} characters, past "
+                             "what can be read.") from None
+    # not JSON, not UTF-8 (JSON's own encoding), or nested past the parser's depth (a 500 before)
+    except (ValueError, RecursionError) as exc:
+        raise IngestionError("json", _NOT_RECORDS) from exc
+    if not top or any(not isinstance(r, frozenset) for r in top):
+        raise IngestionError("json shape", _NOT_RECORDS)
+    if len(top) * len(paths) > _MAX_JSON_CELLS:
+        raise IngestionError("too many cells", _TOO_MANY_JSON_CELLS)
+    return lines
+
+
 _MAX_RATIO, _RATIO_FROM = 200, 10 * 2**20   # a part over 10 MB packed more than 200 times
 
 
@@ -326,10 +442,70 @@ def _readable_size(content: bytes, suffix: str) -> None:
                                           for p in parts):
             raise IngestionError("workbook parts", "The workbook's parts aren't an Excel "
                                  "workbook's. Save it again from Excel and upload that.")
+    if suffix == ".parquet":   # its footer declares rows and columns: read before any data
+        import pyarrow as pa
+        import pyarrow.parquet as pq
+        try:
+            meta = pq.ParquetFile(pa.BufferReader(content)).metadata
+        except Exception as exc:   # pyarrow raises its own types for a corrupt file
+            raise IngestionError(f"parquet: {type(exc).__name__}", _NOT_A_TABLE) from exc
+        groups = [meta.row_group(i) for i in range(meta.num_row_groups)]
+        # values: a list column's every element counts (security review of WP1: rows × columns
+        # missed a nested column). Its unpacked size is measured as it is read (_read_parquet).
+        chunks = [g.column(j) for g in groups for j in range(g.num_columns)]
+        values = sum(c.num_values for c in chunks)
+        # under a list or struct: each value a Python object once read (security review 2)
+        nested = sum(c.num_values for c in chunks if "." in c.path_in_schema)
+        if max(values, meta.num_rows * meta.num_columns) > _MAX_CELLS or \
+                nested > _MAX_NESTED_VALUES:
+            raise IngestionError("too many cells", _TOO_MANY_CELLS)
+        # the footer's unpacked size, before any page is decoded (security review 2: plain,
+        # compressed text decoded before _read_parquet measured it). ponytail: a page header
+        # that disagrees with its footer isn't caught; pyarrow sizes a page by its header.
+        if sum(c.total_uncompressed_size for c in chunks) > _MAX_PARQUET_UNPACKED:
+            raise IngestionError("parquet too large", _PARQUET_TOO_LARGE)
     # A CSV's width is checked once, exactly, as the reader takes its header (_read_text_table).
     # 5.8b's cheap per-line gate counted raw delimiters, quotes included, and refused a two-column
     # file with one long quoted cell (senior audit); without it a 5M-comma line is still refused
     # in 0.3 s (tests/test_share_links.py).
+
+
+def _read_parquet(content: bytes) -> pd.DataFrame:
+    """A parquet file as pandas reads it, its decoded size measured first: repeated text is
+    stored once (a dictionary), so 60 copies of a 10 MB string are a small file and 600 MB once
+    read (security review of WP1). Text columns are read with their dictionaries kept, and the
+    size they decode to is summed without decoding them. A list or struct column becomes JSON
+    text, as the JSON reader writes one (5.8c: a list column crashed normalize_frame).
+    ponytail: text inside a list column isn't measured this way; its values count as cells."""
+    import pyarrow as pa
+    import pyarrow.compute as pc
+    import pyarrow.parquet as pq
+    try:
+        # Arrow's own buffer, never io.BytesIO: Arrow's I/O threads then never call back into
+        # Python (CI 5.8c: the long-strings read aborted with a C++ terminate on Linux)
+        pf = pq.ParquetFile(pa.BufferReader(content))
+        fields = pf.schema_arrow
+        text = [f.name for f in fields if pa.types.is_string(f.type) or pa.types.is_binary(f.type)
+                or pa.types.is_large_string(f.type) or pa.types.is_large_binary(f.type)]
+        packed = pq.ParquetFile(pa.BufferReader(content), read_dictionary=text).read()
+        unpacked = sum(packed.column(n).nbytes for n in packed.column_names if n not in text)
+        for name in text:
+            for chunk in packed.column(name).chunks:
+                lengths = pc.take(pc.binary_length(chunk.dictionary), chunk.indices)
+                unpacked += pc.sum(lengths).as_py() or 0
+        del packed
+        if unpacked > _MAX_PARQUET_UNPACKED:
+            raise IngestionError("parquet too large", _PARQUET_TOO_LARGE)
+        df = pd.read_parquet(pa.BufferReader(content))
+        for f in fields:
+            if pa.types.is_nested(f.type):
+                df[f.name] = [None if v is None else json.dumps(v, default=str)
+                              for v in pf.read(columns=[f.name]).column(0).to_pylist()]
+    except IngestionError:
+        raise
+    except Exception as exc:   # pyarrow raises its own types for a corrupt file
+        raise IngestionError(f"parquet: {type(exc).__name__}", _NOT_A_TABLE) from exc
+    return df
 
 
 def _read_bytes(content: bytes, suffix: str) -> tuple[pd.DataFrame, dict]:
@@ -353,23 +529,18 @@ def _read_bytes(content: bytes, suffix: str) -> tuple[pd.DataFrame, dict]:
                                  "ignored.")
         df = sheets[name]
     elif suffix == ".parquet":
-        try:
-            df = pd.read_parquet(io.BytesIO(content))
-        except Exception as exc:   # pyarrow raises its own types for a corrupt file
-            raise IngestionError(f"parquet: {type(exc).__name__}", _NOT_A_TABLE) from exc
+        df = _read_parquet(content)
         info = {"format": "parquet", "notes": []}
     elif suffix in (".json", ".jsonl"):
         content = content.removeprefix(b"\xef\xbb\xbf")   # a byte-order mark (Windows tools write one)
+        lines = _json_records(content)   # records only, counted: the shape read is the one counted
         try:
             # dtype=False: values keep the type they were written with ("02134" stays text).
             # precise_float: the fast parser reads 2.76 as 2.7600000000000002 (5.8a source oracle)
-            df = pd.read_json(io.BytesIO(content), dtype=False, precise_float=True)
-        except ValueError:
-            try:
-                df = pd.read_json(io.BytesIO(content), lines=True, dtype=False, precise_float=True)
-            except ValueError as exc:
-                raise IngestionError("json", "The JSON isn't a list of records (one object per "
-                                     "row, or one per line).") from exc
+            df = pd.read_json(io.BytesIO(content), orient="records", lines=lines, dtype=False,
+                              precise_float=True)
+        except ValueError as exc:
+            raise IngestionError("json", _NOT_RECORDS) from exc
         info = {"format": "json", "notes": []}
         # Nested records ({"holder": {"name": ...}}) become columns (holder_name), so every value
         # is profiled and masked like any other; lists become JSON text.

@@ -59,6 +59,10 @@ def live(name: str, minutes: float):
         print(f"{name}: full output in {log_path} (budget {budget:g} min)", flush=True)
         previous = signal.signal(signal.SIGALRM, over)
         signal.alarm(max(1, int(budget * 60)))
+        # idle sleep pauses the run and its budget (retro 5.8c); caffeinate beside the run, never
+        # around it: as a wrapper (a SIP binary) it strips DYLD_LIBRARY_PATH from the run
+        awake = (subprocess.Popen(["caffeinate", "-i", "-w", str(os.getpid())])
+                 if sys.platform == "darwin" else None)
         try:
             yield log_path
         except BaseException as exc:   # the crash's traceback into the log, before the streams go
@@ -67,6 +71,8 @@ def live(name: str, minutes: float):
                 traceback.print_exc()
             raise
         finally:
+            if awake:
+                awake.terminate()
             signal.alarm(0)
             signal.signal(signal.SIGALRM, previous)
             sys.stdout, sys.stderr = out, err

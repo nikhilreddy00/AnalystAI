@@ -70,22 +70,13 @@ async def upload_csv(
         raise HTTPException(status_code=400, detail=XLS_REFUSAL if suffix == ".xls"
                             else f"Unsupported file type: {suffix}")
 
-    # Chunked reading with early exit to prevent OOM on large uploads.
-    # UploadFile is not async-iterable; read in fixed-size chunks instead.
+    # The body is already bounded (api.main's body limit) and spooled to an unnamed temp file by
+    # Starlette; one read of at most the cap + 1 byte, never chunks plus their join (5.8c: 2×).
     max_size = MAX_UPLOAD_MB * 1024 * 1024
-    chunk_size = 1024 * 1024     # 1 MB per read
-    chunks: list[bytes] = []
-    total = 0
-    while True:
-        chunk = await file.read(chunk_size)
-        if not chunk:
-            break
-        total += len(chunk)
-        if total > max_size:
-            raise HTTPException(status_code=413, detail=f"File too large (max {MAX_UPLOAD_MB} MB)")
-        chunks.append(chunk)
-    return await _register(request, current_user, b"".join(chunks), safe_name, suffix,
-                           dataset_id)
+    content = await file.read(max_size + 1)
+    if len(content) > max_size:
+        raise HTTPException(status_code=413, detail=f"File too large (max {MAX_UPLOAD_MB} MB)")
+    return await _register(request, current_user, content, safe_name, suffix, dataset_id)
 
 
 class LinkRequest(BaseModel):
@@ -112,29 +103,36 @@ async def link_file(
     return await _register(request, current_user, content, name, suffix, None)
 
 
-async def _register(request: Request, current_user: UserProfile, content: bytes, filename: str,
-                    suffix: str, dataset_id: str | None) -> dict:
-    """THE path a file's bytes take to a dataset version, an upload's or a link's: read as
-    ingestion will read them (refused now if they aren't a table), hashed, stored, versioned."""
-    file_hash = hashlib.sha256(content).hexdigest()
-    # a name only ever names the dataset (the file is stored as <uuid><suffix>): its base name,
-    # whoever wrote it (the browser's, or a link server's Content-Disposition, '\' included)
-    safe_name = Path(filename.replace("\\", "/")).name
-    filename = safe_name
-    try:   # the same reader ingestion uses: a file that isn't a table is refused now, not later
-        df, _ = await asyncio.to_thread(_read_bytes, content, suffix)
-    except IngestionError as exc:
-        raise HTTPException(status_code=400, detail=exc.user_message) from exc
+async def readable_file(content: bytes, suffix: str, uid: str):
+    """(hash, frame, write_file): a file's bytes read as ingestion will read them (IngestionError
+    if they aren't a table), and how to store them, once a store says they are new. THE path
+    every file takes to a dataset version: an upload's, a link's, an import's table."""
+    df, _ = await asyncio.to_thread(_read_bytes, content, suffix)
 
     def write_file() -> str:
         # Use a stable absolute path anchored to the repo (not CWD) so all
         # workers/processes agree on the uploads location and the connector's
         # path-traversal guard matches the same directory.
-        upload_dir = user_upload_dir(current_user.uid)
+        upload_dir = user_upload_dir(uid)
         upload_dir.mkdir(parents=True, exist_ok=True)
         save_path = upload_dir / f"{uuid.uuid4()}{suffix}"
         save_path.write_bytes(content)
         return str(save_path)
+    return hashlib.sha256(content).hexdigest(), df, write_file
+
+
+async def _register(request: Request, current_user: UserProfile, content: bytes, filename: str,
+                    suffix: str, dataset_id: str | None) -> dict:
+    """An upload's or a link's bytes to a dataset version: read (refused now if they aren't a
+    table), hashed, stored, versioned."""
+    # a name only ever names the dataset (the file is stored as <uuid><suffix>): its base name,
+    # whoever wrote it (the browser's, or a link server's Content-Disposition, '\' included)
+    safe_name = Path(filename.replace("\\", "/")).name
+    filename = safe_name
+    try:   # the same reader ingestion uses: a file that isn't a table is refused now, not later
+        file_hash, df, write_file = await readable_file(content, suffix, current_user.uid)
+    except IngestionError as exc:
+        raise HTTPException(status_code=400, detail=exc.user_message) from exc
 
     placed = await request.app.state.session_store.register_upload(
         current_user.uid, name=Path(safe_name).stem or "dataset", content_hash=file_hash,

@@ -9,7 +9,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from api.config import settings
-from connectors.base import _SCOPE as _credential_scope, credential_scope
+from api.middleware import UNEXPECTED, BodyLimit, CredentialScope
 from api.logging_scrub import install as _scrub_logs
 from api.rate_limit import limiter
 
@@ -63,6 +63,11 @@ async def lifespan(app: FastAPI):
     stop.set()
     if embedded:
         await embedded
+    # import refreshes say "interrupted" while the store is still open (silent-failure hunt 2)
+    if running := list(getattr(app.state, "import_tasks", ())):
+        for task in running:
+            task.cancel()
+        await asyncio.gather(*running, return_exceptions=True)
     for close in deps.closers:
         await close()
 
@@ -77,40 +82,11 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-_UNEXPECTED = {"detail": "An unexpected error occurred. Please try again."}
+_UNEXPECTED = UNEXPECTED
+_CredentialScope = CredentialScope   # the names tests/test_secret_sinks.py reads
 
-
-class _CredentialScope:
-    """Each request its own credential registry (connectors.base): what one user's connector
-    registers never masks another tenant's log lines. Pure ASGI: the route and every task or
-    thread it starts run in this context. An error escaping the route is logged and answered
-    here, inside the scope: Starlette's 500 handler and uvicorn's traceback run outside it, a
-    credential the request registered in plain text (audit pass 2, proven)."""
-
-    def __init__(self, app):
-        self.app = app
-
-    async def __call__(self, scope, receive, send):
-        if scope["type"] != "http":
-            return await self.app(scope, receive, send)
-        token, started = credential_scope(), False
-
-        async def sending(message):
-            nonlocal started
-            started = started or message["type"] == "http.response.start"
-            await send(message)
-        try:
-            await self.app(scope, receive, sending)
-        except Exception:
-            logging.getLogger(__name__).error("unhandled error: %s %s", scope.get("method"),
-                                              scope.get("path"), exc_info=True)
-            if not started:
-                await JSONResponse(_UNEXPECTED, status_code=500)(scope, receive, send)
-        finally:
-            _credential_scope.reset(token)
-
-
-app.add_middleware(_CredentialScope)
+app.add_middleware(CredentialScope)
+app.add_middleware(BodyLimit)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
@@ -120,7 +96,7 @@ app.add_middleware(
 )
 
 # ── Routes ─────────────────────────────────────────────────────────────────────
-from api.routes import chat, dashboard, connectors, datasets, runs, sessions  # noqa: E402
+from api.routes import chat, dashboard, connectors, datasets, imports, runs, sessions  # noqa: E402
 
 app.include_router(chat.router, prefix="/chat", tags=["chat"])
 app.include_router(dashboard.router, prefix="/dashboard", tags=["dashboard"])
@@ -128,6 +104,7 @@ app.include_router(connectors.router, prefix="/connectors", tags=["connectors"])
 app.include_router(sessions.router, prefix="/api/sessions", tags=["sessions"])
 app.include_router(datasets.router, prefix="/api/datasets", tags=["datasets"])
 app.include_router(runs.router, prefix="/runs", tags=["runs"])
+app.include_router(imports.router, prefix="/api/imports", tags=["imports"])
 
 
 @app.exception_handler(Exception)

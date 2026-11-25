@@ -83,11 +83,69 @@ def load_cases(suite: str, only: str | None, exclude: str | None = None) -> list
 
 
 def dataset(case: dict) -> tuple[pd.DataFrame, dict, str]:
-    """Generate the case's table and round-trip it through CSV, as the real pipeline does."""
-    name, seed = case["dataset"]["name"], case["dataset"]["seed"]
-    df, truth = datagen.make(name, seed)
+    """Generate the case's table and round-trip it through CSV, as the real pipeline does. An
+    import's table (5.8c) is the vendor's, read live by the import engine (source_config); its
+    truth is the case's own, known from the seeded test account. `tile_to_mb`: the table repeated
+    until its CSV is that large (a share or a rate is the same; the generator's truth holds)."""
+    if case.get("source") in IMPORT_ENV:
+        return pd.DataFrame(), case_truth(case)[1], ""
+    df, truth = case_truth(case)
+    if mb := case["dataset"].get("tile_to_mb"):
+        times = max(1, math.ceil(mb * 2**20 / len(df.to_csv(index=False))))
+        df = pd.concat([df] * times, ignore_index=True)
     csv = df.to_csv(index=False)
     return pd.read_csv(io.StringIO(csv)), truth, csv
+
+
+def case_truth(case: dict) -> tuple[pd.DataFrame, dict]:
+    """(generated table, truth): THE one reading of a case's truth, by the run, its lint and the
+    well-formed test (5.8c: the run and the test read it two ways, the lint a third). An import's
+    truth is the case's own and its table the vendor's (empty here: no vendor is called)."""
+    if case.get("source") in IMPORT_ENV:
+        return pd.DataFrame(), dict(case["truth"])
+    return datagen.make(case["dataset"]["name"], case["dataset"]["seed"])
+
+
+# An import's test account (5.8c): the vendor's key parts from the environment or .env, never a case
+IMPORT_ENV = {"stripe": {"key": "STRIPE_TEST_RESTRICTED"},
+              "shopify": {"key": "SHOPIFY_CLIENT_SECRET", "client_id": "SHOPIFY_CLIENT_ID",
+                          "shop": "SHOPIFY_SHOP"}}
+
+
+def _env(name: str) -> str:
+    if value := os.environ.get(name):
+        return value
+    lines = (EVALS_DIR.parent / ".env").read_text().splitlines() \
+        if (EVALS_DIR.parent / ".env").is_file() else []
+    return next((ln.split("=", 1)[1].strip().strip('"') for ln in lines
+                 if ln.startswith(f"{name}=")), "")
+
+
+def imported(case: dict, stem: str) -> Path:
+    """The case's table imported from its vendor's test account by the production engine (the
+    key's check, the vendor's sign-in, its fetch, typing and frame), kept as parquet as an
+    import's version is. `refresh`: fetched a second time, the copy a Refresh leaves."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    from connectors import imports as imp
+    vendor = imp.VENDORS[case["source"]]
+    secrets = {k: _env(v) for k, v in IMPORT_ENV[case["source"]].items()}
+    table = next(t for t in vendor.tables if t.name == case["dataset"]["table"])
+
+    async def fetch():
+        vendor.check(secrets)
+        frame = None
+        for _ in range(2 if case.get("refresh") else 1):
+            async with vendor.client(secrets) as client:
+                headers = await vendor.auth(client, secrets)
+                records, _ = await table.fetch(client, headers, None)
+                frame = table.frame(records)
+        return frame
+    with ThreadPoolExecutor(1) as one:   # its own loop: a case runs inside one
+        frame = one.submit(asyncio.run, fetch()).result()
+    path = UPLOADS / f"{stem}.parquet"
+    frame.to_parquet(path, index=False)
+    return path
 
 
 def working_frame(case: dict, guard: bool = False):
@@ -157,7 +215,7 @@ async def run_analysis_case(case: dict) -> dict:
     except Exception as exc:   # a loud failure is a failed case, not a crashed run
         error = f"{type(exc).__name__}: {exc}"
 
-    literals = e2e_pii_literals(*datagen.make(case["dataset"]["name"], case["dataset"]["seed"]))
+    literals = e2e_pii_literals(*case_truth(case))
     hits = len(leaked("\n".join(sent), literals))
     model_hits = len(leaked("\n".join(LLM_SENT.get() or []), literals))
     scored = score_analysis(case, findings, error)
@@ -280,6 +338,8 @@ def source_config(case: dict, df: pd.DataFrame, csv: str) -> ConnectorConfig:
     source = case.get("source", "csv")
     UPLOADS.mkdir(parents=True, exist_ok=True)
     stem = f"{case['dataset']['name']}-{case['dataset']['seed']}"
+    if source in IMPORT_ENV:
+        return ConnectorConfig(type=ConnectorType.CSV, file_path=str(imported(case, stem)))
     if source == "sqlite":
         path = UPLOADS / f"{stem}.sqlite"
         path.unlink(missing_ok=True)
@@ -398,7 +458,7 @@ async def run_e2e_case(case: dict) -> dict:
         turn_hard += [{**h, "detail": f"turn {n}: {h['detail']}"} for h in scored_turn["hard"]]
         turn_checks.append({"kind": "turn", "ok": not error, "detail": f"turn {n}: {error or 'answered'}"})
 
-    literals = e2e_pii_literals(*datagen.make(case["dataset"]["name"], case["dataset"]["seed"]))
+    literals = e2e_pii_literals(*case_truth(case))
     hits = len(leaked("\n".join(sent), literals))
     model_hits = len(leaked("\n".join(LLM_SENT.get() or []), literals))
     shown = None
@@ -1324,7 +1384,7 @@ def lint_case(case: dict) -> list[str]:
     known = ANALYSIS_CHECKS if "task" in case else E2E_CHECKS
     problems += [f"unknown check kind {c['kind']!r}" for c in
                  [*checks, *(x for t in case.get("turns", []) for x in t["checks"])] if c["kind"] not in known]
-    df, truth = datagen.make(case["dataset"]["name"], case["dataset"]["seed"])
+    df, truth = case_truth(case)
     if all(c["kind"] in _NEGATIVE or c.get("check") in _NEGATIVE for c in checks):
         problems.append("only negative checks: a silent answer would pass")
     pairs = {frozenset((c.get("a"), c.get("b"))) for c in checks if c["kind"] == "pair_reported"}

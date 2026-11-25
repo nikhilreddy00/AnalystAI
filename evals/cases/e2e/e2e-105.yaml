@@ -1,0 +1,27 @@
+id: e2e-105
+domain: saas
+source: stripe
+dataset:
+  name: stripe-subscriptions
+  seed: 0
+  table: subscriptions
+truth:
+  active_subscriptions: 7
+question: How many subscriptions have the status active?
+overview_done: true
+checks:
+- kind: number_in_answer
+  truth_key: active_subscriptions
+  rel_tol: 0
+  scales:   # a count written with what it counts (a bare 7 could be a day)
+  - [1, active]
+  - [1, subscription]
+- kind: must_not_match
+  pattern: '\b8 (active )?subscriptions\b'
+hard_rules:
+- charts_lint_clean
+- charts_have_rationale
+- non_empty_or_error
+label_note: 'Phase 5.8c: a Stripe test account (scripts/seed_stripe_test.py) imported live by the
+  production engine (STRIPE_TEST_RESTRICTED, never committed). 7 subscriptions are active; the
+  two-price one is 2 rows, so 8 counts rows, not subscriptions.'

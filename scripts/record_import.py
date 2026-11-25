@@ -1,0 +1,178 @@
+"""Record a vendor's real API pages for the import tests (5.8c, D1-38: tests replay real pages):
+the production fetchers run against the vendor, through the production client, and every answer
+is saved, scrubbed, as `tests/fixtures/imports/<vendor>/pages.json`. tests/test_imports.py
+replays them under the guarded client's fake network.
+
+    STRIPE_TEST_RESTRICTED=rk_test_… uv run python scripts/record_import.py stripe
+
+Keys come from the environment or .env (never an argument). Scrubbed before writing: people's
+names, emails, phones and addresses become placeholders; the file is refused if any key, or a
+token-shaped value, is still in it. Not product code: a recording aid."""
+from __future__ import annotations
+
+import asyncio
+import hashlib
+import json
+import os
+import re
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
+ENV = {"stripe": {"key": "STRIPE_TEST_RESTRICTED"},
+       "shopify": {"key": "SHOPIFY_CLIENT_SECRET", "client_id": "SHOPIFY_CLIENT_ID",
+                   "shop": "SHOPIFY_SHOP"}}
+_PERSONAL = {"name", "phone", "address", "shipping", "line1", "line2", "postal_code",
+             "first_name", "last_name", "firstName", "lastName",
+             # an invoice's copy of its customer (the first recording kept customer_name)
+             "customer_name", "customer_phone", "customer_address", "customer_shipping",
+             "billing_details", "shipping_details"}
+_PERSON_KEYS = {"email", "phone", "first_name", "last_name", "firstName", "lastName"}
+# an export's header words that may mean a person or where they live
+_PERSON_WORDS = {"name", "phone", "address", "address1", "address2", "street", "zip", "postal",
+                 "company", "city", "province", "country", "notes", "note", "description",
+                 "billing", "shipping", "customer", "employee", "device", "ip", "receipt"}
+# headers with those words that hold no one's details (checked against the real exports)
+_NO_ONES = {"Name", "Lineitem name", "Product", "Plan", "Shipping", "Shipping Method",
+            "Lineitem requires shipping", "Billing", "Customer", "Customer ID"}
+_TOKENS = re.compile(r"\b(?:sk|rk|pk)_(?:live|test)_[A-Za-z0-9]{8,}|shpat_\w+|shpss_\w+|pat-\w+")
+
+
+def _env(name: str) -> str:
+    if v := os.environ.get(name):
+        return v
+    env = ROOT / ".env"
+    lines = env.read_text().splitlines() if env.is_file() else []
+    return next((ln.split("=", 1)[1].strip().strip('"') for ln in lines
+                 if ln.startswith(f"{name}=")), "")
+
+
+def email(value: str) -> str:
+    """An address as its placeholder, the same from every file (the recording and the vendor's
+    own export of one customer match, for the oracle): customer<hash>@mail.invalid, never
+    @example.com, which the SaaS pack's test_marker reads as a test account. A placeholder stays
+    itself (scrubbing a scrubbed file changes nothing)."""
+    if re.fullmatch(r"customer[0-9a-f]{8}@mail\.invalid", value.strip()):
+        return value.strip()
+    return f"customer{hashlib.sha256(value.strip().lower().encode()).hexdigest()[:8]}@mail.invalid"
+
+
+def scrub(value, emails: dict):
+    """People out, structure kept: an email becomes its placeholder, a name, phone or address
+    `[scrubbed]` (an address's parts too)."""
+    if isinstance(value, dict):
+        # a `name` is a person's only on what looks like a person (an email, a phone, first and
+        # last names): a Stripe product's or a Shopify order's and line's name is no one's (the
+        # first oracle run: every Product read "[scrubbed]")
+        person = value.get("object") == "customer" or bool(value.keys() & _PERSON_KEYS)
+        personal = _PERSONAL - (set() if person else {"name"})
+        return {k: ("[scrubbed]" if k in personal and isinstance(v, str) and v
+                    else None if k in personal and isinstance(v, dict) else scrub(v, emails))
+                for k, v in value.items()}
+    if isinstance(value, list):
+        return [scrub(v, emails) for v in value]
+    if isinstance(value, str) and re.fullmatch(r"[^@\s]+@[^@\s]+\.\w+", value):
+        return emails.setdefault(value, email(value))
+    return value
+
+
+def scrub_csv(path: Path) -> None:
+    """A vendor's own export, scrubbed in place by the same rules: an email column's values
+    become their placeholders, a name, description, phone or address column `[scrubbed]`."""
+    import pandas as pd
+    df = pd.read_csv(path, dtype=str, keep_default_na=False)
+    for c in df.columns:
+        words = set(re.findall(r"[a-z0-9]+", c.lower()))
+        if re.search(r"e-?mail", c.lower()):
+            df[c] = df[c].map(lambda v: email(v) if v else v)
+        # fail closed (5.8: allow lists over deny lists): a header that may hold a person or a
+        # place is scrubbed unless it is one known to be no one's (Shopify's Name is the order's
+        # number, Lineitem name the product: an over-wide first rule wiped both; a narrowed
+        # second one let Billing City through, security review)
+        elif words & _PERSON_WORDS and c not in _NO_ONES:
+            df[c] = df[c].map(lambda v: "[scrubbed]" if v else v)
+    text = df.to_csv(index=False)
+    if hit := _TOKENS.search(text):
+        sys.exit(f"refused: a key or token is in {path.name} ({hit.group()[:6]}…)")
+    path.write_text(text)
+    print(f"scrubbed {path}")
+
+
+async def record(vendor_name: str) -> Path:
+    import httpx
+    from connectors import imports as imp
+
+    secrets = {k: _env(v) for k, v in ENV[vendor_name].items()}
+    if not all(secrets.values()):
+        sys.exit(f"set {', '.join(ENV[vendor_name].values())} (environment or .env)")
+    vendor = imp.VENDORS[vendor_name]
+    vendor.check(secrets)
+    pages, emails = [], {}
+
+    read = imp.capped_body
+
+    async def keep(response: httpx.Response, cap: int) -> bytes:
+        """The production read, then the page as it was read (never a second read of it). A
+        token mint's request is never kept (it holds the client secret) and its token is a
+        placeholder; a signed download keeps its path only (its query is the credential); a
+        GraphQL call keeps its query, which replay matches on."""
+        body = await read(response, cap)
+        req, url = response.request, response.request.url
+        signed = any(k.lower().startswith("x-goog-") for k, _ in url.params.multi_items())
+        sent = None
+        if req.method == "POST" and not url.path.endswith("/oauth/access_token"):
+            sent = json.loads(req.content)
+        if url.path.endswith("/oauth/access_token"):
+            answer = {**json.loads(body), "access_token": "[token]"}
+        elif signed:   # the bulk file: JSONL, kept as text lines
+            answer = [scrub(json.loads(ln), emails) for ln in body.splitlines() if ln.strip()]
+        else:
+            answer = scrub(json.loads(body), emails) if body else None
+        pages.append({"method": req.method, "host": url.host, "path": url.path,
+                      "query": [] if signed else sorted(url.params.multi_items()),
+                      "sent": sent, "signed": signed, "status": response.status_code,
+                      "headers": {k: v for k, v in response.headers.items()
+                                  if k.lower() in ("retry-after", "stripe-should-retry",
+                                                   "content-type")},
+                      "body": answer})
+        return body
+
+    imp.capped_body = keep
+    client = vendor.client(secrets)
+    async with client:
+        account, test_mode = await vendor.test(client, secrets)
+        headers = await vendor.auth(client, secrets)
+        counts = {}
+        for table in vendor.tables:
+            records, cut = await table.fetch(client, headers, None)
+            counts[table.name] = (len(records), cut)
+    if not test_mode:
+        sys.exit("refused: a live-mode account. Record a test account only.")
+    for p in pages:   # a signed URL inside an answer (the bulk op's url) keeps its path only
+        if isinstance(p["body"], dict):
+            p["body"] = json.loads(re.sub(r'(https://storage\.googleapis\.com/[^"?]+)\?[^"]*',
+                                          r"\1", json.dumps(p["body"])))
+    text = json.dumps({"vendor": vendor_name, "account": "[scrubbed]", "pages": pages}, indent=1,
+                      sort_keys=True)
+    minted = [v for k, v in headers.items() if k.lower().endswith("token")]
+    keys = [*imp.secret_values(secrets), *minted]   # the product's one rule of what is secret
+    if (hit := _TOKENS.search(text)) or any(v and v in text for v in keys) \
+            or "X-Goog-Signature" in text:
+        sys.exit(f"refused: a key or token is in the recording ({hit.group()[:6] if hit else 'key'}…)")
+    out = ROOT / "tests/fixtures/imports" / vendor_name / "pages.json"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(text + "\n")
+    print(f"{account} ({'test' if test_mode else 'live'}): {len(pages)} pages → {out}")
+    for name, (n, cut) in counts.items():
+        print(f"  {name}: {n} records{f', cut from {cut}' if cut else ''}")
+    return out
+
+
+if __name__ == "__main__":
+    if sys.argv[1:2] == ["scrub-csv"]:   # record_import.py scrub-csv <export.csv> …
+        for f in sys.argv[2:]:
+            scrub_csv(Path(f))
+    else:
+        asyncio.run(record(sys.argv[1] if len(sys.argv) > 1 else "stripe"))

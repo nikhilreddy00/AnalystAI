@@ -13,6 +13,8 @@ def test_show_imports_its_text_diff_when_run_as_a_script():
     """Retro 5.7b-2b: run as a script (no repo root on sys.path), --show died on
     `from evals.snapshot import text_changes` after every dataset had been dumped. The import
     now comes first, so a bad ref stops at git, never at the import."""
+    if not (ROOT / ".venv" / "bin" / "python").exists():   # mutmut's copy holds no .venv
+        pytest.skip("the script runs the repo's .venv, which this copy hasn't")
     run = subprocess.run([sys.executable, "scripts/domain_diff.py", "no-such-ref-xyz", "--show"],
                          cwd=ROOT, capture_output=True, text=True, env={"PATH": "/usr/bin:/bin"})
     assert "ModuleNotFoundError" not in run.stderr, run.stderr[-500:]

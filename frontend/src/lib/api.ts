@@ -248,6 +248,59 @@ export async function importLink(url: string): Promise<UploadResponse> {
   return data as UploadResponse;
 }
 
+/** A SaaS import (Phase 5.8c): a vendor account's tables, each a dataset, got again on demand. */
+export interface ImportTable {
+  name: string;
+  label: string;
+  dataset_id: string;
+  rows?: number;
+  as_of?: string;          // the last good copy's time
+  cut_from?: string | null; // the first day a capped table still holds
+  filed?: "new_version" | "unchanged" | "empty";
+  error?: { code: string; what: string } | null;
+  said?: string | null;    // the error in words
+  failed_at?: string;
+}
+
+export interface ImportView {
+  id: string;
+  vendor: "stripe" | "shopify";
+  label: string;
+  account: string;
+  test_mode: boolean;
+  window_from: string | null;
+  state: "idle" | "refreshing" | "failed";
+  interrupted: boolean;
+  said?: string;
+  started_at: string | null;
+  last_success_at: string | null;
+  progress: { table: number; of: number; name: string } | null;
+  tables: ImportTable[];
+}
+
+async function importCall<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const res = await fetch(`${API_URL}/api/imports${path}`, {
+    ...init,
+    headers: await getAuthHeaders(init.body ? { "Content-Type": "application/json" } : {}),
+  });
+  // a 5xx from a proxy isn't JSON: said, never "Unexpected token"
+  const data = await res.json().catch(() => ({ detail: `The server answered ${res.status}.` }));
+  if (!res.ok) throw new Error((data as { detail?: string }).detail || "The import failed");
+  return data as T;
+}
+
+export const listImports = () => importCall<ImportView[]>("");
+export const getImport = (id: string) => importCall<ImportView>(`/${id}`);
+export const createImport = (body: { vendor: string; key: string; shop?: string; client_id?: string }) =>
+  importCall<ImportView>("", { method: "POST", body: JSON.stringify(body) });
+export const refreshImport = (id: string) => importCall<ImportView>(`/${id}/refresh`, { method: "POST" });
+export const replaceImportKey = (id: string, body: { vendor: string; key: string; shop?: string; client_id?: string }) =>
+  importCall<ImportView>(`/${id}/key`, { method: "PUT", body: JSON.stringify(body) });
+export const setImportWindow = (id: string, last12Months: boolean) =>
+  importCall<ImportView>(`/${id}/window`, { method: "PUT", body: JSON.stringify({ last_12_months: last12Months }) });
+export const deleteImport = (id: string, tables: boolean) =>
+  importCall<{ deleted: string }>(`/${id}?tables=${tables}`, { method: "DELETE" });
+
 export type DashboardDataResult =
   | { status: "ok"; payload: DashboardDataPayload }
   | { status: "empty" }

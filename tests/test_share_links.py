@@ -185,7 +185,7 @@ async def test_a_file_past_the_upload_cap_is_refused_while_it_streams(client, mo
     serve(monkeypatch, lambda r: httpx.Response(200, content=CSV * 10,
                                                 headers={"content-type": "text/csv"}))
     r = await _link(client, "https://files.example/big.csv")
-    assert r.status_code == 413 and "50 MB" in r.json()["detail"]
+    assert r.status_code == 413 and f"{link.MAX_UPLOAD_MB} MB" in r.json()["detail"]
 
 
 def _zip(entries: dict[str, bytes]) -> bytes:
@@ -527,8 +527,8 @@ async def test_the_cap_is_exactly_max_bytes_counted_across_chunks(monkeypatch):
     with pytest.raises(link.TooLarge) as err:
         await link.download("https://files.example/q.csv?sig=SIGSECRET")
     assert str(err.value) == "ingestion: link too large"
-    assert err.value.user_message == ("The file at files.example is larger than 50 MB, "
-                                      "the upload limit.")
+    assert err.value.user_message == (f"The file at files.example is larger than "
+                                      f"{link.MAX_UPLOAD_MB} MB, the upload limit.")
 
 
 async def test_the_fetch_has_a_60_second_timeout(monkeypatch):

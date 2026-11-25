@@ -477,6 +477,8 @@ def normalize_frame(df: pd.DataFrame) -> pd.DataFrame:
         s = df.iloc[:, i]
         if not pd.api.types.is_numeric_dtype(s) and (blank := s.eq("")).any():
             s = s.mask(blank)   # '' is a blank, as a CSV reads it (MySQL, JSON keep it)
+        if s.dtype == object and len(s) and s.isna().all():
+            s = s.astype("float64")   # no value at all: a CSV's empty column (5.8c import oracle)
         if (parsed := parse_text_dates(s)) is not None:
             s = parsed
         if pd.api.types.is_datetime64_any_dtype(s):
@@ -521,10 +523,11 @@ def sources_table() -> str:
     dialects and caps (tests/test_sources_readme.py keeps the README equal to it)."""
     from connectors import api_connector as api
     from connectors import sql_connector as sql
-    from connectors.csv_connector import MAX_UPLOAD_MB, UPLOAD_SUFFIXES
+    from connectors.csv_connector import _MAX_CELLS, MAX_UPLOAD_MB, UPLOAD_SUFFIXES
     from connectors import link
     rows = [("File upload", f"{', '.join(sorted(UPLOAD_SUFFIXES))} in the UI",
-             f"{MAX_UPLOAD_MB} MB per file; old .xls: save as .xlsx first"),
+             f"{MAX_UPLOAD_MB} MB and {_MAX_CELLS // 1_000_000} million cells (rows × columns) "
+             "per file; old .xls: save as .xlsx first"),
             ("Share link", "a public Google Sheets, Google Drive or Dropbox link, or any https "
              "CSV/xlsx URL, pasted under the upload; OneDrive/SharePoint 'Anyone' links too "
              "(tested on mocked links only; a 1drv.ms short link is untested)",
@@ -546,6 +549,15 @@ def sources_table() -> str:
              ("REST API", "URL + auth (Bearer, API key with a configurable header, Basic) + "
               "optional pagination key",
               f"{api.MAX_PAGES} pages or {api.MAX_RECORDS:,} records; public hosts only")]
+    from connectors import imports as imp
+    from memory.session_store import REFRESH_DEADLINE_S, REFRESH_GAP_S
+    rows += [(f"{v.label} import", "the Stripe / Shopify tab: read-only credentials (setup steps "
+              f"in the app); tables {', '.join(t.label.split(' · ')[-1] for t in v.tables)}, "
+              f"laid out as {v.label}'s own export",
+              f"{v.limit + '; ' if v.limit else ''}copied as dataset versions, refreshed by Get "
+              f"latest data (at most every {REFRESH_GAP_S // 60} min, {REFRESH_DEADLINE_S // 60} "
+              f"min per refresh); newest {imp.ROW_CAP:,} rows per table, the cut said")
+             for v in imp.VENDORS.values()]
     return ("| Source | How to connect | Limits |\n|--------|----------------|--------|\n"
             + "\n".join(f"| **{a}** | {b} | {c} |" for a, b, c in rows))
 

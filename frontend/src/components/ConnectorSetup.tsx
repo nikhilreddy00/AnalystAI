@@ -5,14 +5,16 @@ import {
   Code,
   Database,
   FileSpreadsheet,
+  RefreshCw,
   Sheet,
   Upload,
   X,
   type LucideIcon,
 } from "lucide-react";
 import { API_URL, getAuthHeaders } from "@/lib/api";
+import ImportSources from "@/components/ImportSources";
 
-type ConnectorType = "csv" | "sql" | "sheets" | "api";
+type ConnectorType = "csv" | "sql" | "sheets" | "api" | "import";
 
 interface ConnectorConfig {
   type: ConnectorType;
@@ -35,10 +37,11 @@ const SOURCE_TABS: { key: ConnectorType; label: string; Icon: LucideIcon }[] = [
   { key: "sql",    label: "SQL Database",   Icon: Database },
   { key: "sheets", label: "Google Sheets",  Icon: Sheet },
   { key: "api",    label: "REST API",       Icon: Code },
+  { key: "import", label: "Stripe / Shopify", Icon: RefreshCw },
 ];
 
 const ACCEPTED_FORMATS = ".csv,.xlsx,.tsv,.json,.jsonl,.parquet";
-const ACCEPTED_FORMATS_LABEL = "CSV, XLSX, TSV, JSON, JSON Lines, Parquet — max 50 MB";
+const ACCEPTED_FORMATS_LABEL = "CSV, XLSX, TSV, JSON, JSON Lines, Parquet — max 100 MB";
 
 interface FilePreview {
   file: File;
@@ -201,7 +204,7 @@ export default function ConnectorSetup({ onConnectorReady }: ConnectorSetupProps
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-1 rounded-md border border-border bg-muted p-1 sm:grid-cols-4" role="group" aria-label="Source type">
+      <div className="grid grid-cols-2 gap-1 rounded-md border border-border bg-muted p-1 sm:grid-cols-5" role="group" aria-label="Source type">
         {SOURCE_TABS.map(({ key, label, Icon }) => {
           const active = type === key;
           return (
@@ -302,7 +305,7 @@ export default function ConnectorSetup({ onConnectorReady }: ConnectorSetupProps
             </button>
           </form>
           <p className="text-[11px] text-muted-foreground">
-            Shared as &lsquo;Anyone with the link&rsquo;. The file is copied once (max 50 MB); paste the link again for a newer copy.
+            Shared as &lsquo;Anyone with the link&rsquo;. The file is copied once (max 100 MB); paste the link again for a newer copy.
           </p>
         </div>
       )}
@@ -366,7 +369,9 @@ export default function ConnectorSetup({ onConnectorReady }: ConnectorSetupProps
         </div>
       )}
 
-      {type !== "csv" && (
+      {type === "import" && <ImportSources onConnectorReady={(source) => onConnectorReady(source)} />}
+
+      {type !== "csv" && type !== "import" && (
         <button
           onClick={handleTest}
           disabled={testing}

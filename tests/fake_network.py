@@ -32,12 +32,16 @@ class _Stream(httpcore.AsyncNetworkStream):
         self.sent += buffer
         if b"\r\n\r\n" not in self.sent:
             return
-        head = self.sent.split(b"\r\n\r\n", 1)[0].decode()
-        self.sent = b""
-        line, *lines = head.split("\r\n")
+        head, rest = self.sent.split(b"\r\n\r\n", 1)
+        line, *lines = head.decode().split("\r\n")
         method, target, _ = line.split(" ")
         headers = dict(h.split(": ", 1) for h in lines)
-        request = httpx.Request(method, f"https://{headers['Host']}{target}", headers=headers)
+        size = int({k.lower(): v for k, v in headers.items()}.get("content-length", 0))
+        if len(rest) < size:   # the body (a POST's: GraphQL, a token mint) still to come
+            return
+        self.sent = rest[size:]
+        request = httpx.Request(method, f"https://{headers['Host']}{target}", headers=headers,
+                                content=rest[:size])
         self.wire.requests.append(request)
         r = self.wire.handler(request)
         body = b"".join(r.stream)   # the bytes as given: a Content-Encoding is the client's to read

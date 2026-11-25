@@ -797,6 +797,22 @@ def test_any_result_shape_becomes_a_frame_without_losing_a_column(names, data):
     assert list(normalize_frame(df).columns) == names
 
 
+def test_a_column_with_no_value_reads_as_a_csvs_empty_column():
+    """5.8c's first import oracle run: Stripe's empty Due Date read None from the import (an
+    object column) and NaN from Stripe's CSV export of the same invoices (a float column). Every
+    source's empty column now reads as a CSV's; one with a value keeps its own type."""
+    from connectors.base import normalize_frame
+    from connectors.csv_connector import _read_bytes
+    from connectors.sql_connector import QueryResult
+    csv, _ = _read_bytes(b"id,due\n1,\n2,\n", ".csv")
+    got = QueryResult(["id", "due"], [(1, None), (2, None)], False).frame()
+    assert str(csv["due"].dtype) == str(got["due"].dtype) == "float64"
+    kept = normalize_frame(pd.DataFrame({"a": [None, "x"]}))
+    none = normalize_frame(pd.DataFrame({"b": pd.Series([], dtype=object)}))
+    assert kept["a"].isna().tolist() == [True, False] and kept["a"].dtype != "float64"
+    assert str(none["b"].dtype) == "object"
+
+
 @pytest.mark.parametrize("name", DIALECT_NAMES)
 def test_a_join_returning_two_id_columns_reads_on_every_dialect(tmp_path, name):
     from sqlalchemy import text

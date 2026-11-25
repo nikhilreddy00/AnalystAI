@@ -75,6 +75,145 @@ async def test_a_mysql_string_pointed_at_mariadb_connects():
     assert ok, said
 
 
+# ── SaaS imports (5.8c): every vendor, connect or fail correctly, through the route ─────────────
+# The recorded real pages answer; a fault is put in front of them. Each failure is said in its own
+# words, within a bound, and a refresh that fails keeps every last good copy.
+
+IMPORTS = {"stripe": {"vendor": "stripe", "key": "rk_test_" "51CANARYmatrixKEY0000000000"},
+           "shopify": {"vendor": "shopify", "shop": "analystai-test.myshopify.com",
+                       "client_id": "cid-matrix", "key": "shpss_CANARYmatrixSECRET000000000"}}
+
+
+@pytest.fixture(autouse=True)
+def _fresh_limits(monkeypatch):
+    """Each case its own rate limits (connecting is 10 a minute per user) and its own encryption
+    key: the store encrypts an import's key, and the environment's may be none (the mutation
+    gate ran with a placeholder: every import case a 500, its baseline red twice)."""
+    from cryptography.fernet import Fernet
+
+    from api.config import settings
+    from api.rate_limit import limiter
+    limiter.reset()
+    monkeypatch.setattr(settings, "encryption_key", Fernet.generate_key().decode())
+
+
+def _faulty(handler, fault):
+    """The recorded vendor, except: `fault` (request → a response, or None to answer as recorded)."""
+    return lambda request: fault(request) or handler(request)
+
+
+def _status(code, **headers):
+    import httpx
+    return lambda request: httpx.Response(code, json={"errors": "x", "error": {"message": "x"}},
+                                          headers=headers)
+
+
+def _api(request) -> bool:   # a data request, never the token mint
+    return not request.url.path.endswith("/oauth/access_token")
+
+
+CONNECT = {   # case → (fault, the words it must say)
+    "ok": (lambda r: None, None),
+    "wrong key": (lambda r: _status(401)(r) if _api(r) or "shopify" in str(r.url) else None,
+                  "rejected the key"),
+    "missing permission": (lambda r: _status(403)(r) if _api(r) else None, "can't read"),
+    "vendor down": (lambda r: _status(503)(r) if _api(r) else None, "didn't answer properly"),
+}
+
+
+@pytest.mark.parametrize("case", list(CONNECT))
+@pytest.mark.parametrize("vendor", list(IMPORTS))
+async def test_an_import_connects_or_says_why(vendor, case, monkeypatch):
+    from orchestrator.runner import in_memory_deps
+    from tests.fake_network import serve
+    from tests.test_imports import _settle, recorded
+    fault, words = CONNECT[case]
+    serve(monkeypatch, _faulty(recorded(vendor), fault))
+    started = time.monotonic()
+    async with _client(in_memory_deps()) as c:
+        r = await c.post("/api/imports", json=IMPORTS[vendor])
+        await _settle(c)
+    if words is None:
+        assert r.status_code == 201, r.text
+    else:   # a failure is said within a bound; a good import's time is its data's (under
+        # mutmut's instrumented run a whole Stripe import passed 10 s: the gate's baseline failed)
+        assert time.monotonic() - started < 10
+        assert r.status_code == 400 and words in r.json()["detail"], r.text
+        assert IMPORTS[vendor]["key"] not in r.text
+
+
+async def test_a_dns_failure_is_said_as_the_network(monkeypatch):
+    """Network down: the vendor's host doesn't resolve."""
+    from orchestrator.runner import in_memory_deps
+    from tests.fake_network import serve
+    from tests.test_imports import recorded
+    import socket
+
+    def no_such_host(host, n):
+        raise socket.gaierror(socket.EAI_NONAME, "nodename nor servname provided")
+    serve(monkeypatch, recorded("stripe"), dns=no_such_host)
+    async with _client(in_memory_deps()) as c:
+        r = await c.post("/api/imports", json=IMPORTS["stripe"])
+    assert r.status_code == 400 and "Couldn't reach Stripe" in r.json()["detail"]
+
+
+async def test_a_429_is_waited_out_once(monkeypatch):
+    import connectors.imports as imports
+    from orchestrator.runner import in_memory_deps
+    from tests.fake_network import serve
+    from tests.test_imports import _settle, recorded
+    monkeypatch.setattr(imports, "RETRY_WAIT_S", 0)
+    seen = []
+    def once(request):
+        if _api(request) and not seen:
+            seen.append(1)
+            return _status(429, **{"Retry-After": "0"})(request)
+    serve(monkeypatch, _faulty(recorded("stripe"), once))
+    async with _client(in_memory_deps()) as c:
+        r = await c.post("/api/imports", json=IMPORTS["stripe"])
+        await _settle(c)
+    assert r.status_code == 201 and seen
+
+
+@pytest.mark.parametrize("vendor", list(IMPORTS))
+async def test_a_refresh_that_fails_or_is_interrupted_keeps_every_last_good_copy(vendor, monkeypatch):
+    """A good import, then a refresh that the vendor fails (503), then one interrupted (a
+    shutdown cancels its task): each is said, the state failed, every table's copy unchanged."""
+    import asyncio
+
+    import memory.session_store as ss
+    from orchestrator.runner import in_memory_deps
+    from tests.fake_network import serve
+    from tests.test_imports import _settle, recorded
+    monkeypatch.setattr(ss, "REFRESH_GAP_S", 0)
+    serve(monkeypatch, recorded(vendor))
+    async with _client(in_memory_deps()) as c:
+        made = (await c.post("/api/imports", json=IMPORTS[vendor])).json()
+        await _settle(c)
+        good = (await c.get(f"/api/imports/{made['id']}")).json()
+        latest = {t["name"]: (await c.get(f"/api/datasets/{t['dataset_id']}")).json()["latest"]["id"]
+                  for t in good["tables"]}
+        serve(monkeypatch, _faulty(recorded(vendor), lambda r: _status(503)(r) if _api(r) else None))
+        await c.post(f"/api/imports/{made['id']}/refresh")
+        await _settle(c)
+        failed = (await c.get(f"/api/imports/{made['id']}")).json()
+        assert failed["state"] == "failed"
+        assert all("didn't answer properly" in t["said"] for t in failed["tables"])
+        serve(monkeypatch, recorded(vendor))
+        await c.post(f"/api/imports/{made['id']}/refresh")
+        await asyncio.sleep(0.01)   # under way (one cancelled before its first step reads as
+        #                              interrupted once its deadline passes: test_imports_store)
+        for task in list(c._transport.app.state.import_tasks):   # a shutdown: the task cancelled
+            task.cancel()
+        await asyncio.gather(*c._transport.app.state.import_tasks, return_exceptions=True)
+        stopped = (await c.get(f"/api/imports/{made['id']}")).json()
+        assert stopped["state"] == "failed"
+        assert {t["error"]["code"] for t in stopped["tables"] if t.get("error")} <= {"interrupted"}
+        kept = {t["name"]: (await c.get(f"/api/datasets/{t['dataset_id']}")).json()["latest"]["id"]
+                for t in good["tables"]}
+    assert kept == latest
+
+
 @pytest.mark.parametrize("name", ["mysql", "mariadb"])
 def test_tls_required_gives_an_encrypted_session(name):
     """ssl_mode=REQUIRED connects only encrypted: the session itself reports its cipher (MariaDB

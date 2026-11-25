@@ -163,6 +163,32 @@ async def test_deleting_a_dataset_leaves_nothing(env, recorded_llm, monkeypatch)
     assert (await client.get("/api/datasets")).json() == []
 
 
+async def _import_rows(deps, import_id: str) -> int:
+    store = deps.session_store
+    if hasattr(store, "_engine"):
+        async with store._engine.connect() as conn:
+            return (await conn.execute(text("SELECT count(*) FROM imports WHERE id = :i"),
+                                       {"i": import_id})).scalar_one()
+    return int(import_id in store._imports)
+
+
+@pytest.mark.parametrize("tables", [True, False])
+async def test_a_deleted_import_leaves_no_row(env, tables):
+    """CI 5.8c: a deleted import was a tombstone forever (its account name, its user, its
+    tables' ids); the sweep removes it once the grace has passed, its tables as asked."""
+    _client_, deps, _csv = env
+    store = deps.session_store
+    imp = await store.create_import("u1", vendor="stripe", account="Acme (test)", test_mode=True,
+                                    secrets={"key": "fake"}, tables={"invoices": "Invoices"})
+    assert await store.delete_import(imp.id, "u1", with_tables=tables)
+    await sweep(deps, grace_s=3600)   # within the grace: a refresh may still be writing
+    assert await _import_rows(deps, imp.id) == 1
+    await sweep(deps, grace_s=0)
+    assert await _import_rows(deps, imp.id) == 0
+    assert [d.id for d, _n in await store.list_datasets("u1")] == \
+        ([] if tables else list(imp.tables.values()))
+
+
 async def test_every_table_with_user_data_is_purged():
     """A new table that holds per-thread or per-dataset data must be added to the purge."""
     if not PG:

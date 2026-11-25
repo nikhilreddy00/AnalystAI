@@ -1,0 +1,1256 @@
+{
+ "meta": {
+  "suite": "e2e",
+  "report": "e2e-20261123T174001Z",
+  "k": 1,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "1c1425f",
+  "started_at": "20261123T174001Z",
+  "only": "e2e-105",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 1,
+  "runs": 1,
+  "pass_rate": 0.0,
+  "case_majority_pass_rate": 0.0,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "hard_rules_na": 2,
+  "errors": 0,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 0,
+  "runs_with_prose_rewritten": 0,
+  "runs_with_pii_guard_hit": 0,
+  "cost_per_question_usd": 0.0209,
+  "latency_p50_s": 15.26,
+  "latency_p95_s": 15.26,
+  "by_domain": {
+   "saas": {
+    "cases": 1,
+    "k_min": 1,
+    "k_max": 1,
+    "cases_passed_all_runs": 0,
+    "pass_rate": 0.0,
+    "hard_rule_violations": 0,
+    "hard_rules_na": 2,
+    "builtin_only_cases": [],
+    "model_dependent_passed": 0,
+    "model_dependent_cases": 0
+   }
+  }
+ },
+ "runs": {
+  "e2e-105": [
+   {
+    "checks": [
+     {
+      "kind": "number_in_answer",
+      "ok": false,
+      "detail": "want \u22487 [(1.0, 'active'), (1.0, 'subscription')] in answer; saw [3.0, 8.0]"
+     },
+     {
+      "kind": "must_not_match",
+      "ok": true,
+      "detail": "ok"
+     }
+    ],
+    "hard": [
+     {
+      "rule": "charts_lint_clean",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "charts_have_rationale",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "non_empty_or_error",
+      "ok": true,
+      "detail": "ok"
+     },
+     {
+      "rule": "pii_canary",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     },
+     {
+      "rule": "pii_exits",
+      "ok": true,
+      "na": true,
+      "detail": "n/a: no planted PII"
+     }
+    ],
+    "error": null,
+    "answer": "Top 3 Status by count(Status). Leader: active = 8.00.",
+    "pii_exits": {
+     "rule": "pii_exits",
+     "ok": true,
+     "na": true,
+     "detail": "n/a: no planted PII"
+    },
+    "pii_canary_hits": 0,
+    "pii_model_hits": 0,
+    "pii_planted": 0,
+    "approvals": [
+     "high_null"
+    ],
+    "output": {
+     "session_id": "fc9bf9db-c3a1-41c4-840f-d8456744eaf0",
+     "user_id": "default",
+     "conversation_history": [
+      {
+       "role": "user",
+       "content": "How many subscriptions have the status active?",
+       "timestamp": "2026-11-23T17:40:16.145290Z"
+      },
+      {
+       "role": "user",
+       "content": "Continue with imputation",
+       "timestamp": "2026-11-23T17:40:16.260710Z"
+      },
+      {
+       "role": "assistant",
+       "content": "Top 3 Status by count(Status). Leader: active = 8.00.",
+       "timestamp": "2026-11-23T17:40:16.303696Z"
+      }
+     ],
+     "connector_config": {
+      "type": "csv",
+      "file_path": "/Users/uvnikhil/Projects/AnalystAI/uploads/evals/stripe-subscriptions-0.parquet",
+      "connection_string": null,
+      "table_name": null,
+      "spreadsheet_id": null,
+      "sheet_name": null,
+      "service_account_json": null,
+      "url": null,
+      "auth_type": null,
+      "auth_value": null,
+      "api_key_header": null,
+      "pagination_key": null
+     },
+     "task_plan": {
+      "raw_query": "How many subscriptions have the status active?",
+      "target_metrics": [
+       "Status"
+      ],
+      "timeframe": null,
+      "segments": [
+       "Status"
+      ],
+      "analysis_types": [
+       "eda",
+       "segmentation"
+      ],
+      "output_format": "both",
+      "resume_from": null,
+      "clarification_needed": false,
+      "clarification_question": null,
+      "question_intent": "top_n",
+      "targeted_params": {
+       "target_columns": [
+        "Status"
+       ],
+       "metric_column": "Status",
+       "date_column": null,
+       "segment_column": "Status",
+       "segment_value": "active",
+       "group_by": "Status",
+       "variant_column": null,
+       "n": null,
+       "order": "desc",
+       "frequency": null,
+       "test_type": null,
+       "aggregation": "count",
+       "chart_type": null,
+       "kpi": null,
+       "period_start": null,
+       "period_end": null,
+       "compare": null
+      }
+     },
+     "data_contract": {
+      "source_type": "csv",
+      "row_count": 10,
+      "column_count": 25,
+      "columns": [
+       {
+        "name": "id",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "sub_1Ueyyh2NGXUMFEe8jUK21lHW",
+         "sub_1Ueyyk2NGXUMFEe8YqwTBs9z",
+         "sub_1Ueyym2NGXUMFEe8p0GaLnz2",
+         "sub_1UeyzJ2NGXUMFEe83OV5aN5X",
+         "sub_1UeyzJ2NGXUMFEe83OV5aN5X"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "named as an identifier ('id')",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Customer ID",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "cus_VgLgmumcofOdwc",
+         "cus_VgLgrFd3qMWAtx",
+         "cus_VgLgigDw7WTKyc",
+         "cus_VgLgsObGf1D9oC",
+         "cus_VgLgsObGf1D9oC"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "named as an identifier ('Customer ID')",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Customer Email",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]",
+         "[REDACTED]"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": "email",
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Plan",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "price_1Ueyye2NGXUMFEe8BZWI4Zaz",
+         "price_1Ueyyf2NGXUMFEe8bniYdFV0",
+         "price_1Ueyye2NGXUMFEe8BZWI4Zaz",
+         "price_1UeyzG2NGXUMFEe87rXZ5GnP",
+         "price_1UeyzG2NGXUMFEe8TdDUVyEO"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Product",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "Pro",
+         "Team",
+         "Pro",
+         "Seats",
+         "Pro"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Product ID",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "prod_VgLgDhdIqRbuwI",
+         "prod_VgLgDfToMtBdF5",
+         "prod_VgLgDhdIqRbuwI",
+         "prod_VgLgZU5er4nppY",
+         "prod_VgLgAq2bRTySsH"
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "named as an identifier ('Product ID')",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Quantity",
+        "dtype": "int64",
+        "nullable": false,
+        "sample_values": [
+         1,
+         3,
+         1,
+         1,
+         1
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": "mean",
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Currency",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "usd",
+         "eur",
+         "usd",
+         "usd",
+         "usd"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Cancellation Reason",
+        "dtype": "str",
+        "nullable": true,
+        "sample_values": [
+         "cancellation_requested"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 90.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Cancellation Feedback",
+        "dtype": "float64",
+        "nullable": true,
+        "sample_values": [],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 100.0,
+        "role_reason": "no values",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Interval",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "month",
+         "month",
+         "month",
+         "month",
+         "month"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Amount",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         29.0,
+         99.0,
+         29.0,
+         15.0,
+         29.0
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": "mean",
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Status",
+        "dtype": "str",
+        "nullable": false,
+        "sample_values": [
+         "active",
+         "trialing",
+         "canceled",
+         "active",
+         "active"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Created (UTC)",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2026-11-23T15:16:00",
+         "2026-11-23T15:16:00",
+         "2026-11-23T15:16:00",
+         "2026-11-23T15:17:00",
+         "2026-11-23T15:17:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Start Date (UTC)",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2026-11-23T15:16:00",
+         "2026-11-23T15:16:00",
+         "2026-11-23T15:16:00",
+         "2026-11-23T15:17:00",
+         "2026-11-23T15:17:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Current Period Start (UTC)",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2026-11-23T15:16:00",
+         "2026-11-23T15:16:00",
+         "2026-11-23T15:16:00",
+         "2026-11-23T15:17:00",
+         "2026-11-23T15:17:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Current Period End (UTC)",
+        "dtype": "datetime64[us]",
+        "nullable": false,
+        "sample_values": [
+         "2026-12-23T15:16:00",
+         "2026-12-07T15:16:00",
+         "2026-12-23T15:16:00",
+         "2026-12-23T15:17:00",
+         "2026-12-23T15:17:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Trial Start (UTC)",
+        "dtype": "datetime64[us]",
+        "nullable": true,
+        "sample_values": [
+         "2026-11-23T15:16:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 90.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Trial End (UTC)",
+        "dtype": "datetime64[us]",
+        "nullable": true,
+        "sample_values": [
+         "2026-12-07T15:16:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 90.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Coupon",
+        "dtype": "str",
+        "nullable": true,
+        "sample_values": [
+         "Kw5fSyWV"
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 90.0,
+        "role_reason": "text labels",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Canceled At (UTC)",
+        "dtype": "datetime64[us]",
+        "nullable": true,
+        "sample_values": [
+         "2026-11-23T15:16:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 90.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Cancel At Period End",
+        "dtype": "bool",
+        "nullable": false,
+        "sample_values": [
+         false,
+         false,
+         false,
+         false,
+         false
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 0.0,
+        "role_reason": "true/false values",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Ended At (UTC)",
+        "dtype": "datetime64[us]",
+        "nullable": true,
+        "sample_values": [
+         "2026-11-23T15:16:00"
+        ],
+        "is_date": true,
+        "is_id": false,
+        "is_metric": false,
+        "null_pct": 90.0,
+        "role_reason": "dates",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "Percent Off",
+        "dtype": "float64",
+        "nullable": true,
+        "sample_values": [
+         20.0
+        ],
+        "is_date": false,
+        "is_id": true,
+        "is_metric": false,
+        "null_pct": 90.0,
+        "role_reason": "consecutive whole numbers, one per row",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       },
+       {
+        "name": "mrr",
+        "dtype": "float64",
+        "nullable": false,
+        "sample_values": [
+         29.0,
+         297.0,
+         29.0,
+         15.0,
+         29.0
+        ],
+        "is_date": false,
+        "is_id": false,
+        "is_metric": true,
+        "null_pct": 0.0,
+        "role_reason": "numbers",
+        "pii": null,
+        "aggregation": null,
+        "aggregation_by": [],
+        "aggregation_time": null,
+        "aggregation_every": null,
+        "unit": null
+       }
+      ],
+      "sample_rows": [
+       {
+        "id": "sub_1Ueyyh2NGXUMFEe8jUK21lHW",
+        "Customer ID": "cus_VgLgmumcofOdwc",
+        "Customer Email": "[REDACTED]",
+        "Plan": "price_1Ueyye2NGXUMFEe8BZWI4Zaz",
+        "Product": "Pro",
+        "Product ID": "prod_VgLgDhdIqRbuwI",
+        "Quantity": 1,
+        "Currency": "usd",
+        "Cancellation Reason": null,
+        "Cancellation Feedback": null,
+        "Interval": "month",
+        "Amount": 29.0,
+        "Status": "active",
+        "Created (UTC)": "2026-11-23T15:16:00",
+        "Start Date (UTC)": "2026-11-23T15:16:00",
+        "Current Period Start (UTC)": "2026-11-23T15:16:00",
+        "Current Period End (UTC)": "2026-12-23T15:16:00",
+        "Trial Start (UTC)": null,
+        "Trial End (UTC)": null,
+        "Coupon": null,
+        "Canceled At (UTC)": null,
+        "Cancel At Period End": false,
+        "Ended At (UTC)": null,
+        "Percent Off": null,
+        "mrr": 29.0
+       },
+       {
+        "id": "sub_1Ueyyk2NGXUMFEe8YqwTBs9z",
+        "Customer ID": "cus_VgLgrFd3qMWAtx",
+        "Customer Email": "[REDACTED]",
+        "Plan": "price_1Ueyyf2NGXUMFEe8bniYdFV0",
+        "Product": "Team",
+        "Product ID": "prod_VgLgDfToMtBdF5",
+        "Quantity": 3,
+        "Currency": "eur",
+        "Cancellation Reason": null,
+        "Cancellation Feedback": null,
+        "Interval": "month",
+        "Amount": 99.0,
+        "Status": "trialing",
+        "Created (UTC)": "2026-11-23T15:16:00",
+        "Start Date (UTC)": "2026-11-23T15:16:00",
+        "Current Period Start (UTC)": "2026-11-23T15:16:00",
+        "Current Period End (UTC)": "2026-12-07T15:16:00",
+        "Trial Start (UTC)": "2026-11-23T15:16:00",
+        "Trial End (UTC)": "2026-12-07T15:16:00",
+        "Coupon": null,
+        "Canceled At (UTC)": null,
+        "Cancel At Period End": false,
+        "Ended At (UTC)": null,
+        "Percent Off": null,
+        "mrr": 297.0
+       },
+       {
+        "id": "sub_1Ueyym2NGXUMFEe8p0GaLnz2",
+        "Customer ID": "cus_VgLgigDw7WTKyc",
+        "Customer Email": "[REDACTED]",
+        "Plan": "price_1Ueyye2NGXUMFEe8BZWI4Zaz",
+        "Product": "Pro",
+        "Product ID": "prod_VgLgDhdIqRbuwI",
+        "Quantity": 1,
+        "Currency": "usd",
+        "Cancellation Reason": "cancellation_requested",
+        "Cancellation Feedback": null,
+        "Interval": "month",
+        "Amount": 29.0,
+        "Status": "canceled",
+        "Created (UTC)": "2026-11-23T15:16:00",
+        "Start Date (UTC)": "2026-11-23T15:16:00",
+        "Current Period Start (UTC)": "2026-11-23T15:16:00",
+        "Current Period End (UTC)": "2026-12-23T15:16:00",
+        "Trial Start (UTC)": null,
+        "Trial End (UTC)": null,
+        "Coupon": null,
+        "Canceled At (UTC)": "2026-11-23T15:16:00",
+        "Cancel At Period End": false,
+        "Ended At (UTC)": "2026-11-23T15:16:00",
+        "Percent Off": null,
+        "mrr": 29.0
+       },
+       {
+        "id": "sub_1UeyzJ2NGXUMFEe83OV5aN5X",
+        "Customer ID": "cus_VgLgsObGf1D9oC",
+        "Customer Email": "[REDACTED]",
+        "Plan": "price_1UeyzG2NGXUMFEe87rXZ5GnP",
+        "Product": "Seats",
+        "Product ID": "prod_VgLgZU5er4nppY",
+        "Quantity": 1,
+        "Currency": "usd",
+        "Cancellation Reason": null,
+        "Cancellation Feedback": null,
+        "Interval": "month",
+        "Amount": 15.0,
+        "Status": "active",
+        "Created (UTC)": "2026-11-23T15:17:00",
+        "Start Date (UTC)": "2026-11-23T15:17:00",
+        "Current Period Start (UTC)": "2026-11-23T15:17:00",
+        "Current Period End (UTC)": "2026-12-23T15:17:00",
+        "Trial Start (UTC)": null,
+        "Trial End (UTC)": null,
+        "Coupon": null,
+        "Canceled At (UTC)": null,
+        "Cancel At Period End": false,
+        "Ended At (UTC)": null,
+        "Percent Off": null,
+        "mrr": 15.0
+       },
+       {
+        "id": "sub_1UeyzJ2NGXUMFEe83OV5aN5X",
+        "Customer ID": "cus_VgLgsObGf1D9oC",
+        "Customer Email": "[REDACTED]",
+        "Plan": "price_1UeyzG2NGXUMFEe8TdDUVyEO",
+        "Product": "Pro",
+        "Product ID": "prod_VgLgAq2bRTySsH",
+        "Quantity": 1,
+        "Currency": "usd",
+        "Cancellation Reason": null,
+        "Cancellation Feedback": null,
+        "Interval": "month",
+        "Amount": 29.0,
+        "Status": "active",
+        "Created (UTC)": "2026-11-23T15:17:00",
+        "Start Date (UTC)": "2026-11-23T15:17:00",
+        "Current Period Start (UTC)": "2026-11-23T15:17:00",
+        "Current Period End (UTC)": "2026-12-23T15:17:00",
+        "Trial Start (UTC)": null,
+        "Trial End (UTC)": null,
+        "Coupon": null,
+        "Canceled At (UTC)": null,
+        "Cancel At Period End": false,
+        "Ended At (UTC)": null,
+        "Percent Off": null,
+        "mrr": 29.0
+       }
+      ],
+      "date_columns": [
+       "Created (UTC)",
+       "Start Date (UTC)",
+       "Current Period Start (UTC)",
+       "Current Period End (UTC)",
+       "Trial Start (UTC)",
+       "Trial End (UTC)",
+       "Canceled At (UTC)",
+       "Ended At (UTC)"
+      ],
+      "id_columns": [
+       "id",
+       "Customer ID",
+       "Product ID",
+       "Percent Off"
+      ],
+      "metric_columns": [
+       "Quantity",
+       "Amount",
+       "mrr"
+      ],
+      "schema_summary": "10 rows \u00d7 25 columns. Dates: Created (UTC) from 2026-11-23 to 2026-11-23 (a single date). Metrics: Quantity, Amount, mrr. Identifiers: id, Customer ID, Product ID, Percent Off. Categories: Plan, Product, Currency, Cancellation Reason, Cancellation Feedback, Interval, Status, Coupon, Cancel At Period End. Personal data, masked before any model sees it: Customer Email (email). Missing values: Cancellation Feedback 100%, Cancellation Reason 90%, Trial Start (UTC) 90%, Coupon 90%. Blank by the file's layout, not missing (filled only on the rows it applies to; blank means none): Trial End (UTC), Ended At (UTC), Canceled At (UTC), Percent Off.",
+      "source_query": null,
+      "source_evidence": {
+       "id": "source:data",
+       "kind": "source",
+       "claim": "Loaded 10 rows \u00d7 25 columns from a PARQUET file.",
+       "code": "pd.read_parquet(<uploaded file>)",
+       "result_excerpt": "{\"roles\": {\"id\": [\"id\", \"Customer ID\", \"Product ID\", \"Percent Off\"], \"category\": [\"Customer Email\", \"Plan\", \"Product\", \"Currency\", \"Cancellation Reason\", \"Cancellation Feedback\", \"Interval\", \"Status\", \"Coupon\", \"Cancel At Period End\"], \"metric\": [\"Quantity\", \"Amount\", \"mrr\"], \"date\": [\"Created (UTC)\", \"Start Date (UTC)\", \"Current Period Start (UTC)\", \"Current Period End (UTC)\", \"Trial Start (UTC)\", \"Trial End (UTC)\", \"Canceled At (UTC)\", \"Ended At (UTC)\"]}, \"personal_data\": {\"Customer Email\": \"e",
+       "row_count": 10,
+       "confidence": "medium",
+       "confidence_reason": "The layout was detected, not given: check the notes.",
+       "assumptions": [
+        "Added by the product from the saas pack's formula: mrr.",
+        "1 column hold personal data; their values are masked before any model sees them."
+       ]
+      },
+      "fingerprint": "0def956ad1ecd96243c33c0568ad3e5d64860a84e7a4f779ccd5d4323027afb4",
+      "pii_columns": [
+       "Customer Email"
+      ],
+      "phi": false,
+      "deidentification": [],
+      "deidentified": false,
+      "domain": "saas",
+      "roles": {
+       "created": "Created (UTC)",
+       "trial_end": "Trial End (UTC)",
+       "ended_at": "Ended At (UTC)",
+       "canceled_at": "Canceled At (UTC)",
+       "customer": "Customer ID",
+       "subscription": "id",
+       "plan": "Product",
+       "interval": "Interval",
+       "unit_amount": "Amount",
+       "quantity": "Quantity",
+       "discount_pct": "Percent Off",
+       "mrr": "mrr",
+       "currency": "Currency",
+       "contact_email": "Customer Email",
+       "status": "Status"
+      },
+      "domain_confidence": "strong"
+     },
+     "cleaning_audit": {
+      "decisions": [
+       {
+        "column": "Cancellation Reason",
+        "operation": "keep",
+        "strategy": "high_null",
+        "reason": "9 of 10 values missing (90%): too empty to use with confidence; left as missing.",
+        "rows_affected": 0,
+        "before_null_pct": 90.0,
+        "after_null_pct": 90.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "Cancellation Feedback",
+        "operation": "keep",
+        "strategy": "high_null",
+        "reason": "10 of 10 values missing (100%): too empty to use with confidence; left as missing.",
+        "rows_affected": 0,
+        "before_null_pct": 100.0,
+        "after_null_pct": 100.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "Trial Start (UTC)",
+        "operation": "keep",
+        "strategy": "high_null",
+        "reason": "9 of 10 values missing (90%): too empty to use with confidence; left as missing.",
+        "rows_affected": 0,
+        "before_null_pct": 90.0,
+        "after_null_pct": 90.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "Trial End (UTC)",
+        "operation": "keep",
+        "strategy": "marker",
+        "reason": "Filled only on the rows it applies to, so 9 blanks mean none, not missing values. Kept as it is.",
+        "rows_affected": 0,
+        "before_null_pct": 90.0,
+        "after_null_pct": 90.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "Coupon",
+        "operation": "keep",
+        "strategy": "high_null",
+        "reason": "9 of 10 values missing (90%): too empty to use with confidence; left as missing.",
+        "rows_affected": 0,
+        "before_null_pct": 90.0,
+        "after_null_pct": 90.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "Canceled At (UTC)",
+        "operation": "keep",
+        "strategy": "marker",
+        "reason": "Filled only on the rows it applies to, so 9 blanks mean none, not missing values. Kept as it is.",
+        "rows_affected": 0,
+        "before_null_pct": 90.0,
+        "after_null_pct": 90.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "Ended At (UTC)",
+        "operation": "keep",
+        "strategy": "marker",
+        "reason": "Filled only on the rows it applies to, so 9 blanks mean none, not missing values. Kept as it is.",
+        "rows_affected": 0,
+        "before_null_pct": 90.0,
+        "after_null_pct": 90.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "Percent Off",
+        "operation": "keep",
+        "strategy": "marker",
+        "reason": "Filled only on the rows it applies to, so 9 blanks mean none, not missing values. Kept as it is.",
+        "rows_affected": 0,
+        "before_null_pct": 90.0,
+        "after_null_pct": 90.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "*",
+        "operation": "flag",
+        "strategy": "test",
+        "reason": "10 test rows: left out of the figures; kept in the data.",
+        "rows_affected": 10,
+        "before_null_pct": 0.0,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       },
+       {
+        "column": "Currency",
+        "operation": "flag",
+        "strategy": "other_currency",
+        "reason": "4 rows in other currencies than USD; kept, left out of money totals.",
+        "rows_affected": 4,
+        "before_null_pct": 0.0,
+        "after_null_pct": 0.0,
+        "rows_removed": 0
+       }
+      ],
+      "rows_before": 10,
+      "rows_after": 10,
+      "columns_coerced": [],
+      "duplicates_removed": 0,
+      "outliers_flagged": [],
+      "high_null_columns": [
+       "Cancellation Reason",
+       "Cancellation Feedback",
+       "Trial Start (UTC)",
+       "Coupon"
+      ],
+      "summary": "More than 40% missing in: Cancellation Reason, Cancellation Feedback, Trial Start (UTC), Coupon \u2014 review recommended. Final dataset: 10 rows (started with 10).",
+      "anomaly_report": {
+       "flags": [],
+       "methodology_note": "",
+       "eligible_columns": [
+        "Amount",
+        "mrr"
+       ],
+       "skipped_columns": {
+        "id": "id column",
+        "Customer ID": "non-numeric",
+        "Customer Email": "non-numeric",
+        "Plan": "non-numeric",
+        "Product": "non-numeric",
+        "Product ID": "non-numeric",
+        "Quantity": "binary column (only 2 values)",
+        "Currency": "non-numeric",
+        "Cancellation Reason": "constant or unsupported",
+        "Cancellation Feedback": "constant or unsupported",
+        "Interval": "binary column (only 2 values)",
+        "Status": "non-numeric",
+        "Created (UTC)": "datetime column",
+        "Start Date (UTC)": "datetime column",
+        "Current Period Start (UTC)": "datetime column",
+        "Current Period End (UTC)": "datetime column",
+        "Trial Start (UTC)": "constant or unsupported",
+        "Trial End (UTC)": "constant or unsupported",
+        "Coupon": "constant or unsupported",
+        "Canceled At (UTC)": "constant or unsupported",
+        "Cancel At Period End": "constant or unsupported",
+        "Ended At (UTC)": "constant or unsupported",
+        "Percent Off": "constant or unsupported"
+       }
+      },
+      "skipped_columns": [],
+      "date_ranges": {
+       "Created (UTC)": [
+        "2026-11-23",
+        "2026-11-23",
+        1
+       ],
+       "Start Date (UTC)": [
+        "2026-11-23",
+        "2026-11-23",
+        1
+       ],
+       "Current Period Start (UTC)": [
+        "2026-11-23",
+        "2026-11-23",
+        1
+       ],
+       "Current Period End (UTC)": [
+        "2026-12-07",
+        "2027-11-23",
+        12
+       ],
+       "Trial Start (UTC)": [
+        "2026-11-23",
+        "2026-11-23",
+        1
+       ],
+       "Trial End (UTC)": [
+        "2026-12-07",
+        "2026-12-07",
+        1
+       ],
+       "Canceled At (UTC)": [
+        "2026-11-23",
+        "2026-11-23",
+        1
+       ],
+       "Ended At (UTC)": [
+        "2026-11-23",
+        "2026-11-23",
+        1
+       ]
+      },
+      "grain": "aggregate",
+      "partial_months": {},
+      "main_currency": "USD",
+      "spell_story": [],
+      "window_span": {}
+     },
+     "analysis_findings": null,
+     "chart_configs": [],
+     "insight_report": null,
+     "targeted_response": {
+      "intent": "top_n",
+      "answer_text": "Top 3 Status by count(Status). Leader: active = 8.00.",
+      "chart_configs": [
+       {
+        "id": "2f3c1d0d-3c44-4113-8723-9b0d7f69dd1a",
+        "chart_type": "HorizontalBarChart",
+        "title": "Top 3 Status by count(Status)",
+        "data": [
+         {
+          "Status": 8.0
+         },
+         {
+          "Status": 1.0
+         },
+         {
+          "Status": 1.0
+         }
+        ],
+        "x_key": "Status",
+        "y_keys": [
+         "Status"
+        ],
+        "colors": [],
+        "x_label": "Status",
+        "y_label": "count(Status)",
+        "show_legend": true,
+        "show_grid": true,
+        "source_finding": "top_n",
+        "value_format": "number",
+        "layout_hint": "half_width",
+        "rationale": {
+         "rule": "targeted:top_n\u2192ranked bars",
+         "reason": "Ranks Status by count Status, highest first.",
+         "x": "Status",
+         "y": "Status",
+         "split": null,
+         "aggregation": "count",
+         "n_rows": 10,
+         "evidence_ids": [],
+         "code": "df.groupby('Status')['Status'].count().sort_index(kind='stable').sort_values(ascending=False, kind='stable').head(10)",
+         "confidence": null
+        },
+        "placement": "summary",
+        "lint_warnings": [],
+        "error_key": null,
+        "split_key": null,
+        "reference_lines": []
+       }
+      ],
+      "table_data": [],
+      "table_columns": [],
+      "suggestions": [],
+      "unanswerable_reason": null,
+      "generated_at": "2026-11-23T17:40:16.303633Z"
+     },
+     "expert_review": null,
+     "narrative": {
+      "column_display_names": {
+       "id": "Subscription ID",
+       "Customer ID": "Customer ID",
+       "Customer Email": "Customer Email",
+       "Plan": "Plan ID",
+       "Product": "Product Name",
+       "Product ID": "Product ID",
+       "Quantity": "Quantity",
+       "Currency": "Currency",
+       "Cancellation Reason": "Cancellation Reason",
+       "Cancellation Feedback": "Cancellation Feedback",
+       "Interval": "Billing Interval",
+       "Amount": "Amount",
+       "Status": "Status",
+       "Created (UTC)": "Created Date",
+       "Start Date (UTC)": "Start Date",
+       "Current Period Start (UTC)": "Period Start",
+       "Current Period End (UTC)": "Period End",
+       "Trial Start (UTC)": "Trial Start",
+       "Trial End (UTC)": "Trial End",
+       "Coupon": "Coupon Code",
+       "Canceled At (UTC)": "Canceled At",
+       "Cancel At Period End": "Cancel At Period End",
+       "Ended At (UTC)": "Ended At",
+       "Percent Off": "Discount Percent",
+       "mrr": "Monthly Recurring Revenue"
+      },
+      "entity_singular": "subscription",
+      "entity_plural": "subscriptions"
+     },
+     "iteration": 1,
+     "quality_check_attempts": 0,
+     "high_null_answer": "continue",
+     "prior_pii": [],
+     "error_retryable": true,
+     "error_reask": true,
+     "overview_done": true,
+     "dataset_name": null,
+     "file_hash": null,
+     "dataset_id": null,
+     "dataset_version_id": null,
+     "status": "completed",
+     "cleaned_data_path": "/Users/uvnikhil/Projects/AnalystAI/session_data/fc9bf9db-c3a1-41c4-840f-d8456744eaf0/cleaned_data.parquet",
+     "error_message": null,
+     "created_at": "2026-11-23T17:40:02.045491Z",
+     "updated_at": "2026-11-23T17:40:16.303697Z"
+    },
+    "domain": "saas",
+    "latency_s": 15.26,
+    "cost_usd": 0.02089,
+    "llm_calls": 3,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "[\n  \"What is the total MRR broken down by Plan and Interval (monthly vs annual), and which Plan drives the highest MRR contribution?\",\n  \"How many subscriptions are currently in each Status (active, canceled, trialing, etc.), and what share of canceled subscriptions have a logged Cancellation Reason versus the 90% that are missing one?\",\n  \"What is the Average Revenue Per Account (ARPA) by Plan, calculated from the Amount and mrr columns, and which Plan shows the biggest gap between its Amount and mrr values?\",\n  \"Among subscriptions where Cancel At Period End is set, how many are still within their Current Period (Current Period Start to Current Period End), and what is the MRR at risk from these pending churns?\",\n  \"For subscriptions that used a Coupon or have a Percent Off discount, how does their mrr compare to non-discounted subscriptions on the same Plan, and is there a pattern between discount usage and Status?\"\n]",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "{\n  \"column_display_names\": {\n    \"id\": \"Subscription ID\",\n    \"Customer ID\": \"Customer ID\",\n    \"Customer Email\": \"Customer Email\",\n    \"Plan\": \"Plan ID\",\n    \"Product\": \"Product Name\",\n    \"Product ID\": \"Product ID\",\n    \"Quantity\": \"Quantity\",\n    \"Currency\": \"Currency\",\n    \"Cancellation Reason\": \"Cancellation Reason\",\n    \"Cancellation Feedback\": \"Cancellation Feedback\",\n    \"Interval\": \"Billing Interval\",\n    \"Amount\": \"Amount\",\n    \"Status\": \"Status\",\n    \"Created (UTC)\": \"Created Date\",\n    \"Start Date (UTC)\": \"Start Date\",\n    \"Current Period Start (UTC)\": \"Period Start\",\n    \"Current Period End (UTC)\": \"Period End\",\n    \"Trial Start (UTC)\": \"Trial Start\",\n    \"Trial End (UTC)\": \"Trial End\",\n    \"Coupon\": \"Coupon Code\",\n    \"Canceled At (UTC)\": \"Canceled At\",\n    \"Cancel At Period End\": \"Cancel At Period End\",\n    \"Ended At (UTC)\": \"Ended At\",\n    \"Percent Off\": \"Discount Percent\",\n    \"mrr\": \"Monthly Recurring Revenue\"\n  },\n  \"entity_singular\": \"subscription\",\n  \"entity_plural\": \"subscriptions\"\n}",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "```json\n{\n  \"raw_query\": \"How many subscriptions have the status active?\",\n  \"target_metrics\": [\"Status\"],\n  \"timeframe\": null,\n  \"segments\": [\"Status\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"top_n\",\n  \"targeted_params\": {\n    \"target_columns\": [\"Status\"],\n    \"metric_column\": \"Status\",\n    \"date_column\": null,\n    \"segment_column\": \"Status\",\n    \"segment_value\": \"active\",\n    \"group_by\": \"Status\",\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": \"desc\",\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"count\",\n    \"chart_type\": null\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": false
+   }
+  ]
+ }
+}

@@ -1,0 +1,87 @@
+{
+ "meta": {
+  "suite": "e2e",
+  "report": "e2e-20261123T173907Z",
+  "k": 1,
+  "model": "claude-sonnet-4-6",
+  "git_sha": "15f7326",
+  "started_at": "20261123T173907Z",
+  "only": "e2e-105",
+  "exclude": null,
+  "skipped_over_budget": 0
+ },
+ "summary": {
+  "cases": 1,
+  "runs": 1,
+  "pass_rate": 0.0,
+  "case_majority_pass_rate": 0.0,
+  "flip_rate": 0.0,
+  "hard_rule_violations": 0,
+  "hard_rules_na": 0,
+  "errors": 1,
+  "runs_with_truncated_llm_output": 0,
+  "runs_with_guardrail_retry": 0,
+  "runs_with_prose_rewritten": 0,
+  "runs_with_pii_guard_hit": 0,
+  "cost_per_question_usd": 0.03,
+  "latency_p50_s": 15.08,
+  "latency_p95_s": 15.08,
+  "by_domain": {
+   "saas": {
+    "cases": 1,
+    "k_min": 1,
+    "k_max": 1,
+    "cases_passed_all_runs": 0,
+    "pass_rate": 0.0,
+    "hard_rule_violations": 0,
+    "hard_rules_na": 0,
+    "builtin_only_cases": [],
+    "model_dependent_passed": 0,
+    "model_dependent_cases": 0
+   }
+  }
+ },
+ "runs": {
+  "e2e-105": [
+   {
+    "checks": [
+     {
+      "kind": "harness",
+      "ok": false,
+      "detail": "KeyError: 'stripe-subscriptions'"
+     }
+    ],
+    "hard": [],
+    "error": "harness: KeyError: 'stripe-subscriptions'",
+    "output": null,
+    "category": null,
+    "case": "e2e-105",
+    "holdout": false,
+    "domain": "saas",
+    "latency_s": 15.08,
+    "cost_usd": 0.03004,
+    "llm_calls": 3,
+    "truncated_calls": 0,
+    "rejections": [],
+    "replies": [
+     {
+      "text": "[\n  \"What is the total MRR across all active subscriptions, broken down by Plan, and which Plan contributes the most to overall MRR?\",\n  \"How many subscriptions are in each Status (e.g., active, canceled, trialing), and for the canceled ones, what are the most common Cancellation Reasons and what share of MRR did they represent?\",\n  \"What is the Average Revenue Per Account (ARPA) by Plan and by Interval (monthly vs. annual), and which combination drives the highest Amount per subscription?\",\n  \"How many subscriptions are flagged with Cancel At Period End set to true, and what is the MRR at risk from those subscriptions broken down by Plan?\",\n  \"Which subscriptions have a Coupon or Percent Off applied, how does their Average Amount and MRR compare to non-discounted subscriptions, and are discounted customers concentrated in any particular Plan or Status?\"\n]",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "{\n  \"column_display_names\": {\n    \"id\": \"Subscription ID\",\n    \"Customer ID\": \"Customer ID\",\n    \"Customer Email\": \"Customer Email\",\n    \"Plan\": \"Plan ID\",\n    \"Product\": \"Product Name\",\n    \"Product ID\": \"Product ID\",\n    \"Quantity\": \"Quantity\",\n    \"Currency\": \"Currency\",\n    \"Cancellation Reason\": \"Cancellation Reason\",\n    \"Cancellation Feedback\": \"Cancellation Feedback\",\n    \"Interval\": \"Billing Interval\",\n    \"Amount\": \"Amount\",\n    \"Status\": \"Status\",\n    \"Created (UTC)\": \"Created Date\",\n    \"Start Date (UTC)\": \"Start Date\",\n    \"Current Period Start (UTC)\": \"Period Start\",\n    \"Current Period End (UTC)\": \"Period End\",\n    \"Trial Start (UTC)\": \"Trial Start\",\n    \"Trial End (UTC)\": \"Trial End\",\n    \"Coupon\": \"Coupon Code\",\n    \"Canceled At (UTC)\": \"Canceled At\",\n    \"Cancel At Period End\": \"Cancel At Period End\",\n    \"Ended At (UTC)\": \"Ended At\",\n    \"Percent Off\": \"Discount Percent\",\n    \"mrr\": \"Monthly Recurring Revenue\"\n  },\n  \"entity_singular\": \"subscription\",\n  \"entity_plural\": \"subscriptions\"\n}",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     },
+     {
+      "text": "```json\n{\n  \"raw_query\": \"How many subscriptions have the status active?\",\n  \"target_metrics\": [\"Status\"],\n  \"timeframe\": null,\n  \"segments\": [\"Status\"],\n  \"analysis_types\": [\"eda\", \"segmentation\"],\n  \"output_format\": \"both\",\n  \"resume_from\": null,\n  \"clarification_needed\": false,\n  \"clarification_question\": null,\n  \"question_intent\": \"top_n\",\n  \"targeted_params\": {\n    \"target_columns\": [\"Status\"],\n    \"metric_column\": \"Status\",\n    \"date_column\": null,\n    \"segment_column\": \"Status\",\n    \"segment_value\": \"active\",\n    \"group_by\": \"Status\",\n    \"variant_column\": null,\n    \"n\": null,\n    \"order\": \"desc\",\n    \"frequency\": null,\n    \"test_type\": null,\n    \"aggregation\": \"count\",\n    \"chart_type\": null\n  }\n}\n```",
+      "stop_reason": "end_turn",
+      "tool_calls": []
+     }
+    ],
+    "passed": false
+   }
+  ]
+ }
+}
