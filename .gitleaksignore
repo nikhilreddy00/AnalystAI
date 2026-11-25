@@ -10,3 +10,18 @@ bfae6c40974aab8d32f300db454f67cc15d893bc:.github/workflows/ci.yml:generic-api-ke
 0ed5060a00898f059e9d07fd8071db60f80e36ff:tests/conftest.py:generic-api-key:37
 # The share-link tests' made-up canary: planted so a test proves it reaches no sink (Phase 5.8b).
 74af9ae036cc5b1d57778af47176e9217a917ce0:tests/test_share_links.py:generic-api-key:20
+# The import tests' made-up Stripe keys (rk_test_51CANARY…, rk_test_NEWKEY…; Phase 5.8c), planted
+# so a test proves the key reaches no sink. Split at the prefix since 3607cf0, so no new findings.
+60b701696b1ed7062ed1ee63992657d72054b8c5:tests/test_imports_store.py:generic-api-key:183
+60b701696b1ed7062ed1ee63992657d72054b8c5:tests/test_imports_store.py:generic-api-key:186
+60b701696b1ed7062ed1ee63992657d72054b8c5:tests/test_imports_store.py:stripe-access-token:16
+a7e22840d12c265d6ceeda3a4371052371675f31:tests/test_connect_matrix.py:stripe-access-token:82
+b06473b6e5551fefdee8da0d208d7bd28f434f2d:tests/test_imports_store.py:generic-api-key:226
+bf9bcd16f09c23c935f9bbecfe0bfd9b619f74ec:tests/test_imports.py:stripe-access-token:24
+f5fb5c90b3b0426f11e83a0d6975fc08955eb6d8:tests/test_imports_store.py:generic-api-key:226
+fc55feecaa023e20e5e3e5ef9c5eb5fee5ac99b7:tests/test_imports_audit.py:stripe-access-token:49
+fc55feecaa023e20e5e3e5ef9c5eb5fee5ac99b7:tests/test_imports_audit.py:stripe-access-token:62
+fc55feecaa023e20e5e3e5ef9c5eb5fee5ac99b7:tests/test_imports_audit.py:stripe-access-token:65
+fc55feecaa023e20e5e3e5ef9c5eb5fee5ac99b7:tests/test_imports_audit.py:stripe-access-token:67
+fc55feecaa023e20e5e3e5ef9c5eb5fee5ac99b7:tests/test_imports_store.py:generic-api-key:213
+fc55feecaa023e20e5e3e5ef9c5eb5fee5ac99b7:tests/test_imports_store.py:generic-api-key:219
